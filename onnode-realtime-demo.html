@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONNODE Real-time Demo</title>
+    <!-- 라이브러리 로드 -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide React CDN -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+    
+    <!-- Firebase SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        // 환경 변수 설정 (시스템 제공 값 또는 플레이스홀더 안전 처리)
+        let firebaseConfig = {};
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config && !__firebase_config.startsWith('__')) {
+                firebaseConfig = JSON.parse(__firebase_config);
+            }
+        } catch (e) {
+            console.warn("Firebase config parsing skipped or failed.");
+        }
+
+        const appId = typeof __app_id !== 'undefined' && !__app_id.startsWith('__') ? __app_id : 'onnode-demo-live';
+        const initialToken = typeof __initial_auth_token !== 'undefined' && !__initial_auth_token.startsWith('__') ? __initial_auth_token : null;
+
+        window.OnnodeFirebase = { 
+            initializeApp, getFirestore, doc, setDoc, onSnapshot, updateDoc, 
+            getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
+            firebaseConfig, appId, initialToken 
+        };
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;700;900&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; }
+        .animate-pulse-fast { animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }
+    </style>
+</head>
+<body class="bg-slate-900 overflow-x-hidden">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo } = React;
+
+        // 직접 SVG를 사용하는 아이콘 컴포넌트 (SyntaxError 해결을 위해 Fragment 사용)
+        const Icon = ({ name, className, size = 24 }) => {
+            const icons = {
+                Smartphone: <React.Fragment><path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/><path d="M12 18h.01"/></React.Fragment>,
+                Monitor: <React.Fragment><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></React.Fragment>,
+                Zap: <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>,
+                Play: <polygon points="5 3 19 12 5 21 5 3"/>,
+                CheckCircle2: <React.Fragment><path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10z"/><path d="m9 12 2 2 4-4"/></React.Fragment>,
+                RefreshCw: <React.Fragment><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></React.Fragment>,
+                Cpu: <React.Fragment><rect width="16" height="16" x="4" y="4" rx="2"/><rect width="6" height="6" x="9" y="9" rx="1"/><path d="M15 2v2"/><path d="M15 20v2"/><path d="M2 15h2"/><path d="M2 9h2"/><path d="M20 15h2"/><path d="M20 9h2"/><path d="M9 2v2"/><path d="M9 20v2"/></React.Fragment>,
+                MessageSquare: <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>,
+                Camera: <React.Fragment><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></React.Fragment>,
+                Music: <React.Fragment><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></React.Fragment>,
+                Mic: <React.Fragment><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" x2="12" y1="19" y2="22"/></React.Fragment>,
+                Languages: <React.Fragment><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></React.Fragment>,
+                Trophy: <React.Fragment><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></React.Fragment>,
+                RotateCcw: <React.Fragment><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></React.Fragment>,
+                Star: <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>,
+                Copy: <React.Fragment><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></React.Fragment>
+            };
+
+            return (
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width={size}
+                    height={size}
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    className={className}
+                >
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        function App() {
+            const [mode, setMode] = useState('hub');
+            const [sessionId, setSessionId] = useState('');
+            const [sessionData, setSessionData] = useState(null);
+            const [isProcessing, setIsProcessing] = useState(false);
+            const [user, setUser] = useState(null);
+            const dbRef = useRef(null);
+
+            useEffect(() => {
+                const init = async () => {
+                    if (window.OnnodeFirebase) {
+                        const { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken, firebaseConfig, initialToken } = window.OnnodeFirebase;
+                        try {
+                            const app = initializeApp(firebaseConfig);
+                            dbRef.current = getFirestore(app);
+                            const auth = getAuth(app);
+                            
+                            if (initialToken) {
+                                await signInWithCustomToken(auth, initialToken);
+                            } else {
+                                await signInAnonymously(auth);
+                            }
+                            onAuthStateChanged(auth, setUser);
+                        } catch (e) {
+                            console.error("Firebase init failed", e);
+                        }
+                    }
+                };
+                init();
+            }, []);
+
+            useEffect(() => {
+                if (!user || !sessionId || !dbRef.current) return;
+                const { doc, onSnapshot, appId } = window.OnnodeFirebase;
+                const sessionRef = doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+                
+                const unsubscribe = onSnapshot(sessionRef, (snapshot) => {
+                    if (snapshot.exists()) {
+                        const data = snapshot.data();
+                        setSessionData(data);
+                        if (data.status === 'analyzing' && mode === 'laptop') {
+                            setIsProcessing(true);
+                            setTimeout(() => setIsProcessing(false), 2000);
+                        }
+                    }
+                }, (err) => console.error("Snapshot error:", err));
+                return () => unsubscribe();
+            }, [user, sessionId, mode]);
+
+            const startLaptop = async () => {
+                if (!user || !dbRef.current) return;
+                const { doc, setDoc, appId } = window.OnnodeFirebase;
+                const newId = Math.random().toString(36).substring(2, 7).toUpperCase();
+                const initialData = {
+                    id: newId, track: 'dance', status: 'waiting', runCount: 0,
+                    metrics: { sync: 0, accuracy: 0, energy: 0 },
+                    lastUpdate: Date.now(), message: '스마트폰 연결을 기다리고 있습니다.'
+                };
+                try {
+                    await setDoc(doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', newId), initialData);
+                    setSessionId(newId);
+                    setMode('laptop');
+                } catch (e) {
+                    console.error("Failed to create session", e);
+                }
+            };
+
+            const trackInfo = {
+                dance: { label: "ON-DANCE", icon: "Music", color: "bg-pink-500", metrics: ["동작 일치율", "에너지", "리듬"], price: "100,000원" },
+                vocal: { label: "ON-VOCAL", icon: "Mic", color: "bg-purple-500", metrics: ["피치 안정도", "성량", "표현력"], price: "100,000원" },
+                korean: { label: "ON-KOREAN", icon: "Languages", color: "bg-indigo-500", metrics: ["발음 정확도", "억양", "유창성"], price: "50,000원" }
+            };
+
+            if (mode === 'hub') return <HubView onStartLaptop={startLaptop} onJoinMobile={(id) => { setSessionId(id.toUpperCase()); setMode('mobile'); }} />;
+            if (mode === 'laptop') return <LaptopDashboard sessionId={sessionId} sessionData={sessionData} isProcessing={isProcessing} trackInfo={trackInfo} onReset={() => setMode('hub')} />;
+            if (mode === 'mobile') return <MobileController sessionId={sessionId} sessionData={sessionData} trackInfo={trackInfo} dbRef={dbRef} onReset={() => setMode('hub')} user={user} />;
+
+            return null;
+        }
+
+        function HubView({ onStartLaptop, onJoinMobile }) {
+            const [inputCode, setInputCode] = useState('');
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6 text-white">
+                    <h1 className="text-7xl font-black italic mb-2 bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent tracking-tighter">ONNODE</h1>
+                    <p className="text-slate-500 uppercase tracking-[0.4em] text-xs font-black mb-16">Real-time Multi-Device Sync</p>
+                    <div className="grid md:grid-cols-2 gap-8 w-full max-w-4xl">
+                        <button onClick={onStartLaptop} className="group bg-white/5 border-2 border-white/10 hover:border-pink-500 p-12 rounded-[3.5rem] transition-all text-center">
+                            <Icon name="Monitor" size={64} className="mx-auto mb-6 text-pink-500 group-hover:scale-110 transition-transform" />
+                            <h3 className="text-2xl font-black mb-2 tracking-tight">노트북 대시보드</h3>
+                            <p className="text-slate-400 text-sm">메인 분석 화면 실행</p>
+                        </button>
+                        <div className="bg-white/5 border-2 border-white/10 p-12 rounded-[3.5rem] text-center">
+                            <Icon name="Smartphone" size={64} className="mx-auto mb-6 text-violet-500" />
+                            <h3 className="text-2xl font-black mb-6 tracking-tight font-sans uppercase">Smartphone Controller</h3>
+                            <input type="text" placeholder="ID 입력" className="w-full bg-slate-800 border-2 border-slate-700 rounded-2xl px-6 py-4 text-center text-2xl font-black focus:border-violet-500 outline-none uppercase mb-4" 
+                                value={inputCode} onChange={(e) => setInputCode(e.target.value)} />
+                            <button onClick={() => onJoinMobile(inputCode)} className="w-full bg-violet-600 py-5 rounded-2xl font-black text-lg shadow-lg hover:bg-violet-500 transition-all">기기 연동 시작</button>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function LaptopDashboard({ sessionId, sessionData, isProcessing, trackInfo, onReset }) {
+            if (!sessionData) return <div className="min-h-screen bg-slate-900 flex items-center justify-center text-white font-black text-2xl animate-pulse uppercase tracking-[0.5em]">Connecting to Cloud...</div>;
+            const current = trackInfo[sessionData.track];
+            const metrics = sessionData.metrics;
+
+            return (
+                <div className="min-h-screen bg-slate-50 p-10 font-sans">
+                    <div className="max-w-7xl mx-auto flex justify-between items-center mb-10">
+                        <div>
+                            <div className="flex items-center gap-2 text-pink-600 font-black text-xs tracking-widest mb-1 uppercase"><Icon name="Cpu" size={14}/> <span>AI Proprietary Engine v4.5</span></div>
+                            <h1 className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Integrated Analysis Dashboard</h1>
+                        </div>
+                        <div className="flex gap-4">
+                            <div className="bg-white border-2 border-slate-200 px-8 py-4 rounded-3xl text-center shadow-sm">
+                                <span className="text-[10px] block font-bold text-slate-400 uppercase tracking-tighter mb-1 font-sans">Session ID</span>
+                                <span className="text-2xl font-black tracking-[0.2em] font-sans">{sessionId}</span>
+                            </div>
+                            <button onClick={onReset} className="bg-slate-200 p-5 rounded-3xl hover:bg-slate-300 transition-all"><Icon name="RotateCcw" size={24} /></button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-8">
+                        <div className="col-span-4 space-y-6">
+                            <div className="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 text-center">
+                                <h3 className="text-xl font-black mb-8 flex items-center justify-center gap-2 font-sans uppercase tracking-tight"><Icon name="Smartphone" size={24} className="text-pink-500" /><span>Device Sync</span></h3>
+                                <div className="p-8 bg-slate-50 rounded-3xl border-2 border-dashed border-slate-200 mb-6 flex flex-col items-center">
+                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 transition-all ${sessionData.status !== 'waiting' ? 'bg-green-100 text-green-600 shadow-lg shadow-green-200' : 'bg-slate-200 text-slate-400'}`}>
+                                        <Icon name="Camera" size={40} />
+                                    </div>
+                                    <p className="font-black text-slate-800 tracking-tight">스마트폰 연결됨</p>
+                                </div>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase font-sans">Phone is acting as a capture device</p>
+                            </div>
+                            <div className="bg-slate-900 text-white p-10 rounded-[3rem] shadow-2xl relative overflow-hidden">
+                                <div className="absolute -bottom-10 -right-10 opacity-5"><Icon name="MessageSquare" size={200} /></div>
+                                <h3 className="text-xl font-black mb-8 flex items-center gap-2 text-pink-500 uppercase font-sans tracking-tight"><Icon name="Zap" size={20} /><span>AI Prescription</span></h3>
+                                <p className="text-lg leading-relaxed text-slate-300 font-medium italic break-keep leading-relaxed">"{sessionData.message}"</p>
+                            </div>
+                        </div>
+
+                        <div className="col-span-8 space-y-8">
+                            <div className="grid grid-cols-3 gap-6">
+                                <StatusCard label="Current Score" value={Math.round((metrics.sync + metrics.accuracy + metrics.energy) / 3)} unit="%" iconName="Zap" iconColor="text-orange-500" />
+                                <StatusCard label="Training Loop" value={sessionData.runCount || 0} unit="회" iconName="RefreshCw" iconColor="text-blue-500" />
+                                <StatusCard label="Price Point" value={current.price} unit="" iconName="Trophy" iconColor="text-yellow-500" />
+                            </div>
+                            <div className="bg-white p-12 rounded-[4rem] shadow-2xl border border-slate-100 relative min-h-[450px] overflow-hidden">
+                                {isProcessing && (
+                                    <div className="absolute inset-0 bg-white/90 backdrop-blur-md z-30 flex flex-col items-center justify-center animate-in fade-in">
+                                        <Icon name="RefreshCw" className="animate-spin text-pink-500 mb-6" size={64} />
+                                        <h2 className="text-3xl font-black uppercase mb-2 font-sans tracking-tighter">Analyzing Performance...</h2>
+                                        <p className="text-slate-400 font-bold">인스턴스에서 데이터를 처리 중입니다.</p>
+                                    </div>
+                                )}
+                                <h3 className="text-3xl font-[900] italic tracking-tighter uppercase mb-16 font-sans">Performance Report: {current.label}</h3>
+                                <div className="grid grid-cols-2 gap-20">
+                                    <div className="space-y-10">
+                                        <Bar label={current.metrics[0]} value={metrics.sync} color="bg-pink-500" />
+                                        <Bar label={current.metrics[1]} value={metrics.accuracy} color="bg-purple-600" />
+                                        <Bar label={current.metrics[2]} value={metrics.energy} color="bg-indigo-600" />
+                                    </div>
+                                    <div className="bg-slate-50 p-12 rounded-[3.5rem] border border-slate-100 flex flex-col items-center justify-center text-center shadow-inner relative">
+                                        <p className="text-xs font-black text-slate-300 uppercase mb-4 tracking-[0.3em] font-sans">Total Growth</p>
+                                        <div className="text-8xl font-[900] text-slate-900 tracking-tighter font-sans">
+                                            {Math.round((metrics.sync + metrics.accuracy + metrics.energy) / 3)}<span className="text-2xl text-slate-300 ml-2">pt</span>
+                                        </div>
+                                        <div className="mt-6 flex items-center gap-2 text-pink-500 font-bold animate-pulse uppercase tracking-widest text-xs font-sans">
+                                           <Icon name="Star" size={16} /> Level Up Detected
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MobileController({ sessionId, sessionData, trackInfo, dbRef, onReset, user }) {
+            const videoRef = useRef(null);
+            useEffect(() => {
+                const setupCam = async () => {
+                    try {
+                        const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+                        if (videoRef.current) videoRef.current.srcObject = stream;
+                    } catch (err) {
+                        console.error("Cam accessibility error:", err);
+                    }
+                };
+                setupCam();
+            }, []);
+
+            if (!sessionData) return <div className="min-h-screen bg-black flex items-center justify-center text-white font-black animate-pulse uppercase tracking-[0.4em] font-sans">Connecting to Engine...</div>;
+
+            const handleAction = async (payload) => {
+                if (!dbRef.current || !user) return;
+                const { doc, updateDoc, appId } = window.OnnodeFirebase;
+                const sessionRef = doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
+                try {
+                    await updateDoc(sessionRef, { ...payload, lastUpdate: Date.now() });
+                } catch (e) {
+                    console.error("Update failed", e);
+                }
+            };
+
+            const startAnalysis = async () => {
+                await handleAction({ status: 'analyzing' });
+                setTimeout(async () => {
+                    const score = () => Math.floor(Math.random() * 25) + 75;
+                    await handleAction({ 
+                        status: 'done', runCount: (sessionData.runCount || 0) + 1,
+                        metrics: { sync: score(), accuracy: score(), energy: score() },
+                        message: `${trackInfo[sessionData.track].metrics[0]} 수치가 향상되었습니다. 다음 트레이닝 루프 진입을 추천합니다.`
+                    });
+                }, 2000);
+            };
+
+            return (
+                <div className="min-h-screen bg-black flex flex-col select-none overflow-hidden font-sans">
+                    <div className="bg-slate-900 px-6 py-6 flex justify-between items-center border-b border-white/10 shadow-lg">
+                        <div className="flex items-center gap-3">
+                            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse shadow-[0_0_15px_rgba(255,0,0,0.8)]" />
+                            <span className="text-sm font-black text-white uppercase tracking-widest font-sans tracking-tighter">LIVE ID: {sessionId}</span>
+                        </div>
+                        <button onClick={onReset} className="text-white/40"><Icon name="RotateCcw" size={20} /></button>
+                    </div>
+                    <div className="flex-1 relative bg-slate-950 flex items-center justify-center">
+                        <video ref={videoRef} autoPlay playsInline muted className="h-full w-full object-cover opacity-60 scale-x-[-1]" />
+                        <div className="absolute inset-0 p-10 flex flex-col justify-between pointer-events-none text-white text-center">
+                            <div className="flex justify-between items-start">
+                                <div className="bg-black/60 backdrop-blur-md p-5 rounded-[2.5rem] border border-white/10 shadow-2xl">
+                                    <p className="text-[10px] font-black opacity-40 uppercase mb-2 tracking-widest font-sans">Training Mode</p>
+                                    <div className="flex items-center gap-3">
+                                        <Icon name={trackInfo[sessionData.track].icon} size={22} className="text-pink-500" />
+                                        <span className="font-black text-lg uppercase font-sans tracking-tight">{trackInfo[sessionData.track].label}</span>
+                                    </div>
+                                </div>
+                                <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-4 border-pink-500/20">
+                                   <div className="text-2xl font-black text-slate-900 leading-none">
+                                      {Math.round((sessionData.metrics.sync + sessionData.metrics.accuracy + sessionData.metrics.energy) / 3)}
+                                   </div>
+                                </div>
+                            </div>
+                            <div className="flex flex-col items-center">
+                                <div className="w-24 h-24 border-[8px] border-white/20 rounded-full flex items-center justify-center mb-4">
+                                    <div className="w-16 h-16 bg-red-600 rounded-full animate-pulse shadow-2xl shadow-red-600/50" />
+                                </div>
+                                <p className="text-xs font-black opacity-80 uppercase tracking-[0.5em] font-sans">Capturing performance...</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="bg-white rounded-t-[4rem] p-12 pb-16 space-y-12 shadow-[0_-30px_60px_rgba(0,0,0,0.5)] text-center relative z-10">
+                        <div className="flex gap-4">
+                            {Object.keys(trackInfo).map(key => (
+                                <button key={key} onClick={() => handleAction({ track: key, status: 'waiting', message: `${key} 효율적 연습 세션을 시작합니다.` })}
+                                    className={`flex-1 py-7 rounded-[2.5rem] flex flex-col items-center gap-4 transition-all active:scale-90 ${sessionData.track === key ? 'bg-slate-900 text-white shadow-2xl font-black' : 'bg-slate-100 text-slate-400 font-bold'}`}>
+                                    <Icon name={trackInfo[key].icon} size={28} />
+                                    <span className="text-[11px] uppercase tracking-[0.1em] font-sans">{trackInfo[key].label}</span>
+                                </button>
+                            ))}
+                        </div>
+                        <button onClick={startAnalysis} disabled={sessionData.status === 'analyzing'} 
+                          className="w-full bg-gradient-to-r from-pink-500 to-violet-600 text-white py-9 rounded-[3rem] font-[900] text-2xl shadow-[0_20px_50px_rgba(255,20,147,0.3)] disabled:opacity-50 transition-all active:scale-95 uppercase tracking-tighter">
+                            {sessionData.status === 'analyzing' ? 'Processing...' : '참여 완료 & 분석 전송'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function StatusCard({ label, value, unit, iconName, iconColor }) {
+            return (
+                <div className="bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-8 group hover:shadow-xl transition-all">
+                    <div className={`w-16 h-16 bg-slate-50 rounded-3xl flex items-center justify-center text-3xl shadow-inner ${iconColor}`}><Icon name={iconName} size={32} /></div>
+                    <div>
+                        <p className="text-[10px] font-black text-slate-300 uppercase tracking-[0.2em] mb-1 font-sans">{label}</p>
+                        <div className="flex items-baseline gap-1">
+                            <span className="text-4xl font-[900] text-slate-800 tracking-tighter font-sans">{value}</span>
+                            <span className="text-sm font-bold text-slate-400 uppercase font-sans tracking-tight">{unit}</span>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function Bar({ label, value, color }) {
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-end">
+                        <span className="text-sm font-black text-slate-500 uppercase tracking-widest font-sans">{label}</span>
+                        <span className="text-2xl font-black text-slate-900 tracking-tighter font-sans">{value}<span className="text-xs text-slate-300 ml-1 font-sans">PT</span></span>
+                    </div>
+                    <div className="h-4 w-full bg-slate-100 rounded-full overflow-hidden border border-slate-50 shadow-inner">
+                        <div className={`h-full ${color} transition-all duration-1000 ease-out shadow-lg`} style={{ width: `${value}%` }} />
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

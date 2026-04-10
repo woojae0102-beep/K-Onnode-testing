@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ONNODE AI Virtual Studio v9.7 Dynamic Spatial</title>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- 핵심 라이브러리 -->
+    <!-- AI 배경 제거 엔진 (시연용) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@3.11.0"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/body-pix@2.2.0"></script>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+        let config = {};
+        try {
+            if (typeof __firebase_config !== 'undefined' && __firebase_config && !__firebase_config.startsWith('__')) {
+                config = JSON.parse(__firebase_config);
+            }
+        } catch (e) { console.warn("Firebase config check."); }
+
+        const aid = typeof __app_id !== 'undefined' && !__app_id.startsWith('__') ? __app_id : 'onnode-v9-spatial';
+        const token = typeof __initial_auth_token !== 'undefined' && !__initial_auth_token.startsWith('__') ? __initial_auth_token : null;
+
+        window.OnnodeFirebase = {
+            initializeApp, getFirestore, doc, setDoc, onSnapshot, updateDoc,
+            getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken,
+            firebaseConfig: config, appId: aid, initialToken: token
+        };
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&family=Poppins:wght@900&display=swap');
+        body { font-family: 'Noto Sans KR', sans-serif; background-color: #020617; color: white; margin: 0; }
+        .neon-text { text-shadow: 0 0 15px rgba(255, 20, 147, 0.8); }
+        .neon-glow { text-shadow: 0 0 10px rgba(255, 20, 147, 0.8); }
+        .neon-border { box-shadow: 0 0 60px rgba(255, 20, 147, 0.4); border: 4px solid #FF1493; }
+        .glass { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(25px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .glass-dark { background: rgba(15, 23, 42, 0.98); backdrop-filter: blur(50px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .bg-studio { background: radial-gradient(circle at top right, #312e81, #020617); }
+        .feedback-box { border: 2px solid #FF1493; background: rgba(0, 0, 0, 0.85); box-shadow: 0 0 30px rgba(255, 20, 147, 0.3); }
+        .glass-panel { background: rgba(15, 23, 42, 0.8); backdrop-filter: blur(20px); border: 1px solid rgba(255, 255, 255, 0.1); }
+        .perfect-badge { font-family: 'Poppins', sans-serif; color: #fbbf24; text-shadow: 0 0 20px rgba(251, 191, 36, 0.6); }
+        .step-active { border-color: #FF1493 !important; background: rgba(255, 20, 147, 0.1) !important; color: #FF1493 !important; }
+        .bg-gradient-anim { background: linear-gradient(-45deg, #020617, #0f172a, #1e1b4b, #020617); background-size: 400% 400%; animation: grad 15s ease infinite; }
+        @keyframes grad { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }
+        .perfect-text { font-family: 'Poppins', sans-serif; color: #fbbf24; animation: bounce 0.5s infinite alternate; }
+        @keyframes bounce { from { transform: scale(1); } to { transform: scale(1.1); } }
+    </style>
+</head>
+<body class="bg-studio">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef, useMemo, Fragment } = React;
+
+        /** 세션(Firestore) 테마 — v9.7: HYBE홀 / SM스튜디오 / 무대 + 구버전 키 호환 */
+        const PRACTICE_THEME_LABELS = {
+            'hybe-hall': 'HYBE Hall',
+            'sm-studio': 'SM Studio',
+            'stage': 'Stage',
+            'neon-studio': 'Neon Studio',
+            'yg-black': 'YG Black',
+            'platinum': 'Platinum',
+        };
+
+        /** 모바일·노트북 공통 3종 (v9.7 Dynamic Spatial) */
+        const SESSION_THEME_ORDER = ['hybe-hall', 'sm-studio', 'stage'];
+
+        /** Unsplash 배경 — 세션 theme 키와 1:1 (합성 시 cover로 비율 유지) */
+        const THEME_PHOTO_URLS = {
+            'hybe-hall': 'https://images.unsplash.com/photo-1547153760-18fc86324498?auto=format&fit=crop&q=80&w=1280',
+            'sm-studio': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&q=80&w=1280',
+            'stage': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=1280',
+            'neon-studio': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?auto=format&fit=crop&q=80&w=1280',
+            'yg-black': 'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?auto=format&fit=crop&q=80&w=1280',
+        };
+
+        const themePhotoCache = {};
+        function getThemePhotoUrl(sessionThemeId) {
+            const raw = sessionThemeId || 'hybe-hall';
+            return THEME_PHOTO_URLS[raw] || null;
+        }
+        function ensureThemeImageLoaded(url, onReady) {
+            if (!url) { onReady && onReady(); return; }
+            if (themePhotoCache[url]?.complete) { onReady && onReady(); return; }
+            if (!themePhotoCache[url]) {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => onReady && onReady();
+                img.onerror = () => onReady && onReady();
+                img.src = url;
+                themePhotoCache[url] = img;
+            } else {
+                onReady && onReady();
+            }
+        }
+
+        /** 캔버스 drawPracticeRoom용 내부 ID */
+        const CANVAS_THEME_IDS = new Set(['black-label', 'neon-studio', 'hybe-hall', 'platinum']);
+
+        const SESSION_TO_CANVAS = {
+            'yg-black': 'black-label',
+            'sm-studio': 'neon-studio',
+            'hybe-hall': 'hybe-hall',
+            'platinum': 'platinum',
+            'hybe-style': 'hybe-hall',
+            'studio': 'black-label',
+            'stage': 'neon-studio',
+            'neon-stage': 'hybe-hall',
+            'white': 'neon-studio',
+            'green': 'hybe-hall',
+            'black-pink': 'neon-studio',
+            'black-label': 'black-label',
+            'neon-studio': 'neon-studio',
+        };
+
+        function resolvePracticeTheme(themeId) {
+            const raw = themeId || 'hybe-hall';
+            if (CANVAS_THEME_IDS.has(raw)) return raw;
+            return SESSION_TO_CANVAS[raw] || 'hybe-hall';
+        }
+
+        function themeDisplayLabel(themeId) {
+            const sid = themeId || 'hybe-hall';
+            if (PRACTICE_THEME_LABELS[sid]) return PRACTICE_THEME_LABELS[sid];
+            return sid.replace(/-/g, ' ');
+        }
+
+        function drawPracticeRoom(ctx, W, H, theme) {
+            ctx.clearRect(0, 0, W, H);
+
+            if (theme === 'black-label') {
+                const wallG = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+                wallG.addColorStop(0, '#1a1a1a'); wallG.addColorStop(0.5, '#222'); wallG.addColorStop(1, '#2a2a2a');
+                ctx.fillStyle = wallG; ctx.fillRect(0, 0, W, H * 0.65);
+
+                const floorG = ctx.createLinearGradient(0, H * 0.65, 0, H);
+                floorG.addColorStop(0, '#1c1007'); floorG.addColorStop(0.3, '#2a1a0a'); floorG.addColorStop(1, '#3a2510');
+                ctx.fillStyle = floorG; ctx.fillRect(0, H * 0.65, W, H * 0.35);
+                for (let i = 0; i < 18; i++) {
+                    const y = H * 0.65 + (i / 17) * H * 0.35;
+                    ctx.strokeStyle = `rgba(255,200,120,${0.05 + (i / 17) * 0.12})`; ctx.lineWidth = 0.8 + (i / 17) * 2;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+                }
+
+                const mX = W * 0.12, mW = W * 0.76, mY = H * 0.04, mH = H * 0.58;
+                ctx.strokeStyle = '#555'; ctx.lineWidth = 3; ctx.strokeRect(mX, mY, mW, mH);
+                const mG = ctx.createLinearGradient(mX, mY, mX + mW, mY + mH);
+                mG.addColorStop(0, 'rgba(60,60,65,0.92)'); mG.addColorStop(0.4, 'rgba(40,40,45,0.95)'); mG.addColorStop(1, 'rgba(35,35,40,0.97)');
+                ctx.fillStyle = mG; ctx.fillRect(mX, mY, mW, mH);
+                const hlG = ctx.createLinearGradient(mX, mY, mX + mW * 0.25, mY);
+                hlG.addColorStop(0, 'rgba(255,255,255,0.08)'); hlG.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = hlG; ctx.fillRect(mX, mY, mW, mH);
+
+                [W * 0.2, W * 0.38, W * 0.62, W * 0.8].forEach((lx) => {
+                    ctx.fillStyle = '#333'; ctx.fillRect(lx - 8, 0, 16, 18);
+                    const cG = ctx.createRadialGradient(lx, 5, 0, lx, H * 0.3, 180);
+                    cG.addColorStop(0, 'rgba(255,230,150,0.18)'); cG.addColorStop(0.5, 'rgba(255,220,120,0.06)'); cG.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = cG; ctx.beginPath(); ctx.arc(lx, 5, 180, 0, Math.PI * 2); ctx.fill();
+                    ctx.beginPath(); ctx.arc(lx, 10, 6, 0, Math.PI * 2); ctx.fillStyle = 'rgba(255,220,160,0.9)'; ctx.fill();
+                });
+
+                ctx.strokeStyle = '#555'; ctx.lineWidth = 5;
+                ctx.beginPath(); ctx.moveTo(0, H * 0.42); ctx.lineTo(W * 0.1, H * 0.42); ctx.stroke();
+                ctx.strokeStyle = '#444'; ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(0, H * 0.48); ctx.lineTo(W * 0.1, H * 0.48); ctx.stroke();
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2; ctx.setLineDash([20, 10]);
+                ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.68); ctx.lineTo(W * 0.5, H); ctx.stroke();
+                ctx.setLineDash([]);
+
+                ctx.save(); ctx.globalAlpha = 0.12; ctx.fillStyle = '#fff'; ctx.font = '900 28px Arial';
+                ctx.textAlign = 'center'; ctx.fillText('BLACK LABEL STUDIO', W / 2, H * 0.58); ctx.restore();
+            } else if (theme === 'neon-studio') {
+                const wallG = ctx.createLinearGradient(0, 0, 0, H * 0.66);
+                wallG.addColorStop(0, '#f0f0f0'); wallG.addColorStop(0.6, '#e8e8e8'); wallG.addColorStop(1, '#dcdcdc');
+                ctx.fillStyle = wallG; ctx.fillRect(0, 0, W, H * 0.66);
+
+                const floorG = ctx.createLinearGradient(0, H * 0.66, 0, H);
+                floorG.addColorStop(0, '#c8c8c8'); floorG.addColorStop(0.3, '#d2d2d2'); floorG.addColorStop(1, '#b0b0b0');
+                ctx.fillStyle = floorG; ctx.fillRect(0, H * 0.66, W, H * 0.34);
+                const floorR = ctx.createLinearGradient(0, H * 0.66, W, H * 0.66);
+                floorR.addColorStop(0, 'rgba(255,255,255,0)'); floorR.addColorStop(0.5, 'rgba(255,255,255,0.25)'); floorR.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = floorR; ctx.fillRect(0, H * 0.66, W, H * 0.12);
+                for (let i = 0; i < 14; i++) {
+                    const y = H * 0.66 + (i / 13) * H * 0.34;
+                    ctx.strokeStyle = `rgba(160,160,160,${0.08 + (i / 13) * 0.15})`; ctx.lineWidth = 0.5 + (i / 13) * 1.5;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+                }
+
+                const mX = W * 0.08, mW = W * 0.84, mY = H * 0.03, mH = H * 0.60;
+                ctx.strokeStyle = '#bbb'; ctx.lineWidth = 2; ctx.strokeRect(mX, mY, mW, mH);
+                const mG = ctx.createLinearGradient(mX, mY, mX + mW, mY + mH);
+                mG.addColorStop(0, 'rgba(240,245,255,0.88)'); mG.addColorStop(0.35, 'rgba(230,238,255,0.92)'); mG.addColorStop(1, 'rgba(220,232,255,0.94)');
+                ctx.fillStyle = mG; ctx.fillRect(mX, mY, mW, mH);
+                const mHL = ctx.createLinearGradient(mX + mW * 0.7, mY, mX + mW, mY);
+                mHL.addColorStop(0, 'rgba(255,255,255,0)'); mHL.addColorStop(1, 'rgba(255,255,255,0.22)');
+                ctx.fillStyle = mHL; ctx.fillRect(mX, mY, mW, mH);
+                [mX + mW * 0.333, mX + mW * 0.667].forEach((lx) => {
+                    ctx.strokeStyle = 'rgba(180,180,200,0.5)'; ctx.lineWidth = 1;
+                    ctx.beginPath(); ctx.moveTo(lx, mY); ctx.lineTo(lx, mY + mH); ctx.stroke();
+                });
+
+                const panelW = W * 0.18;
+                [W * 0.15, W * 0.38, W * 0.62, W * 0.85].forEach((px) => {
+                    ctx.fillStyle = 'rgba(220,230,255,0.95)'; ctx.fillRect(px - panelW / 2, 0, panelW, 12);
+                    const pG = ctx.createRadialGradient(px, 6, 0, px, H * 0.2, 220);
+                    pG.addColorStop(0, 'rgba(200,220,255,0.22)'); pG.addColorStop(0.5, 'rgba(200,215,255,0.08)'); pG.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = pG; ctx.beginPath(); ctx.arc(px, 0, 220, 0, Math.PI * 2); ctx.fill();
+                });
+
+                const nG = ctx.createLinearGradient(0, H * 0.645, W, H * 0.645);
+                nG.addColorStop(0, 'rgba(255,20,147,0)'); nG.addColorStop(0.2, 'rgba(255,20,147,0.8)');
+                nG.addColorStop(0.5, 'rgba(255,20,147,1)'); nG.addColorStop(0.8, 'rgba(255,20,147,0.8)'); nG.addColorStop(1, 'rgba(255,20,147,0)');
+                ctx.fillStyle = nG; ctx.fillRect(0, H * 0.645, W, 4);
+                const glG = ctx.createLinearGradient(0, H * 0.62, 0, H * 0.69);
+                glG.addColorStop(0, 'rgba(255,20,147,0)'); glG.addColorStop(0.5, 'rgba(255,20,147,0.12)'); glG.addColorStop(1, 'rgba(255,20,147,0)');
+                ctx.fillStyle = glG; ctx.fillRect(0, H * 0.62, W, H * 0.07);
+
+                ctx.strokeStyle = 'rgba(255,20,147,0.4)'; ctx.lineWidth = 2; ctx.setLineDash([15, 8]);
+                ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.67); ctx.lineTo(W * 0.5, H); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.strokeStyle = 'rgba(255,20,147,0.25)'; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(W * 0.25, H * 0.78); ctx.lineTo(W * 0.75, H * 0.78); ctx.stroke();
+
+                ctx.save(); ctx.globalAlpha = 0.08; ctx.fillStyle = '#ff1493'; ctx.font = '900 26px Arial';
+                ctx.textAlign = 'center'; ctx.fillText('NEON STUDIO', W / 2, H * 0.58); ctx.restore();
+            } else if (theme === 'hybe-hall') {
+                const wallG = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+                wallG.addColorStop(0, '#2c2c30'); wallG.addColorStop(0.5, '#323236'); wallG.addColorStop(1, '#3a3a3e');
+                ctx.fillStyle = wallG; ctx.fillRect(0, 0, W, H * 0.65);
+
+                const floorG = ctx.createLinearGradient(0, H * 0.65, 0, H);
+                floorG.addColorStop(0, '#8a6a40'); floorG.addColorStop(0.3, '#9a7848'); floorG.addColorStop(1, '#7a5c34');
+                ctx.fillStyle = floorG; ctx.fillRect(0, H * 0.65, W, H * 0.35);
+                for (let i = 0; i < 20; i++) {
+                    const y = H * 0.65 + (i / 19) * H * 0.35;
+                    ctx.strokeStyle = `rgba(200,160,80,${0.04 + (i / 19) * 0.1})`; ctx.lineWidth = 0.6 + (i / 19) * 1.8;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+                }
+                for (let i = 0; i < 40; i++) {
+                    const x = (i / 39) * W;
+                    ctx.strokeStyle = 'rgba(120,90,40,0.06)'; ctx.lineWidth = 0.5;
+                    ctx.beginPath(); ctx.moveTo(x, H * 0.65); ctx.lineTo(x, H); ctx.stroke();
+                }
+
+                const mX = W * 0.05, mW = W * 0.9, mY = H * 0.02, mH = H * 0.60;
+                ctx.fillStyle = '#555558'; ctx.fillRect(mX - 4, mY - 4, mW + 8, mH + 8);
+                ctx.fillStyle = '#666668'; ctx.fillRect(mX - 3, mY - 3, mW + 6, mH + 6);
+                const mG = ctx.createLinearGradient(mX, mY, mX + mW, mY + mH);
+                mG.addColorStop(0, 'rgba(80,82,90,0.90)'); mG.addColorStop(0.3, 'rgba(68,70,78,0.93)'); mG.addColorStop(1, 'rgba(62,64,72,0.95)');
+                ctx.fillStyle = mG; ctx.fillRect(mX, mY, mW, mH);
+                ctx.fillStyle = 'rgba(50,50,55,0.4)'; ctx.fillRect(mX + mW * 0.05, mY + mH * 0.08, mW * 0.9, mH * 0.84);
+                const mHL = ctx.createLinearGradient(mX, mY, mX + mW * 0.3, mY);
+                mHL.addColorStop(0, 'rgba(255,255,255,0.07)'); mHL.addColorStop(1, 'rgba(255,255,255,0)');
+                ctx.fillStyle = mHL; ctx.fillRect(mX, mY, mW, mH);
+
+                ctx.fillStyle = '#222226'; ctx.fillRect(0, 0, W, 28);
+                [W * 0.2, W * 0.5, W * 0.8].forEach((lx) => {
+                    const ledW = W * 0.22;
+                    ctx.fillStyle = '#333337'; ctx.fillRect(lx - ledW / 2, 4, ledW, 18);
+                    ctx.fillStyle = 'rgba(255,240,200,0.95)'; ctx.fillRect(lx - ledW / 2 + 4, 8, ledW - 8, 8);
+                    const lG = ctx.createRadialGradient(lx, 8, 0, lx, H * 0.25, 260);
+                    lG.addColorStop(0, 'rgba(255,240,200,0.20)'); lG.addColorStop(0.4, 'rgba(255,235,180,0.07)'); lG.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = lG; ctx.beginPath(); ctx.arc(lx, 8, 260, 0, Math.PI * 2); ctx.fill();
+                });
+
+                [[0, W * 0.12], [W * 0.88, W]].forEach(([x1, x2]) => {
+                    ctx.strokeStyle = '#888'; ctx.lineWidth = 6; ctx.lineCap = 'round';
+                    ctx.beginPath(); ctx.moveTo(x1, H * 0.40); ctx.lineTo(x2, H * 0.40); ctx.stroke();
+                    ctx.strokeStyle = '#777'; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(x1, H * 0.47); ctx.lineTo(x2, H * 0.47); ctx.stroke();
+                });
+
+                [[0, W * 0.04], [W * 0.96, W]].forEach(([x1, x2]) => {
+                    const pw = x2 - x1;
+                    for (let i = 0; i < 5; i++) {
+                        const py = H * 0.05 + i * (H * 0.12);
+                        ctx.fillStyle = i % 2 === 0 ? 'rgba(50,50,54,0.8)' : 'rgba(45,45,49,0.8)';
+                        ctx.fillRect(x1, py, pw, H * 0.10);
+                        ctx.strokeStyle = 'rgba(80,80,84,0.5)'; ctx.lineWidth = 0.5;
+                        ctx.strokeRect(x1, py, pw, H * 0.10);
+                    }
+                });
+
+                ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 2; ctx.setLineDash([18, 9]);
+                ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.67); ctx.lineTo(W * 0.5, H); ctx.stroke();
+                ctx.setLineDash([]);
+                ctx.strokeStyle = 'rgba(0,255,120,0.35)'; ctx.lineWidth = 2;
+                ctx.strokeRect(W * 0.38, H * 0.74, W * 0.24, H * 0.18);
+                ctx.strokeStyle = 'rgba(0,255,120,0.25)'; ctx.lineWidth = 1.5;
+                ctx.beginPath(); ctx.moveTo(W * 0.47, H * 0.83); ctx.lineTo(W * 0.53, H * 0.83); ctx.stroke();
+                ctx.beginPath(); ctx.moveTo(W * 0.5, H * 0.80); ctx.lineTo(W * 0.5, H * 0.86); ctx.stroke();
+
+                ctx.save(); ctx.globalAlpha = 0.10; ctx.fillStyle = '#fff'; ctx.font = '900 26px Arial';
+                ctx.textAlign = 'center'; ctx.fillText('HYBE PRACTICE HALL', W / 2, H * 0.58); ctx.restore();
+            } else if (theme === 'platinum') {
+                const wg = ctx.createLinearGradient(0, 0, 0, H * 0.65);
+                wg.addColorStop(0, '#0f0a1a'); wg.addColorStop(0.5, '#1a1528'); wg.addColorStop(1, '#12101c');
+                ctx.fillStyle = wg; ctx.fillRect(0, 0, W, H * 0.65);
+                const fg = ctx.createLinearGradient(0, H * 0.65, 0, H);
+                fg.addColorStop(0, '#2a2835'); fg.addColorStop(0.5, '#1e1c28'); fg.addColorStop(1, '#14121a');
+                ctx.fillStyle = fg; ctx.fillRect(0, H * 0.65, W, H * 0.35);
+                for (let i = 0; i < 5; i++) {
+                    const x = W * (0.15 + i * 0.175);
+                    const g = ctx.createLinearGradient(x, 0, x, H * 0.55);
+                    g.addColorStop(0, 'rgba(255,20,147,0.12)'); g.addColorStop(0.5, 'rgba(200,180,255,0.06)'); g.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = g; ctx.fillRect(x - 18, 0, 36, H * 0.58);
+                }
+                ctx.strokeStyle = 'rgba(255,255,255,0.15)'; ctx.lineWidth = 2;
+                ctx.strokeRect(W * 0.18, H * 0.1, W * 0.64, H * 0.52);
+                ctx.strokeStyle = 'rgba(192,192,210,0.35)'; ctx.lineWidth = 1;
+                for (let i = 0; i < 12; i++) {
+                    const y = H * 0.65 + (i / 11) * H * 0.35;
+                    ctx.strokeStyle = `rgba(255,255,255,${0.03 + (i / 11) * 0.08})`;
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+                }
+                const pg = ctx.createRadialGradient(W / 2, H * 0.35, 40, W / 2, H * 0.4, W * 0.45);
+                pg.addColorStop(0, 'rgba(255,255,255,0.06)'); pg.addColorStop(1, 'rgba(0,0,0,0)');
+                ctx.fillStyle = pg; ctx.fillRect(0, 0, W, H * 0.65);
+                ctx.save(); ctx.globalAlpha = 0.14; ctx.fillStyle = '#e0e0ff'; ctx.font = '900 26px Arial';
+                ctx.textAlign = 'center'; ctx.fillText('PLATINUM BOOTH', W / 2, H * 0.58); ctx.restore();
+            }
+        }
+
+        function drawPostCompositeOverlays(ctx, W, H, status, metrics, frame) {
+            const spotG = ctx.createRadialGradient(W / 2, H * 0.45, 30, W / 2, H * 0.45, 300);
+            spotG.addColorStop(0, 'rgba(255,20,147,0.08)');
+            spotG.addColorStop(0.5, 'rgba(255,20,147,0.03)');
+            spotG.addColorStop(1, 'rgba(0,0,0,0)');
+            ctx.fillStyle = spotG; ctx.beginPath(); ctx.arc(W / 2, H * 0.45, 300, 0, Math.PI * 2); ctx.fill();
+
+            if (status === 'analyzing') {
+                const scanY = ((frame % 80) / 80) * H;
+                const scanG = ctx.createLinearGradient(0, scanY - 40, 0, scanY + 40);
+                scanG.addColorStop(0, 'rgba(255,20,147,0)');
+                scanG.addColorStop(0.5, 'rgba(255,20,147,0.2)');
+                scanG.addColorStop(1, 'rgba(255,20,147,0)');
+                ctx.fillStyle = scanG; ctx.fillRect(0, scanY - 40, W, 80);
+            }
+
+            if (status === 'done' && metrics) {
+                ctx.font = `900 ${Math.max(48, Math.round(W * 0.09))}px Poppins`;
+                ctx.fillStyle = '#fbbf24';
+                ctx.textAlign = 'center';
+                ctx.shadowBlur = 40;
+                ctx.shadowColor = 'rgba(251, 191, 36, 0.6)';
+                ctx.fillText('Perfect', W / 2, H * 0.32);
+                ctx.shadowBlur = 0;
+                ctx.font = `700 ${Math.max(18, Math.round(W * 0.035))}px Poppins`;
+                ctx.fillStyle = '#fbbf24';
+                ctx.fillText('100 / 100', W / 2, H * 0.4);
+
+                const total = Math.round((metrics.sync + metrics.accuracy + metrics.energy) / 3);
+                ctx.fillStyle = 'rgba(0,0,0,0.55)'; ctx.fillRect(W * 0.1, H * 0.78, W * 0.8, H * 0.16);
+                ctx.strokeStyle = 'rgba(255,20,147,0.8)'; ctx.lineWidth = 2;
+                ctx.strokeRect(W * 0.1, H * 0.78, W * 0.8, H * 0.16);
+                ctx.font = '900 28px Arial'; ctx.fillStyle = '#ff1493'; ctx.textAlign = 'center';
+                ctx.fillText(`TOTAL: ${total}PT`, W / 2, H * 0.885);
+                ctx.font = '700 15px Arial'; ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                ctx.fillText(`동작: ${metrics.sync}pt`, W * 0.3, H * 0.885);
+                ctx.fillText(`리듬: ${metrics.energy}pt`, W * 0.7, H * 0.885);
+            } else if (status !== 'done') {
+                const boxW = Math.min(850, W * 0.85);
+                const boxH = Math.min(260, H * 0.32);
+                const boxX = (W - boxW) / 2;
+                const boxY = H * 0.42;
+                const rr = Math.min(35, boxH * 0.15);
+                ctx.beginPath();
+                if (typeof ctx.roundRect === 'function') {
+                    ctx.roundRect(boxX, boxY, boxW, boxH, rr);
+                } else {
+                    ctx.rect(boxX, boxY, boxW, boxH);
+                }
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fill();
+                ctx.strokeStyle = '#FF1493';
+                ctx.lineWidth = Math.max(2, W / 320);
+                ctx.stroke();
+                ctx.textAlign = 'center';
+                ctx.font = `900 ${Math.max(16, W * 0.028)}px "Noto Sans KR", sans-serif`;
+                ctx.fillStyle = 'white';
+                ctx.fillText('동작 분석: 실시간 공간 추적 중', W / 2, boxY + boxH * 0.35);
+                ctx.font = `500 ${Math.max(12, W * 0.018)}px "Noto Sans KR", sans-serif`;
+                ctx.fillStyle = '#cbd5e1';
+                ctx.fillText('· 유저 이동 속도 감지 (현재: Normal)', W / 2, boxY + boxH * 0.58);
+                ctx.fillText('· 배경 공간 일치율 (현재: 98.4%)', W / 2, boxY + boxH * 0.78);
+            }
+
+            ctx.save(); ctx.globalAlpha = 0.18; ctx.font = '900 18px Arial';
+            ctx.fillStyle = '#fff'; ctx.textAlign = 'right';
+            ctx.fillText('ONNODE ACADEMY', W - 24, H - 18); ctx.restore();
+        }
+
+        /** v9.7 — 60pt 스켈레톤 시뮬 (moveX와 동기화) */
+        function drawSpatialSkeletonOverlay(ctx, W, H, moveX, time) {
+            const centerX = W / 2 + moveX;
+            const centerY = H * 0.55;
+            const r = Math.min(W, H) * 0.14;
+            ctx.strokeStyle = '#FF1493';
+            ctx.fillStyle = '#FF1493';
+            ctx.lineWidth = Math.max(2, W / 400);
+            for (let i = 0; i < 60; i += 1) {
+                const angle = (i / 60) * Math.PI * 2;
+                const pulse = r + Math.sin(time + i * 0.1) * (Math.min(W, H) * 0.02);
+                const px = centerX + Math.cos(angle) * pulse * (i % 3 === 0 ? 0.9 : 0.5);
+                const py = centerY + Math.sin(angle) * pulse;
+                ctx.beginPath();
+                ctx.arc(px, py, Math.max(3, W / 220), 0, Math.PI * 2);
+                ctx.fill();
+                if (i % 5 === 0) {
+                    ctx.beginPath();
+                    ctx.moveTo(centerX, centerY);
+                    ctx.lineTo(px, py);
+                    ctx.globalAlpha = 0.2;
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+            }
+        }
+
+        let bgCompositeScratchCanvas = null;
+        function getBgCompositeScratchCanvas(w, h) {
+            if (typeof document === 'undefined') return null;
+            if (!bgCompositeScratchCanvas) {
+                bgCompositeScratchCanvas = document.createElement('canvas');
+            }
+            if (bgCompositeScratchCanvas.width !== w || bgCompositeScratchCanvas.height !== h) {
+                bgCompositeScratchCanvas.width = w;
+                bgCompositeScratchCanvas.height = h;
+            }
+            return bgCompositeScratchCanvas;
+        }
+
+        function bodyPixPersonToBackgroundAlpha(m, maskMax) {
+            if (maskMax <= 1) {
+                return m === 0 ? 1 : 0;
+            }
+            const personScore = m / 255;
+            return 1 - personScore;
+        }
+
+        function segmentationToFlatMask(segmentation) {
+            const { width: mw, height: mh, data } = segmentation;
+            const len = mw * mh;
+            const out = new Uint8Array(len);
+            if (data.length === len) {
+                for (let i = 0; i < len; i++) out[i] = data[i];
+            } else if (data.length === len * 4) {
+                for (let i = 0; i < len; i++) out[i] = data[i * 4 + 3] || data[i * 4];
+            } else {
+                for (let i = 0; i < len; i++) out[i] = data[i];
+            }
+            let maskMin = 255;
+            let maskMax = 0;
+            for (let i = 0; i < len; i++) {
+                const v = out[i];
+                if (v < maskMin) maskMin = v;
+                if (v > maskMax) maskMax = v;
+            }
+            return { data: out, w: mw, h: mh, maskMin, maskMax };
+        }
+
+        /** canvas에 이미지를 object-fit: cover 처럼 맞춤 (가로·세로 비율 유지, 중앙 크롭) */
+        function drawImageCover(ctx, img, w, h) {
+            const iw = img.naturalWidth || img.width;
+            const ih = img.naturalHeight || img.height;
+            if (!iw || !ih) return;
+            const imgRatio = iw / ih;
+            const canvasRatio = w / h;
+            let drawW;
+            let drawH;
+            let drawX;
+            let drawY;
+            if (imgRatio > canvasRatio) {
+                drawH = h;
+                drawW = h * imgRatio;
+                drawX = (w - drawW) / 2;
+                drawY = 0;
+            } else {
+                drawW = w;
+                drawH = w / imgRatio;
+                drawX = 0;
+                drawY = (h - drawH) / 2;
+            }
+            ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        }
+
+        /** spatial: { moveX, zoom } — 배경 패럴랙스·줌 (v9.7 Dynamic Spatial) */
+        function drawBackgroundLayer(bgCtx, w, h, practiceTheme, sessionThemeRaw, spatial) {
+            const url = getThemePhotoUrl(sessionThemeRaw);
+            const img = url ? themePhotoCache[url] : null;
+            if (img && img.complete && img.naturalWidth > 0) {
+                if (spatial && spatial.zoom > 0) {
+                    const zoom = spatial.zoom;
+                    const moveX = spatial.moveX || 0;
+                    const bgWidth = w * zoom;
+                    const bgHeight = h * zoom;
+                    const bgX = (w - bgWidth) / 2 - (moveX * 0.5);
+                    const bgY = (h - bgHeight) / 2;
+                    bgCtx.drawImage(img, bgX, bgY, bgWidth, bgHeight);
+                } else {
+                    drawImageCover(bgCtx, img, w, h);
+                }
+                return;
+            }
+            drawPracticeRoom(bgCtx, w, h, practiceTheme);
+        }
+
+        function renderCompositeFrameBodyPix(ctx, video, w, h, practiceTheme, maskInfo, sessionThemeRaw, spatial) {
+            try {
+                if (!maskInfo?.data) {
+                    ctx.drawImage(video, 0, 0, w, h);
+                    return;
+                }
+                const bgCanvas = getBgCompositeScratchCanvas(w, h);
+                const bgCtx = bgCanvas?.getContext('2d');
+                if (!bgCanvas || !bgCtx) {
+                    ctx.drawImage(video, 0, 0, w, h);
+                    return;
+                }
+                drawBackgroundLayer(bgCtx, w, h, practiceTheme, sessionThemeRaw, spatial);
+                const bgImageData = bgCtx.getImageData(0, 0, w, h);
+                const bgPixels = bgImageData.data;
+
+                ctx.drawImage(video, 0, 0, w, h);
+                const frame = ctx.getImageData(0, 0, w, h);
+                const pixels = frame.data;
+                const { data: maskData, w: mw, h: mh, maskMax } = maskInfo;
+
+                for (let y = 0; y < h; y += 1) {
+                    for (let x = 0; x < w; x += 1) {
+                        const px = (y * w + x) * 4;
+                        const mx = Math.min(mw - 1, Math.floor((x / w) * mw));
+                        const my = Math.min(mh - 1, Math.floor((y / h) * mh));
+                        const mi = my * mw + mx;
+                        if (mi >= maskData.length) continue;
+                        const m = maskData[mi];
+
+                        const bgAlpha = bodyPixPersonToBackgroundAlpha(m, maskMax);
+
+                        if (bgAlpha <= 0) continue;
+                        const bgR = bgPixels[px];
+                        const bgG = bgPixels[px + 1];
+                        const bgB = bgPixels[px + 2];
+                        if (bgAlpha >= 1) {
+                            pixels[px] = bgR;
+                            pixels[px + 1] = bgG;
+                            pixels[px + 2] = bgB;
+                            pixels[px + 3] = 255;
+                        } else {
+                            const inv = 1 - bgAlpha;
+                            pixels[px] = Math.floor(bgR * bgAlpha + pixels[px] * inv);
+                            pixels[px + 1] = Math.floor(bgG * bgAlpha + pixels[px + 1] * inv);
+                            pixels[px + 2] = Math.floor(bgB * bgAlpha + pixels[px + 2] * inv);
+                            pixels[px + 3] = 255;
+                        }
+                    }
+                }
+                ctx.putImageData(frame, 0, 0);
+            } catch (e) {
+                console.warn('renderCompositeFrameBodyPix:', e);
+                try {
+                    ctx.drawImage(video, 0, 0, w, h);
+                } catch (err) {
+                    console.error(err);
+                }
+            }
+        }
+
+        const Icon = ({ name, className, size = 24 }) => {
+            const icons = {
+                Smartphone: <Fragment><path d="M17 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2Z"/><path d="M12 18h.01"/></Fragment>,
+                Monitor: <Fragment><rect width="20" height="14" x="2" y="3" rx="2"/><line x1="8" x2="16" y1="21" y2="21"/><line x1="12" x2="12" y1="17" y2="21"/></Fragment>,
+                Zap: <Fragment><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></Fragment>,
+                Wand2: <Fragment><path d="m21.64 3.64-1.28-1.28a1.21 1.21 0 0 0-1.72 0L2.36 18.64a1.21 1.21 0 0 0 0 1.72l1.28 1.28a1.2 1.2 0 0 0 1.72 0L21.64 5.36a1.2 1.2 0 0 0 0-1.72Z"/><path d="m14 7 3 3"/></Fragment>,
+                Repeat: <Fragment><path d="m17 2 4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></Fragment>,
+                Users: <Fragment><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></Fragment>,
+                RotateCcw: <Fragment><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></Fragment>,
+                Video: <Fragment><path d="m22 8-6 4 6 4V8Z"/><rect width="14" height="12" x="2" y="6" rx="2"/></Fragment>,
+                Share2: <Fragment><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" x2="15.42" y1="13.51" y2="17.49"/><line x1="15.41" x2="8.59" y1="6.51" y2="10.49"/></Fragment>,
+                Trophy: <Fragment><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2Z"/></Fragment>,
+                Award: <Fragment><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></Fragment>,
+                Layout: <Fragment><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><line x1="3" x2="21" y1="9" y2="9"/><line x1="9" x2="9" y1="21" y2="9"/></Fragment>
+            };
+            return (
+                <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    {icons[name] || null}
+                </svg>
+            );
+        };
+
+        function App() {
+            const [mode, setMode] = useState('hub');
+            const [sessionId, setSessionId] = useState('');
+            const [sessionData, setSessionData] = useState(null);
+            const [user, setUser] = useState(null);
+            const dbRef = useRef(null);
+
+            useEffect(() => {
+                const init = async () => {
+                    if (window.OnnodeFirebase) {
+                        const { initializeApp, getFirestore, getAuth, signInAnonymously, onAuthStateChanged, firebaseConfig, initialToken, signInWithCustomToken } = window.OnnodeFirebase;
+                        try {
+                            const app = initializeApp(firebaseConfig);
+                            dbRef.current = getFirestore(app);
+                            const auth = getAuth(app);
+                            if (initialToken) await signInWithCustomToken(auth, initialToken);
+                            else await signInAnonymously(auth);
+                            onAuthStateChanged(auth, setUser);
+                        } catch (e) { console.error('Firebase failed.', e); }
+                    }
+                };
+                init();
+            }, []);
+
+            useEffect(() => {
+                if (!user || !sessionId || !dbRef.current) return;
+                const { doc, onSnapshot, appId } = window.OnnodeFirebase;
+                const unsubscribe = onSnapshot(doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', sessionId), (snap) => {
+                    if (snap.exists()) setSessionData(snap.data());
+                });
+                return () => unsubscribe();
+            }, [user, sessionId]);
+
+            const startLaptop = async () => {
+                if (!user) return;
+                const { doc, setDoc, appId } = window.OnnodeFirebase;
+                const newId = Math.random().toString(36).substring(2, 7).toUpperCase();
+                const initialData = {
+                    id: newId,
+                    track: 'dance',
+                    theme: 'hybe-hall',
+                    status: 'waiting',
+                    metrics: { sync: 0, accuracy: 0, energy: 0 },
+                    lastUpdate: Date.now(),
+                    message: '실시간 공간 동기화 엔진 가동 중...'
+                };
+                await setDoc(doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', newId), initialData);
+                setSessionId(newId);
+                setMode('laptop');
+            };
+
+            if (mode === 'hub') return <HubView onStart={startLaptop} onJoin={(id) => { setSessionId(id.toUpperCase()); setMode('mobile'); }} />;
+            if (mode === 'laptop') return <LaptopDashboard sessionId={sessionId} sessionData={sessionData} dbRef={dbRef} onReset={() => setMode('hub')} />;
+            if (mode === 'mobile') return <MobileController sessionId={sessionId} sessionData={sessionData} dbRef={dbRef} onReset={() => setMode('hub')} />;
+            return null;
+        }
+
+        function HubView({ onStart, onJoin }) {
+            const [input, setInput] = useState('');
+            return (
+                <div className="min-h-screen flex flex-col items-center justify-center p-6">
+                    <div className="max-w-4xl w-full glass-dark p-20 rounded-[5rem] text-center shadow-2xl relative overflow-hidden border border-white/5">
+                        <div className="absolute top-0 right-0 w-80 h-80 bg-[#FF1493]/10 blur-[100px] -z-10 animate-pulse"></div>
+                        <h1 className="text-9xl font-black italic mb-2 tracking-tighter uppercase font-['Poppins'] neon-text">ONNODE</h1>
+                        <p className="text-[#FF1493] uppercase tracking-[1em] text-xs font-black mb-20">AI Spatial Synthesis Studio v9.7</p>
+
+                        <div className="grid md:grid-cols-2 gap-10">
+                            <button onClick={onStart} className="group bg-white/5 hover:bg-[#FF1493]/20 p-12 rounded-[4rem] border-2 border-white/5 hover:border-[#FF1493]/50 transition-all flex flex-col items-center">
+                                <Icon name="Monitor" size={70} className="mb-6 text-white group-hover:scale-110 transition-transform" />
+                                <h3 className="text-2xl font-black mb-2 uppercase tracking-tighter">Laptop Dashboard</h3>
+                                <p className="text-white/30 text-sm">Main UI</p>
+                            </button>
+                            <div className="bg-white/5 p-12 rounded-[4rem] border-2 border-white/5 flex flex-col items-center shadow-inner">
+                                <Icon name="Smartphone" size={70} className="mb-6 text-white/10" />
+                                <input type="text" placeholder="ID 입력" className="w-full bg-black/50 border-2 border-white/10 rounded-3xl px-6 py-5 text-center text-4xl font-black focus:border-[#FF1493] outline-none uppercase mb-6 text-[#FF1493] font-['Poppins']"
+                                    value={input} onChange={e => setInput(e.target.value)} />
+                                <button onClick={() => onJoin(input)} className="w-full bg-[#FF1493] py-6 rounded-3xl font-black text-xl shadow-xl text-white active:scale-95 transition-all">기기 연동 시작</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function LaptopDashboard({ sessionId, sessionData, dbRef, onReset }) {
+            const canvasRef = useRef(null);
+            const videoRef = useRef(null);
+            const [model, setModel] = useState(null);
+            const rafRef = useRef(null);
+            const frameRef = useRef(0);
+            const sessionRef = useRef(sessionData);
+            sessionRef.current = sessionData;
+
+            useEffect(() => {
+                const bp = typeof bodyPix !== 'undefined' ? bodyPix : window.bodyPix;
+                if (bp) {
+                    bp.load({
+                        architecture: 'MobileNetV1',
+                        outputStride: 16,
+                        multiplier: 0.75,
+                        quantBytes: 2
+                    }).then(m => setModel(m)).catch(console.error);
+                }
+            }, []);
+
+            useEffect(() => {
+                Object.values(THEME_PHOTO_URLS).forEach((u) => { if (u) ensureThemeImageLoaded(u); });
+            }, []);
+
+            useEffect(() => {
+                const u = getThemePhotoUrl(sessionData?.theme);
+                if (u) ensureThemeImageLoaded(u);
+            }, [sessionData?.theme]);
+
+            useEffect(() => {
+                let stream = null;
+                const v = videoRef.current;
+                if (!v || !navigator.mediaDevices?.getUserMedia) return;
+                navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+                    .then(s => {
+                        stream = s;
+                        v.srcObject = s;
+                        return v.play();
+                    })
+                    .catch(err => console.warn('Laptop camera:', err));
+                return () => {
+                    if (stream) stream.getTracks().forEach(t => t.stop());
+                    if (v) v.srcObject = null;
+                };
+            }, []);
+
+            const practiceTheme = useMemo(() => resolvePracticeTheme(sessionData?.theme || 'hybe-hall'), [sessionData?.theme]);
+
+            const updateTheme = async (tid) => {
+                if (!dbRef?.current || !sessionId || !window.OnnodeFirebase) return;
+                const { doc, updateDoc, appId } = window.OnnodeFirebase;
+                await updateDoc(doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', sessionId), { theme: tid, lastUpdate: Date.now() });
+            };
+
+            useEffect(() => {
+                if (!sessionData || !model) return;
+                const canvas = canvasRef.current;
+                const video = videoRef.current;
+                if (!canvas || !video) return;
+
+                const ctx = canvas.getContext('2d');
+                let running = true;
+
+                const processFrame = async () => {
+                    if (!running) return;
+                    frameRef.current += 1;
+                    const sd = sessionRef.current;
+                    const themeId = sd?.theme || 'hybe-hall';
+                    const roomId = resolvePracticeTheme(themeId);
+
+                    const vw = video.videoWidth;
+                    const vh = video.videoHeight;
+                    if (vw > 0 && vh > 0) {
+                        if (canvas.width !== vw || canvas.height !== vh) {
+                            canvas.width = vw;
+                            canvas.height = vh;
+                        }
+                    }
+
+                    const w = canvas.width || 1280;
+                    const h = canvas.height || 720;
+
+                    const t = Date.now() / 450;
+                    const moveX = Math.sin(t) * 50;
+                    const zoom = 1 + Math.abs(Math.sin(t * 0.5)) * 0.1;
+                    const spatial = { moveX, zoom };
+
+                    if (vw > 0 && vh > 0) {
+                        try {
+                            const seg = await model.segmentPerson(video, {
+                                internalResolution: 'medium',
+                                segmentationThreshold: 0.7,
+                                flipHorizontal: false
+                            });
+                            const maskInfo = segmentationToFlatMask(seg);
+                            renderCompositeFrameBodyPix(ctx, video, w, h, roomId, maskInfo, themeId, spatial);
+                        } catch (e) {
+                            drawBackgroundLayer(ctx, w, h, roomId, themeId, spatial);
+                        }
+
+                        const st = sd?.status;
+                        const met = sd?.metrics;
+                        drawPostCompositeOverlays(ctx, w, h, st, met, frameRef.current);
+                        if (st !== 'done') {
+                            drawSpatialSkeletonOverlay(ctx, w, h, moveX, t);
+                        }
+                    } else {
+                        drawBackgroundLayer(ctx, w, h, roomId, themeId, spatial);
+                        const st = sd?.status;
+                        const met = sd?.metrics;
+                        drawPostCompositeOverlays(ctx, w, h, st, met, frameRef.current);
+                        if (st !== 'done') {
+                            drawSpatialSkeletonOverlay(ctx, w, h, moveX, t);
+                        }
+                        ctx.font = '900 40px Noto Sans KR';
+                        ctx.fillStyle = 'white';
+                        ctx.textAlign = 'center';
+                        ctx.fillText('카메라 연결 대기...', w / 2, h * 0.88);
+                    }
+                };
+
+                const loop = () => {
+                    processFrame().finally(() => {
+                        if (running) rafRef.current = requestAnimationFrame(loop);
+                    });
+                };
+                loop();
+
+                return () => {
+                    running = false;
+                    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+                };
+            }, [model, practiceTheme]);
+
+            if (!sessionData) return <div className="min-h-screen flex items-center justify-center font-black text-4xl animate-pulse bg-[#020617] text-[#FF1493] font-['Poppins']">SPATIAL CALIBRATING...</div>;
+
+            return (
+                <div className="min-h-screen p-10 flex flex-col gap-10 bg-[#020617]">
+                    <video ref={videoRef} autoPlay playsInline muted className="fixed w-px h-px opacity-0 pointer-events-none" aria-hidden />
+
+                    <div className="flex justify-between items-end">
+                        <div>
+                            <div className="flex items-center gap-3 text-[#FF1493] font-black text-sm tracking-widest mb-2 uppercase italic">
+                                <Icon name="Wand2" size={20}/> <span>Onnode Spatial Sync Engine v9.7</span>
+                            </div>
+                            <h1 className="text-6xl font-[900] tracking-tighter uppercase font-['Poppins']">Dynamic Virtual Studio</h1>
+                        </div>
+                        <div className="flex gap-4 items-center">
+                            <div className="glass-dark px-10 py-5 rounded-3xl text-center border border-[#FF1493]/30">
+                                <span className="text-[11px] block font-bold text-white/40 mb-1">Session ID</span>
+                                <span className="text-3xl font-black tracking-widest text-[#FF1493] font-['Poppins']">{sessionId}</span>
+                            </div>
+                            <button type="button" onClick={onReset} className="glass-dark p-6 rounded-3xl hover:bg-white/5 transition-all border border-white/10"><Icon name="RotateCcw" size={32} /></button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-12 gap-10 flex-1">
+                        <div className="col-span-8 flex flex-col gap-8">
+                            <div className="relative flex-1 rounded-[4.5rem] overflow-hidden neon-border bg-black shadow-[0_0_80px_rgba(255,20,147,0.2)] min-h-[360px]">
+                                <canvas ref={canvasRef} width="1280" height="720" className="w-full h-full object-cover bg-black" />
+                                <div className="absolute top-12 left-12 flex gap-4 flex-wrap">
+                                    <div className="glass-dark px-6 py-3 rounded-2xl flex items-center gap-3 border border-white/20 text-white">
+                                        <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+                                        <span className="text-xs font-black uppercase tracking-widest">Spatial Linked</span>
+                                    </div>
+                                    <div className="bg-[#FF1493] px-6 py-3 rounded-2xl font-black text-xs uppercase shadow-lg">Theme: {sessionData.theme}</div>
+                                </div>
+                            </div>
+
+                            <div className="glass-dark p-5 rounded-[2rem] border border-white/5">
+                                <p className="text-[10px] font-black text-white/40 uppercase tracking-widest mb-3">배경 전환 (패럴랙스·합성)</p>
+                                <div className="grid grid-cols-3 gap-3">
+                                    {SESSION_THEME_ORDER.map((tid) => (
+                                        <button
+                                            key={tid}
+                                            type="button"
+                                            onClick={() => updateTheme(tid)}
+                                            className={`py-3 rounded-2xl text-xs font-black transition-all ${
+                                                sessionData.theme === tid ? 'bg-[#FF1493] text-white shadow-lg scale-[1.02]' : 'bg-white/5 text-white/50 hover:bg-white/10'
+                                            }`}
+                                        >
+                                            {PRACTICE_THEME_LABELS[tid]}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="glass-dark p-10 rounded-[3.5rem] grid grid-cols-8 gap-4 text-center border border-white/5">
+                                {[
+                                    { n: '초대', i: 'Smartphone' }, { n: '팀생성', i: 'Users' }, { n: '촬영', i: 'Video' },
+                                    { n: '합성', i: 'Wand2' }, { n: '콘텐츠', i: 'Monitor' }, { n: '공유', i: 'Share2' },
+                                    { n: '보상', i: 'Zap' }, { n: '반복', i: 'RotateCcw' }
+                                ].map((step, idx) => (
+                                    <div key={idx} className={`space-y-3 ${idx === 3 ? 'text-[#FF1493]' : 'text-white/20'}`}>
+                                        <div className={`mx-auto w-14 h-14 rounded-2xl flex items-center justify-center border-2 transition-all ${idx === 3 ? 'border-[#FF1493] bg-[#FF1493]/10 scale-110 shadow-lg' : 'border-white/5 bg-white/5'}`}>
+                                            <Icon name={step.i} size={28} />
+                                        </div>
+                                        <p className="text-[12px] font-black uppercase tracking-tighter">{idx + 1}. {step.n}</p>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="col-span-4 flex flex-col gap-8">
+                            <div className="glass-dark p-12 rounded-[4.5rem] flex-1 relative flex flex-col justify-between overflow-hidden border border-white/10">
+                                <div className="absolute -top-10 -right-10 opacity-5 rotate-12"><Icon name="Zap" size={300} /></div>
+                                <div>
+                                    <h3 className="text-2xl font-black mb-14 flex items-center gap-4 text-[#FF1493] uppercase tracking-tighter"><Icon name="Zap" size={32} /><span>Spatial Analytics</span></h3>
+                                    <div className="space-y-12">
+                                        <Bar label="공간 이동 일치율" value={sessionData.metrics.sync} color="bg-pink-500" />
+                                        <Bar label="배경 깊이(Depth)" value={sessionData.metrics.accuracy} color="bg-purple-600" />
+                                        <Bar label="모션 잔상 제거" value={sessionData.metrics.energy} color="bg-blue-600" />
+                                    </div>
+                                </div>
+                                <div className="mt-16 bg-white/5 p-8 rounded-[3rem] border border-white/5">
+                                    <p className="text-[16px] leading-relaxed text-white/80 italic font-medium break-keep font-serif">&quot;유저의 이동 동선을 감지하여 가상 연습실의 원근감을 실시간으로 보정하고 있습니다.&quot;</p>
+                                </div>
+                            </div>
+                            <div className="bg-[#FF1493] p-12 rounded-[4.5rem] shadow-2xl flex items-center justify-between px-16 text-white">
+                                <p className="text-sm font-black uppercase text-white/50 tracking-widest font-['Poppins']">Result</p>
+                                <div className="text-8xl font-black tracking-tighter font-['Poppins']">
+                                    {Math.round((sessionData.metrics.sync + sessionData.metrics.accuracy + sessionData.metrics.energy) / 3)}<span className="text-2xl ml-2 opacity-50 font-normal">/ 60 PT</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
+
+        function MobileController({ sessionId, sessionData, dbRef, onReset }) {
+            const videoRef = useRef(null);
+            useEffect(() => {
+                if (navigator.mediaDevices) {
+                    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false })
+                        .then(s => { if (videoRef.current) videoRef.current.srcObject = s; })
+                        .catch(() => {});
+                }
+            }, []);
+
+            if (!sessionData) return <div className="min-h-screen bg-black flex items-center justify-center font-black animate-pulse text-[#FF1493] text-2xl uppercase tracking-widest">Syncing Cloud...</div>;
+
+            const update = async (payload) => {
+                if (!dbRef.current) return;
+                const { doc, updateDoc, appId } = window.OnnodeFirebase;
+                await updateDoc(doc(dbRef.current, 'artifacts', appId, 'public', 'data', 'sessions', sessionId), { ...payload, lastUpdate: Date.now() });
+            };
+
+            return (
+                <div className="min-h-screen bg-black flex flex-col font-sans text-white overflow-hidden">
+                    <div className="p-8 flex justify-between items-center border-b border-white/10 bg-slate-900 shadow-2xl">
+                        <div className="flex items-center gap-4">
+                            <div className="w-3 h-3 bg-red-600 rounded-full animate-pulse" />
+                            <span className="text-sm font-black tracking-widest uppercase font-['Poppins']">LIVE: {sessionId}</span>
+                        </div>
+                        <button type="button" onClick={onReset} className="text-white/30"><Icon name="RotateCcw" size={24} /></button>
+                    </div>
+
+                    <div className="flex-1 relative min-h-[280px]">
+                        <video ref={videoRef} autoPlay playsInline muted className="w-full h-full object-cover opacity-60 scale-x-[-1]" />
+                        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <div className="w-24 h-24 border-[8px] border-white/20 rounded-full flex items-center justify-center mb-6 shadow-[0_0_30px_rgba(255,20,147,0.2)]">
+                                <div className="w-16 h-16 bg-red-600 rounded-full animate-pulse shadow-2xl" />
+                            </div>
+                            <p className="text-xs font-black text-white/60 uppercase tracking-[0.6em]">Dynamic Tracking</p>
+                        </div>
+                    </div>
+
+                    <div className="bg-white rounded-t-[5rem] p-12 pb-16 space-y-10 shadow-[0_-30px_80px_rgba(0,0,0,0.8)] text-slate-900 relative z-10">
+                        <div className="flex gap-4">
+                            {SESSION_THEME_ORDER.map((t) => (
+                                <button
+                                    key={t}
+                                    type="button"
+                                    onClick={() => update({ theme: t })}
+                                    className={`flex-1 py-7 rounded-[2.5rem] text-[10px] font-black uppercase transition-all shadow-xl ${
+                                        sessionData.theme === t ? 'bg-black text-white scale-110 shadow-[#FF1493]/30' : 'bg-slate-100 text-slate-400'
+                                    }`}
+                                >
+                                    {PRACTICE_THEME_LABELS[t] || t.replace(/-/g, ' ')}
+                                </button>
+                            ))}
+                        </div>
+                        <button
+                            type="button"
+                            onClick={async () => {
+                                await update({ status: 'analyzing' });
+                                setTimeout(async () => {
+                                    await update({
+                                        status: 'done',
+                                        metrics: { sync: 60, accuracy: 58, energy: 57 },
+                                        message: '공간 동기화 분석 결과, 유저의 이동 동선과 가상 스튜디오의 정합성이 완벽합니다!'
+                                    });
+                                }, 3500);
+                            }}
+                            disabled={sessionData.status === 'analyzing'}
+                            className="w-full bg-gradient-to-r from-[#FF1493] to-[#9400D3] text-white py-10 rounded-[3.5rem] font-[900] text-3xl shadow-2xl active:scale-95 transition-all disabled:opacity-50"
+                        >
+                            {sessionData.status === 'analyzing' ? 'PROCESSING...' : '참여 완료 & 실시간 합성'}
+                        </button>
+                    </div>
+                </div>
+            );
+        }
+
+        function Bar({ label, value, color }) {
+            const pct = Math.min(100, Math.max(0, (Number(value) || 0) / 60) * 100);
+            return (
+                <div className="space-y-4">
+                    <div className="flex justify-between items-end font-['Poppins']">
+                        <span className="text-xs font-black text-white/40 uppercase tracking-widest">{label}</span>
+                        <span className="text-3xl font-black tracking-tighter text-white">{value}<span className="text-sm ml-1 opacity-30 font-normal">/ 60 PT</span></span>
+                    </div>
+                    <div className="h-4 w-full bg-white/5 rounded-full overflow-hidden border border-white/5 shadow-inner">
+                        <div className={`h-full ${color} transition-all duration-1000 ease-out shadow-[0_0_20px_rgba(255,20,147,0.4)]`} style={{ width: `${pct}%` }} />
+                    </div>
+                </div>
+            );
+        }
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
