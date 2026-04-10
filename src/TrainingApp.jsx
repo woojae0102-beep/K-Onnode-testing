@@ -103,6 +103,23 @@ function analyzeKorean(reference, userInput) {
   return { accuracy, lengthScore, charMatch, tips };
 }
 
+function toScoreFromAngle(angle, target = 155, tolerance = 35) {
+  if (angle == null) return 0;
+  const delta = Math.abs(angle - target);
+  const ratio = Math.max(0, 1 - delta / tolerance);
+  return Math.round(ratio * 100);
+}
+
+function buildDanceFeedback(metrics) {
+  const tips = [];
+  if ((metrics.poseConfidence ?? 0) < 45) tips.push('카메라에 전신이 들어오게 거리를 조절하세요.');
+  if ((metrics.armAccuracy ?? 0) < 60) tips.push('팔 각도를 더 크게 펴서 동작을 또렷하게 만들어 보세요.');
+  if ((metrics.symmetry ?? 0) < 55) tips.push('좌우 팔 높이를 맞추면 완성도가 올라갑니다.');
+  if ((metrics.danceActivity ?? 0) < 45) tips.push('손목 이동량이 적습니다. 박자에 맞춰 크게 움직여 보세요.');
+  if (!tips.length) tips.push('좋아요! 지금 동작을 유지하면서 박자 정확도를 높여 보세요.');
+  return tips;
+}
+
 function TrainingHub({ onStartLaptop, onJoinMobile, onBack }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 flex flex-col items-center justify-center p-6">
@@ -139,6 +156,7 @@ function TrainingHub({ onStartLaptop, onJoinMobile, onBack }) {
 
 function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const canvasRef = useRef(null);
+  const danceOverlayRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const [data, setData] = useState(null);
   const [selectedTrack, setSelectedTrack] = useState('dance');
@@ -182,10 +200,28 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     }
   }, [data?.pose?.landmarks]);
 
+  useEffect(() => {
+    const overlay = danceOverlayRef.current;
+    const video = remoteVideoRef.current;
+    if (!overlay || !video) return;
+    const w = video.videoWidth || 640;
+    const h = video.videoHeight || 360;
+    if (overlay.width !== w || overlay.height !== h) {
+      overlay.width = w;
+      overlay.height = h;
+    }
+    const ctx = overlay.getContext('2d');
+    if (!ctx) return;
+    const lm = data?.pose?.landmarks;
+    if (lm?.length) drawPoseOnCanvas(ctx, lm, overlay.width, overlay.height);
+    else ctx.clearRect(0, 0, overlay.width, overlay.height);
+  }, [data?.pose?.landmarks, remoteStream]);
+
   const track = data?.track || 'dance';
   const pitch = data?.pitch;
   const korean = data?.korean || {};
   const metrics = data?.metrics || {};
+  const danceTips = Array.isArray(metrics.feedbackTips) ? metrics.feedbackTips : [];
 
   useEffect(() => {
     if (track) setSelectedTrack(track);
@@ -261,13 +297,19 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
           {selectedTrack === 'dance' && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
-              <video
-                ref={remoteVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full rounded-xl bg-black border border-slate-800 object-contain max-h-[360px] scale-x-[-1]"
-              />
+              <div className="relative">
+                <video
+                  ref={remoteVideoRef}
+                  autoPlay
+                  playsInline
+                  muted
+                  className="w-full rounded-xl bg-black border border-slate-800 object-contain max-h-[360px] scale-x-[-1]"
+                />
+                <canvas
+                  ref={danceOverlayRef}
+                  className="absolute inset-0 w-full h-full rounded-xl pointer-events-none scale-x-[-1]"
+                />
+              </div>
               <p className="text-xs text-slate-500 mt-2">
                 실시간 연결 상태: <span className="font-mono">{webrtcStatus}</span>
                 {webrtcError ? ` · 오류: ${webrtcError}` : ''}
@@ -280,10 +322,23 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
               <div className="mt-3">
                 <canvas ref={canvasRef} width={640} height={360} className="w-full rounded-xl bg-slate-950 border border-slate-800" />
               </div>
-              <p className="text-sm text-slate-400 mt-2">
-                활동 점수: <span className="text-white font-mono">{metrics.danceActivity ?? '—'}</span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
+                <div className="rounded-lg bg-slate-900/80 p-2">활동성 <span className="font-mono text-white">{metrics.danceActivity ?? '—'}</span></div>
+                <div className="rounded-lg bg-slate-900/80 p-2">팔 정확도 <span className="font-mono text-white">{metrics.armAccuracy ?? '—'}</span></div>
+                <div className="rounded-lg bg-slate-900/80 p-2">좌우 대칭 <span className="font-mono text-white">{metrics.symmetry ?? '—'}</span></div>
+                <div className="rounded-lg bg-slate-900/80 p-2">포즈 신뢰도 <span className="font-mono text-white">{metrics.poseConfidence ?? '—'}</span></div>
+              </div>
+              <p className="text-sm text-slate-300 mt-2">
+                실시간 종합 점수: <span className="font-mono text-white">{metrics.totalScore ?? '—'}</span>
               </p>
-              <p className="text-xs text-slate-500">왼팔 각도(참고): {metrics.leftElbowDeg != null ? `${Math.round(metrics.leftElbowDeg)}°` : '—'}</p>
+              <p className="text-xs text-slate-500 mt-2">
+                팔 각도: 좌 {metrics.leftElbowDeg != null ? `${Math.round(metrics.leftElbowDeg)}°` : '—'} / 우 {metrics.rightElbowDeg != null ? `${Math.round(metrics.rightElbowDeg)}°` : '—'}
+              </p>
+              <ul className="text-xs text-slate-300 list-disc pl-4 mt-2 space-y-1">
+                {danceTips.map((t, i) => (
+                  <li key={i}>{t}</li>
+                ))}
+              </ul>
             </div>
           )}
           {selectedTrack === 'vocal' && (
@@ -334,12 +389,14 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   const [micOn, setMicOn] = useState(false);
   const [koInput, setKoInput] = useState('');
   const [vocalTarget, setVocalTarget] = useState(60);
+  const [danceRealtime, setDanceRealtime] = useState(null);
   const videoRef = useRef(null);
   const mobileOverlayRef = useRef(null);
   const landmarkerRef = useRef(null);
   const rafRef = useRef(null);
   const lastPoseWrite = useRef(0);
   const wristHist = useRef([]);
+  const rightWristHist = useRef([]);
   const audioCtxRef = useRef(null);
   const streamRef = useRef(null);
   const pitchIntervalRef = useRef(null);
@@ -455,28 +512,83 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
               v: p.visibility ?? 1,
             }));
             let leftElbowDeg = null;
+            let rightElbowDeg = null;
             if (pl[11] && pl[13] && pl[15]) {
               leftElbowDeg = angleDeg(pl[11].x, pl[11].y, pl[13].x, pl[13].y, pl[15].x, pl[15].y);
             }
+            if (pl[12] && pl[14] && pl[16]) {
+              rightElbowDeg = angleDeg(pl[12].x, pl[12].y, pl[14].x, pl[14].y, pl[16].x, pl[16].y);
+            }
             const lw = pl[15];
+            const rw = pl[16];
             if (lw) {
               const h = wristHist.current;
               h.push({ x: lw.x, y: lw.y, t: now });
               while (h.length && now - h[0].t > 2000) h.shift();
             }
+            if (rw) {
+              const h = rightWristHist.current;
+              h.push({ x: rw.x, y: rw.y, t: now });
+              while (h.length && now - h[0].t > 2000) h.shift();
+            }
             let danceActivity = 0;
-            const h = wristHist.current;
-            if (h.length > 3) {
+            const hl = wristHist.current;
+            const hr = rightWristHist.current;
+            const activityFromHist = (h) => {
+              if (h.length < 4) return 0;
               let sum = 0;
               for (let i = 1; i < h.length; i += 1) {
                 sum += Math.hypot(h[i].x - h[i - 1].x, h[i].y - h[i - 1].y);
               }
-              danceActivity = Math.min(100, Math.round(sum * 5000));
-            }
+              return Math.min(100, Math.round(sum * 4500));
+            };
+            danceActivity = Math.round((activityFromHist(hl) + activityFromHist(hr)) / 2);
+
+            const leftAcc = toScoreFromAngle(leftElbowDeg);
+            const rightAcc = toScoreFromAngle(rightElbowDeg);
+            const armAccuracy = Math.round((leftAcc + rightAcc) / 2);
+            const symmetry =
+              leftElbowDeg != null && rightElbowDeg != null
+                ? Math.max(0, 100 - Math.round(Math.abs(leftElbowDeg - rightElbowDeg)))
+                : 0;
+            const visTargets = [11, 12, 13, 14, 15, 16]
+              .map((idx) => pl[idx]?.visibility ?? pl[idx]?.v ?? 0)
+              .filter((v) => Number.isFinite(v));
+            const poseConfidence = visTargets.length
+              ? Math.round((visTargets.reduce((a, b) => a + b, 0) / visTargets.length) * 100)
+              : 0;
+            const totalScore = Math.round(
+              danceActivity * 0.35 + armAccuracy * 0.35 + symmetry * 0.2 + poseConfidence * 0.1
+            );
+            const feedbackTips = buildDanceFeedback({
+              danceActivity,
+              armAccuracy,
+              symmetry,
+              poseConfidence,
+            });
+            setDanceRealtime({
+              leftElbowDeg,
+              rightElbowDeg,
+              danceActivity,
+              armAccuracy,
+              symmetry,
+              poseConfidence,
+              totalScore,
+              feedbackTips,
+            });
             updateDoc(sessionRef, {
               pose: { landmarks: compact, ts: Date.now() },
               cameraActive: true,
-              metrics: { leftElbowDeg, danceActivity },
+              metrics: {
+                leftElbowDeg,
+                rightElbowDeg,
+                danceActivity,
+                armAccuracy,
+                symmetry,
+                poseConfidence,
+                totalScore,
+                feedbackTips,
+              },
               updatedAt: serverTimestamp(),
             }).catch((e) => console.error(e));
           }
@@ -502,8 +614,11 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
         if (octx) octx.clearRect(0, 0, overlay.width, overlay.height);
       }
       setCamStream(null);
+      setDanceRealtime(null);
       landmarkerRef.current?.close?.();
       landmarkerRef.current = null;
+      wristHist.current = [];
+      rightWristHist.current = [];
       updateDoc(sessionRef, {
         pose: deleteField(),
         cameraActive: false,
@@ -674,6 +789,20 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
               MediaPipe 포즈 + WebRTC 영상 전송 상태: <span className="font-mono">{webrtcStatus}</span>
               {webrtcError ? ` · 오류: ${webrtcError}` : ''}
             </p>
+            {danceRealtime && (
+              <div className="rounded-xl border border-slate-800 bg-slate-900/70 p-3 space-y-1 text-xs">
+                <p>
+                  실시간 점수: <span className="font-mono text-white">{danceRealtime.totalScore}</span>
+                </p>
+                <p className="text-slate-400">
+                  좌/우 팔각도: {Math.round(danceRealtime.leftElbowDeg ?? 0)}° / {Math.round(danceRealtime.rightElbowDeg ?? 0)}°
+                </p>
+                <p className="text-slate-400">
+                  활동 {danceRealtime.danceActivity} · 정확도 {danceRealtime.armAccuracy} · 대칭 {danceRealtime.symmetry}
+                </p>
+                <p className="text-slate-300">{danceRealtime.feedbackTips?.[0]}</p>
+              </div>
+            )}
           </div>
         )}
         {tab === 'vocal' && (
