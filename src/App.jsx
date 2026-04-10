@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
+import TrainingApp from './TrainingApp.jsx';
 import { initializeApp } from 'firebase/app';
 import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, updateDoc } from 'firebase/firestore';
 import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
@@ -99,7 +100,7 @@ function FirebaseMissingScreen() {
 }
 
 // 수정됨 — Firebase 미설정 시 흰 화면 대신 안내 (Hooks 규칙: 래퍼에서 분기)
-function MainApp() {
+function MainApp({ onBackToRoot }) {
   const [user, setUser] = useState(null);
   const [viewMode, setViewMode] = useState('hub');
   const [sessionId, setSessionId] = useState('');
@@ -108,6 +109,9 @@ function MainApp() {
   const [trainingMode, setTrainingMode] = useState(null);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
+  // 수정됨 — 모바일 연동: 세션 없음 / 권한 오류 시 Handshaking 무한 방지
+  const [sessionMissing, setSessionMissing] = useState(false);
+  const [sessionListenError, setSessionListenError] = useState(null);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -125,13 +129,30 @@ function MainApp() {
   useEffect(() => {
     if (!user || !sessionId) return undefined;
 
+    setSessionListenError(null);
+    setSessionMissing(false);
+    setSessionData(null);
+
     const sessionRef = doc(db, 'artifacts', appId, 'public', 'data', 'sessions', sessionId);
-    const unsubSession = onSnapshot(sessionRef, (snap) => {
-      if (!snap.exists()) return;
-      const data = snap.data();
-      setSessionData(data);
-      if (data.activeTraining) setTrainingMode(data.activeTraining);
-    });
+    const unsubSession = onSnapshot(
+      sessionRef,
+      (snap) => {
+        if (!snap.exists()) {
+          setSessionData(null);
+          setSessionMissing(true);
+          return;
+        }
+        setSessionMissing(false);
+        const data = snap.data();
+        setSessionData(data);
+        if (data.activeTraining) setTrainingMode(data.activeTraining);
+      },
+      (err) => {
+        console.error('[session onSnapshot]', err);
+        setSessionListenError(err?.message || String(err));
+        setSessionData(null);
+      }
+    );
 
     const msgCol = collection(db, 'artifacts', appId, 'public', 'data', 'messages');
     const unsubMsgs = onSnapshot(msgCol, (snap) => {
@@ -178,9 +199,10 @@ function MainApp() {
       <HubView
         onStartLaptop={createSession}
         onJoinMobile={(id) => {
-          setSessionId((id || '').toUpperCase());
+          setSessionId(String(id || '').trim().toUpperCase().replace(/\s+/g, ''));
           setViewMode('mobile');
         }}
+        onBackToRoot={onBackToRoot}
       />
     );
   }
@@ -190,8 +212,18 @@ function MainApp() {
       <MobileController
         sessionId={sessionId}
         sessionData={sessionData}
+        sessionMissing={sessionMissing}
+        sessionListenError={sessionListenError}
+        userReady={Boolean(user)}
         db={db}
-        onReset={() => setViewMode('hub')}
+        onBackToRoot={onBackToRoot}
+        onReset={() => {
+          setViewMode('hub');
+          setSessionId('');
+          setSessionData(null);
+          setSessionMissing(false);
+          setSessionListenError(null);
+        }}
       />
     );
   }
@@ -213,9 +245,22 @@ function MainApp() {
 
       <div className="flex-1 flex transition-all duration-700">
         <div className={`flex flex-col bg-slate-900 border-r border-white/5 transition-all duration-500 ${trainingMode ? 'w-[40%]' : 'w-full'}`}>
-          <div className="h-20 px-8 flex items-center justify-between border-b border-white/5 bg-slate-900/50 backdrop-blur-xl">
+          <div className="h-20 px-8 flex items-center justify-between border-b border-white/5 bg-slate-900/50 backdrop-blur-xl gap-4">
             <h2 className="text-xl font-black tracking-tight uppercase">OnNode Global Lobby</h2>
-            <div className="bg-pink-600/20 text-pink-500 px-3 py-1 rounded-lg text-[10px] font-bold border border-pink-500/20 uppercase">Cloud Linked</div>
+            <div className="flex items-center gap-3 shrink-0">
+              {onBackToRoot && (
+                <button
+                  type="button"
+                  onClick={onBackToRoot}
+                  className="text-[10px] font-bold text-slate-500 hover:text-white uppercase tracking-wider"
+                >
+                  앱 모드
+                </button>
+              )}
+              <div className="bg-pink-600/20 text-pink-500 px-3 py-1 rounded-lg text-[10px] font-bold border border-pink-500/20 uppercase">
+                Cloud Linked
+              </div>
+            </div>
           </div>
 
           <div className="flex-1 overflow-y-auto p-8 space-y-6 scrollbar-hide">
@@ -315,11 +360,51 @@ function MainApp() {
   );
 }
 
+function RootPicker({ onMessenger, onTraining }) {
+  return (
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-8 text-white font-sans">
+      <h1 className="text-6xl font-black italic mb-2 bg-gradient-to-r from-pink-500 to-violet-500 bg-clip-text text-transparent tracking-tighter font-['Poppins']">
+        ONNODE
+      </h1>
+      <p className="text-slate-500 uppercase tracking-[0.35em] text-[10px] font-black mb-12">모드 선택</p>
+      <div className="grid md:grid-cols-2 gap-6 w-full max-w-3xl">
+        <button
+          type="button"
+          onClick={onMessenger}
+          className="group bg-white/5 border-2 border-white/10 hover:border-pink-500 p-10 rounded-[2.5rem] transition-all text-left"
+        >
+          <MessageSquare size={40} className="mb-4 text-pink-500 group-hover:scale-110 transition-transform" />
+          <h2 className="text-xl font-black mb-2 uppercase tracking-tight">글로벌 로비</h2>
+          <p className="text-slate-400 text-sm">메신저 · 모바일 컨트롤러 · 스튜디오 데모</p>
+        </button>
+        <button
+          type="button"
+          onClick={onTraining}
+          className="group bg-white/5 border-2 border-white/10 hover:border-sky-500 p-10 rounded-[2.5rem] transition-all text-left"
+        >
+          <Mic size={40} className="mb-4 text-sky-400 group-hover:scale-110 transition-transform" />
+          <h2 className="text-xl font-black mb-2 uppercase tracking-tight">K-POP 트레이닝</h2>
+          <p className="text-slate-400 text-sm">안무(MediaPipe) · 보컬(피치) · 한국어 분석</p>
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
+  const [rootMode, setRootMode] = useState('pick');
   if (!firebaseConfig || !auth || !db) {
     return <FirebaseMissingScreen />;
   }
-  return <MainApp />;
+  if (rootMode === 'pick') {
+    return (
+      <RootPicker onMessenger={() => setRootMode('messenger')} onTraining={() => setRootMode('training')} />
+    );
+  }
+  if (rootMode === 'training') {
+    return <TrainingApp db={db} auth={auth} appId={appId} onBack={() => setRootMode('pick')} />;
+  }
+  return <MainApp onBackToRoot={() => setRootMode('pick')} />;
 }
 
 function SpatialSimulator({ theme, isAnalyzing }) {
@@ -381,7 +466,16 @@ function SpatialSimulator({ theme, isAnalyzing }) {
   return <canvas ref={canvasRef} width="1280" height="720" className="w-full h-full object-cover" />;
 }
 
-function MobileController({ sessionId, sessionData, db: firestoreDb, onReset }) {
+function MobileController({
+  sessionId,
+  sessionData,
+  sessionMissing,
+  sessionListenError,
+  userReady,
+  db: firestoreDb,
+  onReset,
+  onBackToRoot,
+}) {
   const videoRef = useRef(null);
 
   useEffect(() => {
@@ -402,10 +496,77 @@ function MobileController({ sessionId, sessionData, db: firestoreDb, onReset }) 
     }, 2000);
   };
 
+  if (sessionListenError) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center font-sans text-white">
+        <p className="text-rose-400 font-black text-lg mb-2">연결 오류</p>
+        <p className="text-sm text-slate-400 mb-6 max-w-md break-keep">{sessionListenError}</p>
+        <p className="text-xs text-slate-500 mb-6 break-keep">
+          Firestore 규칙에서 익명 읽기가 허용되는지, 같은 Firebase 프로젝트인지 확인하세요.
+        </p>
+        <button
+          type="button"
+          onClick={onReset}
+          className="px-6 py-3 rounded-xl bg-violet-600 font-bold text-sm"
+        >
+          처음으로
+        </button>
+        {onBackToRoot && (
+          <button type="button" onClick={onBackToRoot} className="mt-4 text-xs text-slate-500">
+            앱 모드 선택
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (sessionMissing) {
+    return (
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center font-sans text-white">
+        <p className="text-amber-400 font-black text-lg mb-2">세션을 찾을 수 없습니다</p>
+        <p className="text-sm text-slate-400 mb-2">
+          입력한 ID: <span className="font-mono text-white">{sessionId || '(비어 있음)'}</span>
+        </p>
+        <p className="text-xs text-slate-500 mb-6 max-w-md break-keep leading-relaxed">
+          PC에서 <strong>Laptop App</strong>을 눌러 만든 뒤, 왼쪽 사이드바에 보이는 코드와{' '}
+          <strong>완전히 동일하게</strong> 입력했는지 확인하세요. PC에서 세션을 만든 직후 다시 시도해 보세요.
+        </p>
+        <button
+          type="button"
+          onClick={onReset}
+          className="px-6 py-3 rounded-xl bg-violet-600 font-bold text-sm"
+        >
+          SESSION ID 다시 입력
+        </button>
+        {onBackToRoot && (
+          <button type="button" onClick={onBackToRoot} className="mt-4 text-xs text-slate-500">
+            앱 모드 선택
+          </button>
+        )}
+      </div>
+    );
+  }
+
   if (!sessionData) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center font-black animate-pulse text-pink-500 uppercase tracking-widest text-3xl">
-        Handshaking...
+      <div className="min-h-screen bg-black flex flex-col items-center justify-center p-8 text-center font-sans">
+        <p className="font-black animate-pulse text-pink-500 uppercase tracking-widest text-2xl mb-4">
+          Handshaking...
+        </p>
+        <p className="text-xs text-slate-500 mb-2">
+          세션: <span className="font-mono text-slate-300">{sessionId}</span>
+        </p>
+        {!userReady && (
+          <p className="text-xs text-slate-500 break-keep">로그인(익명) 준비 중입니다. 잠시만 기다려 주세요.</p>
+        )}
+        <button type="button" onClick={onReset} className="mt-8 text-sm text-slate-500 underline">
+          취소하고 처음으로
+        </button>
+        {onBackToRoot && (
+          <button type="button" onClick={onBackToRoot} className="mt-4 text-xs text-slate-600">
+            앱 모드 선택
+          </button>
+        )}
       </div>
     );
   }
@@ -453,12 +614,17 @@ function MobileController({ sessionId, sessionData, db: firestoreDb, onReset }) 
         >
           {sessionData.status === 'analyzing' ? '분석 중...' : '연습 완료 & 데이터 전송'}
         </button>
+        {onBackToRoot && (
+          <button type="button" onClick={onBackToRoot} className="w-full text-sm text-slate-500 py-2">
+            앱 모드 선택으로
+          </button>
+        )}
       </div>
     </div>
   );
 }
 
-function HubView({ onStartLaptop, onJoinMobile }) {
+function HubView({ onStartLaptop, onJoinMobile, onBackToRoot }) {
   const [inputCode, setInputCode] = useState('');
   return (
     <div className="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6 text-white font-sans">
@@ -483,6 +649,15 @@ function HubView({ onStartLaptop, onJoinMobile }) {
           <button onClick={() => onJoinMobile(inputCode)} className="w-full bg-violet-600 hover:bg-violet-500 py-5 rounded-2xl font-black text-lg shadow-xl transition-all">연동 시작</button>
         </div>
       </div>
+      {onBackToRoot && (
+        <button
+          type="button"
+          onClick={onBackToRoot}
+          className="mt-12 text-sm text-slate-500 hover:text-slate-300 underline underline-offset-4"
+        >
+          ← 앱 모드 선택
+        </button>
+      )}
     </div>
   );
 }
