@@ -276,10 +276,13 @@ function TrainingHub({ selectedTrack, onSelectTrack, onStartLaptop, onJoinMobile
 }
 
 function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
+  const videoWrapperRef = useRef(null);
   const danceCanvasRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const latestPoseRef = useRef(null);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
+  const [videoAspect, setVideoAspect] = useState('9 / 16');
+  const videoAspectRef = useRef('9 / 16');
   const [data, setData] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [selectedTrack, setSelectedTrack] = useState('dance');
@@ -326,6 +329,34 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const danceTips = Array.isArray(metrics.feedbackTips) ? metrics.feedbackTips : [];
   const teamSyncScore = useMemo(() => computeTeamSyncScore(participants), [participants]);
 
+  const syncCanvasToVideo = useCallback(() => {
+    const video = remoteVideoRef.current;
+    const canvas = danceCanvasRef.current;
+    const wrapper = videoWrapperRef.current;
+    if (!canvas || !video) return;
+    const vw = Number(video.videoWidth || 0);
+    const vh = Number(video.videoHeight || 0);
+    if (!vw || !vh) return;
+
+    if (canvas.width !== vw || canvas.height !== vh) {
+      canvas.width = vw;
+      canvas.height = vh;
+    }
+    const aspectText = `${vw} / ${vh}`;
+    canvas.style.aspectRatio = aspectText;
+    if (wrapper) wrapper.style.aspectRatio = aspectText;
+    if (videoAspectRef.current !== aspectText) {
+      videoAspectRef.current = aspectText;
+      setVideoAspect(aspectText);
+    }
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+    ctx.clearRect(0, 0, vw, vh);
+    const lm = latestPoseRef.current;
+    if (lm?.length) drawPoseOnCanvas(ctx, lm, vw, vh, false);
+  }, []);
+
   useEffect(() => {
     if (track) setSelectedTrack(track);
   }, [track]);
@@ -340,62 +371,40 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
         v.play().catch(() => {});
       };
       const markReady = () => {
-        if (v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) setRemoteVideoReady(true);
+        if (v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) {
+          setRemoteVideoReady(true);
+          syncCanvasToVideo();
+        }
       };
       v.onloadedmetadata = tryPlay;
       v.onloadeddata = markReady;
       v.onplaying = markReady;
+      v.onresize = markReady;
       tryPlay();
       return () => {
         v.onloadedmetadata = null;
         v.onloadeddata = null;
         v.onplaying = null;
+        v.onresize = null;
       };
     }
-  }, [remoteStream]);
+  }, [remoteStream, syncCanvasToVideo]);
 
   useEffect(() => {
     const video = remoteVideoRef.current;
-    const canvas = danceCanvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    const syncOverlay = () => {
-      const dpr = Math.max(1, window.devicePixelRatio || 1);
-      const boxW = Math.max(1, Math.round(video?.clientWidth || canvas.clientWidth || 640));
-      const boxH = Math.max(1, Math.round(video?.clientHeight || canvas.clientHeight || 480));
-      const srcW = Number(video?.videoWidth || 0);
-      const srcH = Number(video?.videoHeight || 0);
-      let logicalW = boxW;
-      let logicalH = boxH;
-      if (srcW > 0 && srcH > 0) {
-        const scale = Math.min(boxW / srcW, boxH / srcH);
-        logicalW = Math.max(1, Math.round(srcW * scale));
-        logicalH = Math.max(1, Math.round(srcH * scale));
-      }
-      const pixelW = Math.round(logicalW * dpr);
-      const pixelH = Math.round(logicalH * dpr);
-      if (canvas.width !== pixelW || canvas.height !== pixelH) {
-        canvas.width = pixelW;
-        canvas.height = pixelH;
-      }
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.clearRect(0, 0, logicalW, logicalH);
-      const lm = latestPoseRef.current;
-      if (lm?.length) drawPoseOnCanvas(ctx, lm, logicalW, logicalH, false);
-    };
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncOverlay) : null;
+    const wrapper = videoWrapperRef.current;
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncCanvasToVideo) : null;
     if (ro) {
-      ro.observe(canvas);
+      if (wrapper) ro.observe(wrapper);
       if (video) ro.observe(video);
     }
-    window.addEventListener('resize', syncOverlay);
-    syncOverlay();
+    window.addEventListener('resize', syncCanvasToVideo);
+    syncCanvasToVideo();
     return () => {
       ro?.disconnect();
-      window.removeEventListener('resize', syncOverlay);
+      window.removeEventListener('resize', syncCanvasToVideo);
     };
-  }, [data?.pose?.landmarks, remoteStream]);
+  }, [data?.pose?.landmarks, remoteStream, syncCanvasToVideo]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
@@ -451,12 +460,16 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
           {selectedTrack === 'dance' && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
-              <div className="relative w-full h-[80vh] min-h-[480px] overflow-hidden rounded-xl border border-slate-800 bg-black">
+              <div
+                ref={videoWrapperRef}
+                className="video-wrapper relative w-full max-h-[80vh] overflow-hidden rounded-xl border border-slate-800 bg-transparent"
+                style={{ aspectRatio: videoAspect, margin: '0 auto' }}
+              >
                 {mirroredFrame ? (
                   <img
                     src={mirroredFrame}
                     alt="mobile-frame-fallback"
-                    className="absolute inset-0 h-full w-full object-contain"
+                    className="absolute inset-0 h-full w-full object-contain bg-transparent"
                   />
                 ) : null}
                 <video
@@ -464,7 +477,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 h-full w-full object-contain scale-x-[-1] transition-opacity duration-200 ${
+                  className={`absolute inset-0 h-full w-full object-contain bg-transparent scale-x-[-1] transition-opacity duration-200 ${
                     remoteStream && remoteVideoReady ? 'opacity-100' : 'opacity-0'
                   }`}
                 />
