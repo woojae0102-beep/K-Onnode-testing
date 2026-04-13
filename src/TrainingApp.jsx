@@ -52,10 +52,10 @@ function angleDeg(ax, ay, bx, by, cx, cy) {
   return (Math.acos(cos) * 180) / Math.PI;
 }
 
-function drawPoseOnCanvas(ctx, landmarks, w, h) {
+function drawPoseOnCanvas(ctx, landmarks, w, h, clearFirst = true) {
   if (!landmarks?.length) return;
-  ctx.clearRect(0, 0, w, h);
-  ctx.strokeStyle = 'rgba(56, 189, 248, 0.9)';
+  if (clearFirst) ctx.clearRect(0, 0, w, h);
+  ctx.strokeStyle = 'rgba(0, 255, 255, 0.8)';
   ctx.lineWidth = 3;
   for (const [a, b] of POSE_EDGES) {
     const pa = landmarks[a];
@@ -155,8 +155,10 @@ function TrainingHub({ onStartLaptop, onJoinMobile, onBack }) {
 }
 
 function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
-  const danceOverlayRef = useRef(null);
+  const danceCanvasRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const latestPoseRef = useRef(null);
+  const danceRenderRafRef = useRef(null);
   const [data, setData] = useState(null);
   const [selectedTrack, setSelectedTrack] = useState('dance');
   const { remoteStream, status: webrtcStatus, error: webrtcError } = useWebRtcSession({
@@ -183,38 +185,8 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   }, [db, appId, sessionId]);
 
   useEffect(() => {
-    const overlay = danceOverlayRef.current;
-    const video = remoteVideoRef.current;
-    if (!overlay || !video) return;
-    const syncAndDraw = () => {
-      const displayW = video.offsetWidth || video.clientWidth || 0;
-      const displayH = video.offsetHeight || video.clientHeight || 0;
-      if (!displayW || !displayH) return;
-      if (overlay.width !== displayW || overlay.height !== displayH) {
-        overlay.width = displayW;
-        overlay.height = displayH;
-      }
-      const ctx = overlay.getContext('2d');
-      if (!ctx) return;
-      const lm = data?.pose?.landmarks;
-      if (lm?.length) {
-        // Normalized landmark(0~1)을 실제 video 표시 크기로 스케일링합니다.
-        drawPoseOnCanvas(ctx, lm, displayW, displayH);
-      } else {
-        ctx.clearRect(0, 0, overlay.width, overlay.height);
-      }
-    };
-    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncAndDraw) : null;
-    if (ro) ro.observe(video);
-    syncAndDraw();
-    video.addEventListener('loadedmetadata', syncAndDraw);
-    window.addEventListener('resize', syncAndDraw);
-    return () => {
-      ro?.disconnect();
-      video.removeEventListener('loadedmetadata', syncAndDraw);
-      window.removeEventListener('resize', syncAndDraw);
-    };
-  }, [data?.pose?.landmarks, remoteStream]);
+    latestPoseRef.current = data?.pose?.landmarks || null;
+  }, [data?.pose?.landmarks]);
 
   const track = data?.track || 'dance';
   const pitch = data?.pitch;
@@ -240,6 +212,42 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
         v.onloadedmetadata = null;
       };
     }
+  }, [remoteStream]);
+
+  useEffect(() => {
+    const video = remoteVideoRef.current;
+    const canvas = danceCanvasRef.current;
+    if (!video || !canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    let cancelled = false;
+    const renderFrame = () => {
+      if (cancelled) return;
+      const vw = video.videoWidth || 0;
+      const vh = video.videoHeight || 0;
+      if (vw > 0 && vh > 0) {
+        if (canvas.width !== vw || canvas.height !== vh) {
+          canvas.width = vw;
+          canvas.height = vh;
+        }
+        // 1) 실제 카메라 RGB 프레임을 먼저 그립니다.
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        // 2) 그 위에 skeleton 오버레이를 그립니다.
+        const lm = latestPoseRef.current;
+        if (lm?.length) drawPoseOnCanvas(ctx, lm, canvas.width, canvas.height, false);
+      } else {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      danceRenderRafRef.current = requestAnimationFrame(renderFrame);
+    };
+
+    danceRenderRafRef.current = requestAnimationFrame(renderFrame);
+    return () => {
+      cancelled = true;
+      if (danceRenderRafRef.current) cancelAnimationFrame(danceRenderRafRef.current);
+      danceRenderRafRef.current = null;
+    };
   }, [remoteStream]);
 
   return (
@@ -302,10 +310,10 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   autoPlay
                   playsInline
                   muted
-                  className="absolute inset-0 z-0 h-full w-full object-fill scale-x-[-1]"
+                  className="hidden"
                 />
                 <canvas
-                  ref={danceOverlayRef}
+                  ref={danceCanvasRef}
                   className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent scale-x-[-1]"
                 />
                 {!remoteStream && (
