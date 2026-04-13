@@ -163,6 +163,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const danceCanvasRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const latestPoseRef = useRef(null);
+  const [remoteVideoReady, setRemoteVideoReady] = useState(false);
   const [data, setData] = useState(null);
   const [selectedTrack, setSelectedTrack] = useState('dance');
   const { remoteStream } = useWebRtcSession({
@@ -196,6 +197,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const pitch = data?.pitch;
   const korean = data?.korean || {};
   const metrics = data?.metrics || {};
+  const mirroredFrame = data?.mobileFrame?.dataUrl || '';
   const danceTips = Array.isArray(metrics.feedbackTips) ? metrics.feedbackTips : [];
 
   useEffect(() => {
@@ -206,14 +208,22 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     const v = remoteVideoRef.current;
     if (!v) return;
     v.srcObject = remoteStream || null;
+    setRemoteVideoReady(false);
     if (remoteStream) {
       const tryPlay = () => {
         v.play().catch(() => {});
       };
+      const markReady = () => {
+        if (v.readyState >= 2 && v.videoWidth > 0 && v.videoHeight > 0) setRemoteVideoReady(true);
+      };
       v.onloadedmetadata = tryPlay;
+      v.onloadeddata = markReady;
+      v.onplaying = markReady;
       tryPlay();
       return () => {
         v.onloadedmetadata = null;
+        v.onloadeddata = null;
+        v.onplaying = null;
       };
     }
   }, [remoteStream]);
@@ -307,12 +317,21 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
               <div className="relative w-full h-[80vh] min-h-[480px] overflow-hidden rounded-xl border border-slate-800 bg-black">
+                {mirroredFrame ? (
+                  <img
+                    src={mirroredFrame}
+                    alt="mobile-frame-fallback"
+                    className="absolute inset-0 h-full w-full object-cover"
+                  />
+                ) : null}
                 <video
                   ref={remoteVideoRef}
                   autoPlay
                   playsInline
                   muted
-                  className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
+                  className={`absolute inset-0 h-full w-full object-cover scale-x-[-1] transition-opacity duration-200 ${
+                    remoteStream && remoteVideoReady ? 'opacity-100' : 'opacity-0'
+                  }`}
                 />
                 <canvas
                   ref={danceCanvasRef}
