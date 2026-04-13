@@ -281,8 +281,6 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const remoteVideoRef = useRef(null);
   const latestPoseRef = useRef(null);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
-  const [videoAspect, setVideoAspect] = useState('9 / 16');
-  const videoAspectRef = useRef('9 / 16');
   const [data, setData] = useState(null);
   const [participants, setParticipants] = useState([]);
   const [selectedTrack, setSelectedTrack] = useState('dance');
@@ -342,12 +340,8 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
       canvas.width = vw;
       canvas.height = vh;
     }
-    const aspectText = `${vw} / ${vh}`;
-    canvas.style.aspectRatio = aspectText;
-    if (wrapper) wrapper.style.aspectRatio = aspectText;
-    if (videoAspectRef.current !== aspectText) {
-      videoAspectRef.current = aspectText;
-      setVideoAspect(aspectText);
+    if (wrapper) {
+      wrapper.style.minHeight = 'calc(100vh - 240px)';
     }
 
     const ctx = canvas.getContext('2d');
@@ -462,8 +456,8 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
               <div
                 ref={videoWrapperRef}
-                className="video-wrapper relative w-full max-h-[80vh] overflow-hidden rounded-xl border border-slate-800 bg-transparent"
-                style={{ aspectRatio: videoAspect, margin: '0 auto' }}
+                className="video-wrapper relative mx-auto w-full overflow-hidden rounded-xl border border-slate-800 bg-transparent aspect-[9/16] flex items-center justify-center"
+                style={{ minHeight: 'calc(100vh - 240px)', maxWidth: 'min(100%, 56.25vh)' }}
               >
                 {mirroredFrame ? (
                   <img
