@@ -43,7 +43,6 @@ const MOBILE_FRAME_HEIGHT = 1280;
 const MOBILE_FRAME_JPEG_QUALITY = 0.4;
 const MOBILE_FRAME_INTERVAL_MS = 333;
 const MOBILE_ANALYZE_INTERVAL_MS = 1000 / 24;
-const MAX_RENDER_DPR = 1.25;
 
 function angleDeg(ax, ay, bx, by, cx, cy) {
   const v1x = ax - bx;
@@ -164,18 +163,9 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const danceCanvasRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const latestPoseRef = useRef(null);
-  const latestFrameUrlRef = useRef('');
-  const latestFrameTsRef = useRef(0);
-  const latestFrameImageRef = useRef(null);
-  const pendingFrameUrlRef = useRef('');
-  const isFrameLoadingRef = useRef(false);
-  const loadedFrameUrlRef = useRef('');
-  const lastVideoTimeRef = useRef(-1);
-  const lastVideoAdvanceAtRef = useRef(0);
-  const danceRenderRafRef = useRef(null);
   const [data, setData] = useState(null);
   const [selectedTrack, setSelectedTrack] = useState('dance');
-  const { remoteStream, status: webrtcStatus, error: webrtcError } = useWebRtcSession({
+  const { remoteStream } = useWebRtcSession({
     db,
     appId,
     sessionId,
@@ -201,32 +191,6 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   useEffect(() => {
     latestPoseRef.current = data?.pose?.landmarks || null;
   }, [data?.pose?.landmarks]);
-
-  useEffect(() => {
-    const nextUrl = data?.mobileFrame?.dataUrl || '';
-    latestFrameUrlRef.current = nextUrl;
-    latestFrameTsRef.current = Number(data?.mobileFrame?.ts || 0);
-    pendingFrameUrlRef.current = nextUrl;
-    if (!nextUrl) return;
-    if (!latestFrameImageRef.current) latestFrameImageRef.current = new Image();
-    const img = latestFrameImageRef.current;
-    const loadLatest = () => {
-      if (isFrameLoadingRef.current) return;
-      const targetUrl = pendingFrameUrlRef.current;
-      if (!targetUrl || targetUrl === loadedFrameUrlRef.current || img.src === targetUrl) return;
-      isFrameLoadingRef.current = true;
-      img.onload = () => {
-        loadedFrameUrlRef.current = targetUrl;
-        isFrameLoadingRef.current = false;
-        if (pendingFrameUrlRef.current !== targetUrl) loadLatest();
-      };
-      img.onerror = () => {
-        isFrameLoadingRef.current = false;
-      };
-      img.src = targetUrl;
-    };
-    loadLatest();
-  }, [data?.mobileFrame?.dataUrl]);
 
   const track = data?.track || 'dance';
   const pitch = data?.pitch;
@@ -257,80 +221,36 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   useEffect(() => {
     const video = remoteVideoRef.current;
     const canvas = danceCanvasRef.current;
-    if (!video || !canvas) return;
+    if (!canvas) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    canvas.style.aspectRatio = 'auto';
-    canvas.style.objectFit = 'cover';
-    canvas.style.display = 'block';
-    canvas.style.willChange = 'transform';
-    canvas.style.transform = 'translateZ(0)';
-
-    let cancelled = false;
-    if (!canvas.width || !canvas.height) {
-      canvas.width = 640;
-      canvas.height = 480;
-    }
-    const renderFrame = () => {
-      if (cancelled) return;
-      let drewBackground = false;
-      const dpr = Math.min(MAX_RENDER_DPR, Math.max(1, window.devicePixelRatio || 1));
-      const logicalDrawW = Math.max(1, Math.round(canvas.clientWidth || 640));
-      const logicalDrawH = Math.max(1, Math.round(canvas.clientHeight || 480));
-      const pixelW = Math.round(logicalDrawW * dpr);
-      const pixelH = Math.round(logicalDrawH * dpr);
+    const syncOverlay = () => {
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const logicalW = Math.max(1, Math.round(video?.clientWidth || canvas.clientWidth || 640));
+      const logicalH = Math.max(1, Math.round(video?.clientHeight || canvas.clientHeight || 480));
+      const pixelW = Math.round(logicalW * dpr);
+      const pixelH = Math.round(logicalH * dpr);
       if (canvas.width !== pixelW || canvas.height !== pixelH) {
         canvas.width = pixelW;
         canvas.height = pixelH;
       }
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-      ctx.imageSmoothingEnabled = true;
-      ctx.imageSmoothingQuality = 'high';
-
-      const vw = video.videoWidth || 0;
-      const vh = video.videoHeight || 0;
-      // WebRTC 비디오가 유효하고 실제로 시간이 전진할 때만 영상 소스를 우선합니다.
-      if (video.readyState >= 2 && vw > 0 && vh > 0) {
-        const now = performance.now();
-        const currentTime = Number(video.currentTime || 0);
-        if (currentTime > 0 && currentTime !== lastVideoTimeRef.current) {
-          lastVideoTimeRef.current = currentTime;
-          lastVideoAdvanceAtRef.current = now;
-        }
-        const stalledMs = lastVideoAdvanceAtRef.current ? now - lastVideoAdvanceAtRef.current : Infinity;
-        const canUseVideo = stalledMs < 3000;
-        if (canUseVideo) {
-          ctx.drawImage(video, 0, 0, logicalDrawW, logicalDrawH);
-          drewBackground = true;
-        }
-      }
-
-      // 최신 프레임 폴백(연결 실패/끊김/정지 시)을 사용해 freeze를 완화합니다.
-      if (!drewBackground) {
-        const img = latestFrameImageRef.current;
-        const frameAgeMs = Date.now() - Number(latestFrameTsRef.current || 0);
-        if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0 && frameAgeMs < 5000) {
-          ctx.drawImage(img, 0, 0, logicalDrawW, logicalDrawH);
-          drewBackground = true;
-        }
-      }
-
+      ctx.clearRect(0, 0, logicalW, logicalH);
       const lm = latestPoseRef.current;
-      if (drewBackground && lm?.length) {
-        drawPoseOnCanvas(ctx, lm, logicalDrawW, logicalDrawH, false);
-      }
-      danceRenderRafRef.current = requestAnimationFrame(renderFrame);
+      if (lm?.length) drawPoseOnCanvas(ctx, lm, logicalW, logicalH, false);
     };
-
-    danceRenderRafRef.current = requestAnimationFrame(renderFrame);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(syncOverlay) : null;
+    if (ro) {
+      ro.observe(canvas);
+      if (video) ro.observe(video);
+    }
+    window.addEventListener('resize', syncOverlay);
+    syncOverlay();
     return () => {
-      cancelled = true;
-      if (danceRenderRafRef.current) cancelAnimationFrame(danceRenderRafRef.current);
-      danceRenderRafRef.current = null;
+      ro?.disconnect();
+      window.removeEventListener('resize', syncOverlay);
     };
-  }, [remoteStream]);
+  }, [data?.pose?.landmarks, remoteStream]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
@@ -392,17 +312,13 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   autoPlay
                   playsInline
                   muted
-                  className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
+                  className="absolute inset-0 h-full w-full object-cover scale-x-[-1]"
                 />
                 <canvas
                   ref={danceCanvasRef}
                   className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent transform-gpu [will-change:transform] object-cover scale-x-[-1]"
                 />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                실시간 연결 상태: <span className="font-mono">{webrtcStatus}</span>
-                {webrtcError ? ` · 오류: ${webrtcError}` : ''}
-              </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
                 <div className="rounded-lg bg-slate-900/80 p-2">활동성 <span className="font-mono text-white">{metrics.danceActivity ?? '—'}</span></div>
                 <div className="rounded-lg bg-slate-900/80 p-2">팔 정확도 <span className="font-mono text-white">{metrics.armAccuracy ?? '—'}</span></div>
