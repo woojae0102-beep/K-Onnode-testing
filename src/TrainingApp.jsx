@@ -362,8 +362,17 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     if (!ctx) return;
     const syncOverlay = () => {
       const dpr = Math.max(1, window.devicePixelRatio || 1);
-      const logicalW = Math.max(1, Math.round(video?.clientWidth || canvas.clientWidth || 640));
-      const logicalH = Math.max(1, Math.round(video?.clientHeight || canvas.clientHeight || 480));
+      const boxW = Math.max(1, Math.round(video?.clientWidth || canvas.clientWidth || 640));
+      const boxH = Math.max(1, Math.round(video?.clientHeight || canvas.clientHeight || 480));
+      const srcW = Number(video?.videoWidth || 0);
+      const srcH = Number(video?.videoHeight || 0);
+      let logicalW = boxW;
+      let logicalH = boxH;
+      if (srcW > 0 && srcH > 0) {
+        const scale = Math.min(boxW / srcW, boxH / srcH);
+        logicalW = Math.max(1, Math.round(srcW * scale));
+        logicalH = Math.max(1, Math.round(srcH * scale));
+      }
       const pixelW = Math.round(logicalW * dpr);
       const pixelH = Math.round(logicalH * dpr);
       if (canvas.width !== pixelW || canvas.height !== pixelH) {
@@ -447,7 +456,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   <img
                     src={mirroredFrame}
                     alt="mobile-frame-fallback"
-                    className="absolute inset-0 h-full w-full object-cover"
+                    className="absolute inset-0 h-full w-full object-contain"
                   />
                 ) : null}
                 <video
@@ -455,13 +464,13 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 h-full w-full object-cover scale-x-[-1] transition-opacity duration-200 ${
+                  className={`absolute inset-0 h-full w-full object-contain scale-x-[-1] transition-opacity duration-200 ${
                     remoteStream && remoteVideoReady ? 'opacity-100' : 'opacity-0'
                   }`}
                 />
                 <canvas
                   ref={danceCanvasRef}
-                  className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent transform-gpu [will-change:transform] object-cover scale-x-[-1]"
+                  className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent transform-gpu [will-change:transform] object-contain scale-x-[-1]"
                 />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
