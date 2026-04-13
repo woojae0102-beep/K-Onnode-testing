@@ -368,23 +368,21 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     const vh = Number(video.videoHeight || 0);
     if (!vw || !vh) return;
 
-    const boxW = Math.max(1, Math.round(wrapper?.clientWidth || video.clientWidth || 640));
-    const boxH = Math.max(1, Math.round(wrapper?.clientHeight || video.clientHeight || 480));
-    const dpr = Math.max(1, window.devicePixelRatio || 1);
-    const pixelW = Math.round(boxW * dpr);
-    const pixelH = Math.round(boxH * dpr);
-    if (canvas.width !== pixelW || canvas.height !== pixelH) {
-      canvas.width = pixelW;
-      canvas.height = pixelH;
+    if (wrapper) {
+      wrapper.style.aspectRatio = `${vw} / ${vh}`;
     }
-    canvas.style.aspectRatio = `${boxW} / ${boxH}`;
+    if (canvas.width !== vw || canvas.height !== vh) {
+      canvas.width = vw;
+      canvas.height = vh;
+    }
+    canvas.style.aspectRatio = `${vw} / ${vh}`;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.clearRect(0, 0, boxW, boxH);
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.clearRect(0, 0, vw, vh);
     const lm = latestPoseRef.current;
-    if (lm?.length) drawPoseOnCoverCanvas(ctx, lm, boxW, boxH, vw, vh);
+    if (lm?.length) drawPoseOnCanvas(ctx, lm, vw, vh, false);
   }, []);
 
   useEffect(() => {
@@ -406,7 +404,10 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
           syncCanvasToVideo();
         }
       };
-      v.onloadedmetadata = tryPlay;
+      v.onloadedmetadata = () => {
+        tryPlay();
+        markReady();
+      };
       v.onloadeddata = markReady;
       v.onplaying = markReady;
       v.onresize = markReady;
@@ -492,14 +493,14 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
               <div
                 ref={videoWrapperRef}
-                className="video-wrapper relative w-full overflow-hidden rounded-xl border border-slate-800 bg-transparent"
-                style={{ minHeight: 'calc(100vh - 220px)', height: '78vh' }}
+                className="video-wrapper relative mx-auto w-full max-h-[85vh] overflow-hidden rounded-xl border border-slate-800 bg-transparent flex items-center justify-center"
+                style={{ aspectRatio: '9 / 16' }}
               >
                 {mirroredFrame ? (
                   <img
                     src={mirroredFrame}
                     alt="mobile-frame-fallback"
-                    className="absolute inset-0 h-full w-full object-cover bg-transparent"
+                    className="absolute inset-0 h-full w-full object-contain bg-transparent"
                   />
                 ) : null}
                 <video
@@ -507,13 +508,13 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   autoPlay
                   playsInline
                   muted
-                  className={`absolute inset-0 h-full w-full object-cover bg-transparent scale-x-[-1] transition-opacity duration-200 ${
+                  className={`absolute inset-0 h-full w-full object-contain bg-transparent scale-x-[-1] transition-opacity duration-200 ${
                     remoteStream && remoteVideoReady ? 'opacity-100' : 'opacity-0'
                   }`}
                 />
                 <canvas
                   ref={danceCanvasRef}
-                  className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent transform-gpu [will-change:transform] object-cover scale-x-[-1]"
+                  className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent transform-gpu [will-change:transform] object-fill scale-x-[-1]"
                 />
               </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
