@@ -2,9 +2,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   doc,
+  collection,
+  getDoc,
+  getDocs,
   setDoc,
   onSnapshot,
   updateDoc,
+  deleteDoc,
   deleteField,
   serverTimestamp,
 } from 'firebase/firestore';
@@ -43,6 +47,85 @@ const MOBILE_FRAME_HEIGHT = 1280;
 const MOBILE_FRAME_JPEG_QUALITY = 0.4;
 const MOBILE_FRAME_INTERVAL_MS = 333;
 const MOBILE_ANALYZE_INTERVAL_MS = 1000 / 24;
+const HAND_FINGERTIP_INDICES = [4, 8, 12, 16, 20];
+
+function sanitizeLandmarksForFirestore(landmarks) {
+  if (!Array.isArray(landmarks)) return [];
+  return landmarks.map((p) => ({
+    x: Number(p?.x ?? 0),
+    y: Number(p?.y ?? 0),
+    z: Number(p?.z ?? 0),
+    visibility: Number(p?.visibility ?? p?.v ?? 0),
+  }));
+}
+
+function buildOptimizedPoseDocForFirestore(bodyTracking) {
+  if (!bodyTracking?.pose?.length) return null;
+  const pose = sanitizeLandmarksForFirestore(bodyTracking.pose);
+  const leftHand21 = sanitizeLandmarksForFirestore(bodyTracking.leftHand21 || []);
+  const rightHand21 = sanitizeLandmarksForFirestore(bodyTracking.rightHand21 || []);
+  const leftF = HAND_FINGERTIP_INDICES.map((i) => leftHand21[i]).filter(Boolean);
+  const rightF = HAND_FINGERTIP_INDICES.map((i) => rightHand21[i]).filter(Boolean);
+  const lHip = pose[23];
+  const rHip = pose[24];
+  const hipCenter =
+    lHip && rHip
+      ? {
+          x: Number((lHip.x + rHip.x) / 2),
+          y: Number((lHip.y + rHip.y) / 2),
+          z: Number((lHip.z + rHip.z) / 2),
+          visibility: Number(Math.min(lHip.visibility ?? 1, rHip.visibility ?? 1)),
+        }
+      : null;
+  return {
+    landmarks: pose,
+    leftHand21,
+    rightHand21,
+    handFingertips: { left: leftF, right: rightF },
+    hipCenter,
+    ts: Date.now(),
+  };
+}
+
+function computeTeamSyncScore(participants) {
+  const valid = participants
+    .filter((p) => p?.cameraOn && p?.pose?.landmarks?.length)
+    .map((p) => p.pose.landmarks);
+  if (valid.length < 2) return 100;
+  const toVec = (lm) => {
+    const shL = lm[11];
+    const shR = lm[12];
+    const elL = lm[13];
+    const elR = lm[14];
+    const wrL = lm[15];
+    const wrR = lm[16];
+    const hpL = lm[23];
+    const hpR = lm[24];
+    const knL = lm[25];
+    const knR = lm[26];
+    const anL = lm[27];
+    const anR = lm[28];
+    if (!(shL && shR && elL && elR && wrL && wrR && hpL && hpR && knL && knR && anL && anR)) return null;
+    const a = (a0, b0, c0) => angleDeg(a0.x, a0.y, b0.x, b0.y, c0.x, c0.y) ?? 0;
+    const torsoTilt = Math.abs(Math.atan2(((shL.x + shR.x) / 2) - ((hpL.x + hpR.x) / 2), ((shL.y + shR.y) / 2) - ((hpL.y + hpR.y) / 2)));
+    return [a(shL, elL, wrL), a(shR, elR, wrR), a(hpL, knL, anL), a(hpR, knR, anR), torsoTilt * (180 / Math.PI)];
+  };
+  const vectors = valid.map(toVec).filter(Boolean);
+  if (vectors.length < 2) return 100;
+  let diffSum = 0;
+  let pairCount = 0;
+  for (let i = 0; i < vectors.length; i += 1) {
+    for (let j = i + 1; j < vectors.length; j += 1) {
+      const va = vectors[i];
+      const vb = vectors[j];
+      const d = va.reduce((acc, x, idx) => acc + Math.abs(x - vb[idx]), 0) / va.length;
+      diffSum += d;
+      pairCount += 1;
+    }
+  }
+  if (!pairCount) return 100;
+  return Math.max(0, Math.min(100, Math.round(100 - diffSum)));
+}
 
 function angleDeg(ax, ay, bx, by, cx, cy) {
   const v1x = ax - bx;
@@ -125,13 +208,34 @@ function buildDanceFeedback(metrics) {
   return tips;
 }
 
-function TrainingHub({ onStartLaptop, onJoinMobile, onBack }) {
+function TrainingHub({ selectedTrack, onSelectTrack, onStartLaptop, onJoinMobile, onBack }) {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 text-slate-100 flex flex-col items-center justify-center p-6">
       <div className="max-w-lg w-full space-y-6">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold tracking-tight">K-POP 트레이닝</h1>
           <p className="text-sm text-slate-400">안무 · 보컬 · 한국어 분석을 모바일과 노트북이 함께 사용합니다.</p>
+        </div>
+        <div className="rounded-2xl border border-slate-700 bg-slate-900/70 p-2">
+          <p className="text-xs text-slate-400 mb-2 px-1">시작 트랙 선택</p>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'dance', label: '안무' },
+              { id: 'vocal', label: '보컬' },
+              { id: 'korean', label: '한국어' },
+            ].map((x) => (
+              <button
+                key={x.id}
+                type="button"
+                onClick={() => onSelectTrack(x.id)}
+                className={`rounded-xl py-2 text-sm font-medium transition ${
+                  selectedTrack === x.id ? 'bg-slate-700 text-white' : 'text-slate-400 hover:bg-slate-800'
+                }`}
+              >
+                {x.label}
+              </button>
+            ))}
+          </div>
         </div>
         <div className="grid gap-4">
           <button
@@ -165,6 +269,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const latestPoseRef = useRef(null);
   const [remoteVideoReady, setRemoteVideoReady] = useState(false);
   const [data, setData] = useState(null);
+  const [participants, setParticipants] = useState([]);
   const [selectedTrack, setSelectedTrack] = useState('dance');
   const { remoteStream } = useWebRtcSession({
     db,
@@ -175,16 +280,28 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     enabled: true,
   });
   const joinUrl = useMemo(() => {
-    const u = new URL(window.location.href);
-    u.searchParams.set('session', sessionId);
-    u.searchParams.set('train', '1');
-    return u.toString();
+    const protocol = window.location.protocol;
+    const hostname = window.location.hostname;
+    const port = window.location.port || '5173';
+    const pathname = window.location.pathname || '/';
+    return `${protocol}//${hostname}:${port}${pathname}?session=${encodeURIComponent(sessionId)}`;
   }, [sessionId]);
 
   useEffect(() => {
     const ref = doc(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId);
     const unsub = onSnapshot(ref, (snap) => {
       setData(snap.exists() ? snap.data() : null);
+    });
+    return () => unsub();
+  }, [db, appId, sessionId]);
+
+  useEffect(() => {
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId, 'participants');
+    const unsub = onSnapshot(colRef, (snap) => {
+      const list = snap.docs
+        .map((d) => ({ id: d.id, ...d.data() }))
+        .sort((a, b) => Number(a.joinedAt || 0) - Number(b.joinedAt || 0));
+      setParticipants(list);
     });
     return () => unsub();
   }, [db, appId, sessionId]);
@@ -199,6 +316,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const metrics = data?.metrics || {};
   const mirroredFrame = data?.mobileFrame?.dataUrl || '';
   const danceTips = Array.isArray(metrics.feedbackTips) ? metrics.feedbackTips : [];
+  const teamSyncScore = useMemo(() => computeTeamSyncScore(participants), [participants]);
 
   useEffect(() => {
     if (track) setSelectedTrack(track);
@@ -344,6 +462,9 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                 <div className="rounded-lg bg-slate-900/80 p-2">좌우 대칭 <span className="font-mono text-white">{metrics.symmetry ?? '—'}</span></div>
                 <div className="rounded-lg bg-slate-900/80 p-2">포즈 신뢰도 <span className="font-mono text-white">{metrics.poseConfidence ?? '—'}</span></div>
               </div>
+              <p className="text-xs text-slate-400 mt-2">
+                참여자 {participants.length}명 · 팀 싱크 <span className="font-mono text-white">{teamSyncScore}</span>
+              </p>
               <p className="text-sm text-slate-300 mt-2">
                 실시간 종합 점수: <span className="font-mono text-white">{metrics.totalScore ?? '—'}</span>
               </p>
@@ -398,7 +519,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   );
 }
 
-function TrainingMobile({ db, appId, sessionId, onBack }) {
+function TrainingMobile({ db, appId, sessionId, userId, onBack, onComplete }) {
   const [tab, setTab] = useState('dance');
   const [camOn, setCamOn] = useState(false);
   const [camStream, setCamStream] = useState(null);
@@ -406,6 +527,7 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   const [koInput, setKoInput] = useState('');
   const [vocalTarget, setVocalTarget] = useState(60);
   const [danceRealtime, setDanceRealtime] = useState(null);
+  const [joinError, setJoinError] = useState('');
   const videoRef = useRef(null);
   const mobileOverlayRef = useRef(null);
   const landmarkerRef = useRef(null);
@@ -414,7 +536,9 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   const lastFrameWrite = useRef(0);
   const lastAnalyzeAtRef = useRef(0);
   const latestPoseLandmarksRef = useRef(null);
+  const latestBodyTrackingRef = useRef(null);
   const debouncedUpdateFrameRef = useRef(null);
+  const poseUploadIntervalRef = useRef(null);
   const mirrorCanvasRef = useRef(null);
   const webrtcStatusRef = useRef('idle');
   const wristHist = useRef([]);
@@ -427,6 +551,10 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
     () => doc(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId),
     [db, appId, sessionId]
   );
+  const participantRef = useMemo(() => {
+    if (!userId) return null;
+    return doc(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId, 'participants', userId);
+  }, [db, appId, sessionId, userId]);
   const { status: webrtcStatus, error: webrtcError } = useWebRtcSession({
     db,
     appId,
@@ -439,6 +567,40 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   useEffect(() => {
     webrtcStatusRef.current = webrtcStatus;
   }, [webrtcStatus]);
+
+  useEffect(() => {
+    if (!participantRef || !userId) return undefined;
+    let cancelled = false;
+    (async () => {
+      try {
+        const colRef = collection(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId, 'participants');
+        const snap = await getDocs(colRef);
+        const existsMe = snap.docs.some((d) => d.id === userId);
+        if (!existsMe && snap.size >= 4) {
+          setJoinError('동시 접속은 최대 4명까지입니다.');
+          return;
+        }
+        setJoinError('');
+        await setDoc(
+          participantRef,
+          {
+            uid: userId,
+            joinedAt: Date.now(),
+            lastSeen: Date.now(),
+            cameraOn: false,
+            track: tab,
+          },
+          { merge: true }
+        );
+      } catch (e) {
+        if (!cancelled) setJoinError(e?.message || '참가자 등록에 실패했습니다.');
+      }
+    })();
+    return () => {
+      cancelled = true;
+      deleteDoc(participantRef).catch(() => {});
+    };
+  }, [db, appId, sessionId, participantRef, userId, tab]);
 
   const syncTrack = useCallback(
     async (t) => {
@@ -523,6 +685,11 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
             lastAnalyzeAtRef.current = now;
             const r = landmarkerRef.current.detectForVideo(video, now);
             latestPoseLandmarksRef.current = r.poseLandmarks?.[0] || null;
+            latestBodyTrackingRef.current = {
+              pose: r.poseLandmarks?.[0] || null,
+              leftHand21: r.leftHandLandmarks?.[0] || null,
+              rightHand21: r.rightHandLandmarks?.[0] || null,
+            };
           }
           const pl = latestPoseLandmarksRef.current;
           if (
@@ -639,8 +806,6 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
               feedbackTips,
             });
             updateDoc(sessionRef, {
-              pose: { landmarks: compact, ts: Date.now() },
-              cameraActive: true,
               metrics: {
                 leftElbowDeg,
                 rightElbowDeg,
@@ -657,6 +822,28 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
           rafRef.current = requestAnimationFrame(loop);
         };
         rafRef.current = requestAnimationFrame(loop);
+        if (poseUploadIntervalRef.current) clearInterval(poseUploadIntervalRef.current);
+        poseUploadIntervalRef.current = setInterval(() => {
+          const poseDoc = buildOptimizedPoseDocForFirestore(latestBodyTrackingRef.current);
+          if (!poseDoc) return;
+          updateDoc(sessionRef, {
+            pose: poseDoc,
+            cameraActive: true,
+            updatedAt: serverTimestamp(),
+          }).catch(() => {});
+          if (participantRef) {
+            setDoc(
+              participantRef,
+              {
+                pose: poseDoc,
+                cameraOn: true,
+                lastSeen: Date.now(),
+                track: tab,
+              },
+              { merge: true }
+            ).catch(() => {});
+          }
+        }, 250);
       } catch (e) {
         console.error(e);
       }
@@ -668,6 +855,10 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
       if (debouncedUpdateFrameRef.current) {
         clearTimeout(debouncedUpdateFrameRef.current);
         debouncedUpdateFrameRef.current = null;
+      }
+      if (poseUploadIntervalRef.current) {
+        clearInterval(poseUploadIntervalRef.current);
+        poseUploadIntervalRef.current = null;
       }
       const v = videoRef.current;
       if (v?.srcObject) {
@@ -684,6 +875,7 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
       landmarkerRef.current?.close?.();
       landmarkerRef.current = null;
       latestPoseLandmarksRef.current = null;
+      latestBodyTrackingRef.current = null;
       lastAnalyzeAtRef.current = 0;
       wristHist.current = [];
       rightWristHist.current = [];
@@ -693,8 +885,15 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
         cameraActive: false,
         updatedAt: serverTimestamp(),
       }).catch(() => {});
+      if (participantRef) {
+        setDoc(
+          participantRef,
+          { pose: deleteField(), cameraOn: false, lastSeen: Date.now(), track: tab },
+          { merge: true }
+        ).catch(() => {});
+      }
     };
-  }, [camOn, tab, sessionRef]);
+  }, [camOn, tab, sessionRef, participantRef]);
 
   useEffect(() => {
     if (!micOn || tab !== 'vocal') {
@@ -808,6 +1007,31 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
     }
   };
 
+  const sendDataFromMobile = async () => {
+    try {
+      await updateDoc(sessionRef, { status: 'analyzing', updatedAt: serverTimestamp() });
+      setTimeout(async () => {
+        const snap = await getDoc(sessionRef);
+        const cur = snap.exists() ? snap.data() : {};
+        const prev = cur?.metrics || {};
+        await updateDoc(sessionRef, {
+          status: 'completed',
+          runCount: Number(cur?.runCount || 0) + 1,
+          metrics: {
+            skill: Math.min(98, Math.max(0, Number(prev.skill ?? 42) + 3)),
+            metricA: Math.min(95, Math.max(0, Number(prev.metricA ?? 55) + 2)),
+            metricB: Math.min(95, Math.max(0, Number(prev.metricB ?? 48) + 2)),
+            metricC: Math.min(95, Math.max(0, Number(prev.metricC ?? 60) + 2)),
+          },
+          updatedAt: serverTimestamp(),
+        });
+        onComplete?.();
+      }, 1500);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col">
       <header className="border-b border-slate-800 p-4 flex items-center justify-between">
@@ -833,6 +1057,9 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
         ))}
       </div>
       <div className="flex-1 p-4 overflow-auto">
+        {!!joinError && (
+          <div className="mb-4 rounded-xl border border-rose-500/40 bg-rose-950/50 p-3 text-sm text-rose-200">{joinError}</div>
+        )}
         {tab === 'dance' && (
           <div className="space-y-4">
             <div className="relative w-full max-w-md mx-auto">
@@ -872,6 +1099,9 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
                 <p className="text-slate-300">{danceRealtime.feedbackTips?.[0]}</p>
               </div>
             )}
+            <button type="button" onClick={sendDataFromMobile} className="w-full py-3 rounded-xl bg-emerald-600 font-semibold">
+              참여 완료 & 분석 전송
+            </button>
           </div>
         )}
         {tab === 'vocal' && (
@@ -917,11 +1147,65 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   );
 }
 
+function TrainingResults({ db, appId, sessionId, onBack }) {
+  const [sessionData, setSessionData] = useState(null);
+  const [participants, setParticipants] = useState([]);
+  useEffect(() => {
+    const ref = doc(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId);
+    const unsub = onSnapshot(ref, (snap) => setSessionData(snap.exists() ? snap.data() : null));
+    return () => unsub();
+  }, [db, appId, sessionId]);
+  useEffect(() => {
+    const colRef = collection(db, 'artifacts', appId, 'public', 'data', SESSIONS, sessionId, 'participants');
+    const unsub = onSnapshot(colRef, (snap) => setParticipants(snap.docs.map((d) => ({ id: d.id, ...d.data() }))));
+    return () => unsub();
+  }, [db, appId, sessionId]);
+
+  const metrics = sessionData?.metrics || {};
+  const list = [Number(metrics.skill || 0), Number(metrics.metricA || 0), Number(metrics.metricB || 0), Number(metrics.metricC || 0)];
+  const total = list.length ? Math.round(list.reduce((a, b) => a + b, 0) / list.length) : 0;
+  const weakestIdx = list.reduce((m, v, i, arr) => (v < arr[m] ? i : m), 0);
+  const weakestKey = ['skill', 'metricA', 'metricB', 'metricC'][weakestIdx] || 'skill';
+  const stage = total >= 85 ? 'IDOL' : total >= 70 ? 'DEBUT' : 'TRAINEE';
+  const teamSyncScore = computeTeamSyncScore(participants);
+  const vocalScore = Number(sessionData?.pitch?.accuracy || 0);
+  const tips = [
+    `약점 보강: ${weakestKey} 지표를 우선 보완하세요.`,
+    `보컬 피드백: ${sessionData?.pitch?.feedback || '보컬 데이터를 더 수집해 보세요.'}`,
+    `팀 싱크 점수: ${teamSyncScore}점`,
+    sessionData?.track === 'korean' ? '한국어 트랙은 발음 정확도와 리듬을 함께 점검하세요.' : '안무/보컬 균형 훈련을 유지하세요.',
+  ];
+
+  return (
+    <div className="min-h-screen bg-slate-950 text-slate-100 p-6">
+      <div className="max-w-4xl mx-auto space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold">훈련 결과 요약</h2>
+          <button type="button" onClick={onBack} className="text-sm text-sky-400">
+            ← 허브
+          </button>
+        </div>
+        <div className="grid md:grid-cols-3 gap-4">
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">종합 점수 <span className="font-mono text-white">{total}</span></div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">성장 단계 <span className="font-mono text-white">{stage}</span></div>
+          <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-4">보컬 정확도 <span className="font-mono text-white">{vocalScore}</span></div>
+        </div>
+        <ul className="rounded-xl border border-slate-800 bg-slate-900/60 p-4 list-disc pl-5 text-sm text-slate-300 space-y-1">
+          {tips.map((t, i) => (
+            <li key={i}>{t}</li>
+          ))}
+        </ul>
+      </div>
+    </div>
+  );
+}
+
 export default function TrainingApp({ db, auth, appId, onBack }) {
   const [user, setUser] = useState(null);
   const [phase, setPhase] = useState('hub');
   const [sessionId, setSessionId] = useState('');
   const [joinInput, setJoinInput] = useState('');
+  const [homeTrainingTab, setHomeTrainingTab] = useState('dance');
 
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, (u) => setUser(u));
@@ -937,25 +1221,30 @@ export default function TrainingApp({ db, auth, appId, onBack }) {
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
     const s = (p.get('session') || '').trim().toUpperCase();
-    const train = p.get('train');
-    if (s && train === '1') {
+    if (s) {
       setSessionId(s);
       setPhase('mobile');
     }
   }, []);
 
   const startLaptop = async () => {
-    const id = Math.random().toString(36).substring(2, 8).toUpperCase();
+    const id = Math.random().toString(36).substring(2, 7).toUpperCase();
     const ref = doc(db, 'artifacts', appId, 'public', 'data', SESSIONS, id);
     try {
       await setDoc(ref, {
+        id,
+        status: 'waiting',
+        runCount: 0,
+        track: homeTrainingTab,
+        lastUpdate: Date.now(),
+        vocalTargetMidi: 60,
+        vocalTargetNote: 'C4',
+        metrics: { skill: 42, metricA: 55, metricB: 48, metricC: 60 },
         createdAt: serverTimestamp(),
         ownerUid: user?.uid || null,
-        track: 'dance',
         pose: null,
         pitch: null,
         korean: null,
-        metrics: {},
         cameraActive: false,
         type: 'training',
       });
@@ -988,6 +1277,8 @@ export default function TrainingApp({ db, auth, appId, onBack }) {
   if (phase === 'hub') {
     return (
       <TrainingHub
+        selectedTrack={homeTrainingTab}
+        onSelectTrack={setHomeTrainingTab}
         onStartLaptop={startLaptop}
         onJoinMobile={() => setPhase('join')}
         onBack={onBack}
@@ -1022,7 +1313,20 @@ export default function TrainingApp({ db, auth, appId, onBack }) {
   }
 
   if (phase === 'mobile') {
-    return <TrainingMobile db={db} appId={appId} sessionId={sessionId} onBack={() => setPhase('hub')} />;
+    return (
+      <TrainingMobile
+        db={db}
+        appId={appId}
+        sessionId={sessionId}
+        userId={user?.uid || ''}
+        onBack={() => setPhase('hub')}
+        onComplete={() => setPhase('results')}
+      />
+    );
+  }
+
+  if (phase === 'results') {
+    return <TrainingResults db={db} appId={appId} sessionId={sessionId} onBack={() => setPhase('hub')} />;
   }
 
   return null;

@@ -74,17 +74,16 @@ const appId =
     ? __app_id
     : import.meta.env.VITE_APP_ID
       ? String(import.meta.env.VITE_APP_ID).trim()
-      : 'onnode-integrated-v15';
+      : 'onnode-realtime-demo';
 
 function FirebaseMissingScreen() {
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col items-center justify-center p-8 font-sans">
       <h1 className="text-2xl font-black text-fuchsia-400 mb-4">Firebase 설정이 필요합니다</h1>
       <p className="text-sm text-slate-400 text-center max-w-lg mb-6 break-keep leading-relaxed">
-        Netlify(또는 배포 환경)에 <code className="text-fuchsia-300">VITE_FIREBASE_API_KEY</code> 등{' '}
-        <code className="text-fuchsia-300">VITE_</code> 로 시작하는 환경 변수를 추가한 뒤{' '}
-        <strong>재배포(Clear cache and deploy)</strong> 하세요. 로컬의 <code className="text-slate-500">.env</code>는 Git에
-        올라가지 않아 배포 빌드에는 포함되지 않습니다.
+        Vite에서는 브라우저로 <code className="text-fuchsia-300">VITE_</code> 접두사 환경 변수만 전달됩니다.
+        <br />
+        <code className="text-fuchsia-300">.env</code>를 수정한 뒤 개발 서버를 반드시 다시 시작하세요.
       </p>
       <ul className="text-xs text-slate-500 text-left space-y-1 font-mono max-w-md">
         <li>VITE_FIREBASE_API_KEY</li>
@@ -115,10 +114,18 @@ function MainApp({ onBackToRoot }) {
 
   useEffect(() => {
     const initAuth = async () => {
-      if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-        await signInWithCustomToken(auth, __initial_auth_token);
-      } else {
-        await signInAnonymously(auth);
+      try {
+        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+          await signInWithCustomToken(auth, __initial_auth_token);
+        } else {
+          await signInAnonymously(auth);
+        }
+      } catch (e) {
+        if (e?.code === 'auth/operation-not-allowed') {
+          console.error('Firebase Console에서 Authentication > Anonymous 로그인 방식을 활성화하세요.');
+        } else {
+          console.error(e);
+        }
       }
     };
     void initAuth();
