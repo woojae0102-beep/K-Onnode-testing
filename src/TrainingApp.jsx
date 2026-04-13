@@ -155,7 +155,6 @@ function TrainingHub({ onStartLaptop, onJoinMobile, onBack }) {
 }
 
 function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
-  const canvasRef = useRef(null);
   const danceOverlayRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const [data, setData] = useState(null);
@@ -184,43 +183,34 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   }, [db, appId, sessionId]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    const w = canvas.width;
-    const h = canvas.height;
-    ctx.fillStyle = '#0f172a';
-    ctx.fillRect(0, 0, w, h);
-    const lm = data?.pose?.landmarks;
-    if (lm?.length) drawPoseOnCanvas(ctx, lm, w, h);
-    else {
-      ctx.fillStyle = '#64748b';
-      ctx.font = '14px system-ui';
-      ctx.fillText('모바일 안무 탭에서 카메라를 켜면 포즈가 표시됩니다.', 24, h / 2);
-    }
-  }, [data?.pose?.landmarks]);
-
-  useEffect(() => {
     const overlay = danceOverlayRef.current;
     const video = remoteVideoRef.current;
     if (!overlay || !video) return;
-    const w = video.videoWidth || 640;
-    const h = video.videoHeight || 360;
-    if (overlay.width !== w || overlay.height !== h) {
-      overlay.width = w;
-      overlay.height = h;
-    }
-    const ctx = overlay.getContext('2d');
-    if (!ctx) return;
-    const lm = data?.pose?.landmarks;
-    if (lm?.length) drawPoseOnCanvas(ctx, lm, overlay.width, overlay.height);
-    else ctx.clearRect(0, 0, overlay.width, overlay.height);
+    const syncAndDraw = () => {
+      const w = video.videoWidth || 640;
+      const h = video.videoHeight || 360;
+      if (overlay.width !== w || overlay.height !== h) {
+        overlay.width = w;
+        overlay.height = h;
+      }
+      const ctx = overlay.getContext('2d');
+      if (!ctx) return;
+      const lm = data?.pose?.landmarks;
+      if (lm?.length) drawPoseOnCanvas(ctx, lm, overlay.width, overlay.height);
+      else ctx.clearRect(0, 0, overlay.width, overlay.height);
+    };
+    syncAndDraw();
+    video.addEventListener('loadedmetadata', syncAndDraw);
+    return () => {
+      video.removeEventListener('loadedmetadata', syncAndDraw);
+    };
   }, [data?.pose?.landmarks, remoteStream]);
 
   const track = data?.track || 'dance';
   const pitch = data?.pitch;
   const korean = data?.korean || {};
   const metrics = data?.metrics || {};
+  const mirroredFrame = data?.mobileFrame?.dataUrl || '';
   const danceTips = Array.isArray(metrics.feedbackTips) ? metrics.feedbackTips : [];
 
   useEffect(() => {
@@ -297,31 +287,41 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
           {selectedTrack === 'dance' && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-4">
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
-              <div className="relative">
-                <video
-                  ref={remoteVideoRef}
-                  autoPlay
-                  playsInline
-                  muted
-                  className="w-full rounded-xl bg-black border border-slate-800 object-contain max-h-[360px] scale-x-[-1]"
+              {remoteStream ? (
+                <div className="relative">
+                  <video
+                    ref={remoteVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="relative z-0 w-full rounded-xl bg-black border border-slate-800 object-contain max-h-[360px] scale-x-[-1]"
+                  />
+                  <canvas
+                    ref={danceOverlayRef}
+                    className="absolute inset-0 z-10 w-full h-full rounded-xl pointer-events-none bg-transparent scale-x-[-1]"
+                  />
+                </div>
+              ) : mirroredFrame ? (
+                <img
+                  src={mirroredFrame}
+                  alt="mobile-mirror-fallback"
+                  className="w-full rounded-xl bg-black border border-slate-800 object-contain max-h-[360px]"
                 />
-                <canvas
-                  ref={danceOverlayRef}
-                  className="absolute inset-0 w-full h-full rounded-xl pointer-events-none scale-x-[-1]"
-                />
-              </div>
+              ) : (
+                <div className="w-full h-[240px] rounded-xl bg-slate-950 border border-slate-800 flex items-center justify-center text-sm text-slate-500">
+                  모바일 카메라가 아직 연결되지 않았습니다.
+                </div>
+              )}
               <p className="text-xs text-slate-500 mt-2">
                 실시간 연결 상태: <span className="font-mono">{webrtcStatus}</span>
                 {webrtcError ? ` · 오류: ${webrtcError}` : ''}
+                {!remoteStream && mirroredFrame ? ' · 영상 폴백 사용 중' : ''}
               </p>
               {!remoteStream && (
                 <p className="text-xs text-amber-400 mt-1">
                   모바일 안무 탭에서 카메라를 켜고 권한을 허용하면 실제 영상이 여기에 표시됩니다.
                 </p>
               )}
-              <div className="mt-3">
-                <canvas ref={canvasRef} width={640} height={360} className="w-full rounded-xl bg-slate-950 border border-slate-800" />
-              </div>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-3 text-xs">
                 <div className="rounded-lg bg-slate-900/80 p-2">활동성 <span className="font-mono text-white">{metrics.danceActivity ?? '—'}</span></div>
                 <div className="rounded-lg bg-slate-900/80 p-2">팔 정확도 <span className="font-mono text-white">{metrics.armAccuracy ?? '—'}</span></div>
@@ -395,6 +395,8 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   const landmarkerRef = useRef(null);
   const rafRef = useRef(null);
   const lastPoseWrite = useRef(0);
+  const lastFrameWrite = useRef(0);
+  const mirrorCanvasRef = useRef(null);
   const wristHist = useRef([]);
   const rightWristHist = useRef([]);
   const audioCtxRef = useRef(null);
@@ -491,6 +493,26 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
           const r = landmarkerRef.current.detectForVideo(video, performance.now());
           const pl = r.poseLandmarks?.[0];
           const now = performance.now();
+          if (video.videoWidth && now - lastFrameWrite.current > 320) {
+            lastFrameWrite.current = now;
+            const c = mirrorCanvasRef.current || document.createElement('canvas');
+            mirrorCanvasRef.current = c;
+            c.width = 320;
+            c.height = 180;
+            const cctx = c.getContext('2d');
+            if (cctx) {
+              // 모바일 미리보기와 동일하게 좌우 반전된 화면을 저장합니다.
+              cctx.save();
+              cctx.scale(-1, 1);
+              cctx.drawImage(video, -c.width, 0, c.width, c.height);
+              cctx.restore();
+              const dataUrl = c.toDataURL('image/jpeg', 0.62);
+              updateDoc(sessionRef, {
+                mobileFrame: { dataUrl, ts: Date.now() },
+                updatedAt: serverTimestamp(),
+              }).catch(() => {});
+            }
+          }
           const overlay = mobileOverlayRef.current;
           if (overlay && video.videoWidth && video.videoHeight) {
             if (overlay.width !== video.videoWidth || overlay.height !== video.videoHeight) {
@@ -621,6 +643,7 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
       rightWristHist.current = [];
       updateDoc(sessionRef, {
         pose: deleteField(),
+        mobileFrame: deleteField(),
         cameraActive: false,
         updatedAt: serverTimestamp(),
       }).catch(() => {});
