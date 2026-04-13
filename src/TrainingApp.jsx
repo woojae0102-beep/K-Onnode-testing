@@ -158,6 +158,8 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const danceCanvasRef = useRef(null);
   const remoteVideoRef = useRef(null);
   const latestPoseRef = useRef(null);
+  const latestFrameUrlRef = useRef('');
+  const latestFrameImageRef = useRef(null);
   const danceRenderRafRef = useRef(null);
   const [data, setData] = useState(null);
   const [selectedTrack, setSelectedTrack] = useState('dance');
@@ -187,6 +189,10 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   useEffect(() => {
     latestPoseRef.current = data?.pose?.landmarks || null;
   }, [data?.pose?.landmarks]);
+
+  useEffect(() => {
+    latestFrameUrlRef.current = data?.mobileFrame?.dataUrl || '';
+  }, [data?.mobileFrame?.dataUrl]);
 
   const track = data?.track || 'dance';
   const pitch = data?.pitch;
@@ -222,22 +228,50 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     if (!ctx) return;
 
     let cancelled = false;
+    if (!canvas.width || !canvas.height) {
+      canvas.width = 640;
+      canvas.height = 480;
+    }
     const renderFrame = () => {
       if (cancelled) return;
+      let drewBackground = false;
       const vw = video.videoWidth || 0;
       const vh = video.videoHeight || 0;
-      if (vw > 0 && vh > 0) {
+      // 원인1 대응: 비디오 프레임 데이터가 준비된 경우에만 drawImage를 호출합니다.
+      if (video.readyState >= 2 && vw > 0 && vh > 0) {
         if (canvas.width !== vw || canvas.height !== vh) {
           canvas.width = vw;
           canvas.height = vh;
         }
-        // 1) 실제 카메라 RGB 프레임을 먼저 그립니다.
         ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-        // 2) 그 위에 skeleton 오버레이를 그립니다.
-        const lm = latestPoseRef.current;
-        if (lm?.length) drawPoseOnCanvas(ctx, lm, canvas.width, canvas.height, false);
+        drewBackground = true;
       } else {
+        // 원인2 대응: WebRTC 영상이 비었을 때 mobileFrame(base64 dataUrl)로 폴백 렌더합니다.
+        const frameUrl = latestFrameUrlRef.current;
+        if (frameUrl) {
+          if (!latestFrameImageRef.current || latestFrameImageRef.current.src !== frameUrl) {
+            const img = new Image();
+            img.src = frameUrl;
+            latestFrameImageRef.current = img;
+          }
+          const img = latestFrameImageRef.current;
+          if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
+            if (canvas.width !== img.naturalWidth || canvas.height !== img.naturalHeight) {
+              canvas.width = img.naturalWidth;
+              canvas.height = img.naturalHeight;
+            }
+            ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+            drewBackground = true;
+          }
+        }
+      }
+      if (!drewBackground) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
+      }
+      const lm = latestPoseRef.current;
+      if (lm?.length) {
+        // 원인3 대응: canvas 실치수 기준으로 skeleton을 같은 프레임 위에 오버레이합니다.
+        drawPoseOnCanvas(ctx, lm, canvas.width, canvas.height, false);
       }
       danceRenderRafRef.current = requestAnimationFrame(renderFrame);
     };
@@ -310,7 +344,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                   autoPlay
                   playsInline
                   muted
-                  className="hidden"
+                  className="absolute inset-0 h-full w-full opacity-0 pointer-events-none"
                 />
                 <canvas
                   ref={danceCanvasRef}
