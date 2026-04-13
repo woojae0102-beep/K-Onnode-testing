@@ -163,10 +163,13 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   const remoteVideoRef = useRef(null);
   const latestPoseRef = useRef(null);
   const latestFrameUrlRef = useRef('');
+  const latestFrameTsRef = useRef(0);
   const latestFrameImageRef = useRef(null);
   const pendingFrameUrlRef = useRef('');
   const isFrameLoadingRef = useRef(false);
   const loadedFrameUrlRef = useRef('');
+  const lastVideoTimeRef = useRef(-1);
+  const lastVideoAdvanceAtRef = useRef(0);
   const danceRenderRafRef = useRef(null);
   const [data, setData] = useState(null);
   const [selectedTrack, setSelectedTrack] = useState('dance');
@@ -200,6 +203,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
   useEffect(() => {
     const nextUrl = data?.mobileFrame?.dataUrl || '';
     latestFrameUrlRef.current = nextUrl;
+    latestFrameTsRef.current = Number(data?.mobileFrame?.ts || 0);
     pendingFrameUrlRef.current = nextUrl;
     if (!nextUrl) return;
     if (!latestFrameImageRef.current) latestFrameImageRef.current = new Image();
@@ -255,9 +259,10 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     canvas.style.width = '100%';
-    canvas.style.height = 'auto';
+    canvas.style.height = '100%';
     canvas.style.aspectRatio = 'auto';
-    canvas.style.objectFit = 'contain';
+    canvas.style.objectFit = 'cover';
+    canvas.style.display = 'block';
     canvas.style.willChange = 'transform';
     canvas.style.transform = 'translateZ(0)';
 
@@ -269,52 +274,47 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     const renderFrame = () => {
       if (cancelled) return;
       let drewBackground = false;
-      let logicalDrawW = canvas.width / Math.max(1, window.devicePixelRatio || 1);
-      let logicalDrawH = canvas.height / Math.max(1, window.devicePixelRatio || 1);
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      const logicalDrawW = Math.max(1, Math.round(canvas.clientWidth || 640));
+      const logicalDrawH = Math.max(1, Math.round(canvas.clientHeight || 480));
+      const pixelW = Math.round(logicalDrawW * dpr);
+      const pixelH = Math.round(logicalDrawH * dpr);
+      if (canvas.width !== pixelW || canvas.height !== pixelH) {
+        canvas.width = pixelW;
+        canvas.height = pixelH;
+      }
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = 'high';
+
       const vw = video.videoWidth || 0;
       const vh = video.videoHeight || 0;
-      // 원인1 대응: 비디오 프레임 데이터가 준비된 경우에만 drawImage를 호출합니다.
+      // WebRTC 비디오가 유효하고 실제로 시간이 전진할 때만 영상 소스를 우선합니다.
       if (video.readyState >= 2 && vw > 0 && vh > 0) {
-        const logicalW = vw;
-        const logicalH = vh;
-        const dpr = Math.max(1, window.devicePixelRatio || 1);
-        const pixelW = Math.round(logicalW * dpr);
-        const pixelH = Math.round(logicalH * dpr);
-        if (canvas.width !== pixelW || canvas.height !== pixelH) {
-          canvas.width = pixelW;
-          canvas.height = pixelH;
+        const now = performance.now();
+        const currentTime = Number(video.currentTime || 0);
+        if (currentTime > 0 && currentTime !== lastVideoTimeRef.current) {
+          lastVideoTimeRef.current = currentTime;
+          lastVideoAdvanceAtRef.current = now;
         }
-        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-        ctx.imageSmoothingEnabled = true;
-        ctx.imageSmoothingQuality = 'high';
-        ctx.drawImage(video, 0, 0, logicalW, logicalH);
-        logicalDrawW = logicalW;
-        logicalDrawH = logicalH;
-        drewBackground = true;
-      } else {
-        // 최신 프레임만 유지되는 재사용 Image 폴백 렌더링입니다.
-        const img = latestFrameImageRef.current;
-        if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0) {
-          const iw = img.naturalWidth;
-          const ih = img.naturalHeight;
-          const logicalW = iw;
-          const logicalH = ih;
-          const dpr = Math.max(1, window.devicePixelRatio || 1);
-          const pixelW = Math.round(logicalW * dpr);
-          const pixelH = Math.round(logicalH * dpr);
-          if (canvas.width !== pixelW || canvas.height !== pixelH) {
-            canvas.width = pixelW;
-            canvas.height = pixelH;
-          }
-          ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-          ctx.imageSmoothingEnabled = true;
-          ctx.imageSmoothingQuality = 'high';
-          ctx.drawImage(img, 0, 0, logicalW, logicalH);
-          logicalDrawW = logicalW;
-          logicalDrawH = logicalH;
+        const stalledMs = lastVideoAdvanceAtRef.current ? now - lastVideoAdvanceAtRef.current : Infinity;
+        const canUseVideo = webrtcStatus === 'connected' && stalledMs < 1200;
+        if (canUseVideo) {
+          ctx.drawImage(video, 0, 0, logicalDrawW, logicalDrawH);
           drewBackground = true;
         }
       }
+
+      // 최신 프레임 폴백(연결 실패/끊김/정지 시)을 사용해 freeze를 완화합니다.
+      if (!drewBackground) {
+        const img = latestFrameImageRef.current;
+        const frameAgeMs = Date.now() - Number(latestFrameTsRef.current || 0);
+        if (img?.complete && img.naturalWidth > 0 && img.naturalHeight > 0 && frameAgeMs < 5000) {
+          ctx.drawImage(img, 0, 0, logicalDrawW, logicalDrawH);
+          drewBackground = true;
+        }
+      }
+
       const lm = latestPoseRef.current;
       if (drewBackground && lm?.length) {
         drawPoseOnCanvas(ctx, lm, logicalDrawW, logicalDrawH, false);
@@ -328,7 +328,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
       if (danceRenderRafRef.current) cancelAnimationFrame(danceRenderRafRef.current);
       danceRenderRafRef.current = null;
     };
-  }, [remoteStream]);
+  }, [remoteStream, webrtcStatus]);
 
   return (
     <div className="min-h-screen bg-slate-950 text-slate-100 p-4 md:p-6">
@@ -384,7 +384,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
           {selectedTrack === 'dance' && (
             <div className="rounded-2xl border border-slate-800 bg-slate-900/50 p-5">
               <h3 className="font-semibold text-cyan-300 mb-3">안무 대시보드</h3>
-              <div className="relative w-full h-[80vh] min-h-[480px] flex items-center justify-center rounded-xl overflow-hidden border border-slate-800 bg-black">
+              <div className="relative w-full h-[80vh] min-h-[480px] overflow-hidden rounded-xl border border-slate-800 bg-black">
                 <video
                   ref={remoteVideoRef}
                   autoPlay
@@ -394,7 +394,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
                 />
                 <canvas
                   ref={danceCanvasRef}
-                  className="absolute left-0 top-0 z-10 w-full h-auto max-h-[80vh] pointer-events-none bg-transparent transform-gpu [will-change:transform] object-contain scale-x-[-1]"
+                  className="absolute inset-0 z-10 h-full w-full pointer-events-none bg-transparent transform-gpu [will-change:transform] object-cover scale-x-[-1]"
                 />
                 {!remoteStream && (
                   <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/70 text-sm text-slate-300">

@@ -95,6 +95,7 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
   const [remoteStream, setRemoteStream] = useState(null);
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState(null);
+  const [retryToken, setRetryToken] = useState(0);
 
   useEffect(() => {
     if (!enabled || !db || !sessionId || !appId) {
@@ -110,6 +111,7 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
     }
 
     let cancelled = false;
+    let reconnectTimer = null;
     const pc = new RTCPeerConnection({ iceServers: buildIceServers() });
     const unsubscribersRef = { current: [] };
     const processedIceIds = new Set();
@@ -134,6 +136,14 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
       }
     };
 
+    const scheduleReconnect = () => {
+      if (cancelled || reconnectTimer) return;
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        if (!cancelled) setRetryToken((n) => n + 1);
+      }, 2000);
+    };
+
     pc.onicecandidate = (ev) => {
       try {
         if (!ev.candidate || cancelled) return;
@@ -153,6 +163,21 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
         if (s === 'connected') setStatus('connected');
         else if (s === 'failed' || s === 'disconnected' || s === 'closed') {
           setStatus(s);
+          setRemoteStream(null);
+          scheduleReconnect();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
+    pc.oniceconnectionstatechange = () => {
+      try {
+        const s = pc.iceConnectionState;
+        if (s === 'failed' || s === 'disconnected') {
+          setStatus(s);
+          setRemoteStream(null);
+          scheduleReconnect();
         }
       } catch (e) {
         console.error(e);
@@ -286,6 +311,10 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
     return () => {
       cancelled = true;
       try {
+        if (reconnectTimer) {
+          clearTimeout(reconnectTimer);
+          reconnectTimer = null;
+        }
         unsubscribersRef.current.forEach((u) => {
           try {
             u();
@@ -301,7 +330,7 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
         console.error(e);
       }
     };
-  }, [db, appId, sessionId, role, localStream, enabled]);
+  }, [db, appId, sessionId, role, localStream, enabled, retryToken]);
 
   return { remoteStream, status, error };
 }
