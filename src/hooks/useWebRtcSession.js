@@ -3,7 +3,7 @@
  * 경로: artifacts/{appId}/public/data/sessions/{sessionId}/webrtc/signaling
  *       artifacts/{appId}/public/data/sessions/{sessionId}/webrtcIce/{docId}
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   doc,
   collection,
@@ -96,6 +96,7 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
   const [status, setStatus] = useState('idle');
   const [error, setError] = useState(null);
   const [retryToken, setRetryToken] = useState(0);
+  const reconnectTimerRef = useRef(null);
 
   useEffect(() => {
     if (!enabled || !db || !sessionId || !appId) {
@@ -111,7 +112,6 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
     }
 
     let cancelled = false;
-    let reconnectTimer = null;
     const pc = new RTCPeerConnection({ iceServers: buildIceServers() });
     const unsubscribersRef = { current: [] };
     const processedIceIds = new Set();
@@ -136,12 +136,20 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
       }
     };
 
+    const cancelReconnect = () => {
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+        reconnectTimerRef.current = null;
+      }
+    };
+
     const scheduleReconnect = () => {
-      if (cancelled || reconnectTimer) return;
-      reconnectTimer = setTimeout(() => {
-        reconnectTimer = null;
+      if (cancelled) return;
+      cancelReconnect();
+      reconnectTimerRef.current = setTimeout(() => {
+        reconnectTimerRef.current = null;
         if (!cancelled) setRetryToken((n) => n + 1);
-      }, 2000);
+      }, 3000);
     };
 
     pc.onicecandidate = (ev) => {
@@ -160,11 +168,23 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
     pc.onconnectionstatechange = () => {
       try {
         const s = pc.connectionState;
-        if (s === 'connected') setStatus('connected');
-        else if (s === 'failed' || s === 'disconnected' || s === 'closed') {
+        if (s === 'connected') {
+          setStatus('connected');
+          cancelReconnect();
+        } else if (s === 'failed' || s === 'closed') {
           setStatus(s);
           setRemoteStream(null);
           scheduleReconnect();
+        } else if (s === 'disconnected') {
+          setStatus(s);
+          cancelReconnect();
+          reconnectTimerRef.current = setTimeout(() => {
+            reconnectTimerRef.current = null;
+            if (!cancelled && pc.connectionState === 'disconnected') {
+              setRemoteStream(null);
+              setRetryToken((n) => n + 1);
+            }
+          }, 5000);
         }
       } catch (e) {
         console.error(e);
@@ -174,7 +194,9 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
     pc.oniceconnectionstatechange = () => {
       try {
         const s = pc.iceConnectionState;
-        if (s === 'failed' || s === 'disconnected') {
+        if (s === 'connected') {
+          cancelReconnect();
+        } else if (s === 'failed') {
           setStatus(s);
           setRemoteStream(null);
           scheduleReconnect();
@@ -311,10 +333,7 @@ function useWebRtcSession({ db, appId, sessionId, role, localStream, enabled }) 
     return () => {
       cancelled = true;
       try {
-        if (reconnectTimer) {
-          clearTimeout(reconnectTimer);
-          reconnectTimer = null;
-        }
+        cancelReconnect();
         unsubscribersRef.current.forEach((u) => {
           try {
             u();

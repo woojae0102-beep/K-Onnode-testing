@@ -40,8 +40,8 @@ const SAMPLE_KO =
   '안녕하세요, 오늘도 열심히 연습해 볼게요. 발음을 또렷하게 하면서 천천히 읽어 주세요.';
 const MOBILE_FRAME_WIDTH = 720;
 const MOBILE_FRAME_HEIGHT = 1280;
-const MOBILE_FRAME_JPEG_QUALITY = 0.8;
-const MOBILE_FRAME_INTERVAL_MS = 1000 / 30;
+const MOBILE_FRAME_JPEG_QUALITY = 0.4;
+const MOBILE_FRAME_INTERVAL_MS = 333;
 
 function angleDeg(ax, ay, bx, by, cx, cy) {
   const v1x = ax - bx;
@@ -298,7 +298,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
           lastVideoAdvanceAtRef.current = now;
         }
         const stalledMs = lastVideoAdvanceAtRef.current ? now - lastVideoAdvanceAtRef.current : Infinity;
-        const canUseVideo = webrtcStatus === 'connected' && stalledMs < 1200;
+        const canUseVideo = (webrtcStatus === 'connected' || webrtcStatus === 'disconnected') && stalledMs < 3000;
         if (canUseVideo) {
           ctx.drawImage(video, 0, 0, logicalDrawW, logicalDrawH);
           drewBackground = true;
@@ -485,6 +485,7 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   const rafRef = useRef(null);
   const lastPoseWrite = useRef(0);
   const lastFrameWrite = useRef(0);
+  const debouncedUpdateFrameRef = useRef(null);
   const mirrorCanvasRef = useRef(null);
   const wristHist = useRef([]);
   const rightWristHist = useRef([]);
@@ -523,6 +524,10 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
   useEffect(() => {
     if (!camOn || tab !== 'dance') {
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (debouncedUpdateFrameRef.current) {
+        clearTimeout(debouncedUpdateFrameRef.current);
+        debouncedUpdateFrameRef.current = null;
+      }
       landmarkerRef.current?.close?.();
       landmarkerRef.current = null;
       return undefined;
@@ -596,10 +601,14 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
               cctx.drawImage(video, -c.width, 0, c.width, c.height);
               cctx.restore();
               const dataUrl = c.toDataURL('image/jpeg', MOBILE_FRAME_JPEG_QUALITY);
-              updateDoc(sessionRef, {
-                mobileFrame: { dataUrl, ts: Date.now() },
-                updatedAt: serverTimestamp(),
-              }).catch(() => {});
+              if (debouncedUpdateFrameRef.current) clearTimeout(debouncedUpdateFrameRef.current);
+              debouncedUpdateFrameRef.current = setTimeout(() => {
+                debouncedUpdateFrameRef.current = null;
+                updateDoc(sessionRef, {
+                  mobileFrame: { dataUrl, ts: Date.now() },
+                  updatedAt: serverTimestamp(),
+                }).catch(() => {});
+              }, 100);
             }
           }
           const overlay = mobileOverlayRef.current;
@@ -714,6 +723,10 @@ function TrainingMobile({ db, appId, sessionId, onBack }) {
     return () => {
       cancelled = true;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      if (debouncedUpdateFrameRef.current) {
+        clearTimeout(debouncedUpdateFrameRef.current);
+        debouncedUpdateFrameRef.current = null;
+      }
       const v = videoRef.current;
       if (v?.srcObject) {
         v.srcObject.getTracks().forEach((t) => t.stop());
