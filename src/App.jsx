@@ -400,6 +400,15 @@ function RootPicker({ onMessenger, onTraining }) {
 
 export default function App() {
   const [rootMode, setRootMode] = useState('pick');
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const s = (p.get('session') || '').trim();
+      if (s) setRootMode('training');
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
   if (!firebaseConfig || !auth || !db) {
     return <FirebaseMissingScreen />;
   }

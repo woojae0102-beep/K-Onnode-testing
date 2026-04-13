@@ -87,6 +87,18 @@ function buildOptimizedPoseDocForFirestore(bodyTracking) {
   };
 }
 
+function getNetworkUrl(sessionKey) {
+  const protocol = window.location.protocol;
+  const hostname = window.location.hostname;
+  const pathname = window.location.pathname || '/';
+  const explicitPort = window.location.port;
+  const isLocalHost = hostname === 'localhost' || hostname === '127.0.0.1';
+  const isLanIp = /^\d{1,3}(\.\d{1,3}){3}$/.test(hostname);
+  const port = explicitPort || (isLocalHost || isLanIp ? '5173' : '');
+  const hostWithPort = port ? `${hostname}:${port}` : hostname;
+  return `${protocol}//${hostWithPort}${pathname}?session=${encodeURIComponent(sessionKey)}`;
+}
+
 function computeTeamSyncScore(participants) {
   const valid = participants
     .filter((p) => p?.cameraOn && p?.pose?.landmarks?.length)
@@ -280,11 +292,7 @@ function TrainingLaptopDashboard({ db, appId, sessionId, onBack }) {
     enabled: true,
   });
   const joinUrl = useMemo(() => {
-    const protocol = window.location.protocol;
-    const hostname = window.location.hostname;
-    const port = window.location.port || '5173';
-    const pathname = window.location.pathname || '/';
-    return `${protocol}//${hostname}:${port}${pathname}?session=${encodeURIComponent(sessionId)}`;
+    return getNetworkUrl(sessionId);
   }, [sessionId]);
 
   useEffect(() => {
