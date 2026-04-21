@@ -8,6 +8,8 @@ import PronunciationMode from '../components/korean/PronunciationMode';
 import FollowAlongMode from '../components/korean/FollowAlongMode';
 import CorrectionMode from '../components/korean/CorrectionMode';
 import LyricsVocabMode from '../components/korean/LyricsVocabMode';
+import ReportListView from './ReportListView';
+import { useLanguageStore } from '../store/languageStore';
 
 const QUICK_COMMANDS = [
   { id: 'dance', label: '/댄스' },
@@ -1600,7 +1602,9 @@ export default function AICoachView() {
     vocal: { lastAt: 0, lastScore: null },
     korean: { lastAt: 0, lastScore: null },
   });
-  const currentLanguage = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
+  const storeLanguage = useLanguageStore((s) => s.language);
+  const setStoreLanguage = useLanguageStore((s) => s.setLanguage);
+  const currentLanguage = normalizeLanguage(storeLanguage || i18n.resolvedLanguage || i18n.language);
   const ui = textPack(currentLanguage);
   const bottomTabs = useMemo(
     () =>
@@ -1818,7 +1822,7 @@ export default function AICoachView() {
           <p className="text-xs text-[#666666]">{ui.languageLabel}</p>
           <select
             value={currentLanguage}
-            onChange={(e) => i18n.changeLanguage(normalizeLanguage(e.target.value))}
+            onChange={(e) => setStoreLanguage(normalizeLanguage(e.target.value))}
             className="rounded-md border border-[#E5E5E5] px-2 py-1 text-xs bg-white"
           >
             {LANGUAGE_OPTIONS.map((item) => (
@@ -1920,130 +1924,8 @@ export default function AICoachView() {
       ) : null}
 
       {activeTab === 'report' ? (
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#F5F5F7]">
-          {lastReportCard ? (
-            <div className="rounded-2xl border border-[#E5E5E5] bg-white p-4 space-y-2">
-              <div className="rounded-lg border border-[#E5E5E5] bg-[#FAFAFA] p-2 space-y-2">
-                <div className="flex gap-2">
-                  {[
-                    { id: 'daily', label: ui.report.daily },
-                    { id: 'weekly', label: ui.report.weekly },
-                    { id: 'monthly', label: ui.report.monthly },
-                  ].map((item) => (
-                    <button
-                      key={item.id}
-                      type="button"
-                      onClick={() => setReportPeriod(item.id)}
-                      className={`rounded-md px-2 py-1 text-[11px] border ${
-                        reportPeriod === item.id ? 'bg-[#FF1F8E] text-white border-[#FF1F8E]' : 'bg-white text-[#666666] border-[#E5E5E5]'
-                      }`}
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="date"
-                    value={reportDate}
-                    onChange={(e) => setReportDate(e.target.value)}
-                    className="rounded-md border border-[#E5E5E5] px-2 py-1 text-[11px]"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => refreshReportCard('all', reportPeriod, reportDate)}
-                    className="rounded-md border border-[#E5E5E5] px-2 py-1 text-[11px] text-[#555555]"
-                  >
-                    {ui.report.refresh}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={createPracticeLikeReportData}
-                    className="rounded-md border border-[#FF1F8E] bg-[#FFF4FA] px-2 py-1 text-[11px] text-[#FF1F8E]"
-                  >
-                    {ui.report.generateSample}
-                  </button>
-                </div>
-              </div>
-              <p className="text-sm font-semibold text-[#111111]">{lastReportCard.title}</p>
-              {lastReportCard.body.map((line, idx) => (
-                <p key={`${idx}-${line.slice(0, 12)}`} className="text-xs text-[#666666]">- {line}</p>
-              ))}
-              {lastReportCard.periodSummary ? (
-                <div className="rounded-lg bg-[#F9FAFF] border border-[#E5E5E5] p-2 space-y-1">
-                  <p className="text-xs font-semibold text-[#111111]">{lastReportCard.periodSummary.title}</p>
-                  <p className="text-[11px] text-[#666666]">
-                    {ui.report.totalSessions} {lastReportCard.periodSummary.stats?.sessions ?? 0} · {ui.report.avg} {lastReportCard.periodSummary.stats?.average ?? '—'} · {ui.report.best}{' '}
-                    {lastReportCard.periodSummary.stats?.best ?? '—'} · {ui.report.worst} {lastReportCard.periodSummary.stats?.worst ?? '—'}
-                  </p>
-                  {lastReportCard.periodSummary.lines.map((line, idx) => (
-                    <p key={`${idx}-${line.slice(0, 12)}`} className="text-[11px] text-[#666666]">- {line}</p>
-                  ))}
-                </div>
-              ) : null}
-              {lastReportCard.trend?.length ? (
-                <div className="rounded-lg bg-[#F7F7F8] border border-[#E5E5E5] p-2 space-y-1">
-                  <p className="text-xs font-semibold text-[#111111]">{ui.report.trendTitle}</p>
-                  {lastReportCard.trend.map((line, idx) => (
-                    <p key={`${idx}-${line.slice(0, 12)}`} className="text-[11px] text-[#666666]">- {line}</p>
-                  ))}
-                </div>
-              ) : null}
-              {lastReportCard.growth ? (
-                <div className="rounded-lg bg-[#F8F7FF] border border-[#E5E5E5] p-2 space-y-1">
-                  <p className="text-xs font-semibold text-[#111111]">{ui.report.growthTitle}</p>
-                  {lastReportCard.growth.lines.map((line, idx) => (
-                    <p key={`${idx}-${line.slice(0, 12)}`} className="text-[11px] text-[#666666]">- {line}</p>
-                  ))}
-                  <div className="grid grid-cols-3 gap-2 mt-2">
-                    <div className="rounded-md border border-[#E5E5E5] bg-white px-2 py-1">
-                      <p className="text-[10px] text-[#888888]">{ui.report.goalScore}</p>
-                      <p className="text-xs font-semibold text-[#111111]">{lastReportCard.growth.achievement?.targetScore ?? '—'}</p>
-                    </div>
-                    <div className="rounded-md border border-[#E5E5E5] bg-white px-2 py-1">
-                      <p className="text-[10px] text-[#888888]">{ui.report.todayRate}</p>
-                      <p className="text-xs font-semibold text-[#111111]">
-                        {lastReportCard.growth.achievement?.todayAchievementRate == null
-                          ? '—'
-                          : `${lastReportCard.growth.achievement.todayAchievementRate}%`}
-                      </p>
-                    </div>
-                    <div className="rounded-md border border-[#E5E5E5] bg-white px-2 py-1">
-                      <p className="text-[10px] text-[#888888]">{ui.report.weeklyProgress}</p>
-                      <p className="text-xs font-semibold text-[#111111]">
-                        {lastReportCard.growth.achievement?.weeklyGoalProgress == null
-                          ? '—'
-                          : `${lastReportCard.growth.achievement.weeklyGoalProgress}%`}
-                      </p>
-                    </div>
-                  </div>
-                  {lastReportCard.growth.routines?.length ? (
-                    <div className="rounded-md border border-[#E5E5E5] bg-white p-2 mt-2 space-y-1">
-                      <p className="text-[11px] font-semibold text-[#111111]">{ui.report.routineTitle}</p>
-                      {lastReportCard.growth.routines.map((routine, idx) => (
-                        <div key={`${idx}-${routine.label.slice(0, 12)}`} className="flex items-start gap-2">
-                          <p className="flex-1 text-[11px] text-[#666666]">- {routine.label}</p>
-                          {routine.feature !== 'none' ? (
-                            <button
-                              type="button"
-                              onClick={() => runRoutine(routine)}
-                              className="shrink-0 rounded-md border border-[#FF1F8E] px-2 py-0.5 text-[10px] text-[#FF1F8E] hover:bg-[#FF1F8E12]"
-                            >
-                              {ui.report.run}
-                            </button>
-                          ) : null}
-                        </div>
-                      ))}
-                    </div>
-                  ) : null}
-                </div>
-              ) : null}
-            </div>
-          ) : (
-            <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 text-sm text-[#666666]">
-              {ui.report.reportEmpty}
-            </div>
-          )}
+        <div className="flex-1 min-h-0 bg-[#F5F5F7]">
+          <ReportListView onSwitchSubTab={handleBottomTab} />
         </div>
       ) : null}
 
