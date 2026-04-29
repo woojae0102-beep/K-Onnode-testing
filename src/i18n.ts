@@ -20,12 +20,9 @@ const resources = {
   zh: { translation: zh },
 };
 
-const browserLanguage = typeof navigator !== 'undefined' ? navigator.language?.slice(0, 2) : 'ko';
-const fallbackLanguage = ['ko', 'en', 'ja', 'th', 'vi', 'es', 'fr', 'zh'].includes(browserLanguage) ? browserLanguage : 'ko';
-
 i18n.use(initReactI18next).init({
   resources,
-  lng: fallbackLanguage,
+  lng: 'ko',
   fallbackLng: 'ko',
   interpolation: { escapeValue: false },
 });

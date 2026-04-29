@@ -11,14 +11,9 @@ function detectInitialLanguage() {
     const saved = window.localStorage?.getItem(STORAGE_KEY);
     if (saved && SUPPORTED.includes(saved)) return saved;
   } catch {
-    // localStorage 접근 실패 시 브라우저 언어 감지로 폴백
+    // localStorage 접근 실패 시 기본값(ko)으로 폴백
   }
-  const nav = typeof navigator !== 'undefined' ? navigator.language || '' : '';
-  const code = nav.slice(0, 2).toLowerCase();
-  if (code === 'ko') return 'ko';
-  if (code === 'ja') return 'ja';
-  if (SUPPORTED.includes(code)) return code;
-  return 'en';
+  return 'ko';
 }
 
 const initialLanguage = detectInitialLanguage();

@@ -117,6 +117,7 @@ export function useSettings({ db, appId, user, sessionData }) {
       await updateSimpleSetting('preferredLanguage', lng);
       if (typeof window !== 'undefined') {
         window.localStorage.setItem('onnode.preferredLanguage', lng);
+        window.localStorage.setItem('onnode-language', lng);
       }
     },
     [updateSimpleSetting]
