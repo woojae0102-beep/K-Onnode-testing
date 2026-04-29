@@ -23,11 +23,11 @@ import FeedbackHistoryView from '../views/FeedbackHistoryView';
 import TrendingView from '../views/TrendingView';
 import PopularDanceView from '../views/PopularDanceView';
 import PopularSongsView from '../views/PopularSongsView';
-import KoreanContentView from '../views/KoreanContentView';
 import ChallengesView from '../views/ChallengesView';
 import WeaknessView from '../views/WeaknessView';
 import RoutineView from '../views/RoutineView';
 import CoachingView from '../views/CoachingView';
+import AgencyAuditionView from '../views/AgencyAuditionView';
 
 const TAB_TO_DEFAULT_VIEW = {
   home: 'home',
@@ -46,10 +46,10 @@ const VIEW_TO_TAB = {
   dance: 'home',
   vocal: 'home',
   korean: 'home',
+  'agency-audition': 'home',
   trending: 'discover',
   'popular-dance': 'discover',
   'popular-songs': 'discover',
-  'korean-content': 'discover',
   challenges: 'discover',
   chat: 'chat',
   aicoach: 'aicoach',
@@ -140,16 +140,16 @@ export default function Layout(props) {
         return <VocalTrainingView onNavigate={handleSelectView} />;
       case 'korean':
         return <KoreanAIView />;
+      case 'agency-audition':
+        return <AgencyAuditionView />;
       case 'trending':
-        return <TrendingView />;
+        return <TrendingView onNavigate={handleSelectView} />;
       case 'popular-dance':
-        return <PopularDanceView />;
+        return <PopularDanceView onNavigate={handleSelectView} />;
       case 'popular-songs':
-        return <PopularSongsView />;
-      case 'korean-content':
-        return <KoreanContentView />;
+        return <PopularSongsView onNavigate={handleSelectView} />;
       case 'challenges':
-        return <ChallengesView />;
+        return <ChallengesView onNavigate={handleSelectView} />;
       case 'chat':
         return (
           <ChatWindowView

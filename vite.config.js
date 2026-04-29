@@ -1,10 +1,90 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import { VitePWA } from 'vite-plugin-pwa';
+import { createRequire } from 'node:module';
+import { existsSync } from 'node:fs';
+import path from 'node:path';
 
-export default defineConfig({
+// Dev-time API middleware: routes /api/* requests in `npm run dev` to the
+// CommonJS handlers under ./api/, the same files Vercel uses in production.
+// This lets the local dev server hit the live YouTube API instead of mocks.
+const __require = createRequire(import.meta.url);
+function devApiPlugin() {
+  return {
+    name: 'dev-api',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        if (!req.url || !req.url.startsWith('/api/')) return next();
+        const urlPath = req.url.split('?')[0].replace(/\/+$/, '') || '/';
+        const rel = urlPath.slice(1); // remove leading "/"
+        const candidates = [
+          path.resolve(process.cwd(), `${rel}.js`),
+          path.resolve(process.cwd(), rel, 'index.js'),
+        ];
+        const handlerPath = candidates.find((p) => existsSync(p));
+        if (!handlerPath) return next();
+
+        if (['POST', 'PUT', 'PATCH'].includes(req.method || '')) {
+          await new Promise((resolve) => {
+            const chunks = [];
+            req.on('data', (c) => chunks.push(c));
+            req.on('end', () => {
+              const raw = Buffer.concat(chunks).toString('utf8');
+              try { req.body = raw ? JSON.parse(raw) : undefined; } catch { req.body = raw; }
+              resolve();
+            });
+          });
+        }
+
+        try {
+          // Invalidate require cache for all files under ./api so changes
+          // to nested helper modules (e.g. _lib/trending.js) are picked up.
+          const apiDir = path.resolve(process.cwd(), 'api');
+          for (const k of Object.keys(__require.cache)) {
+            if (k.startsWith(apiDir)) delete __require.cache[k];
+          }
+          const mod = __require(handlerPath);
+          const fn = typeof mod === 'function' ? mod : (mod.default || mod.handler);
+          if (typeof fn !== 'function') {
+            res.statusCode = 500;
+            res.end(`Handler at ${handlerPath} is not a function`);
+            return;
+          }
+          if (typeof res.status !== 'function') {
+            res.status = (code) => { res.statusCode = code; return res; };
+          }
+          if (typeof res.json !== 'function') {
+            res.json = (obj) => {
+              if (!res.headersSent) res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.end(JSON.stringify(obj));
+              return res;
+            };
+          }
+          await fn(req, res);
+        } catch (err) {
+          console.error(`[dev-api] error in ${handlerPath}:`, err);
+          if (!res.headersSent) {
+            res.statusCode = 500;
+            res.setHeader('Content-Type', 'application/json');
+            res.end(JSON.stringify({ error: 'Dev API error', message: String(err?.message || err) }));
+          }
+        }
+      });
+    },
+  };
+}
+
+export default defineConfig(({ mode }) => {
+  // Inject ALL .env values (not just VITE_-prefixed) into process.env so
+  // server-only keys like YOUTUBE_API_KEY are available to the dev API plugin.
+  const env = loadEnv(mode, process.cwd(), '');
+  for (const [k, v] of Object.entries(env)) {
+    if (process.env[k] === undefined) process.env[k] = v;
+  }
+  return {
   plugins: [
+    devApiPlugin(),
     react(),
     basicSsl(),
     VitePWA({
@@ -176,4 +256,5 @@ export default defineConfig({
     target: 'es2020',
     sourcemap: false,
   },
+  };
 });

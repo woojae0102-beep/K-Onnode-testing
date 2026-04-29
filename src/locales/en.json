@@ -212,7 +212,10 @@
     "vocalBadge": "Vocal Training",
     "koreanTitle": "Korean AI",
     "koreanDesc": "Pronunciation and conversation practice with K-POP lyrics",
-    "koreanBadge": "Korean AI"
+    "koreanBadge": "Korean AI",
+    "auditionTitle": "Agency Audition",
+    "auditionDesc": "AI judging by HYBE · YG · JYP · SM · Starship",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "MY PAGE",
@@ -236,7 +239,15 @@
     "weakness": "Weakness Analysis",
     "routine": "Custom Routine",
     "coaching": "Goal-based Coaching",
-    "noConversations": "No conversations."
+    "noConversations": "No conversations.",
+    "agencyAudition": "Agency Audition",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "Select an agency to audition for",
+    "agencyAudition": "Agency Audition",
+    "judgePanel": "Meet the Judges",
+    "evaluationPoints": "Evaluation Points"
   },
   "report": {
     "filterAll": "All",

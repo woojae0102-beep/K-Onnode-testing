@@ -1,13 +1,7 @@
 // @ts-nocheck
 import React from 'react';
-import PlaceholderView from './PlaceholderView';
+import DiscoverView from './DiscoverView';
 
-export default function PopularSongsView() {
-  return (
-    <PlaceholderView
-      badge="POPULAR SONGS"
-      title="인기 노래"
-      description="최근 인기 보컬 연습곡과 커버 영상 모음입니다."
-    />
-  );
+export default function PopularSongsView({ onNavigate }) {
+  return <DiscoverView onNavigate={onNavigate} initialCategory="songs" hideCategoryTabs />;
 }

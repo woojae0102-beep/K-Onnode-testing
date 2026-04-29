@@ -1,11 +1,13 @@
 const { collectTrending, getCache, setCache } = require('./_lib/trending');
 
-const CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour soft TTL
+// Soft TTL — refresh after 6 hours (cron handles the weekly hard refresh).
+const CACHE_TTL_MS = 6 * 60 * 60 * 1000;
 
 module.exports = async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   const track = url.searchParams.get('track') || 'all';
   const limit = parseInt(url.searchParams.get('limit') || '20', 10);
+  const force = url.searchParams.get('force') === '1';
 
   try {
     let cache = getCache();
@@ -14,28 +16,38 @@ module.exports = async function handler(req, res) {
       !cache.lastUpdated ||
       Date.now() - new Date(cache.lastUpdated).getTime() > CACHE_TTL_MS;
 
-    const hasKeys = Boolean(
-      process.env.YOUTUBE_API_KEY ||
-        (process.env.SPOTIFY_CLIENT_ID && process.env.SPOTIFY_CLIENT_SECRET)
-    );
+    const hasKeys = Boolean(process.env.YOUTUBE_API_KEY);
 
-    if (isStale && hasKeys) {
-      const fresh = await collectTrending();
-      cache = setCache(fresh);
+    if ((force || isStale) && hasKeys) {
+      try {
+        const fresh = await collectTrending();
+        // Only overwrite cache if at least one section is non-empty
+        const total =
+          (fresh.trending?.length || 0) +
+          (fresh.dance?.length || 0) +
+          (fresh.songs?.length || 0) +
+          (fresh.challenges?.length || 0);
+        if (total > 0) {
+          cache = setCache(fresh);
+        } else if (!cache.data) {
+          cache = setCache(fresh);
+        }
+      } catch (fetchErr) {
+        console.error('[discover] live fetch failed; serving cached/empty:', fetchErr?.message || fetchErr);
+      }
     }
 
     if (!cache.data) {
       return res.status(200).json({
-        data: { trending: [], dance: [], songs: [], challenges: [], korean: [] },
+        data: { trending: [], dance: [], songs: [], challenges: [] },
         lastUpdated: null,
-        source: 'empty',
+        source: hasKeys ? 'empty' : 'no-key',
       });
     }
 
     const filterTrack = (arr) => {
       if (!Array.isArray(arr)) return [];
-      const sliced = arr.slice(0, limit);
-      return sliced;
+      return arr.slice(0, limit);
     };
 
     const data = {
@@ -44,7 +56,6 @@ module.exports = async function handler(req, res) {
       songs: track === 'all' || track === 'songs' ? filterTrack(cache.data.songs) : [],
       challenges:
         track === 'all' || track === 'challenges' ? filterTrack(cache.data.challenges) : [],
-      korean: track === 'all' || track === 'korean' ? filterTrack(cache.data.korean) : [],
     };
 
     return res.status(200).json({

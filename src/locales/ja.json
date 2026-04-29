@@ -212,7 +212,10 @@
     "vocalBadge": "Vocal Training",
     "koreanTitle": "韓国語AI",
     "koreanDesc": "K-POPの歌詞で学ぶ発音・会話練習",
-    "koreanBadge": "Korean AI"
+    "koreanBadge": "Korean AI",
+    "auditionTitle": "事務所オーディション",
+    "auditionDesc": "HYBE · YG · JYP · SM · Starship のAI審査",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "MY PAGE",
@@ -236,7 +239,15 @@
     "weakness": "弱点分析",
     "routine": "カスタムルーティン",
     "coaching": "目標コーチング",
-    "noConversations": "会話がありません。"
+    "noConversations": "会話がありません。",
+    "agencyAudition": "事務所オーディション",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "オーディションを受ける事務所を選んでください",
+    "agencyAudition": "事務所オーディション",
+    "judgePanel": "審査員紹介",
+    "evaluationPoints": "評価ポイント"
   },
   "report": {
     "filterAll": "全て",

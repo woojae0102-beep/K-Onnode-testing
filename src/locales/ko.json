@@ -212,7 +212,10 @@
     "vocalBadge": "Vocal Training",
     "koreanTitle": "한국어 AI",
     "koreanDesc": "K-POP 가사로 배우는 발음 · 회화 연습",
-    "koreanBadge": "Korean AI"
+    "koreanBadge": "Korean AI",
+    "auditionTitle": "기획사 오디션",
+    "auditionDesc": "HYBE · YG · JYP · SM · Starship 5개 기획사 AI 심사",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "MY PAGE",
@@ -236,7 +239,15 @@
     "weakness": "약점 분석",
     "routine": "맞춤 루틴",
     "coaching": "목표 기반 코칭",
-    "noConversations": "대화가 없습니다."
+    "noConversations": "대화가 없습니다.",
+    "agencyAudition": "기획사 오디션",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "오디션 볼 기획사를 선택하세요",
+    "agencyAudition": "기획사 오디션",
+    "judgePanel": "심사위원 소개",
+    "evaluationPoints": "평가 포인트"
   },
   "report": {
     "filterAll": "전체",

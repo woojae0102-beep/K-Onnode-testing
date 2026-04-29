@@ -16,12 +16,13 @@ module.exports = async function handler(req, res) {
       success: true,
       updated: new Date().toISOString(),
       counts: {
-        dance: payload.dance.length,
         trending: payload.trending.length,
+        dance: payload.dance.length,
         songs: payload.songs.length,
         challenges: payload.challenges.length,
       },
       usedFallback: payload.usedFallback,
+      reason: payload.reason,
     });
   } catch (error) {
     console.error('Trending update failed:', error);

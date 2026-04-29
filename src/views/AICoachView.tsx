@@ -24,9 +24,6 @@ const QUICK_COMMANDS = [
 ];
 const BOTTOM_TABS = [
   { id: 'chat', label: 'AI코칭', feature: 'none' },
-  { id: 'dance', label: '댄스', feature: 'dance' },
-  { id: 'vocal', label: '보컬', feature: 'vocal' },
-  { id: 'korean', label: '한국어', feature: 'korean-pronunciation' },
   { id: 'report', label: '리포트', feature: 'report' },
 ];
 

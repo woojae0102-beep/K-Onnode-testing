@@ -18,13 +18,19 @@ const HOME_MENUS_TRAINING = [
   { icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
   { icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
   { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
+  {
+    icon: '🏆',
+    labelKey: 'leftPanel.agencyAudition',
+    subKey: 'leftPanel.agencyAuditionSub',
+    view: 'agency-audition',
+    accent: true,
+  },
 ];
 
 const DISCOVER_MENUS = [
   { icon: '🔥', labelKey: 'leftPanel.trending', view: 'trending' },
   { icon: '💃', labelKey: 'leftPanel.popularDance', view: 'popular-dance' },
   { icon: '🎵', labelKey: 'leftPanel.popularSongs', view: 'popular-songs' },
-  { icon: '🇰🇷', labelKey: 'leftPanel.koreanContent', view: 'korean-content' },
   { icon: '🏆', labelKey: 'leftPanel.challenges', view: 'challenges' },
 ];
 
@@ -109,16 +115,105 @@ function HomeTabContent({ mainView, onSelectView }) {
         />
       ))}
       <SectionTitle>{t('leftPanel.training')}</SectionTitle>
-      {HOME_MENUS_TRAINING.map((item) => (
-        <MenuRow
-          key={item.view}
-          icon={item.icon}
-          label={t(item.labelKey)}
-          active={mainView === item.view}
-          onClick={() => onSelectView?.(item.view)}
-        />
-      ))}
+      {HOME_MENUS_TRAINING.map((item) =>
+        item.accent ? (
+          <AccentMenuRow
+            key={item.view}
+            icon={item.icon}
+            label={t(item.labelKey)}
+            sub={item.subKey ? t(item.subKey) : undefined}
+            active={mainView === item.view}
+            onClick={() => onSelectView?.(item.view)}
+          />
+        ) : (
+          <MenuRow
+            key={item.view}
+            icon={item.icon}
+            label={t(item.labelKey)}
+            active={mainView === item.view}
+            onClick={() => onSelectView?.(item.view)}
+          />
+        )
+      )}
     </>
+  );
+}
+
+function AccentMenuRow({ icon, label, sub, active, onClick }) {
+  const [hover, setHover] = React.useState(false);
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      onMouseEnter={() => setHover(true)}
+      onMouseLeave={() => setHover(false)}
+      style={{
+        display: 'flex',
+        alignItems: 'flex-start',
+        gap: 10,
+        width: '100%',
+        padding: '10px 16px',
+        borderRadius: 8,
+        background: active ? '#FFF0F7' : hover ? '#FFF5FA' : 'transparent',
+        border: 'none',
+        cursor: 'pointer',
+        textAlign: 'left',
+        transition: 'background 0.15s ease',
+      }}
+    >
+      <span
+        aria-hidden
+        style={{
+          width: 20,
+          height: 20,
+          display: 'inline-flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontSize: 16,
+          lineHeight: 1,
+          flexShrink: 0,
+          marginTop: 2,
+        }}
+      >
+        {icon}
+      </span>
+      <span
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 2,
+        }}
+      >
+        <span
+          style={{
+            fontSize: 13,
+            fontWeight: active ? 700 : 600,
+            color: '#FF1F8E',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
+        >
+          {label}
+        </span>
+        {sub && (
+          <span
+            style={{
+              fontSize: 10,
+              color: '#999',
+              fontWeight: 500,
+              overflow: 'hidden',
+              textOverflow: 'ellipsis',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {sub}
+          </span>
+        )}
+      </span>
+    </button>
   );
 }
 

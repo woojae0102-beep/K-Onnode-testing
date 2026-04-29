@@ -11,13 +11,13 @@ const HOME_SECTIONS = [
   { group: 'training', icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
   { group: 'training', icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
   { group: 'training', icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
+  { group: 'training', icon: '🏆', labelKey: 'leftPanel.agencyAudition', view: 'agency-audition', accent: true },
 ];
 
 const DISCOVER_SECTIONS = [
   { icon: '🔥', labelKey: 'leftPanel.trending', view: 'trending' },
   { icon: '💃', labelKey: 'leftPanel.popularDance', view: 'popular-dance' },
   { icon: '🎵', labelKey: 'leftPanel.popularSongs', view: 'popular-songs' },
-  { icon: '🇰🇷', labelKey: 'leftPanel.koreanContent', view: 'korean-content' },
   { icon: '🏆', labelKey: 'leftPanel.challenges', view: 'challenges' },
 ];
 
@@ -61,6 +61,7 @@ export default function MobileSectionBar({ activeTab, mainView, onSelectView }) 
       >
         {sections.map((item) => {
           const active = mainView === item.view;
+          const isAccent = item.accent;
           return (
             <button
               key={item.view}
@@ -72,11 +73,15 @@ export default function MobileSectionBar({ activeTab, mainView, onSelectView }) 
                 gap: 6,
                 padding: '6px 12px',
                 borderRadius: 999,
-                border: active ? '1px solid #FF1F8E' : '1px solid #E5E5E5',
-                background: active ? '#FFF0F7' : '#FFFFFF',
-                color: active ? '#FF1F8E' : '#555555',
+                border: active
+                  ? '1px solid #FF1F8E'
+                  : isAccent
+                    ? '1px solid #FF1F8E55'
+                    : '1px solid #E5E5E5',
+                background: active ? '#FFF0F7' : isAccent ? '#FFF5FA' : '#FFFFFF',
+                color: active || isAccent ? '#FF1F8E' : '#555555',
                 fontSize: 12,
-                fontWeight: active ? 600 : 500,
+                fontWeight: active || isAccent ? 600 : 500,
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
                 flexShrink: 0,

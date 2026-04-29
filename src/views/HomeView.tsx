@@ -34,6 +34,14 @@ const QUICK_TRACK_STYLES = {
     badgeBg: '#1DB97118',
     badgeColor: '#0E8A50',
   },
+  audition: {
+    bg: 'linear-gradient(135deg, #1C1C1E 0%, #2A1A3E 100%)',
+    borderColor: '#6C5CE7',
+    icon: '🏆',
+    badgeBg: '#6C5CE733',
+    badgeColor: '#FFFFFF',
+    dark: true,
+  },
 };
 
 const sectionLabelStyle: React.CSSProperties = {
@@ -217,6 +225,7 @@ function StatusSection() {
 
 function QuickStartCard({ track, onNavigate }) {
   const [hover, setHover] = React.useState(false);
+  const isDark = !!track.dark;
   return (
     <button
       type="button"
@@ -226,15 +235,19 @@ function QuickStartCard({ track, onNavigate }) {
       style={{
         textAlign: 'left',
         background: track.bg,
-        border: `0.5px solid ${track.borderColor}`,
+        border: `${isDark ? 1 : 0.5}px solid ${track.borderColor}`,
         borderRadius: 12,
         padding: 16,
         cursor: 'pointer',
-        transition: 'opacity 0.15s ease',
-        opacity: hover ? 0.85 : 1,
+        transition: 'opacity 0.15s ease, transform 0.15s ease',
+        opacity: hover ? 0.9 : 1,
+        transform: hover && isDark ? 'translateY(-1px)' : 'none',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
+        boxShadow: isDark ? `0 4px 16px ${track.borderColor}33` : 'none',
+        position: 'relative',
+        overflow: 'hidden',
       }}
     >
       <span style={{ fontSize: 22, marginBottom: 8 }}>{track.icon}</span>
@@ -242,8 +255,8 @@ function QuickStartCard({ track, onNavigate }) {
         style={{
           margin: 0,
           fontSize: 14,
-          fontWeight: 500,
-          color: COLOR.textPrimary,
+          fontWeight: isDark ? 700 : 500,
+          color: isDark ? '#FFFFFF' : COLOR.textPrimary,
         }}
       >
         {track.title}
@@ -252,7 +265,7 @@ function QuickStartCard({ track, onNavigate }) {
         style={{
           margin: '6px 0 0',
           fontSize: 11,
-          color: COLOR.textSecondary,
+          color: isDark ? 'rgba(255,255,255,0.7)' : COLOR.textSecondary,
           lineHeight: 1.5,
         }}
       >
@@ -267,6 +280,8 @@ function QuickStartCard({ track, onNavigate }) {
           fontSize: 10,
           padding: '2px 7px',
           borderRadius: 20,
+          fontWeight: isDark ? 700 : 400,
+          letterSpacing: isDark ? '0.04em' : 'normal',
         }}
       >
         {track.badge}
@@ -298,6 +313,15 @@ function QuickStartSection({ onNavigate }) {
       title: t('home.koreanTitle'),
       desc: t('home.koreanDesc'),
       badge: t('home.koreanBadge'),
+    },
+    {
+      view: 'agency-audition',
+      ...QUICK_TRACK_STYLES.audition,
+      title: t('home.auditionTitle', { defaultValue: '기획사 오디션' }),
+      desc: t('home.auditionDesc', {
+        defaultValue: 'HYBE · YG · JYP · SM · Starship 5개 기획사 AI 심사',
+      }),
+      badge: t('home.auditionBadge', { defaultValue: 'Agency Audition' }),
     },
   ];
   return (

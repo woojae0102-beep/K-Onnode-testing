@@ -212,7 +212,10 @@
     "vocalBadge": "Entraînement vocal",
     "koreanTitle": "Coréen AI",
     "koreanDesc": "Prononciation et conversation avec des paroles K-POP",
-    "koreanBadge": "Coréen AI"
+    "koreanBadge": "Coréen AI",
+    "auditionTitle": "Audition d'agence",
+    "auditionDesc": "Jury IA des 5 agences HYBE · YG · JYP · SM · Starship",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "MON PROFIL",
@@ -236,7 +239,15 @@
     "weakness": "Analyse des faiblesses",
     "routine": "Routine personnalisée",
     "coaching": "Coaching par objectif",
-    "noConversations": "Aucune conversation."
+    "noConversations": "Aucune conversation.",
+    "agencyAudition": "Audition d'agence",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "Choisissez une agence pour l'audition",
+    "agencyAudition": "Audition d'agence",
+    "judgePanel": "Découvrez les juges",
+    "evaluationPoints": "Critères d'évaluation"
   },
   "report": {
     "filterAll": "Tous",

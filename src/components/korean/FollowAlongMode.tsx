@@ -3,11 +3,20 @@ import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKoreanSpeechCoach } from '../../hooks/useKoreanSpeechCoach';
 
+// Drama scene used as the speaking-practice reference. Picked by the producer.
+// To swap the scene, only change these constants.
+const DRAMA_VIDEO_ID = 'QnBdaeu8VC8';
+const DRAMA_PLAYLIST_ID = 'PLnZKJXHN_A1QrV00bS2LOsCq6_Ns8EHJu';
+const DRAMA_TITLE = 'K-드라마 한 장면으로 한국어 회화 연습';
+const DRAMA_DESCRIPTION =
+  '아래 영상을 한 번 듣고 → 멈춘 뒤 → 한 줄씩 따라 말해 보세요. 오른쪽 점수가 실시간으로 채점됩니다.';
+
 const PRACTICE_LINES = [
-  '오늘도 차근차근 발음을 맞춰 볼게요.',
-  '리듬에 맞춰 또박또박 말해 보세요.',
-  '어려운 받침도 천천히 정확하게 연습해요.',
-  '마지막 문장까지 호흡을 일정하게 유지해요.',
+  '안녕하세요, 처음 뵙겠습니다.',
+  '오늘 정말 잘 부탁드려요.',
+  '괜찮아요, 천천히 말씀해 주세요.',
+  '저는 한국어를 공부하고 있어요.',
+  '같이 가도 될까요?',
 ];
 
 export default function FollowAlongMode({ onReportUpdate }) {
@@ -77,7 +86,38 @@ export default function FollowAlongMode({ onReportUpdate }) {
 
   return (
     <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">
-      <p className="text-sm font-semibold text-[#111111]">{t('korean.followTitle')}</p>
+      <div className="space-y-2">
+        <p className="text-sm font-semibold text-[#111111]">{t('korean.followTitle')}</p>
+        <div className="space-y-1">
+          <p className="text-xs font-medium text-[#FF1F8E]">🎬 {DRAMA_TITLE}</p>
+          <p className="text-[11px] text-[#666666]">{DRAMA_DESCRIPTION}</p>
+        </div>
+        <div
+          className="relative w-full overflow-hidden rounded-lg border border-[#E5E5E5] bg-black"
+          style={{ paddingBottom: '56.25%' }}
+        >
+          <iframe
+            title={DRAMA_TITLE}
+            src={`https://www.youtube.com/embed/${DRAMA_VIDEO_ID}?list=${DRAMA_PLAYLIST_ID}&rel=0&modestbranding=1`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+            referrerPolicy="strict-origin-when-cross-origin"
+            loading="lazy"
+            className="absolute inset-0 h-full w-full"
+            style={{ border: 0 }}
+          />
+        </div>
+        <a
+          href={`https://www.youtube.com/watch?v=${DRAMA_VIDEO_ID}&list=${DRAMA_PLAYLIST_ID}`}
+          target="_blank"
+          rel="noreferrer"
+          className="inline-flex items-center gap-1 text-[11px] text-[#666666] hover:text-[#FF1F8E]"
+        >
+          유튜브에서 전체 재생목록 보기 →
+        </a>
+      </div>
+      <div className="h-px bg-[#EDEDED]" />
+      <p className="text-[11px] text-[#888888]">아래 한 줄씩 녹음 → 점수 확인 → 다시 듣기 흐름으로 연습해요.</p>
       {PRACTICE_LINES.map((line, idx) => (
         <div key={idx} className="rounded-lg border border-[#E5E5E5] p-3 flex items-center justify-between">
           <div className="flex-1">

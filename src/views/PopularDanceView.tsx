@@ -1,13 +1,7 @@
 // @ts-nocheck
 import React from 'react';
-import PlaceholderView from './PlaceholderView';
+import DiscoverView from './DiscoverView';
 
-export default function PopularDanceView() {
-  return (
-    <PlaceholderView
-      badge="POPULAR DANCE"
-      title="인기 안무"
-      description="가장 많이 연습되고 있는 K-POP 안무 리스트입니다."
-    />
-  );
+export default function PopularDanceView({ onNavigate }) {
+  return <DiscoverView onNavigate={onNavigate} initialCategory="dance" hideCategoryTabs />;
 }

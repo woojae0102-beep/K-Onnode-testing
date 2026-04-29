@@ -212,7 +212,10 @@
     "vocalBadge": "ฝึกร้อง",
     "koreanTitle": "เกาหลี AI",
     "koreanDesc": "ฝึกออกเสียงและบทสนทนาผ่านเนื้อเพลง K-POP",
-    "koreanBadge": "เกาหลี AI"
+    "koreanBadge": "เกาหลี AI",
+    "auditionTitle": "ออดิชันค่ายเพลง",
+    "auditionDesc": "AI ตัดสินจาก HYBE · YG · JYP · SM · Starship",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "เพจของฉัน",
@@ -236,7 +239,15 @@
     "weakness": "วิเคราะห์จุดอ่อน",
     "routine": "กิจวัตรส่วนตัว",
     "coaching": "โค้ชตามเป้าหมาย",
-    "noConversations": "ยังไม่มีการสนทนา"
+    "noConversations": "ยังไม่มีการสนทนา",
+    "agencyAudition": "ออดิชันค่ายเพลง",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "เลือกค่ายเพลงที่จะเข้าออดิชัน",
+    "agencyAudition": "ออดิชันค่ายเพลง",
+    "judgePanel": "แนะนำกรรมการ",
+    "evaluationPoints": "เกณฑ์การประเมิน"
   },
   "report": {
     "filterAll": "ทั้งหมด",

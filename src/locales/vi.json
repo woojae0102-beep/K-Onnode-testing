@@ -212,7 +212,10 @@
     "vocalBadge": "Luyện thanh",
     "koreanTitle": "Tiếng Hàn AI",
     "koreanDesc": "Luyện phát âm và hội thoại qua lời bài hát K-POP",
-    "koreanBadge": "Tiếng Hàn AI"
+    "koreanBadge": "Tiếng Hàn AI",
+    "auditionTitle": "Audition công ty",
+    "auditionDesc": "Ban giám khảo AI từ HYBE · YG · JYP · SM · Starship",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "TRANG CỦA TÔI",
@@ -236,7 +239,15 @@
     "weakness": "Phân tích điểm yếu",
     "routine": "Lịch tập tùy chỉnh",
     "coaching": "Huấn luyện theo mục tiêu",
-    "noConversations": "Chưa có cuộc trò chuyện."
+    "noConversations": "Chưa có cuộc trò chuyện.",
+    "agencyAudition": "Audition công ty",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "Chọn công ty để tham gia audition",
+    "agencyAudition": "Audition công ty",
+    "judgePanel": "Giám khảo",
+    "evaluationPoints": "Tiêu chí đánh giá"
   },
   "report": {
     "filterAll": "Tất cả",

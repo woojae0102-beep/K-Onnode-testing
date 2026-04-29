@@ -212,7 +212,10 @@
     "vocalBadge": "声乐训练",
     "koreanTitle": "韩语 AI",
     "koreanDesc": "用 K-POP 歌词练习发音与会话",
-    "koreanBadge": "韩语 AI"
+    "koreanBadge": "韩语 AI",
+    "auditionTitle": "经纪公司试镜",
+    "auditionDesc": "HYBE · YG · JYP · SM · Starship 五大公司AI评审",
+    "auditionBadge": "Agency Audition"
   },
   "leftPanel": {
     "myPage": "我的主页",
@@ -236,7 +239,15 @@
     "weakness": "弱点分析",
     "routine": "定制训练",
     "coaching": "目标导向指导",
-    "noConversations": "暂无会话。"
+    "noConversations": "暂无会话。",
+    "agencyAudition": "经纪公司试镜",
+    "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "audition": {
+    "selectAgency": "请选择要试镜的经纪公司",
+    "agencyAudition": "经纪公司试镜",
+    "judgePanel": "评审介绍",
+    "evaluationPoints": "评分要点"
   },
   "report": {
     "filterAll": "全部",
