@@ -1,11 +1,10 @@
 // @ts-nocheck
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { Home, MessageCircle, Bot, Compass } from 'lucide-react';
+import { Home, Bot, Compass } from 'lucide-react';
 
 const TABS = [
   { id: 'home', labelKey: 'nav.home', icon: Home },
-  { id: 'chat', labelKey: 'nav.chat', icon: MessageCircle },
   { id: 'aicoach', labelKey: 'nav.aicoach', icon: Bot },
   { id: 'discover', labelKey: 'nav.discover', icon: Compass },
 ];

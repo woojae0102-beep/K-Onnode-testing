@@ -253,7 +253,6 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
             summary={summary}
             metrics={metrics}
             feedbackList={feedbackList}
-            onShareCommunity={() => onNavigate('community')}
           />
         </div>
       </div>

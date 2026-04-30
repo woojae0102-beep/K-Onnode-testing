@@ -21,7 +21,6 @@ import { useTranslation } from 'react-i18next';
 import SettingsSection from '../components/settings/SettingsSection';
 import SettingsItem from '../components/settings/SettingsItem';
 import SubscriptionCard from '../components/settings/SubscriptionCard';
-import SNSConnectItem from '../components/settings/SNSConnectItem';
 import LanguageSelector from '../components/settings/LanguageSelector';
 import { useSettings } from '../hooks/useSettings';
 
@@ -30,7 +29,6 @@ const coachModes = ['single', 'multi', 'free'];
 const durations = ['days7', 'days30', 'unlimited'];
 const reportFormats = ['pdf', 'image'];
 const trackOrder = ['dance', 'vocal', 'korean'];
-const snsPlatforms = ['tiktok', 'instagram', 'youtube', 'twitter'];
 const weekDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
 const routineSlots = ['morning', 'evening'];
 
@@ -60,8 +58,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
     updateSimpleSetting,
     toggleTrack,
     setCoachLanguage,
-    connectSNS,
-    disconnectSNSConnection,
     runUpgrade,
     runCancelSubscription,
     generateWeeklyPlan,
@@ -171,16 +167,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
     }
   };
 
-  const handleSNSConnect = async (platform) => {
-    const ok = await connectSNS(platform);
-    showToast(ok ? t('settings.toast.snsConnected') : t('settings.toast.requestFailed'));
-  };
-
-  const handleSNSDisconnect = async (platform) => {
-    const ok = await disconnectSNSConnection(platform);
-    showToast(ok ? t('settings.toast.snsDisconnected') : t('settings.toast.requestFailed'));
-  };
-
   const generateRoutine = async () => {
     await generateWeeklyPlan({
       tracks: settings.tracks,
@@ -207,15 +193,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
     const next = prev.includes(day) ? prev.filter((d) => d !== day) : [...prev, day];
     updateSimpleSetting('practiceReminderDays', next);
   };
-
-  const connectedSNSPlatforms = useMemo(
-    () =>
-      snsPlatforms.filter((platform) => {
-        const item = settings.snsConnections?.[platform];
-        return item?.connected;
-      }),
-    [settings.snsConnections]
-  );
 
   const routineDaysLabel = useMemo(
     () =>
@@ -265,31 +242,38 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
           }
         />
 
-        <SettingsItem
-          icon={SlidersHorizontal}
-          label={t('settings.trackSelection')}
-          description={t('settings.labels.maxTracksNotice')}
-          asButton={false}
-          rightContent={
-            <div className="flex gap-2 flex-wrap justify-end">
-              {trackOrder.map((track) => {
-                const active = settings.tracks.includes(track);
-                return (
-                  <button
-                    key={track}
-                    type="button"
-                    onClick={() => handleTrackToggle(track)}
-                    className={`px-3 py-1 rounded-full text-xs font-semibold border ${
-                      active ? 'bg-black text-white border-black' : 'bg-white text-slate-500 border-slate-300'
-                    }`}
-                  >
-                    {t(`settings.track.${track}`)}
-                  </button>
-                );
-              })}
+        <div className="w-full rounded-2xl border border-[#E5E5E5] bg-[#F5F5F7] px-[14px] py-[13px]">
+          <div className="flex items-start gap-3">
+            <div className="w-8 h-8 rounded-lg bg-white border border-[#E5E5E5] flex items-center justify-center shrink-0">
+              <SlidersHorizontal size={18} className="text-slate-600" />
             </div>
-          }
-        />
+            <div className="flex-1 min-w-0">
+              <p className="text-[15px] font-medium text-[#111111]">{t('settings.trackSelection')}</p>
+              <p className="text-xs font-normal text-[#888888] mt-1 leading-snug">
+                {t('settings.labels.maxTracksNotice')}
+              </p>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-2 mt-3">
+            {trackOrder.map((track) => {
+              const active = settings.tracks.includes(track);
+              return (
+                <button
+                  key={track}
+                  type="button"
+                  onClick={() => handleTrackToggle(track)}
+                  className={`w-full px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                    active
+                      ? 'bg-black text-white border-black'
+                      : 'bg-white text-slate-500 border-slate-300 hover:border-slate-400'
+                  }`}
+                >
+                  {t(`settings.track.${track}`)}
+                </button>
+              );
+            })}
+          </div>
+        </div>
 
         <SettingsItem
           icon={ChartColumn}
@@ -486,27 +470,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
           onChangePlan={openPaddleCheckout}
           onRequestCancel={() => setShowCancelModal(true)}
         />
-
-        <div className="space-y-2">
-          <p className="text-xs font-black uppercase tracking-widest text-slate-500">{t('settings.sns.title')}</p>
-          {snsPlatforms.map((platform) => {
-            const info = settings.snsConnections?.[platform] || {};
-            return (
-              <SNSConnectItem
-                key={platform}
-                platform={platform}
-                username={info.username}
-                connected={!!info.connected}
-                loading={actionLoading}
-                onConnect={() => handleSNSConnect(platform)}
-                onDisconnect={() => handleSNSDisconnect(platform)}
-              />
-            );
-          })}
-          <p className="text-xs text-slate-500">
-            {t('settings.sns.exportHint')}: {connectedSNSPlatforms.length ? connectedSNSPlatforms.map((p) => t(`settings.sns.platforms.${p}`)).join(', ') : '-'}
-          </p>
-        </div>
       </SettingsSection>
 
       <SettingsSection title={t('settings.sections.notifications')}>

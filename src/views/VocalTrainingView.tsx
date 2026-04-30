@@ -277,7 +277,7 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
         <div className="grid grid-cols-3 gap-2">
           <button type="button" className="rounded-lg border border-[#E5E5E5] py-2 text-xs">{t('vocal.retry')}</button>
           <button type="button" className="rounded-lg border border-[#E5E5E5] py-2 text-xs">{t('vocal.save')}</button>
-          <button type="button" className="rounded-lg bg-[#FF1F8E] text-white py-2 text-xs" onClick={() => onNavigate('community')}>
+          <button type="button" className="rounded-lg bg-[#FF1F8E] text-white py-2 text-xs">
             {t('vocal.share')}
           </button>
         </div>

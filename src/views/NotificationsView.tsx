@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import AINotificationBubble from '../components/notifications/AINotificationBubble';
 
-const filters = ['all', 'aicoach', 'challenge', 'community'];
+const filters = ['all', 'aicoach', 'challenge'];
 
 export default function NotificationsView({ onNavigate }) {
   const { t } = useTranslation();

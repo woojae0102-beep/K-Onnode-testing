@@ -16,14 +16,14 @@ export default function TopNavBar({ onOpenNotifications, onOpenSettings }) {
     >
       <div className="flex items-center gap-2 min-w-0">
         <div
-          className="grid place-items-center rounded-full bg-[#FF1F8E] text-white font-black italic shadow-sm"
-          style={{ width: 28, height: 28, fontSize: 14 }}
+          className="grid place-items-center rounded-full bg-[#FF1F8E] text-white"
+          style={{ width: 28, height: 28, fontSize: 13, fontWeight: 700 }}
         >
           O
         </div>
         <span
           className="truncate"
-          style={{ fontSize: 15, fontWeight: 500, color: '#111111' }}
+          style={{ fontSize: 15, fontWeight: 600, color: '#111111', letterSpacing: '-0.01em' }}
         >
           ONNODE
         </span>

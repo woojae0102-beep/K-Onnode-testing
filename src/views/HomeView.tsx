@@ -14,33 +14,21 @@ const COLOR = {
 
 const QUICK_TRACK_STYLES = {
   dance: {
-    bg: '#FFF0F7',
-    borderColor: '#FF1F8E33',
     icon: '🕺',
-    badgeBg: '#FF1F8E18',
-    badgeColor: '#CC1070',
+    accentColor: '#FF1F8E',
   },
   vocal: {
-    bg: '#F0F4FF',
-    borderColor: '#4A6BFF33',
     icon: '🎤',
-    badgeBg: '#4A6BFF18',
-    badgeColor: '#2A4BCC',
+    accentColor: '#4A6BFF',
   },
   korean: {
-    bg: '#F0FBF5',
-    borderColor: '#1DB97133',
     icon: '🇰🇷',
-    badgeBg: '#1DB97118',
-    badgeColor: '#0E8A50',
+    accentColor: '#1DB971',
   },
   audition: {
-    bg: 'linear-gradient(135deg, #1C1C1E 0%, #2A1A3E 100%)',
-    borderColor: '#6C5CE7',
     icon: '🏆',
-    badgeBg: '#6C5CE733',
-    badgeColor: '#FFFFFF',
-    dark: true,
+    accentColor: '#6C5CE7',
+    isNew: true,
   },
 };
 
@@ -58,24 +46,24 @@ function HeroBanner({ onStartToday, onScrollToQuickStart }) {
   return (
     <section
       style={{
-        border: '0.5px solid #FF1F8E44',
-        borderRadius: 16,
+        border: `1px solid ${COLOR.borderSecondary}`,
+        borderRadius: 12,
         background: COLOR.bgPrimary,
-        padding: 28,
-        position: 'relative',
-        overflow: 'hidden',
-        marginBottom: 24,
+        padding: 24,
+        marginBottom: 20,
       }}
     >
       <span
         style={{
           display: 'inline-block',
-          background: '#FF1F8E18',
+          background: '#FFF0F7',
           color: '#FF1F8E',
           fontSize: 11,
-          padding: '4px 10px',
-          borderRadius: 20,
-          marginBottom: 12,
+          fontWeight: 600,
+          padding: '3px 8px',
+          borderRadius: 4,
+          marginBottom: 14,
+          letterSpacing: '0.02em',
         }}
       >
         {t('home.heroTag')}
@@ -83,15 +71,16 @@ function HeroBanner({ onStartToday, onScrollToQuickStart }) {
 
       <h1
         style={{
-          fontSize: 22,
-          fontWeight: 500,
-          lineHeight: 1.35,
-          marginBottom: 8,
+          fontSize: 20,
+          fontWeight: 600,
+          lineHeight: 1.4,
+          margin: 0,
+          marginBottom: 6,
           color: COLOR.textPrimary,
+          letterSpacing: '-0.01em',
         }}
       >
-        {t('home.heroTitleLine1')}
-        <br />
+        {t('home.heroTitleLine1')}{' '}
         <span style={{ color: '#FF1F8E' }}>{t('home.heroTitleLine2')}</span>
       </h1>
 
@@ -99,13 +88,12 @@ function HeroBanner({ onStartToday, onScrollToQuickStart }) {
         style={{
           fontSize: 13,
           color: COLOR.textSecondary,
-          lineHeight: 1.6,
-          marginBottom: 20,
+          lineHeight: 1.55,
+          margin: 0,
+          marginBottom: 18,
         }}
       >
         {t('home.heroSubtitle')}
-        <br />
-        {t('home.heroSubtitle2')}
       </p>
 
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
@@ -115,11 +103,11 @@ function HeroBanner({ onStartToday, onScrollToQuickStart }) {
           style={{
             background: '#FF1F8E',
             color: '#fff',
-            padding: '9px 18px',
+            padding: '8px 16px',
             borderRadius: 8,
             border: 'none',
             fontSize: 13,
-            fontWeight: 500,
+            fontWeight: 600,
             cursor: 'pointer',
           }}
         >
@@ -131,8 +119,8 @@ function HeroBanner({ onStartToday, onScrollToQuickStart }) {
           style={{
             background: 'transparent',
             color: COLOR.textPrimary,
-            border: `0.5px solid ${COLOR.borderSecondary}`,
-            padding: '9px 18px',
+            border: `1px solid ${COLOR.borderSecondary}`,
+            padding: '8px 16px',
             borderRadius: 8,
             fontSize: 13,
             fontWeight: 500,
@@ -141,21 +129,6 @@ function HeroBanner({ onStartToday, onScrollToQuickStart }) {
         >
           {t('home.selectTrack')}
         </button>
-      </div>
-
-      <div
-        aria-hidden
-        style={{
-          position: 'absolute',
-          right: 24,
-          top: 20,
-          fontSize: 52,
-          opacity: 0.13,
-          pointerEvents: 'none',
-          userSelect: 'none',
-        }}
-      >
-        🎤
       </div>
     </section>
   );
@@ -169,37 +142,40 @@ function StatusSection() {
     { value: '84', unit: t('home.unitScore'), label: t('home.recentScore') },
   ];
   return (
-    <section style={{ marginBottom: 24 }}>
+    <section style={{ marginBottom: 20 }}>
       <p style={sectionLabelStyle}>{t('home.myStatus')}</p>
       <div
         style={{
           display: 'grid',
           gridTemplateColumns: 'repeat(3, 1fr)',
-          gap: 10,
+          gap: 8,
+          border: `1px solid ${COLOR.borderSecondary}`,
+          borderRadius: 12,
+          background: COLOR.bgPrimary,
+          padding: 6,
         }}
       >
         {stats.map((stat) => (
           <div
             key={stat.label}
             style={{
-              background: COLOR.bgSecondary,
-              borderRadius: 10,
-              padding: '14px 16px',
+              padding: '12px 14px',
             }}
           >
             <p
               style={{
                 margin: 0,
-                fontSize: 22,
+                fontSize: 20,
                 fontWeight: 600,
                 color: COLOR.textPrimary,
                 lineHeight: 1.1,
+                letterSpacing: '-0.01em',
               }}
             >
               {stat.value}
               <span
                 style={{
-                  fontSize: 13,
+                  fontSize: 12,
                   fontWeight: 400,
                   color: COLOR.textSecondary,
                 }}
@@ -209,8 +185,8 @@ function StatusSection() {
             </p>
             <p
               style={{
-                margin: '6px 0 0',
-                fontSize: 12,
+                margin: '4px 0 0',
+                fontSize: 11,
                 color: COLOR.textSecondary,
               }}
             >
@@ -225,7 +201,6 @@ function StatusSection() {
 
 function QuickStartCard({ track, onNavigate }) {
   const [hover, setHover] = React.useState(false);
-  const isDark = !!track.dark;
   return (
     <button
       type="button"
@@ -234,58 +209,71 @@ function QuickStartCard({ track, onNavigate }) {
       onMouseLeave={() => setHover(false)}
       style={{
         textAlign: 'left',
-        background: track.bg,
-        border: `${isDark ? 1 : 0.5}px solid ${track.borderColor}`,
+        background: COLOR.bgPrimary,
+        border: `1px solid ${hover ? track.accentColor : COLOR.borderSecondary}`,
         borderRadius: 12,
         padding: 16,
         cursor: 'pointer',
-        transition: 'opacity 0.15s ease, transform 0.15s ease',
-        opacity: hover ? 0.9 : 1,
-        transform: hover && isDark ? 'translateY(-1px)' : 'none',
+        transition: 'border-color 0.15s ease',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'flex-start',
-        boxShadow: isDark ? `0 4px 16px ${track.borderColor}33` : 'none',
         position: 'relative',
-        overflow: 'hidden',
       }}
     >
-      <span style={{ fontSize: 22, marginBottom: 8 }}>{track.icon}</span>
-      <p
+      <div
         style={{
-          margin: 0,
-          fontSize: 14,
-          fontWeight: isDark ? 700 : 500,
-          color: isDark ? '#FFFFFF' : COLOR.textPrimary,
+          width: 36,
+          height: 36,
+          borderRadius: 8,
+          background: `${track.accentColor}14`,
+          display: 'grid',
+          placeItems: 'center',
+          fontSize: 18,
+          marginBottom: 10,
         }}
       >
-        {track.title}
-      </p>
+        {track.icon}
+      </div>
+
+      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+        <p
+          style={{
+            margin: 0,
+            fontSize: 14,
+            fontWeight: 600,
+            color: COLOR.textPrimary,
+          }}
+        >
+          {track.title}
+        </p>
+        {track.isNew ? (
+          <span
+            style={{
+              fontSize: 9,
+              fontWeight: 600,
+              color: track.accentColor,
+              background: `${track.accentColor}14`,
+              padding: '1px 5px',
+              borderRadius: 3,
+              letterSpacing: '0.04em',
+            }}
+          >
+            NEW
+          </span>
+        ) : null}
+      </div>
+
       <p
         style={{
-          margin: '6px 0 0',
+          margin: '4px 0 0',
           fontSize: 11,
-          color: isDark ? 'rgba(255,255,255,0.7)' : COLOR.textSecondary,
+          color: COLOR.textSecondary,
           lineHeight: 1.5,
         }}
       >
         {track.desc}
       </p>
-      <span
-        style={{
-          marginTop: 8,
-          display: 'inline-block',
-          background: track.badgeBg,
-          color: track.badgeColor,
-          fontSize: 10,
-          padding: '2px 7px',
-          borderRadius: 20,
-          fontWeight: isDark ? 700 : 400,
-          letterSpacing: isDark ? '0.04em' : 'normal',
-        }}
-      >
-        {track.badge}
-      </span>
     </button>
   );
 }
@@ -298,21 +286,18 @@ function QuickStartSection({ onNavigate }) {
       ...QUICK_TRACK_STYLES.dance,
       title: t('home.danceTitle'),
       desc: t('home.danceDesc'),
-      badge: t('home.danceBadge'),
     },
     {
       view: 'vocal',
       ...QUICK_TRACK_STYLES.vocal,
       title: t('home.vocalTitle'),
       desc: t('home.vocalDesc'),
-      badge: t('home.vocalBadge'),
     },
     {
       view: 'korean',
       ...QUICK_TRACK_STYLES.korean,
       title: t('home.koreanTitle'),
       desc: t('home.koreanDesc'),
-      badge: t('home.koreanBadge'),
     },
     {
       view: 'agency-audition',
@@ -321,7 +306,6 @@ function QuickStartSection({ onNavigate }) {
       desc: t('home.auditionDesc', {
         defaultValue: 'HYBE · YG · JYP · SM · Starship 5개 기획사 AI 심사',
       }),
-      badge: t('home.auditionBadge', { defaultValue: 'Agency Audition' }),
     },
   ];
   return (

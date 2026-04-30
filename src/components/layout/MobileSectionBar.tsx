@@ -61,7 +61,6 @@ export default function MobileSectionBar({ activeTab, mainView, onSelectView }) 
       >
         {sections.map((item) => {
           const active = mainView === item.view;
-          const isAccent = item.accent;
           return (
             <button
               key={item.view}
@@ -73,15 +72,11 @@ export default function MobileSectionBar({ activeTab, mainView, onSelectView }) 
                 gap: 6,
                 padding: '6px 12px',
                 borderRadius: 999,
-                border: active
-                  ? '1px solid #FF1F8E'
-                  : isAccent
-                    ? '1px solid #FF1F8E55'
-                    : '1px solid #E5E5E5',
-                background: active ? '#FFF0F7' : isAccent ? '#FFF5FA' : '#FFFFFF',
-                color: active || isAccent ? '#FF1F8E' : '#555555',
+                border: `1px solid ${active ? '#FF1F8E' : '#E5E5E5'}`,
+                background: active ? '#FFF0F7' : '#FFFFFF',
+                color: active ? '#FF1F8E' : '#555555',
                 fontSize: 12,
-                fontWeight: active || isAccent ? 600 : 500,
+                fontWeight: active ? 600 : 500,
                 whiteSpace: 'nowrap',
                 cursor: 'pointer',
                 flexShrink: 0,
@@ -89,6 +84,22 @@ export default function MobileSectionBar({ activeTab, mainView, onSelectView }) 
             >
               <span style={{ fontSize: 14 }}>{item.icon}</span>
               <span>{t(item.labelKey)}</span>
+              {item.accent ? (
+                <span
+                  style={{
+                    fontSize: 9,
+                    fontWeight: 600,
+                    color: '#FF1F8E',
+                    background: '#FFF0F7',
+                    padding: '1px 5px',
+                    borderRadius: 3,
+                    letterSpacing: '0.04em',
+                    marginLeft: 2,
+                  }}
+                >
+                  NEW
+                </span>
+              ) : null}
             </button>
           );
         })}

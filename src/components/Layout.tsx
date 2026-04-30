@@ -4,8 +4,6 @@ import TopNavBar from './layout/TopNavBar';
 import LeftPanel from './layout/LeftPanel';
 import TabBar from './layout/TabBar';
 import MobileSectionBar from './layout/MobileSectionBar';
-import NewChatModal from './community/NewChatModal';
-import { useRealtimeChat } from '../hooks/useRealtimeChat';
 
 import HomeView from '../views/HomeView';
 import AICoachView from '../views/AICoachView';
@@ -15,7 +13,6 @@ import KoreanAIView from '../views/KoreanAIView';
 import MyPageView from '../views/MyPageView';
 import NotificationsView from '../views/NotificationsView';
 import SettingsView from '../views/SettingsView';
-import ChatWindowView from '../views/ChatWindowView';
 import GrowthGraphView from '../views/GrowthGraphView';
 import GoalsView from '../views/GoalsView';
 import SavedVideosView from '../views/SavedVideosView';
@@ -32,7 +29,6 @@ import AgencyAuditionView from '../views/AgencyAuditionView';
 const TAB_TO_DEFAULT_VIEW = {
   home: 'home',
   discover: 'trending',
-  chat: 'chat',
   aicoach: 'aicoach',
 };
 
@@ -51,7 +47,6 @@ const VIEW_TO_TAB = {
   'popular-dance': 'discover',
   'popular-songs': 'discover',
   challenges: 'discover',
-  chat: 'chat',
   aicoach: 'aicoach',
   weakness: 'aicoach',
   routine: 'aicoach',
@@ -63,28 +58,16 @@ const TRAINING_VIEWS = ['dance', 'vocal', 'korean', 'aicoach'];
 export default function Layout(props) {
   const [activeTab, setActiveTab] = useState('home');
   const [mainView, setMainView] = useState('home');
-  const [conversationId, setConversationId] = useState(null);
   const [lastTrainingView, setLastTrainingView] = useState('dance');
-  const [newChatOpen, setNewChatOpen] = useState(false);
 
-  const chat = useRealtimeChat();
-
-  const handleChangeTab = useCallback(
-    (tab) => {
-      setActiveTab(tab);
-      const defaultView = TAB_TO_DEFAULT_VIEW[tab] || 'home';
-      setMainView(defaultView);
-      if (TRAINING_VIEWS.includes(defaultView)) {
-        setLastTrainingView(defaultView);
-      }
-      if (tab === 'chat' && !conversationId && chat.conversations.length) {
-        const firstId = chat.conversations[0].id;
-        setConversationId(firstId);
-        chat.setActiveConversationId(firstId);
-      }
-    },
-    [chat, conversationId]
-  );
+  const handleChangeTab = useCallback((tab) => {
+    setActiveTab(tab);
+    const defaultView = TAB_TO_DEFAULT_VIEW[tab] || 'home';
+    setMainView(defaultView);
+    if (TRAINING_VIEWS.includes(defaultView)) {
+      setLastTrainingView(defaultView);
+    }
+  }, []);
 
   const handleSelectView = useCallback((nextView) => {
     setMainView(nextView);
@@ -94,23 +77,6 @@ export default function Layout(props) {
       setLastTrainingView(nextView);
     }
   }, []);
-
-  const handleSelectConversation = useCallback(
-    (id) => {
-      setConversationId(id);
-      chat.setActiveConversationId(id);
-      setMainView('chat');
-      setActiveTab('chat');
-    },
-    [chat]
-  );
-
-  const handleCreateConversation = useCallback(
-    (name, type) => {
-      chat.createConversation(name, type);
-    },
-    [chat]
-  );
 
   const handleOpenNotifications = useCallback(() => {
     setMainView('notifications');
@@ -150,21 +116,6 @@ export default function Layout(props) {
         return <PopularSongsView onNavigate={handleSelectView} />;
       case 'challenges':
         return <ChallengesView onNavigate={handleSelectView} />;
-      case 'chat':
-        return (
-          <ChatWindowView
-            conversationId={conversationId}
-            conversations={chat.conversations}
-            activeConversation={chat.activeConversation}
-            setActiveConversationId={chat.setActiveConversationId}
-            draft={chat.draft}
-            setDraft={chat.setDraft}
-            sendText={chat.sendText}
-            sendMedia={chat.sendMedia}
-            uploading={chat.uploading}
-            markRead={chat.markRead}
-          />
-        );
       case 'aicoach':
         return <AICoachView />;
       case 'weakness':
@@ -184,7 +135,7 @@ export default function Layout(props) {
 
   return (
     <div
-      className="h-screen w-screen flex flex-col"
+      className="app-shell w-screen flex flex-col"
       style={{ background: '#F5F5F7' }}
     >
       <TopNavBar
@@ -199,13 +150,9 @@ export default function Layout(props) {
         <LeftPanel
           activeTab={activeTab}
           mainView={mainView}
-          conversationId={conversationId}
           onChangeTab={handleChangeTab}
           onSelectView={handleSelectView}
-          onSelectConversation={handleSelectConversation}
-          onOpenNewChat={() => setNewChatOpen(true)}
           onOpenSettings={handleOpenSettings}
-          conversations={chat.conversations}
         />
 
         <main
@@ -231,12 +178,6 @@ export default function Layout(props) {
           layout="bottom"
         />
       </div>
-
-      <NewChatModal
-        open={newChatOpen}
-        onClose={() => setNewChatOpen(false)}
-        onCreate={handleCreateConversation}
-      />
     </div>
   );
 }
