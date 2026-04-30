@@ -8,10 +8,6 @@ const HOME_SECTIONS = [
   { group: 'myPage', icon: '🎯', labelKey: 'leftPanel.goals', view: 'goals' },
   { group: 'myPage', icon: '💾', labelKey: 'leftPanel.savedVideos', view: 'saved-videos' },
   { group: 'myPage', icon: '📋', labelKey: 'leftPanel.feedbackHistory', view: 'feedback-history' },
-  { group: 'training', icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
-  { group: 'training', icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
-  { group: 'training', icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
-  { group: 'training', icon: '🏆', labelKey: 'leftPanel.agencyAudition', view: 'agency-audition', accent: true },
 ];
 
 const DISCOVER_SECTIONS = [
