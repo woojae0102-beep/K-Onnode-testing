@@ -90,6 +90,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
 
   const resetCameraFilter = () => updateCameraFilter(DEFAULT_FILTER);
 
+  // 시각적 필터는 CSS filter로 적용 (ctx.filter는 iOS Safari 18 미만에서 무시되므로 비신뢰)
+  // CSS filter는 모든 브라우저에서 GPU 가속으로 정확히 동작.
   const buildFilterString = (f) => {
     if (f.brightness === 1 && f.contrast === 1 && f.saturation === 1) return 'none';
     return `brightness(${f.brightness}) contrast(${f.contrast}) saturate(${f.saturation})`;
@@ -114,7 +116,7 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       }
       const ctx = c.getContext('2d');
       if (ctx) {
-        ctx.filter = buildFilterString(cameraFilterRef.current);
+        // 캔버스에는 원본만 그림. 시각 필터는 캔버스 element의 CSS filter로 처리.
         ctx.drawImage(v, 0, 0, c.width, c.height);
       }
       filterRafRef.current = requestAnimationFrame(loop);
@@ -314,12 +316,13 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
               autoPlay
               className="absolute inset-0 h-full w-full object-cover opacity-0 pointer-events-none"
             />
-            {/* 필터 적용된 디스플레이 캔버스 */}
+            {/* 필터 적용된 디스플레이 캔버스 (CSS filter로 명암 적용) */}
             <canvas
               ref={displayCanvasRef}
               className={`h-full w-full object-cover scale-x-[-1] transition-opacity duration-150 ${
                 cameraOn ? 'opacity-100' : 'opacity-0'
               }`}
+              style={{ filter: buildFilterString(cameraFilter) }}
             />
             <canvas
               ref={overlayCanvasRef}
@@ -369,8 +372,12 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
                 type="button"
                 onClick={() => setShowFilterPanel((v) => !v)}
                 aria-label="카메라 명암 조절"
-                className="absolute right-3 top-3 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/30 text-white text-base shadow"
-                style={{ background: showFilterPanel ? '#FF1F8E' : 'rgba(0,0,0,0.55)' }}
+                className="absolute z-20 grid h-9 w-9 place-items-center rounded-full border border-white/30 text-white text-base shadow"
+                style={{
+                  top: 'calc(env(safe-area-inset-top, 0px) + 16px)',
+                  right: 12,
+                  background: showFilterPanel ? '#FF1F8E' : 'rgba(0,0,0,0.55)',
+                }}
               >
                 ☀
               </button>
@@ -380,8 +387,12 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
                 type="button"
                 onClick={toggleFullscreen}
                 aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
-                className="absolute right-3 bottom-3 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/30 text-white text-base shadow"
-                style={{ background: 'rgba(0,0,0,0.55)' }}
+                className="absolute z-20 grid h-9 w-9 place-items-center rounded-full border border-white/30 text-white text-base shadow"
+                style={{
+                  bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+                  right: 12,
+                  background: 'rgba(0,0,0,0.55)',
+                }}
               >
                 {isFullscreen ? '✕' : '⛶'}
               </button>

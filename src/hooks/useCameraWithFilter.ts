@@ -26,7 +26,7 @@ const isIOS = () => {
   return /iPad|iPhone|iPod/.test(navigator.userAgent);
 };
 
-const buildFilterString = (f: CameraFilter) => {
+export const buildCameraFilterCss = (f: CameraFilter) => {
   if (f.brightness === 1 && f.contrast === 1 && f.saturation === 1) return 'none';
   return `brightness(${f.brightness}) contrast(${f.contrast}) saturate(${f.saturation})`;
 };
@@ -111,8 +111,8 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       }
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
-      // GPU 가속 필터 적용
-      ctx.filter = buildFilterString(filterRef.current);
+      // 시각 필터는 캔버스 element의 CSS filter로 처리 (iOS Safari 18 미만에서 ctx.filter가 무시되기 때문).
+      // 따라서 여기는 원본 프레임만 그린다.
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
       rafRef.current = requestAnimationFrame(render);
     };

@@ -225,7 +225,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
       }
       const ctx = c.getContext('2d');
       if (ctx) {
-        ctx.filter = buildFilterString(cameraFilterRef.current);
+        // 시각 필터는 캔버스 element의 CSS filter로 처리 (iOS 호환)
         ctx.drawImage(v, 0, 0, c.width, c.height);
       }
       filterRafRef.current = requestAnimationFrame(loop);
@@ -509,7 +509,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               pointerEvents: 'none',
             }}
           />
-          {/* 필터 적용된 디스플레이 캔버스 */}
+          {/* 필터 적용된 디스플레이 캔버스 (CSS filter로 명암 적용) */}
           <canvas
             ref={displayCanvasRef}
             style={{
@@ -521,6 +521,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               transform: 'scaleX(-1)',
               opacity: cameraState === 'live' ? 1 : 0,
               transition: 'opacity 0.3s ease',
+              filter: buildFilterString(cameraFilter),
             }}
           />
 
@@ -592,7 +593,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
             {Math.max(0, ROUND_DURATION - elapsed)}s
           </div>
 
-          {/* 카메라 명암 조절 버튼 (타이머 아래) */}
+          {/* 카메라 명암 조절 버튼 (타이머 아래, iPhone 노치 자동 회피) */}
           {cameraState === 'live' ? (
             <button
               type="button"
@@ -600,7 +601,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               aria-label="카메라 명암 조절"
               style={{
                 position: 'absolute',
-                top: 56,
+                top: 'calc(env(safe-area-inset-top, 0px) + 60px)',
                 right: 12,
                 width: 36,
                 height: 36,
@@ -631,7 +632,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
             />
           ) : null}
 
-          {/* 전체화면 토글 버튼 (우측 하단) */}
+          {/* 전체화면 토글 버튼 (우측 하단, iPhone 홈바 자동 회피) */}
           {cameraState === 'live' ? (
             <button
               type="button"
@@ -640,7 +641,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               style={{
                 position: 'absolute',
                 right: 12,
-                bottom: 12,
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
                 width: 36,
                 height: 36,
                 borderRadius: '50%',
