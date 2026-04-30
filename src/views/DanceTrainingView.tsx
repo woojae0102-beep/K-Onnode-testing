@@ -33,11 +33,13 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   const videoRef = useRef(null);
   const overlayCanvasRef = useRef(null);
   const displayCanvasRef = useRef(null);
+  const cameraBoxRef = useRef(null);
   const streamRef = useRef(null);
   const filterRafRef = useRef(0);
   const [cameraFilter, setCameraFilter] = useState(DEFAULT_FILTER);
   const cameraFilterRef = useRef(DEFAULT_FILTER);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const isSecureOrigin = typeof window !== 'undefined' && (window.isSecureContext || ['localhost', '127.0.0.1'].includes(window.location.hostname));
   const { score, issue, summary, feedbackList, metrics, isAnalyzing } = usePoseDetection({
     active: cameraOn,
@@ -172,6 +174,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
         }
       }
       setVideoReady(true);
+      // 캔버스 렌더 루프는 무조건 시작 (idempotent: 이미 돌고 있으면 재시작)
+      startFilterRenderLoop();
     } catch (error) {
       const name = error?.name || '';
       if (name === 'NotAllowedError') {
@@ -192,14 +196,19 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
 
   useEffect(() => {
     if (!cameraOn || !streamRef.current || !videoRef.current) return;
+    // video element가 이미 srcObject를 가지고 있고 재생 중이면 굳이 다시 attach할 필요 없음
+    const v = videoRef.current;
+    if (v.srcObject === streamRef.current && !v.paused && v.videoWidth > 0) {
+      setVideoReady(true);
+      startFilterRenderLoop();
+      return;
+    }
     attachStreamToVideo().then((ok) => {
       if (ok) {
         setVideoReady(true);
         startFilterRenderLoop();
-      } else {
-        setCameraError('카메라 영상 연결이 불안정합니다. 카메라를 껐다가 다시 켜주세요.');
-        setVideoReady(false);
       }
+      // 실패해도 startCamera에서 이미 처리했으므로 여기서는 추가 에러 표시하지 않음
     });
   }, [cameraOn]);
 
@@ -208,6 +217,52 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       stopCamera();
     };
   }, []);
+
+  // Fullscreen 상태 추적 (사용자가 ESC 키 등으로 빠져나갈 수도 있음)
+  useEffect(() => {
+    const handler = () => {
+      const fsEl =
+        document.fullscreenElement ||
+        (document as any).webkitFullscreenElement ||
+        (document as any).msFullscreenElement;
+      setIsFullscreen(Boolean(fsEl));
+    };
+    document.addEventListener('fullscreenchange', handler);
+    document.addEventListener('webkitfullscreenchange', handler);
+    return () => {
+      document.removeEventListener('fullscreenchange', handler);
+      document.removeEventListener('webkitfullscreenchange', handler);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const el = cameraBoxRef.current;
+    if (!el) return;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const fsEl =
+      document.fullscreenElement ||
+      (document as any).webkitFullscreenElement ||
+      (document as any).msFullscreenElement;
+
+    // iOS Safari는 element.requestFullscreen 미지원 → CSS 기반 의사-풀스크린만 사용
+    if (isIOS || (!el.requestFullscreen && !(el as any).webkitRequestFullscreen)) {
+      setIsFullscreen((v) => !v);
+      return;
+    }
+
+    try {
+      if (fsEl) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if ((document as any).webkitExitFullscreen) (document as any).webkitExitFullscreen();
+      } else if (el.requestFullscreen) {
+        await el.requestFullscreen();
+      } else if ((el as any).webkitRequestFullscreen) {
+        (el as any).webkitRequestFullscreen();
+      }
+    } catch {
+      setIsFullscreen((v) => !v);
+    }
+  };
 
   return (
     <div className="min-h-full p-4 md:p-6 bg-[#F5F5F7]">
@@ -245,7 +300,12 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
         </div>
 
         <div className="xl:col-span-2 space-y-3">
-          <div className="rounded-xl border border-[#E5E5E5] bg-black h-56 md:h-64 relative overflow-hidden">
+          <div
+            ref={cameraBoxRef}
+            className={`rounded-xl border border-[#E5E5E5] bg-black relative overflow-hidden ${
+              isFullscreen ? 'dance-camera-fs' : 'h-56 md:h-64'
+            }`}
+          >
             {/* 원본 video: MediaPipe 분석용으로 살아있어야 하므로 opacity 0으로 숨김 */}
             <video
               ref={videoRef}
@@ -315,12 +375,24 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
                 ☀
               </button>
             )}
+            {cameraOn && videoReady && (
+              <button
+                type="button"
+                onClick={toggleFullscreen}
+                aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+                className="absolute right-3 bottom-3 z-20 grid h-9 w-9 place-items-center rounded-full border border-white/30 text-white text-base shadow"
+                style={{ background: 'rgba(0,0,0,0.55)' }}
+              >
+                {isFullscreen ? '✕' : '⛶'}
+              </button>
+            )}
             {cameraOn && (
               <BrightnessControl
                 filter={cameraFilter}
                 onChange={updateCameraFilter}
                 onReset={resetCameraFilter}
                 visible={showFilterPanel}
+                onClose={() => setShowFilterPanel(false)}
               />
             )}
           </div>

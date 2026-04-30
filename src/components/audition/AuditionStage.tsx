@@ -40,6 +40,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
   const reactionIdRef = useRef(0);
   const videoRef = useRef(null);
   const displayCanvasRef = useRef(null);
+  const cameraBoxRef = useRef(null);
   const filterRafRef = useRef(0);
   const streamRef = useRef(null);
   const audioContextRef = useRef(null);
@@ -47,6 +48,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
   const [cameraFilter, setCameraFilter] = useState(DEFAULT_FILTER);
   const cameraFilterRef = useRef(DEFAULT_FILTER);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const currentRound = ROUNDS[roundIdx];
   const ROUND_DURATION = 30;
@@ -160,6 +162,49 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
   };
 
   const resetCameraFilter = () => updateCameraFilter(DEFAULT_FILTER);
+
+  // Fullscreen 상태 추적
+  useEffect(() => {
+    const handler = () => {
+      const fsEl =
+        document.fullscreenElement ||
+        document.webkitFullscreenElement ||
+        document.msFullscreenElement;
+      setIsFullscreen(Boolean(fsEl));
+    };
+    document.addEventListener('fullscreenchange', handler);
+    document.addEventListener('webkitfullscreenchange', handler);
+    return () => {
+      document.removeEventListener('fullscreenchange', handler);
+      document.removeEventListener('webkitfullscreenchange', handler);
+    };
+  }, []);
+
+  const toggleFullscreen = async () => {
+    const el = cameraBoxRef.current;
+    if (!el) return;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const fsEl =
+      document.fullscreenElement ||
+      document.webkitFullscreenElement ||
+      document.msFullscreenElement;
+    if (isIOS || (!el.requestFullscreen && !el.webkitRequestFullscreen)) {
+      setIsFullscreen((v) => !v);
+      return;
+    }
+    try {
+      if (fsEl) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+      } else if (el.requestFullscreen) {
+        await el.requestFullscreen();
+      } else if (el.webkitRequestFullscreen) {
+        el.webkitRequestFullscreen();
+      }
+    } catch {
+      setIsFullscreen((v) => !v);
+    }
+  };
 
   function startFilterRenderLoop() {
     if (filterRafRef.current) cancelAnimationFrame(filterRafRef.current);
@@ -433,6 +478,8 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
 
         <div className="audition-stage-grid">
         <div
+          ref={cameraBoxRef}
+          className={isFullscreen ? 'audition-camera-fs' : ''}
           style={{
             background: '#000',
             border: `1px solid ${agency?.accentColor}55`,
@@ -580,7 +627,36 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               onChange={updateCameraFilter}
               onReset={resetCameraFilter}
               visible={showFilterPanel}
+              onClose={() => setShowFilterPanel(false)}
             />
+          ) : null}
+
+          {/* 전체화면 토글 버튼 (우측 하단) */}
+          {cameraState === 'live' ? (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
+              style={{
+                position: 'absolute',
+                right: 12,
+                bottom: 12,
+                width: 36,
+                height: 36,
+                borderRadius: '50%',
+                background: 'rgba(0,0,0,0.55)',
+                border: '1px solid rgba(255,255,255,0.3)',
+                color: '#fff',
+                fontSize: 16,
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                zIndex: 25,
+              }}
+            >
+              {isFullscreen ? '✕' : '⛶'}
+            </button>
           ) : null}
 
           {/* Audio level meter (bottom-left) */}

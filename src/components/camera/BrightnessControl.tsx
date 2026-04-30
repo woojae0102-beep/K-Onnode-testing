@@ -1,5 +1,8 @@
-// 카메라 명암(밝기/대비/채도) 조절 패널
-// useCameraWithFilter 훅의 filter / setFilter / resetFilter 와 연결해서 사용
+// 카메라 명암(밝기/대비/채도) 조절 패널 (바텀 시트 형태)
+// useCameraWithFilter 훅의 filter / setFilter / resetFilter 와 연결해서 사용.
+//
+// 바텀 시트는 viewport 기준 position: fixed 로 그려지기 때문에
+// 카메라 박스 크기와 무관하게 항상 화면 하단에 고정된다 (잘림 방지).
 import React from 'react';
 import type { CameraFilter } from '../../hooks/useCameraWithFilter';
 
@@ -8,6 +11,8 @@ interface BrightnessControlProps {
   onChange: (next: CameraFilter) => void;
   onReset: () => void;
   visible: boolean;
+  /** 닫기 버튼이 눌렸을 때 호출 (선택) */
+  onClose?: () => void;
 }
 
 interface SliderConfig {
@@ -34,43 +39,96 @@ const PRESETS: Array<{ label: string; values: CameraFilter }> = [
   { label: '따뜻하게', values: { brightness: 1.1, contrast: 1.0, saturation: 1.4 } },
 ];
 
-export default function BrightnessControl({ filter, onChange, onReset, visible }: BrightnessControlProps) {
+export default function BrightnessControl({ filter, onChange, onReset, visible, onClose }: BrightnessControlProps) {
   if (!visible) return null;
 
   return (
-    <div
-      style={{
-        position: 'absolute',
-        bottom: 80,
-        left: 8,
-        right: 8,
-        background: 'rgba(0,0,0,0.75)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        borderRadius: 12,
-        padding: 14,
-        zIndex: 30,
-        color: '#fff',
-        boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
-      }}
-    >
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
-        <span style={{ fontSize: 13, fontWeight: 600 }}>카메라 조절</span>
-        <button
-          type="button"
-          onClick={onReset}
+    <>
+      {/* backdrop: 바깥 클릭 시 닫힘 */}
+      <div
+        onClick={onClose}
+        style={{
+          position: 'fixed',
+          inset: 0,
+          background: 'transparent',
+          zIndex: 9998,
+        }}
+      />
+      <div
+        role="dialog"
+        aria-label="카메라 명암 조절"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          position: 'fixed',
+          left: 12,
+          right: 12,
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+          background: 'rgba(0,0,0,0.92)',
+          backdropFilter: 'blur(10px)',
+          WebkitBackdropFilter: 'blur(10px)',
+          borderRadius: 16,
+          padding: 16,
+          paddingBottom: 14,
+          zIndex: 9999,
+          color: '#fff',
+          boxShadow: '0 -8px 32px rgba(0,0,0,0.5)',
+          maxWidth: 480,
+          margin: '0 auto',
+          maxHeight: '70vh',
+          overflowY: 'auto',
+          WebkitOverflowScrolling: 'touch',
+        }}
+      >
+        {/* drag handle (시각적 힌트) */}
+        <div
           style={{
-            color: '#FF1F8E',
-            background: 'transparent',
-            border: 'none',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            padding: '4px 6px',
+            width: 36,
+            height: 4,
+            background: 'rgba(255,255,255,0.25)',
+            borderRadius: 2,
+            margin: '0 auto 12px',
           }}
-        >
-          초기화
-        </button>
+        />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 10 }}>
+        <span style={{ fontSize: 14, fontWeight: 700 }}>카메라 조절</span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <button
+            type="button"
+            onClick={onReset}
+            style={{
+              color: '#FF1F8E',
+              background: 'transparent',
+              border: 'none',
+              fontSize: 12,
+              fontWeight: 600,
+              cursor: 'pointer',
+              padding: '4px 6px',
+            }}
+          >
+            초기화
+          </button>
+          {onClose ? (
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="닫기"
+              style={{
+                color: '#fff',
+                background: 'rgba(255,255,255,0.12)',
+                border: 'none',
+                width: 28,
+                height: 28,
+                borderRadius: '50%',
+                fontSize: 16,
+                lineHeight: '28px',
+                cursor: 'pointer',
+                padding: 0,
+              }}
+            >
+              ×
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {SLIDERS.map((slider) => {
@@ -149,6 +207,7 @@ export default function BrightnessControl({ filter, onChange, onReset, visible }
           </button>
         ))}
       </div>
-    </div>
+      </div>
+    </>
   );
 }

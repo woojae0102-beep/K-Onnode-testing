@@ -99,3 +99,23 @@ select:-webkit-autofill {
     0 0 48px rgba(255, 20, 147, 0.14),
     inset 0 0 60px rgba(236, 72, 153, 0.06);
 }
+
+/* 카메라 박스 의사-풀스크린 (iOS Safari fallback) */
+.dance-camera-fs,
+.audition-camera-fs {
+  position: fixed !important;
+  inset: 0 !important;
+  width: 100vw !important;
+  height: 100dvh !important;
+  z-index: 9990 !important;
+  border-radius: 0 !important;
+  background: #000 !important;
+}
+
+/* 네이티브 Fullscreen API 사용 시에도 동일하게 적용되도록 */
+.dance-camera-fs:fullscreen,
+.audition-camera-fs:fullscreen,
+.dance-camera-fs:-webkit-full-screen,
+.audition-camera-fs:-webkit-full-screen {
+  background: #000;
+}
