@@ -15,11 +15,11 @@ const VOICE_SETTINGS: Record<string, { rate: number; pitch: number; lang: string
   // JYP
   'jyp-jaewon': { rate: 1.0, pitch: 1.0, lang: 'ko-KR' },
   'jyp-minji': { rate: 1.1, pitch: 1.2, lang: 'ko-KR' },
-  'jyp-soojin': { rate: 0.95, pitch: 1.0, lang: 'ko-KR' },
+  'jyp-seonghyeon': { rate: 0.9, pitch: 0.9, lang: 'ko-KR' },
   // SM
   'sm-seongho': { rate: 0.85, pitch: 0.8, lang: 'ko-KR' },
   'sm-yujin': { rate: 0.95, pitch: 0.95, lang: 'ko-KR' },
-  'sm-taeeun': { rate: 1.0, pitch: 1.05, lang: 'ko-KR' },
+  'sm-seoyoung': { rate: 1.0, pitch: 1.05, lang: 'ko-KR' },
   // STARSHIP
   'starship-seunghoon': { rate: 1.0, pitch: 0.9, lang: 'ko-KR' },
   'starship-nari': { rate: 1.0, pitch: 1.0, lang: 'ko-KR' },

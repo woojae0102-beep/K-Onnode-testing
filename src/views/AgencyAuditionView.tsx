@@ -6,6 +6,11 @@ import AgencyLobby from '../components/audition/AgencyLobby';
 import JudgePanel from '../components/audition/JudgePanel';
 import AuditionStage from '../components/audition/AuditionStage';
 import AgencyResult from '../components/audition/AgencyResult';
+import HybeAuditionResult from '../components/audition/HybeAuditionResult';
+import SmAuditionResult from '../components/audition/SmAuditionResult';
+import JypAuditionResult from '../components/audition/JypAuditionResult';
+import YgAuditionResult from '../components/audition/YgAuditionResult';
+import StarshipAuditionResult from '../components/audition/StarshipAuditionResult';
 
 const STAGES = ['select', 'lobby', 'judges', 'stage', 'result'];
 
@@ -71,13 +76,50 @@ export default function AgencyAuditionView() {
         />
       )}
       {stage === 'result' && (
-        <AgencyResult
-          agency={agency}
-          rounds={rounds}
-          ticketNumber={ticketNumber}
-          onRetry={handleRetry}
-          onSelectAgency={handleSelectAnotherAgency}
-        />
+        agency?.id === 'hybe' ? (
+          <HybeAuditionResult
+            rounds={rounds}
+            ticketNumber={ticketNumber}
+            onRetry={handleRetry}
+            onSelectAgency={handleSelectAnotherAgency}
+          />
+        ) : agency?.id === 'sm' ? (
+          <SmAuditionResult
+            rounds={rounds}
+            ticketNumber={ticketNumber}
+            onRetry={handleRetry}
+            onSelectAgency={handleSelectAnotherAgency}
+          />
+        ) : agency?.id === 'jyp' ? (
+          <JypAuditionResult
+            rounds={rounds}
+            ticketNumber={ticketNumber}
+            onRetry={handleRetry}
+            onSelectAgency={handleSelectAnotherAgency}
+          />
+        ) : agency?.id === 'yg' ? (
+          <YgAuditionResult
+            rounds={rounds}
+            ticketNumber={ticketNumber}
+            onRetry={handleRetry}
+            onSelectAgency={handleSelectAnotherAgency}
+          />
+        ) : agency?.id === 'starship' ? (
+          <StarshipAuditionResult
+            rounds={rounds}
+            ticketNumber={ticketNumber}
+            onRetry={handleRetry}
+            onSelectAgency={handleSelectAnotherAgency}
+          />
+        ) : (
+          <AgencyResult
+            agency={agency}
+            rounds={rounds}
+            ticketNumber={ticketNumber}
+            onRetry={handleRetry}
+            onSelectAgency={handleSelectAnotherAgency}
+          />
+        )
       )}
     </div>
   );

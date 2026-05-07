@@ -277,22 +277,25 @@ function buildFallbackFeedbacks(agency) {
   const FALLBACKS = {
     hybe: [
       {
-        summary: '음악적 진심은 보였지만 표현력의 일관성이 부족했습니다. 트레이닝 후 6개월 정도 보면 분명 성장 가능합니다.',
-        strengths: '자기만의 색깔이 보임',
-        improvements: '음정 안정성, 호흡 컨트롤',
-        signature: '지금 실력이 아니라 6개월 후가 보입니다',
+        summary:
+          '데이터상으로는 흥미롭게도 흡수력이 보입니다. 단, 음악적 진정성에서 한 박자 망설임이 보였어요. 6개월 트레이닝 후 가능성을 봅니다.',
+        strengths: '교정 포인트 즉시 반영, 자기 인식 명확',
+        improvements: '음악적 진정성, 선곡의 이유 정리',
+        signature: '지금의 실력이 아니라 6개월 후의 가능성을 사겠습니다',
       },
       {
-        summary: '진정성은 느껴졌어요. 다만 무대 위에서의 아우라가 더 필요합니다.',
-        strengths: '꾸미지 않은 자연스러움',
-        improvements: '무대 장악력, 표정 디테일',
-        signature: '진짜를 찾고 있어요',
+        summary:
+          '잠깐요. 그 순간의 눈빛은 좋았어요. 근데 무대 전체로 보면 음악이 몸을 따라가는 느낌이었어요. 비주얼 임팩트는 분명히 있어요.',
+        strengths: '자연스러운 매력, 카메라 의식 능력',
+        improvements: '무대 장악력의 일관성, 손끝·발끝 디테일',
+        signature: '무대는 거짓말을 못해요. 3초 안에 보여요',
       },
       {
-        summary: 'Globally speaking, vision이 조금 더 분명했으면 좋겠습니다.',
-        strengths: '잠재력 있음',
-        improvements: '글로벌 어필 포인트, 스타성',
-        signature: 'HYBE is global. Can you be global too?',
+        summary:
+          'Okay, real talk. 한국 시장 기준으로는 통할 수 있어요. 근데 글로벌 시장에선 비전이 더 선명해야 합니다. 자기 이야기가 필요해요.',
+        strengths: '잠재력은 있음, 커뮤니케이션 가능성',
+        improvements: '글로벌 어필 포인트, 5년·10년 비전',
+        signature: 'K-POP은 이미 글로벌이에요. 당신이 글로벌한지가 문제죠',
       },
     ],
     yg: [
