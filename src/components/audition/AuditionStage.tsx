@@ -251,6 +251,16 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
     };
   }, []);
 
+  // 전체화면(CSS-only fallback) 시 body 스크롤 잠금
+  useEffect(() => {
+    if (!isFullscreen) return undefined;
+    const prevOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = prevOverflow;
+    };
+  }, [isFullscreen]);
+
   const toggleFullscreen = async () => {
     const el = cameraBoxRef.current;
     if (!el) return;
@@ -551,18 +561,19 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
         <div className="audition-stage-grid">
         <div
           ref={cameraBoxRef}
-          className={isFullscreen ? 'audition-camera-fs' : ''}
+          className={`audition-camera-box ${isFullscreen ? 'audition-camera-fs' : ''}`}
           style={{
             background: '#000',
-            border: `1px solid ${agency?.accentColor}55`,
-            borderRadius: 20,
+            border: isFullscreen ? 'none' : `1px solid ${agency?.accentColor}55`,
+            borderRadius: isFullscreen ? 0 : 20,
             position: 'relative',
             overflow: 'hidden',
-            aspectRatio: '16 / 9',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
-            boxShadow: `0 0 0 1px rgba(255,255,255,0.04), 0 30px 80px ${agency?.accentColor}22`,
+            boxShadow: isFullscreen
+              ? 'none'
+              : `0 0 0 1px rgba(255,255,255,0.04), 0 30px 80px ${agency?.accentColor}22`,
           }}
         >
           {/* 메인 디스플레이용 video — iOS Safari 호환을 위해 직접 화면에 표시.
@@ -678,27 +689,30 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               aria-label="카메라 명암 조절"
               style={{
                 position: 'absolute',
-                top: 'calc(env(safe-area-inset-top, 0px) + 60px)',
+                top: isFullscreen
+                  ? 'calc(env(safe-area-inset-top, 0px) + 64px)'
+                  : 'calc(env(safe-area-inset-top, 0px) + 60px)',
                 right: 12,
-                width: 36,
-                height: 36,
+                width: 44,
+                height: 44,
                 borderRadius: '50%',
-                background: showFilterPanel ? (agency?.accentColor || '#FF1F8E') : 'rgba(0,0,0,0.55)',
+                background: showFilterPanel ? (agency?.accentColor || '#FF1F8E') : 'rgba(0,0,0,0.6)',
                 border: '1px solid rgba(255,255,255,0.3)',
                 color: '#fff',
-                fontSize: 16,
+                fontSize: 18,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 zIndex: 25,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
               }}
             >
               ☀
             </button>
           ) : null}
 
-          {/* 카메라 명암 조절 패널 */}
+          {/* 카메라 명암 조절 패널 — 전체화면에서도 그대로 동작 (카메라 박스 내부에 absolute로 배치됨) */}
           {cameraState === 'live' ? (
             <BrightnessControl
               filter={cameraFilter}
@@ -709,7 +723,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
             />
           ) : null}
 
-          {/* 전체화면 토글 버튼 (우측 하단, iPhone 홈바 자동 회피) */}
+          {/* 전체화면 토글 버튼 — 일반 모드는 우측하단, 전체화면에선 우측상단으로 이동 (하단은 judge overlay) */}
           {cameraState === 'live' ? (
             <button
               type="button"
@@ -717,20 +731,28 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               aria-label={isFullscreen ? '전체화면 종료' : '전체화면'}
               style={{
                 position: 'absolute',
-                right: 12,
-                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
-                width: 36,
-                height: 36,
+                ...(isFullscreen
+                  ? {
+                      top: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+                      left: 12,
+                    }
+                  : {
+                      right: 12,
+                      bottom: 'calc(env(safe-area-inset-bottom, 0px) + 16px)',
+                    }),
+                width: 44,
+                height: 44,
                 borderRadius: '50%',
-                background: 'rgba(0,0,0,0.55)',
+                background: 'rgba(0,0,0,0.6)',
                 border: '1px solid rgba(255,255,255,0.3)',
                 color: '#fff',
-                fontSize: 16,
+                fontSize: 18,
                 cursor: 'pointer',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                zIndex: 25,
+                zIndex: 26,
+                boxShadow: '0 4px 12px rgba(0,0,0,0.4)',
               }}
             >
               {isFullscreen ? '✕' : '⛶'}
@@ -873,28 +895,72 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               </span>
             </div>
           ) : null}
+
+          {/* 전체화면 모드 — 심사위원 대화/인터뷰 오버레이 (카메라 위에 떠있음) */}
+          {isFullscreen ? (
+            <div
+              className="audition-fs-judge-overlay"
+              style={{
+                position: 'absolute',
+                left: 12,
+                right: 12,
+                bottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)',
+                maxHeight: '45vh',
+                zIndex: 22,
+                pointerEvents: 'auto',
+                borderRadius: 16,
+                overflow: 'hidden',
+                background: 'rgba(0,0,0,0.58)',
+                backdropFilter: 'blur(12px)',
+                WebkitBackdropFilter: 'blur(12px)',
+                border: `1px solid ${agency?.accentColor || '#FF1F8E'}55`,
+                boxShadow: '0 12px 40px rgba(0,0,0,0.5)',
+              }}
+            >
+              <JudgeConversation
+                judges={judges}
+                messages={realTime.messages}
+                currentSpeaker={realTime.currentSpeaker}
+                awaitingResponse={realTime.awaitingResponse}
+                onUserResponse={handleUserResponse}
+                language={language}
+                agencyAccent={agency?.accentColor || '#FF1F8E'}
+                voiceEnabled={realTime.voice.enabled}
+                onToggleVoice={handleToggleVoice}
+                responsePrompt={
+                  currentRound.id === 'interview'
+                    ? '심사위원 질문에 답해주세요'
+                    : '심사위원에게 한 마디 해보세요'
+                }
+                compact
+              />
+            </div>
+          ) : null}
         </div>
 
-        {/* Live judge conversation panel (right side on desktop, stacked on mobile) */}
-        <div className="audition-stage-side">
-          <JudgeConversation
-            judges={judges}
-            messages={realTime.messages}
-            currentSpeaker={realTime.currentSpeaker}
-            awaitingResponse={realTime.awaitingResponse}
-            onUserResponse={handleUserResponse}
-            language={language}
-            agencyAccent={agency?.accentColor || '#FF1F8E'}
-            voiceEnabled={realTime.voice.enabled}
-            onToggleVoice={handleToggleVoice}
-            responsePrompt={
-              currentRound.id === 'interview'
-                ? '심사위원 질문에 답해주세요'
-                : '심사위원에게 한 마디 해보세요'
-            }
-            compact
-          />
-        </div>
+        {/* Live judge conversation panel (right side on desktop, stacked on mobile).
+            전체화면 모드일 때는 카메라 박스 안 오버레이로 표시되므로 여기는 숨김. */}
+        {!isFullscreen ? (
+          <div className="audition-stage-side">
+            <JudgeConversation
+              judges={judges}
+              messages={realTime.messages}
+              currentSpeaker={realTime.currentSpeaker}
+              awaitingResponse={realTime.awaitingResponse}
+              onUserResponse={handleUserResponse}
+              language={language}
+              agencyAccent={agency?.accentColor || '#FF1F8E'}
+              voiceEnabled={realTime.voice.enabled}
+              onToggleVoice={handleToggleVoice}
+              responsePrompt={
+                currentRound.id === 'interview'
+                  ? '심사위원 질문에 답해주세요'
+                  : '심사위원에게 한 마디 해보세요'
+              }
+              compact
+            />
+          </div>
+        ) : null}
         </div> {/* /audition-stage-grid */}
 
         <div style={{ marginTop: 14 }}>
@@ -948,6 +1014,12 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
           min-height: 0;
           height: 100%;
         }
+        /* 카메라 박스 — desktop은 16:9 가로형, mobile은 9:16 세로형으로 큰 영역 확보 */
+        .audition-camera-box {
+          width: 100%;
+          aspect-ratio: 16 / 9;
+          min-height: 260px;
+        }
         @media (max-width: 860px) {
           .audition-stage-grid {
             grid-template-columns: 1fr;
@@ -955,6 +1027,30 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
           .audition-stage-side {
             min-height: 260px;
           }
+          .audition-camera-box {
+            aspect-ratio: 9 / 16;
+            min-height: 60vh;
+            max-height: 78vh;
+          }
+        }
+        /* 전체화면 모드 — viewport 가득 채움 (iOS / Android Chrome 모두 안정) */
+        .audition-camera-fs {
+          position: fixed !important;
+          inset: 0 !important;
+          top: 0 !important;
+          left: 0 !important;
+          right: 0 !important;
+          bottom: 0 !important;
+          width: 100vw !important;
+          height: 100vh !important;
+          height: 100dvh !important;
+          max-width: none !important;
+          max-height: none !important;
+          min-height: 0 !important;
+          aspect-ratio: auto !important;
+          border-radius: 0 !important;
+          z-index: 9999 !important;
+          background: #000 !important;
         }
       `}</style>
     </div>
