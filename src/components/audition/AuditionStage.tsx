@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import JudgeReaction from './JudgeReaction';
 import JudgeConversation from './JudgeConversation';
@@ -49,6 +49,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
   const cameraFilterRef = useRef(DEFAULT_FILTER);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [needsTapToStart, setNeedsTapToStart] = useState(false);
 
   const currentRound = ROUNDS[roundIdx];
   const ROUND_DURATION = 30;
@@ -68,8 +69,13 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
   const finalDeliberationStartedRef = useRef(false);
 
   // ── Camera + microphone setup ──────────────────────────────────────────────
+  // iOS Safari 호환을 위해 <video>를 직접 화면에 표시하고
+  // CSS filter/transform 으로 미러·명암을 적용합니다.
+  // (opacity:0 + canvas drawImage 방식은 iOS WebKit이 숨겨진 video의 프레임 디코딩을
+  //  스킵하는 알려진 버그가 있어 검은 화면이 나오는 원인이 됩니다.)
   useEffect(() => {
     let cancelled = false;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent || '');
     async function startMedia() {
       setCameraState('requesting');
       setCameraError('');
@@ -77,12 +83,22 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
         if (!navigator.mediaDevices?.getUserMedia) {
           throw new Error('이 브라우저는 카메라 접근을 지원하지 않습니다.');
         }
+        if (typeof window !== 'undefined' && !window.isSecureContext) {
+          const isLocalhost = ['localhost', '127.0.0.1'].includes(window.location.hostname);
+          if (!isLocalhost) {
+            throw new Error('카메라는 HTTPS 또는 localhost에서만 동작합니다. (https:// 주소로 접속해 주세요)');
+          }
+        }
+        // iOS는 세로 해상도가 안정적, Android/PC는 가로 해상도가 적합
+        const ideal = isIOS
+          ? { width: 720, height: 1280 }
+          : { width: 1280, height: 720 };
         const stream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: 'user',
-            width: { ideal: 1280 },
-            height: { ideal: 720 },
-            aspectRatio: { ideal: 16 / 9 },
+            width: { ideal: ideal.width },
+            height: { ideal: ideal.height },
+            frameRate: { ideal: 30, max: 60 },
           },
           audio: {
             echoCancellation: true,
@@ -95,16 +111,41 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
           return;
         }
         streamRef.current = stream;
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-          // play() may need user gesture on some browsers; muted autoplay should work
-          try { await videoRef.current.play(); } catch { /* ignored */ }
+        const v = videoRef.current;
+        if (v) {
+          v.srcObject = stream;
+          // iOS Safari 자동재생 / 인라인 재생 호환 속성
+          v.muted = true;
+          v.setAttribute('muted', 'true');
+          v.setAttribute('playsinline', 'true');
+          v.setAttribute('webkit-playsinline', 'true');
+          v.setAttribute('autoplay', 'true');
+          v.disablePictureInPicture = true;
+          const tryPlay = async () => {
+            try {
+              await v.play();
+              setNeedsTapToStart(false);
+              return true;
+            } catch (e) {
+              // 자동재생 정책에 막힘 → 사용자 탭으로 재시도 가능하게 표시
+              setNeedsTapToStart(true);
+              return false;
+            }
+          };
+          // metadata/canplay 시점마다 재시도 (모바일 브라우저별 타이밍 차이 대응)
+          v.onloadedmetadata = () => { tryPlay(); };
+          v.oncanplay = () => { tryPlay(); };
+          await tryPlay();
         }
         // Audio level meter via WebAudio (lightweight)
         try {
           const Ctx = window.AudioContext || window.webkitAudioContext;
           const ac = new Ctx();
           audioContextRef.current = ac;
+          // iOS는 사용자 제스처 없이 만든 AudioContext가 'suspended' 상태일 수 있음
+          if (ac.state === 'suspended' && typeof ac.resume === 'function') {
+            ac.resume().catch(() => { /* noop */ });
+          }
           const source = ac.createMediaStreamSource(stream);
           const analyser = ac.createAnalyser();
           analyser.fftSize = 1024;
@@ -114,8 +155,8 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
             analyser.getByteTimeDomainData(buffer);
             let sumSquares = 0;
             for (let i = 0; i < buffer.length; i += 1) {
-              const v = (buffer[i] - 128) / 128;
-              sumSquares += v * v;
+              const vv = (buffer[i] - 128) / 128;
+              sumSquares += vv * vv;
             }
             const rms = Math.sqrt(sumSquares / buffer.length);
             setAudioLevel(Math.min(1, rms * 3));
@@ -126,11 +167,20 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
           // analyser is best-effort
         }
         setCameraState('live');
-        startFilterRenderLoop();
       } catch (err) {
         if (cancelled) return;
         setCameraState('error');
-        setCameraError(err?.message || '카메라/마이크 권한이 필요합니다.');
+        const name = err?.name || '';
+        const msg = err?.message || '';
+        if (name === 'NotAllowedError' || msg.includes('Permission')) {
+          setCameraError('카메라/마이크 권한이 거부되었습니다. 브라우저 설정에서 권한을 다시 허용해주세요.');
+        } else if (name === 'NotFoundError') {
+          setCameraError('사용 가능한 카메라/마이크를 찾지 못했습니다.');
+        } else if (name === 'NotReadableError') {
+          setCameraError('다른 앱이 카메라를 사용 중입니다. 카메라를 사용하는 다른 앱을 종료해주세요.');
+        } else {
+          setCameraError(msg || '카메라/마이크 권한이 필요합니다.');
+        }
       }
     }
     startMedia();
@@ -148,7 +198,28 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
       }
+      if (videoRef.current) {
+        try { videoRef.current.srcObject = null; } catch { /* noop */ }
+      }
     };
+  }, []);
+
+  // 자동재생 정책에 막혔을 때 사용자가 한 번 탭하면 재생 시작
+  const handleTapToStart = useCallback(async () => {
+    const v = videoRef.current;
+    if (!v) return;
+    try {
+      await v.play();
+      setNeedsTapToStart(false);
+      // iOS AudioContext도 사용자 제스처에서 resume
+      const ac = audioContextRef.current;
+      if (ac && ac.state === 'suspended' && typeof ac.resume === 'function') {
+        ac.resume().catch(() => { /* noop */ });
+      }
+    } catch {
+      // 사용자에게 권한 재확인 안내
+      setNeedsTapToStart(true);
+    }
   }, []);
 
   const buildFilterString = (f) => {
@@ -236,6 +307,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
   // ── Countdown gate: when camera goes live OR round changes, run 3-2-1 ─────
   useEffect(() => {
     if (cameraState !== 'live') return undefined;
+    if (needsTapToStart) return undefined; // 사용자 탭 후 카운트다운 시작
     setIsRecording(false);
     setCountdown(3);
     const id = setInterval(() => {
@@ -249,7 +321,7 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [cameraState, roundIdx]);
+  }, [cameraState, roundIdx, needsTapToStart]);
 
   useEffect(() => {
     if (!isRecording) return undefined;
@@ -493,25 +565,16 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
             boxShadow: `0 0 0 1px rgba(255,255,255,0.04), 0 30px 80px ${agency?.accentColor}22`,
           }}
         >
-          {/* 원본 video: 숨김 (필터 처리용 소스로만 사용) */}
+          {/* 메인 디스플레이용 video — iOS Safari 호환을 위해 직접 화면에 표시.
+              CSS transform: scaleX(-1)로 셀카 미러, CSS filter로 명암 조절. */}
           <video
             ref={videoRef}
             autoPlay
             playsInline
             muted
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              opacity: 0,
-              pointerEvents: 'none',
-            }}
-          />
-          {/* 필터 적용된 디스플레이 캔버스 (CSS filter로 명암 적용) */}
-          <canvas
-            ref={displayCanvasRef}
+            // @ts-ignore — older iOS WebKit 호환
+            webkit-playsinline="true"
+            disablePictureInPicture
             style={{
               position: 'absolute',
               inset: 0,
@@ -522,6 +585,20 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
               opacity: cameraState === 'live' ? 1 : 0,
               transition: 'opacity 0.3s ease',
               filter: buildFilterString(cameraFilter),
+              background: '#000',
+            }}
+          />
+          {/* 백업/녹화 용 canvas — 화면에는 보이지 않음 (필터 적용된 스냅샷·녹화 캡처용 hook과 호환) */}
+          <canvas
+            ref={displayCanvasRef}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              opacity: 0,
+              pointerEvents: 'none',
             }}
           />
 
@@ -741,8 +818,36 @@ export default function AuditionStage({ agency, onComplete, onBack }) {
             </div>
           ) : null}
 
+          {/* iOS/모바일 자동재생 차단 시 — 사용자 탭으로 카메라 시작 */}
+          {cameraState === 'live' && needsTapToStart ? (
+            <button
+              type="button"
+              onClick={handleTapToStart}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                background: 'rgba(0,0,0,0.7)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: 12,
+                color: '#FFF',
+                border: 'none',
+                cursor: 'pointer',
+                zIndex: 30,
+              }}
+            >
+              <div style={{ fontSize: 56 }}>📷</div>
+              <p style={{ margin: 0, fontWeight: 800, fontSize: 16 }}>탭해서 카메라 시작</p>
+              <p style={{ margin: 0, fontSize: 12, color: 'rgba(255,255,255,0.7)', maxWidth: 280, textAlign: 'center', lineHeight: 1.5 }}>
+                모바일 자동재생 정책으로 인해 한 번 탭이 필요해요
+              </p>
+            </button>
+          ) : null}
+
           {/* Countdown overlay (3-2-1 GO) */}
-          {cameraState === 'live' && countdown > 0 ? (
+          {cameraState === 'live' && countdown > 0 && !needsTapToStart ? (
             <div
               key={countdown}
               style={{
