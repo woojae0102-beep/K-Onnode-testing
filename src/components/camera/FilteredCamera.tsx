@@ -30,6 +30,7 @@ const FilteredCamera = forwardRef(function FilteredCamera(
     setFilter,
     resetFilter,
     isReady,
+    displaySurface,
     isRecording,
     error,
     startCamera,
@@ -37,7 +38,7 @@ const FilteredCamera = forwardRef(function FilteredCamera(
     startRecording,
     stopRecording,
     takePhoto,
-  } = useCameraWithFilter({ audio, defaultFacingMode });
+  } = useCameraWithFilter({ audio, defaultFacingMode, surface: 'auto' });
 
   const [showPanel, setShowPanel] = useState(false);
 
@@ -63,35 +64,78 @@ const FilteredCamera = forwardRef(function FilteredCamera(
       className={className}
       style={{ position: 'relative', width: '100%', height: '100%', overflow: 'hidden', ...style }}
     >
-      {/* 원본 video 요소 (display:none이 아닌 opacity 0 → MediaPipe 등에서도 사용 가능) */}
-      <video
-        ref={videoRef}
-        playsInline
-        muted
-        autoPlay
-        style={{
-          position: 'absolute',
-          inset: 0,
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          opacity: 0,
-          pointerEvents: 'none',
-        }}
-      />
+      {displaySurface === 'video' ? (
+        <>
+          <div
+            style={{
+              position: 'absolute',
+              inset: 0,
+              overflow: 'hidden',
+              filter: buildCameraFilterCss(filter),
+              WebkitFilter: buildCameraFilterCss(filter),
+              transform: 'translateZ(0)',
+            }}
+          >
+            <video
+              ref={videoRef}
+              playsInline
+              muted
+              autoPlay
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transform: mirror ? 'scaleX(-1)' : 'none',
+                opacity: isReady ? 1 : 0,
+              }}
+            />
+          </div>
+          <canvas
+            ref={displayCanvasRef}
+            aria-hidden
+            style={{
+              position: 'absolute',
+              width: 0,
+              height: 0,
+              opacity: 0,
+              visibility: 'hidden',
+              pointerEvents: 'none',
+            }}
+          />
+        </>
+      ) : (
+        <>
+          <video
+            ref={videoRef}
+            playsInline
+            muted
+            autoPlay
+            style={{
+              position: 'absolute',
+              inset: 0,
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              opacity: 0,
+              pointerEvents: 'none',
+            }}
+          />
 
-      {/* 필터된 결과를 표시하는 캔버스 (CSS filter로 명암 적용) */}
-      <canvas
-        ref={displayCanvasRef}
-        style={{
-          width: '100%',
-          height: '100%',
-          objectFit: 'cover',
-          display: 'block',
-          transform: mirror ? 'scaleX(-1)' : 'none',
-          filter: buildCameraFilterCss(filter),
-        }}
-      />
+          <canvas
+            ref={displayCanvasRef}
+            style={{
+              width: '100%',
+              height: '100%',
+              objectFit: 'cover',
+              display: 'block',
+              transform: mirror ? 'scaleX(-1)' : 'none',
+              filter: buildCameraFilterCss(filter),
+            }}
+          />
+        </>
+      )}
 
       {children}
 
