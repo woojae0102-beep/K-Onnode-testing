@@ -4,7 +4,7 @@ import { AGENCY_AUDITIONS, getAgencyById } from '../data/agencyAuditions';
 import AgencySelector from '../components/audition/AgencySelector';
 import AgencyLobby from '../components/audition/AgencyLobby';
 import JudgePanel from '../components/audition/JudgePanel';
-import AuditionStage from '../components/audition/AuditionStage';
+import AuditionFlowStage from '../components/audition/AuditionFlowStage';
 import AgencyResult from '../components/audition/AgencyResult';
 import HybeAuditionResult from '../components/audition/HybeAuditionResult';
 import SmAuditionResult from '../components/audition/SmAuditionResult';
@@ -69,7 +69,7 @@ export default function AgencyAuditionView() {
         />
       )}
       {stage === 'stage' && (
-        <AuditionStage
+        <AuditionFlowStage
           agency={agency}
           onComplete={handleStageComplete}
           onBack={() => setStage('judges')}
