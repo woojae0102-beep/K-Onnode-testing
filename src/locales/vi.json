@@ -1,4 +1,245 @@
 {
+  "monthly": {
+    "tag": "Monthly Evaluation",
+    "title": "Đánh giá cuối tháng",
+    "subtitle": "Giám khảo AI của 5 công ty đánh giá bạn trong một tháng",
+    "loadingTitle": "Giám khảo AI đang đánh giá bạn",
+    "phase": {
+      "countdown": "Chờ",
+      "profile": "Đang phân tích hồ sơ thực tập sinh…",
+      "agency_evals": "5 công ty đang đánh giá…",
+      "debate": "Giám khảo đang tranh luận…",
+      "final": "Đang tổng hợp kết quả cuối…",
+      "complete": "Đánh giá hoàn tất"
+    },
+    "countdown": {
+      "headlineFar": "Còn {{days}} ngày đến đánh giá cuối tháng",
+      "headlineHot": "🔥 Sắp đến đánh giá! D-{{days}}",
+      "headlineToday": "🏆 Hôm nay là ngày đánh giá cuối tháng!",
+      "subFar": "Tiếp tục luyện tập và hoàn thiện câu chuyện của tháng. Sắp đến ngày bạn có thể bắt đầu.",
+      "subHot": "5 giám khảo AI sẽ đánh giá bạn dựa trên dữ liệu tháng qua.",
+      "subToday": "5 giám khảo công ty đang chờ bạn của tháng này.",
+      "startBtn": "Bắt đầu đánh giá",
+      "waitingBtn": "D-{{days}} · Đang chờ",
+      "previewLabel": "Xem trước tháng này",
+      "previewDays": "Số ngày luyện",
+      "previewDaysSub": "Tháng này",
+      "previewAvg": "Điểm TB",
+      "previewAvgSub": "Nhảy · Hát · Hàn",
+      "previewTop": "Luyện nhiều nhất",
+      "previewDayUnit": "{{count}} ngày",
+      "previewScoreUnit": "{{value}}",
+      "previewFieldUnit": "{{label}} ({{count}} lần)",
+      "previewEmpty": "Thiếu dữ liệu",
+      "previewScoreEmpty": "—",
+      "sampleNotice": "Dữ liệu luyện tập tháng này chưa đủ. Bạn có thể điền dữ liệu mẫu để xem trước.",
+      "sampleBtn": "Điền dữ liệu mẫu",
+      "historyHeader": "Lịch sử đánh giá gần đây",
+      "historyDebutPct": "Khả năng debut {{value}}%"
+    },
+    "labels": {
+      "overallGrade": "Xếp hạng tổng",
+      "totalScore": "Tổng",
+      "agencyPassRate": "Khả năng qua từng công ty",
+      "agencyTop": "Cao nhất",
+      "debutProbability": "Khả năng debut",
+      "debutLine": "Đường nét đứt 65% — ngưỡng debut",
+      "vsLastMonth": "So với tháng trước",
+      "positionChanges": "Thay đổi vị trí",
+      "bestGrowth": "Tiến bộ nhất tháng",
+      "biggestIssue": "Vấn đề bị nhắc nhiều nhất",
+      "history": "Lịch sử thực tập sinh",
+      "historySub": "Dòng thời gian câu chuyện",
+      "historyEmpty": "Chưa có câu chuyện tích lũy. Bắt đầu từ tháng sau.",
+      "groupMatch": "AI Group Match",
+      "groupMatchAlt": "Thay thế — {{label}}",
+      "nextGoals": "📋 Mục tiêu tháng sau",
+      "specialAward": "🎖 {{label}}",
+      "finalMessage": "Final Message",
+      "now": "NOW"
+    },
+    "buttons": {
+      "saveCard": "Lưu thẻ",
+      "share": "Chia sẻ",
+      "restart": "Bắt đầu lại"
+    },
+    "survival": {
+      "title": "Survival Status",
+      "debut_candidate": "Ứng viên debut",
+      "top30": "TOP 30%",
+      "hold": "Giữ chỗ",
+      "danger": "Nguy cơ loại",
+      "eliminated": "Bị loại",
+      "fallback": {
+        "debut_candidate": "Cứ thế này là ứng viên debut. Đừng dừng.",
+        "top30": "TOP 30%. Một bước nữa là tới ngưỡng debut.",
+        "hold": "Mức giữ chỗ. Tháng sau là bước ngoặt.",
+        "danger": "Mức nguy hiểm. Đây là thời điểm quan trọng nhất.",
+        "eliminated": "Có thể đã ngã, nhưng vẫn có thể bắt đầu lại."
+      }
+    },
+    "profile": {
+      "tagLine": "AI Trainee Profile",
+      "narrativeEmpty": "Đang phân tích câu chuyện tháng này…",
+      "tags": {
+        "strength": "Điểm mạnh",
+        "weakness": "Điểm yếu",
+        "growthRate": "Tốc độ phát triển",
+        "stagePresence": "Khí chất",
+        "position": "Vị trí",
+        "marketability": "Đại chúng"
+      },
+      "stagePresenceValue": "Hạng {{grade}}",
+      "specialNote": "Điểm đặc biệt — ",
+      "growth": {
+        "very_fast": "Rất nhanh ⚡⚡",
+        "fast": "Nhanh ⚡",
+        "normal": "Bình thường",
+        "slow": "Chậm"
+      },
+      "marketability": {
+        "very_high": "Rất cao",
+        "high": "Cao",
+        "medium": "Trung bình",
+        "low": "Thấp"
+      }
+    },
+    "agency": {
+      "subHeader": "Audition · {{name}}",
+      "passRate": "Tỷ lệ qua",
+      "loading": "Đang đánh giá…",
+      "advice": "Lời khuyên — "
+    },
+    "debate": {
+      "tag": "AI Judge Debate",
+      "headerSub": "Tranh luận của 5 giám khảo đại diện",
+      "keyConflict": "Bất đồng",
+      "consensus": "Đồng thuận",
+      "summary": "Tổng kết của giám khảo AI"
+    },
+    "positionChange": {
+      "up": "Tăng",
+      "down": "Cần bổ sung",
+      "stable": "Ổn định",
+      "new": "Mới"
+    },
+    "growth": {
+      "bestLabel": "Best Growth",
+      "issueLabel": "Most Pointed Issue"
+    },
+    "shareSummary": "[Đánh giá {{month}}]\nLoại: {{type}}\nHạng {{grade}} · Debut {{prob}}%",
+    "shareCopied": "Đã sao chép kết quả vào clipboard.",
+    "shareErr": "Môi trường này không hỗ trợ lưu thẻ.",
+    "shareErrSave": "Không thể lưu thẻ.",
+    "errorPrefix": "Có lỗi trong khi đánh giá:",
+    "errorRestart": "Bắt đầu lại"
+  },
+  "dashboard": {
+    "tag": "Trainee Asset Dashboard",
+    "title": "Đánh giá tổng hợp",
+    "subtitle": "Chứng minh giá trị bằng dữ liệu khả năng debut · Cập nhật {{at}}",
+    "refresh": "Làm mới",
+    "strengthenCta": "Củng cố portfolio",
+    "audition": {
+      "tag": "Audition Readiness Report",
+      "overallLabel": "Mức sẵn sàng debut",
+      "delta": "{{sign}}{{value}}% so với tháng trước",
+      "topStrengthPrefix": "⭐ "
+    },
+    "abilities": {
+      "dance": "Nhảy",
+      "vocal": "Hát",
+      "visual": "Visual",
+      "attitude": "Thái độ",
+      "korean": "Tiếng Hàn",
+      "rhythm": "Nhịp điệu",
+      "coreTag": "Core",
+      "topPercentile": "Top {{value}}%"
+    },
+    "hexagon": {
+      "tag": "Hexagon Ability Chart",
+      "title": "Biểu đồ 6 cạnh",
+      "previous": "Tháng trước",
+      "current": "Tháng này",
+      "overall": "Năng lực tổng",
+      "totalGrowth": "Tăng trưởng tổng",
+      "tooltipScore": "{{value}}",
+      "scoreUnit": ""
+    },
+    "timeline": {
+      "tag": "Technical Growth Timeline",
+      "title": "Dòng thời gian kỹ thuật",
+      "subtitle": "Chứng minh chiều sâu bằng điểm chi tiết theo kỹ năng",
+      "currentScore": "Điểm hiện tại",
+      "delta30d": "30d {{sign}}{{value}}",
+      "mastered": "Đạt thành thạo",
+      "masterGoal": "Mục tiêu {{value}} · Còn {{remaining}}",
+      "masterRefLabel": "Master",
+      "category": {
+        "dance": "Nhảy",
+        "vocal": "Hát",
+        "korean": "Hàn",
+        "attitude": "Thái độ"
+      },
+      "items": {
+        "danceIso": "Độ chính xác Isolation",
+        "vocalPitch": "Ổn định nốt cao",
+        "danceBottom": "Ổn định phần thân dưới",
+        "koreanIntonation": "Ngữ điệu tiếng Hàn"
+      }
+    },
+    "portfolio": {
+      "tag": "Portfolio Mastery",
+      "title": "Portfolio Debut",
+      "inProgress": "Đang xây dựng",
+      "mastered": "Đã thành thạo",
+      "outOfTotal": "trong {{total}}",
+      "barInProgress": "Tiến độ xây dựng",
+      "barMastered": "Tỷ lệ thành thạo",
+      "coreStrength": "Điểm mạnh cốt lõi",
+      "ctaToday": "Chứng minh một kỹ năng hôm nay →",
+      "topStrengthDummy": "Ổn định phần thân dưới — Top 5%"
+    },
+    "insight": {
+      "tag": "AI Insight",
+      "labels": {
+        "positive": "Tín hiệu mạnh",
+        "caution": "Cần bổ sung",
+        "neutral": "AI Insight"
+      },
+      "items": {
+        "danceBottom": {
+          "headline": "Ổn định thân dưới vào Top 5%",
+          "message": "Là điểm bán mạnh ở hạng mục \"sự ổn định\" khi audition. JYP·HYBE đều coi trọng.",
+          "cta": "Xem báo cáo nhảy"
+        },
+        "koreanIntonation": {
+          "headline": "Ngữ điệu Hàn tăng +11 trong 30 ngày",
+          "message": "Phát âm → ngữ điệu → biểu cảm liên kết tự nhiên. Trực tiếp đóng góp cho SM·HYBE.",
+          "cta": "Báo cáo Hàn"
+        },
+        "vocalColor": {
+          "headline": "Tín hiệu khác biệt tông giọng đứng yên",
+          "message": "SM·YG đặt nặng. Thử biến tấu tông giọng trên track khác trong một tuần.",
+          "cta": "Nhận AI coaching"
+        }
+      }
+    },
+    "agencyReadinessTags": {
+      "hybe": "Storytelling toàn cầu",
+      "jyp": "Thực lực",
+      "sm": "Visual · Aura",
+      "yg": "Performance · Charisma",
+      "starship": "Đại chúng · Cơ bản"
+    },
+    "agencyReadinessSignal": {
+      "hybe": "Top 10% trọng số âm nhạc·tốc độ tiến bộ",
+      "jyp": "Ổn định giọng·thái độ vượt chuẩn",
+      "sm": "Hợp camera tăng, cần bổ sung khác biệt giọng",
+      "yg": "Aura dao động — đề xuất củng cố màu sắc",
+      "starship": "Đại chúng·duy trì đạt ngưỡng debut"
+    }
+  },
   "settings": {
     "title": "Cài đặt",
     "subtitle": "Tùy chỉnh trải nghiệm ONNODE AI COACH của bạn",
@@ -491,5 +732,74 @@
     "recommendMessage": "Nội dung này phù hợp với cấp độ hiện tại của bạn.",
     "start": "Bắt đầu",
     "changeSettings": "Đổi cài đặt thông báo →"
+  },
+  "coaching": {
+    "song": {
+      "title": "Phân tích Persona bài hát",
+      "placeholder": "Tên bài hoặc ‘Bài - Nghệ sĩ’",
+      "analyze": "Phân tích",
+      "analyzing": "Đang phân tích…",
+      "reset": "Đặt lại"
+    },
+    "persona": {
+      "dancePersonaLabel": "Persona nhảy cho bài này",
+      "vocalPersonaLabel": "Persona hát cho bài này",
+      "danceAttitude": "Khi nhảy bài này",
+      "vocalAttitude": "Khi hát bài này",
+      "energy": "Năng lượng",
+      "dance": "Tính khiêu vũ",
+      "valence": "Tính tích cực"
+    },
+    "voice": {
+      "listen": "Nghe giọng huấn luyện",
+      "playing": "Đang phát",
+      "unsupported": "Trình duyệt này không hỗ trợ phát giọng"
+    },
+    "phaseLabels": {
+      "start": "Mở đầu phiên",
+      "realtime": "Huấn luyện thời gian thực",
+      "mid": "Đánh giá giữa",
+      "end": "Huấn luyện tổng kết"
+    },
+    "dance": {
+      "tag": "Huấn luyện AI Persona Nhảy",
+      "empty": "Phân tích một bài để bắt đầu coaching.",
+      "thinking": "Huấn luyện viên đang chuẩn bị nhận xét…",
+      "activated": "Persona đã sống",
+      "activatingHint": "Thể hiện persona mạnh hơn",
+      "technicalScore": "Kỹ thuật",
+      "emotionalScore": "Biểu cảm",
+      "keyCorrection": "Điều cần sửa chính",
+      "personaComment": "Bình luận persona"
+    },
+    "vocal": {
+      "tag": "Huấn luyện AI Vocal Soul",
+      "empty": "Phân tích một bài để bắt đầu soul coaching.",
+      "thinking": "Huấn luyện viên đang chuẩn bị lời cảm xúc…",
+      "characteristicsLoading": "Đặc điểm giọng sẽ được phân tích khi bạn thu",
+      "pitchScore": "Cao độ",
+      "soulScore": "Soul",
+      "emotionImage": "Hình ảnh cảm xúc",
+      "visualization": "Bài tập hình dung",
+      "technicalAsEmotion": "Sửa lỗi bằng ngôn ngữ cảm xúc",
+      "breathingTip": "Mẹo hít thở",
+      "soulDirection": "Hướng Soul"
+    },
+    "settings": {
+      "title": "Persona huấn luyện viên AI",
+      "subtitle": "Chọn huấn luyện viên nhảy / hát",
+      "danceLabel": "HLV nhảy",
+      "vocalLabel": "HLV hát",
+      "personas": {
+        "jyp_jung": "JYP Jung Minji — sôi nổi",
+        "yg_lee": "YG Lee Narae — thẳng thắn",
+        "hybe_kim": "HYBE Kim Soyeon — trực giác",
+        "sm_choi": "SM Choi Yujin — uy nghi",
+        "jyp_park": "JYP Park Jaewon — chuyên gia thanh",
+        "sm_choi_vocal": "SM Choi Yujin — chuyên gia âm sắc",
+        "hybe_soul": "HYBE — truyền cảm xúc",
+        "yg_vocal": "YG — swag & groove"
+      }
+    }
   }
 }

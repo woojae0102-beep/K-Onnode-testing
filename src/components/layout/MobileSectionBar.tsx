@@ -17,17 +17,9 @@ const DISCOVER_SECTIONS = [
   { icon: '🏆', labelKey: 'leftPanel.challenges', view: 'challenges' },
 ];
 
-const AICOACH_SECTIONS = [
-  { icon: '🔥', labelKey: 'leftPanel.todayPick', view: 'aicoach' },
-  { icon: '📈', labelKey: 'leftPanel.weakness', view: 'weakness' },
-  { icon: '📅', labelKey: 'leftPanel.routine', view: 'routine' },
-  { icon: '🎯', labelKey: 'leftPanel.coaching', view: 'coaching' },
-];
-
 function getSections(activeTab) {
   if (activeTab === 'home') return HOME_SECTIONS;
   if (activeTab === 'discover') return DISCOVER_SECTIONS;
-  if (activeTab === 'aicoach') return AICOACH_SECTIONS;
   return [];
 }
 

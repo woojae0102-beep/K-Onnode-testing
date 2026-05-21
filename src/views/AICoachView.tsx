@@ -9,7 +9,9 @@ import FollowAlongMode from '../components/korean/FollowAlongMode';
 import CorrectionMode from '../components/korean/CorrectionMode';
 import LyricsVocabMode from '../components/korean/LyricsVocabMode';
 import ReportListView from './ReportListView';
+import MonthlyEvalView from './MonthlyEvalView';
 import { useLanguageStore } from '../store/languageStore';
+import { useMonthlyData } from '../hooks/useMonthlyData';
 
 const QUICK_COMMANDS = [
   { id: 'dance', label: '/댄스' },
@@ -25,6 +27,7 @@ const QUICK_COMMANDS = [
 const BOTTOM_TABS = [
   { id: 'chat', label: 'AI코칭', feature: 'none' },
   { id: 'report', label: '리포트', feature: 'report' },
+  { id: 'monthly', label: '월말 평가', feature: 'monthly' },
 ];
 
 const MODE_REPLY = {
@@ -130,7 +133,7 @@ const LANGUAGE_OPTIONS = [
 ];
 const UI_TEXT = {
   ko: {
-    tabs: { chat: 'AI코칭', dance: '댄스', vocal: '보컬', korean: '한국어', report: '리포트' },
+    tabs: { chat: 'AI코칭', dance: '댄스', vocal: '보컬', korean: '한국어', report: '리포트', monthly: '월말 평가' },
     languageLabel: '언어',
     toneLabel: '코치 스타일',
     tone: { friendly: '친절형', strict: '엄격형', brief: '짧은형' },
@@ -201,7 +204,7 @@ const UI_TEXT = {
     },
   },
   en: {
-    tabs: { chat: 'AI Coach', dance: 'Dance', vocal: 'Vocal', korean: 'Korean', report: 'Report' },
+    tabs: { chat: 'AI Coach', dance: 'Dance', vocal: 'Vocal', korean: 'Korean', report: 'Report', monthly: 'Monthly Eval' },
     languageLabel: 'Language',
     toneLabel: 'Coach tone',
     tone: { friendly: 'Friendly', strict: 'Strict', brief: 'Brief' },
@@ -274,7 +277,7 @@ const UI_TEXT = {
 };
 UI_TEXT.ja = {
   ...UI_TEXT.en,
-  tabs: { chat: 'AIコーチ', dance: 'ダンス', vocal: 'ボーカル', korean: '韓国語', report: 'レポート' },
+  tabs: { chat: 'AIコーチ', dance: 'ダンス', vocal: 'ボーカル', korean: '韓国語', report: 'レポート', monthly: '月末評価' },
   languageLabel: '言語',
   toneLabel: 'コーチトーン',
   tone: { friendly: '親切', strict: '厳格', brief: '簡潔' },
@@ -347,7 +350,7 @@ UI_TEXT.ja = {
 };
 UI_TEXT.th = {
   ...UI_TEXT.en,
-  tabs: { chat: 'AI โค้ช', dance: 'เต้น', vocal: 'ร้องเพลง', korean: 'เกาหลี', report: 'รายงาน' },
+  tabs: { chat: 'AI โค้ช', dance: 'เต้น', vocal: 'ร้องเพลง', korean: 'เกาหลี', report: 'รายงาน', monthly: 'ประเมินสิ้นเดือน' },
   languageLabel: 'ภาษา',
   toneLabel: 'โทนโค้ช',
   tone: { friendly: 'เป็นมิตร', strict: 'เข้มงวด', brief: 'สั้นกระชับ' },
@@ -420,7 +423,7 @@ UI_TEXT.th = {
 };
 UI_TEXT.vi = {
   ...UI_TEXT.en,
-  tabs: { chat: 'AI Coach', dance: 'Nhảy', vocal: 'Thanh nhạc', korean: 'Tiếng Hàn', report: 'Báo cáo' },
+  tabs: { chat: 'AI Coach', dance: 'Nhảy', vocal: 'Thanh nhạc', korean: 'Tiếng Hàn', report: 'Báo cáo', monthly: 'Đánh giá tháng' },
   languageLabel: 'Ngôn ngữ',
   toneLabel: 'Giọng điệu huấn luyện',
   tone: { friendly: 'Thân thiện', strict: 'Nghiêm khắc', brief: 'Ngắn gọn' },
@@ -493,7 +496,7 @@ UI_TEXT.vi = {
 };
 UI_TEXT.es = {
   ...UI_TEXT.en,
-  tabs: { chat: 'AI Coach', dance: 'Baile', vocal: 'Vocal', korean: 'Coreano', report: 'Informe' },
+  tabs: { chat: 'AI Coach', dance: 'Baile', vocal: 'Vocal', korean: 'Coreano', report: 'Informe', monthly: 'Eval. mensual' },
   languageLabel: 'Idioma',
   toneLabel: 'Tono del coach',
   tone: { friendly: 'Amable', strict: 'Estricto', brief: 'Breve' },
@@ -566,7 +569,7 @@ UI_TEXT.es = {
 };
 UI_TEXT.fr = {
   ...UI_TEXT.en,
-  tabs: { chat: 'AI Coach', dance: 'Danse', vocal: 'Vocal', korean: 'Coréen', report: 'Rapport' },
+  tabs: { chat: 'AI Coach', dance: 'Danse', vocal: 'Vocal', korean: 'Coréen', report: 'Rapport', monthly: 'Éval mensuelle' },
   languageLabel: 'Langue',
   toneLabel: 'Ton du coach',
   tone: { friendly: 'Bienveillant', strict: 'Strict', brief: 'Bref' },
@@ -639,7 +642,7 @@ UI_TEXT.fr = {
 };
 UI_TEXT.zh = {
   ...UI_TEXT.en,
-  tabs: { chat: 'AI 教练', dance: '舞蹈', vocal: '声乐', korean: '韩语', report: '报告' },
+  tabs: { chat: 'AI 教练', dance: '舞蹈', vocal: '声乐', korean: '韩语', report: '报告', monthly: '月末评估' },
   languageLabel: '语言',
   toneLabel: '教练语气',
   tone: { friendly: '友好型', strict: '严格型', brief: '简洁型' },
@@ -1602,6 +1605,7 @@ export default function AICoachView() {
   const storeLanguage = useLanguageStore((s) => s.language);
   const setStoreLanguage = useLanguageStore((s) => s.setLanguage);
   const currentLanguage = normalizeLanguage(storeLanguage || i18n.resolvedLanguage || i18n.language);
+  const { recordSession: recordMonthlySession } = useMonthlyData();
   const ui = textPack(currentLanguage);
   const bottomTabs = useMemo(
     () =>
@@ -1643,7 +1647,19 @@ export default function AICoachView() {
       savePersistedSessions(next);
       return next;
     });
-  }, []);
+    try {
+      recordMonthlySession({
+        type: rootDomain,
+        score: Math.round(score),
+        duration: 0,
+        weakness: [],
+        strength: [],
+        date: now,
+      });
+    } catch (err) {
+      console.warn('[monthly] recordSession failed', err);
+    }
+  }, [recordMonthlySession]);
 
   const showQuickCommands = inputValue.startsWith('/');
   const featureComponent = useMemo(() => renderFeatureComponent(activeFeature, onReportUpdate), [activeFeature, onReportUpdate]);
@@ -1797,6 +1813,10 @@ export default function AICoachView() {
       refreshReportCard('all', reportPeriod, reportDate);
       return;
     }
+    if (tabId === 'monthly') {
+      setActiveFeature('none');
+      return;
+    }
     const tab = BOTTOM_TABS.find((item) => item.id === tabId);
     if (tab?.feature) {
       setActiveFeature(tab.feature);
@@ -1926,11 +1946,17 @@ export default function AICoachView() {
         </div>
       ) : null}
 
-      {activeTab !== 'chat' && activeTab !== 'report' ? (
+      {activeTab === 'monthly' ? (
+        <div className="flex-1 min-h-0 bg-[#F5F5F7]">
+          <MonthlyEvalView />
+        </div>
+      ) : null}
+
+      {activeTab !== 'chat' && activeTab !== 'report' && activeTab !== 'monthly' ? (
         <div className="flex-1 overflow-y-auto bg-[#F5F5F7]">{featureComponent}</div>
       ) : null}
       <nav className="border-t border-[#E5E5E5] bg-white">
-        <div className="grid grid-cols-5 gap-1 p-2">
+        <div className="grid grid-cols-3 gap-1 p-2">
           {bottomTabs.map((tab) => (
             <button
               key={tab.id}

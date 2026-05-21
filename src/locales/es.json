@@ -1,4 +1,245 @@
 {
+  "monthly": {
+    "tag": "Monthly Evaluation",
+    "title": "Evaluación mensual",
+    "subtitle": "Jurados IA de 5 agencias evalúan tu mes",
+    "loadingTitle": "Los jurados IA te están evaluando",
+    "phase": {
+      "countdown": "Esperando",
+      "profile": "Analizando perfil del aprendiz…",
+      "agency_evals": "5 agencias están evaluando…",
+      "debate": "Los jueces están debatiendo…",
+      "final": "Componiendo el resultado final…",
+      "complete": "Evaluación completa"
+    },
+    "countdown": {
+      "headlineFar": "Faltan {{days}} días para la evaluación mensual",
+      "headlineHot": "🔥 ¡La evaluación empieza pronto! D-{{days}}",
+      "headlineToday": "🏆 ¡Hoy es tu evaluación mensual!",
+      "subFar": "Sigue practicando y completa la historia del mes. Podrás empezar al acercarse la fecha.",
+      "subHot": "5 jueces IA te evaluarán con los datos del último mes.",
+      "subToday": "Los jueces de 5 agencias te esperan.",
+      "startBtn": "Iniciar evaluación",
+      "waitingBtn": "D-{{days}} · Esperando",
+      "previewLabel": "Vista previa del mes",
+      "previewDays": "Días de práctica",
+      "previewDaysSub": "este mes",
+      "previewAvg": "Puntaje medio",
+      "previewAvgSub": "Baile · Voz · Coreano",
+      "previewTop": "Más practicado",
+      "previewDayUnit": "{{count}}d",
+      "previewScoreUnit": "{{value}}",
+      "previewFieldUnit": "{{label}} ({{count}}x)",
+      "previewEmpty": "Datos insuficientes",
+      "previewScoreEmpty": "—",
+      "sampleNotice": "Aún no hay suficientes datos. Carga datos de ejemplo para previsualizar.",
+      "sampleBtn": "Cargar datos de ejemplo",
+      "historyHeader": "Evaluaciones recientes",
+      "historyDebutPct": "Probabilidad de debut {{value}}%"
+    },
+    "labels": {
+      "overallGrade": "Calificación general",
+      "totalScore": "Total",
+      "agencyPassRate": "Probabilidad por agencia",
+      "agencyTop": "TOP",
+      "debutProbability": "Probabilidad de debut",
+      "debutLine": "Línea 65% — candidato a debut",
+      "vsLastMonth": "vs mes anterior",
+      "positionChanges": "Cambios de posición",
+      "bestGrowth": "Habilidad con más crecimiento",
+      "biggestIssue": "Problema más señalado",
+      "history": "Historial del aprendiz",
+      "historySub": "Línea de tiempo",
+      "historyEmpty": "Aún no hay historia. Empieza el mes que viene.",
+      "groupMatch": "AI Group Match",
+      "groupMatchAlt": "Alternativa — {{label}}",
+      "nextGoals": "📋 Objetivos del próximo mes",
+      "specialAward": "🎖 {{label}}",
+      "finalMessage": "Final Message",
+      "now": "NOW"
+    },
+    "buttons": {
+      "saveCard": "Guardar tarjeta",
+      "share": "Compartir",
+      "restart": "Reiniciar"
+    },
+    "survival": {
+      "title": "Survival Status",
+      "debut_candidate": "Candidato a debut",
+      "top30": "TOP 30%",
+      "hold": "En espera",
+      "danger": "En riesgo",
+      "eliminated": "Eliminado",
+      "fallback": {
+        "debut_candidate": "Estás en la línea de candidato a debut. No te detengas.",
+        "top30": "TOP 30%. Un esfuerzo más y llegas al debut.",
+        "hold": "Línea de espera. El próximo mes es el giro.",
+        "danger": "Línea de riesgo. Este es el momento clave.",
+        "eliminated": "Caíste, pero puedes volver a empezar."
+      }
+    },
+    "profile": {
+      "tagLine": "AI Trainee Profile",
+      "narrativeEmpty": "Analizando la historia del mes…",
+      "tags": {
+        "strength": "Fortaleza",
+        "weakness": "Debilidad",
+        "growthRate": "Crecimiento",
+        "stagePresence": "Aura",
+        "position": "Posición",
+        "marketability": "Comercialidad"
+      },
+      "stagePresenceValue": "Grado {{grade}}",
+      "specialNote": "Nota especial — ",
+      "growth": {
+        "very_fast": "Muy rápido ⚡⚡",
+        "fast": "Rápido ⚡",
+        "normal": "Normal",
+        "slow": "Lento"
+      },
+      "marketability": {
+        "very_high": "Muy alta",
+        "high": "Alta",
+        "medium": "Media",
+        "low": "Baja"
+      }
+    },
+    "agency": {
+      "subHeader": "Audition · {{name}}",
+      "passRate": "Probabilidad",
+      "loading": "Evaluando…",
+      "advice": "Consejo — "
+    },
+    "debate": {
+      "tag": "AI Judge Debate",
+      "headerSub": "Debate de los 5 jueces representantes",
+      "keyConflict": "Conflicto",
+      "consensus": "Consenso",
+      "summary": "Resumen de jueces IA"
+    },
+    "positionChange": {
+      "up": "Sube",
+      "down": "Refuerzo",
+      "stable": "Estable",
+      "new": "Nuevo"
+    },
+    "growth": {
+      "bestLabel": "Best Growth",
+      "issueLabel": "Most Pointed Issue"
+    },
+    "shareSummary": "[Eval {{month}}]\nTipo: {{type}}\nGrado {{grade}} · Debut {{prob}}%",
+    "shareCopied": "Resultado copiado al portapapeles.",
+    "shareErr": "Este entorno no admite guardar como tarjeta.",
+    "shareErrSave": "Error al guardar la tarjeta.",
+    "errorPrefix": "Error durante la evaluación:",
+    "errorRestart": "Reiniciar"
+  },
+  "dashboard": {
+    "tag": "Trainee Asset Dashboard",
+    "title": "Evaluación integral del aprendiz",
+    "subtitle": "Demuestra tu valor con datos de debut y competencias · Act. {{at}}",
+    "refresh": "Actualizar",
+    "strengthenCta": "Fortalecer portfolio",
+    "audition": {
+      "tag": "Audition Readiness Report",
+      "overallLabel": "Preparación global de debut",
+      "delta": "{{sign}}{{value}}% vs mes anterior",
+      "topStrengthPrefix": "⭐ "
+    },
+    "abilities": {
+      "dance": "Baile",
+      "vocal": "Voz",
+      "visual": "Visual",
+      "attitude": "Actitud",
+      "korean": "Coreano",
+      "rhythm": "Ritmo",
+      "coreTag": "Core",
+      "topPercentile": "Top {{value}}%"
+    },
+    "hexagon": {
+      "tag": "Hexagon Ability Chart",
+      "title": "Gráfico hexagonal",
+      "previous": "Mes anterior",
+      "current": "Este mes",
+      "overall": "Capacidad global",
+      "totalGrowth": "Crecimiento total",
+      "tooltipScore": "{{value}}",
+      "scoreUnit": ""
+    },
+    "timeline": {
+      "tag": "Technical Growth Timeline",
+      "title": "Línea de crecimiento técnico",
+      "subtitle": "Demuestra la profundidad con puntajes por destreza",
+      "currentScore": "Puntaje actual",
+      "delta30d": "30d {{sign}}{{value}}",
+      "mastered": "Master alcanzado",
+      "masterGoal": "Meta {{value}} · Faltan {{remaining}}",
+      "masterRefLabel": "Master",
+      "category": {
+        "dance": "Baile",
+        "vocal": "Voz",
+        "korean": "Coreano",
+        "attitude": "Actitud"
+      },
+      "items": {
+        "danceIso": "Precisión Isolation",
+        "vocalPitch": "Estabilidad de agudos",
+        "danceBottom": "Estabilidad tren inferior",
+        "koreanIntonation": "Entonación coreana"
+      }
+    },
+    "portfolio": {
+      "tag": "Portfolio Mastery",
+      "title": "Portfolio de debut",
+      "inProgress": "Construyendo",
+      "mastered": "Master alcanzado",
+      "outOfTotal": "de {{total}}",
+      "barInProgress": "Progreso de construcción",
+      "barMastered": "Tasa de mastery",
+      "coreStrength": "Fortaleza central",
+      "ctaToday": "Demuestra una habilidad hoy →",
+      "topStrengthDummy": "Estabilidad tren inferior — Top 5%"
+    },
+    "insight": {
+      "tag": "AI Insight",
+      "labels": {
+        "positive": "Señal de fortaleza",
+        "caution": "Señal de mejora",
+        "neutral": "AI Insight"
+      },
+      "items": {
+        "danceBottom": {
+          "headline": "Estabilidad del tren inferior en Top 5%",
+          "message": "Punto fuerte en la categoría de \"estabilidad\" en audiciones. JYP y HYBE le dan alto peso.",
+          "cta": "Ver reporte de baile"
+        },
+        "koreanIntonation": {
+          "headline": "Entonación coreana +11 en 30 días",
+          "message": "Pronunciación → entonación → emoción se conectan con naturalidad. Aporta a SM/HYBE.",
+          "cta": "Reporte coreano"
+        },
+        "vocalColor": {
+          "headline": "Distinción tonal estancada",
+          "message": "SM y YG le dan alto peso. Prueba una semana variando el tono en otra pista.",
+          "cta": "Recibir coaching IA"
+        }
+      }
+    },
+    "agencyReadinessTags": {
+      "hybe": "Storytelling global",
+      "jyp": "Pura habilidad",
+      "sm": "Visual & aura",
+      "yg": "Performance & carisma",
+      "starship": "Comercial & básicos"
+    },
+    "agencyReadinessSignal": {
+      "hybe": "Top 10% en musicalidad y crecimiento",
+      "jyp": "Estabilidad vocal y actitud sobre la base",
+      "sm": "Afinidad de cámara sube; falta distinción tonal",
+      "yg": "Aura volátil — refuerza tu color",
+      "starship": "Comercial y constancia llegan al debut"
+    }
+  },
   "settings": {
     "title": "Ajustes",
     "subtitle": "Personaliza tu experiencia ONNODE AI COACH",
@@ -491,5 +732,74 @@
     "recommendMessage": "Este contenido encaja con tu nivel actual.",
     "start": "Empezar",
     "changeSettings": "Cambiar ajustes de notificación →"
+  },
+  "coaching": {
+    "song": {
+      "title": "Análisis de persona de la canción",
+      "placeholder": "Título o ‘Canción - Artista’",
+      "analyze": "Analizar",
+      "analyzing": "Analizando…",
+      "reset": "Reiniciar"
+    },
+    "persona": {
+      "dancePersonaLabel": "Persona de baile para esta canción",
+      "vocalPersonaLabel": "Persona vocal para esta canción",
+      "danceAttitude": "Al bailar esto",
+      "vocalAttitude": "Al cantar esto",
+      "energy": "Energía",
+      "dance": "Bailabilidad",
+      "valence": "Valencia"
+    },
+    "voice": {
+      "listen": "Escuchar al coach",
+      "playing": "Reproduciendo",
+      "unsupported": "Este navegador no soporta reproducción de voz"
+    },
+    "phaseLabels": {
+      "start": "Inicio de sesión",
+      "realtime": "Coaching en tiempo real",
+      "mid": "Revisión intermedia",
+      "end": "Coaching final"
+    },
+    "dance": {
+      "tag": "Coaching AI de Persona de Baile",
+      "empty": "Analiza una canción para empezar el coaching de persona.",
+      "thinking": "El coach está preparando un comentario…",
+      "activated": "Persona activada",
+      "activatingHint": "Expresa la persona con más fuerza",
+      "technicalScore": "Técnica",
+      "emotionalScore": "Expresión",
+      "keyCorrection": "Corrección clave",
+      "personaComment": "Comentario de persona"
+    },
+    "vocal": {
+      "tag": "Coaching AI Vocal Soul",
+      "empty": "Analiza una canción para empezar el coaching soul.",
+      "thinking": "El coach prepara un comentario emocional…",
+      "characteristicsLoading": "Tus características vocales se detectan al grabar",
+      "pitchScore": "Afinación",
+      "soulScore": "Soul",
+      "emotionImage": "Imagen emocional",
+      "visualization": "Ejercicio de visualización",
+      "technicalAsEmotion": "Corrección como emoción",
+      "breathingTip": "Consejo de respiración",
+      "soulDirection": "Dirección de Soul"
+    },
+    "settings": {
+      "title": "Persona de coach AI",
+      "subtitle": "Elige tus coaches de baile / vocal",
+      "danceLabel": "Coach de baile",
+      "vocalLabel": "Coach vocal",
+      "personas": {
+        "jyp_jung": "JYP Jung Minji — enérgica",
+        "yg_lee": "YG Lee Narae — directa",
+        "hybe_kim": "HYBE Kim Soyeon — intuitiva",
+        "sm_choi": "SM Choi Yujin — con autoridad",
+        "jyp_park": "JYP Park Jaewon — voz",
+        "sm_choi_vocal": "SM Choi Yujin — timbre",
+        "hybe_soul": "HYBE — emocional",
+        "yg_vocal": "YG — swag y groove"
+      }
+    }
   }
 }

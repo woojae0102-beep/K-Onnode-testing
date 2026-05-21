@@ -4,13 +4,14 @@
     <meta charset="UTF-8" />
     <meta
       name="viewport"
-      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+      content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover"
     />
     <meta name="description" content="AI 기반 K-POP 댄스 코칭 · 실시간 자세 분석 플랫폼" />
 
-    <!-- PWA / Theme -->
-    <meta name="theme-color" content="#FFFFFF" />
-    <meta name="color-scheme" content="light" />
+    <!-- PWA / Theme - 라이트/다크 모두 대응 -->
+    <meta name="theme-color" content="#FFFFFF" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0a0a0a" media="(prefers-color-scheme: dark)" />
+    <meta name="color-scheme" content="light dark" />
     <link rel="icon" href="/icons/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/icons/source.svg" sizes="any" type="image/svg+xml" />
 
@@ -28,6 +29,16 @@
     <meta property="og:image" content="/icons/pwa-512x512.png" />
 
     <title>K-Onnode — AI K-POP 댄스 코칭</title>
+
+    <!-- Kakao JavaScript SDK (소셜 로그인) -->
+    <script src="https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js" defer></script>
+
+    <style>
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to   { transform: rotate(360deg); }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

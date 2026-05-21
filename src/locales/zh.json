@@ -1,4 +1,245 @@
 {
+  "monthly": {
+    "tag": "Monthly Evaluation",
+    "title": "月末评估",
+    "subtitle": "五大公司AI评审评估你一个月的表现",
+    "loadingTitle": "AI评审正在评估你",
+    "phase": {
+      "countdown": "等待中",
+      "profile": "正在分析练习生档案…",
+      "agency_evals": "五大公司评审中…",
+      "debate": "评审讨论中…",
+      "final": "汇总最终结果…",
+      "complete": "评估完成"
+    },
+    "countdown": {
+      "headlineFar": "距离月末评估还有 {{days}} 天",
+      "headlineHot": "🔥 月末评估即将开始! D-{{days}}",
+      "headlineToday": "🏆 今天就是月末评估日！",
+      "subFar": "继续练习,完成本月的故事。临近评估日即可开始。",
+      "subHot": "五位AI评审将根据过去一个月的数据评估你。",
+      "subToday": "五大公司评审正在等待本月的你。",
+      "startBtn": "开始月末评估",
+      "waitingBtn": "D-{{days}} · 等待中",
+      "previewLabel": "本月累计预览",
+      "previewDays": "练习天数",
+      "previewDaysSub": "本月",
+      "previewAvg": "平均分",
+      "previewAvgSub": "舞蹈 · 声乐 · 韩语",
+      "previewTop": "最常练习的领域",
+      "previewDayUnit": "{{count}}天",
+      "previewScoreUnit": "{{value}}分",
+      "previewFieldUnit": "{{label}} ({{count}}次)",
+      "previewEmpty": "数据不足",
+      "previewScoreEmpty": "—",
+      "sampleNotice": "本月练习数据不足,可填入示例数据预览评估流程。",
+      "sampleBtn": "填入示例数据",
+      "historyHeader": "近期月末评估",
+      "historyDebutPct": "出道可能性 {{value}}%"
+    },
+    "labels": {
+      "overallGrade": "综合评分",
+      "totalScore": "总分",
+      "agencyPassRate": "各公司合格率",
+      "agencyTop": "最高",
+      "debutProbability": "出道可能性",
+      "debutLine": "虚线 65% — 出道候选基线",
+      "vsLastMonth": "环比",
+      "positionChanges": "定位变化",
+      "bestGrowth": "本月成长最快的能力",
+      "biggestIssue": "被指出最多的问题",
+      "history": "练习生历程",
+      "historySub": "故事时间线",
+      "historyEmpty": "尚未积累故事。从下个月开始。",
+      "groupMatch": "AI组合匹配",
+      "groupMatchAlt": "替代 — {{label}}",
+      "nextGoals": "📋 下月目标",
+      "specialAward": "🎖 {{label}}",
+      "finalMessage": "Final Message",
+      "now": "NOW"
+    },
+    "buttons": {
+      "saveCard": "保存为卡片",
+      "share": "分享",
+      "restart": "重新开始"
+    },
+    "survival": {
+      "title": "Survival Status",
+      "debut_candidate": "出道候选",
+      "top30": "TOP 30%",
+      "hold": "待定",
+      "danger": "淘汰危机",
+      "eliminated": "已淘汰",
+      "fallback": {
+        "debut_candidate": "保持下去就是出道候选。别停下。",
+        "top30": "TOP 30%。再加一把劲就能到出道线。",
+        "hold": "待定线。下个月是分水岭。",
+        "danger": "危险线。这是最重要的时刻。",
+        "eliminated": "曾经跌倒,也可以重新开始。"
+      }
+    },
+    "profile": {
+      "tagLine": "AI Trainee Profile",
+      "narrativeEmpty": "正在分析本月的故事…",
+      "tags": {
+        "strength": "强项",
+        "weakness": "弱项",
+        "growthRate": "成长速度",
+        "stagePresence": "气场",
+        "position": "位置",
+        "marketability": "大众性"
+      },
+      "stagePresenceValue": "{{grade}} 级",
+      "specialNote": "本月特别 — ",
+      "growth": {
+        "very_fast": "非常快 ⚡⚡",
+        "fast": "快 ⚡",
+        "normal": "一般",
+        "slow": "慢"
+      },
+      "marketability": {
+        "very_high": "非常高",
+        "high": "高",
+        "medium": "一般",
+        "low": "低"
+      }
+    },
+    "agency": {
+      "subHeader": "Audition · {{name}}",
+      "passRate": "合格率",
+      "loading": "评估中…",
+      "advice": "建议 — "
+    },
+    "debate": {
+      "tag": "AI Judge Debate",
+      "headerSub": "五大公司代表评审的讨论",
+      "keyConflict": "意见分歧",
+      "consensus": "共识",
+      "summary": "AI评审总评"
+    },
+    "positionChange": {
+      "up": "上升",
+      "down": "需补强",
+      "stable": "稳定",
+      "new": "新增"
+    },
+    "growth": {
+      "bestLabel": "Best Growth",
+      "issueLabel": "Most Pointed Issue"
+    },
+    "shareSummary": "[{{month}} 月末评估]\n类型: {{type}}\n评分 {{grade}} · 出道可能性 {{prob}}%",
+    "shareCopied": "结果已复制到剪贴板。",
+    "shareErr": "当前环境不支持保存为卡片。",
+    "shareErrSave": "保存卡片失败。",
+    "errorPrefix": "评估过程中出错:",
+    "errorRestart": "重新开始"
+  },
+  "dashboard": {
+    "tag": "Trainee Asset Dashboard",
+    "title": "练习生综合评估",
+    "subtitle": "基于出道可能性与能力数据证明你的价值 · 更新于 {{at}}",
+    "refresh": "刷新数据",
+    "strengthenCta": "强化出道作品集",
+    "audition": {
+      "tag": "Audition Readiness Report",
+      "overallLabel": "出道适配度 综合",
+      "delta": "环比 {{sign}}{{value}}%",
+      "topStrengthPrefix": "⭐ "
+    },
+    "abilities": {
+      "dance": "舞蹈",
+      "vocal": "声乐",
+      "visual": "颜值",
+      "attitude": "态度",
+      "korean": "韩语",
+      "rhythm": "节奏感",
+      "coreTag": "核心",
+      "topPercentile": "前 {{value}}%"
+    },
+    "hexagon": {
+      "tag": "Hexagon Ability Chart",
+      "title": "六角能力图",
+      "previous": "上月",
+      "current": "本月",
+      "overall": "综合能力",
+      "totalGrowth": "总成长幅",
+      "tooltipScore": "{{value}}分",
+      "scoreUnit": "分"
+    },
+    "timeline": {
+      "tag": "Technical Growth Timeline",
+      "title": "AI技术成长时间线",
+      "subtitle": "用细节技术分数变化证明成长的深度",
+      "currentScore": "当前分数",
+      "delta30d": "30日 {{sign}}{{value}}",
+      "mastered": "已达精通",
+      "masterGoal": "目标 {{value}} · 剩 {{remaining}}",
+      "masterRefLabel": "精通分",
+      "category": {
+        "dance": "舞蹈",
+        "vocal": "声乐",
+        "korean": "韩语",
+        "attitude": "态度"
+      },
+      "items": {
+        "danceIso": "Isolation 精度",
+        "vocalPitch": "高音稳定度",
+        "danceBottom": "下肢稳定性",
+        "koreanIntonation": "韩语语调"
+      }
+    },
+    "portfolio": {
+      "tag": "Portfolio Mastery",
+      "title": "出道作品集",
+      "inProgress": "能力构建中",
+      "mastered": "已达精通",
+      "outOfTotal": "共 {{total}} 项中",
+      "barInProgress": "能力构建进度",
+      "barMastered": "精通达成率",
+      "coreStrength": "核心强项",
+      "ctaToday": "今天证明一项能力 →",
+      "topStrengthDummy": "下肢稳定性 — 前 5%"
+    },
+    "insight": {
+      "tag": "AI Insight",
+      "labels": {
+        "positive": "强项信号",
+        "caution": "补强信号",
+        "neutral": "AI 洞察"
+      },
+      "items": {
+        "danceBottom": {
+          "headline": "下肢稳定性进入前 5%",
+          "message": "在公司试镜的「表演稳定度」类别中是强力卖点。JYP·HYBE 评分标准中权重最高的项目之一。",
+          "cta": "查看舞蹈报告"
+        },
+        "koreanIntonation": {
+          "headline": "韩语语调 30 日上升 +11",
+          "message": "发音 → 语调 → 情感表达自然衔接。直接贡献 SM·HYBE 的全球吸引力。",
+          "cta": "韩语报告"
+        },
+        "vocalColor": {
+          "headline": "音色差异化信号停滞",
+          "message": "SM·YG 重视的项目。一周内换条赛道尝试音色变化能打开局面。",
+          "cta": "获取 AI 指导"
+        }
+      }
+    },
+    "agencyReadinessTags": {
+      "hybe": "全球叙事",
+      "jyp": "实力派",
+      "sm": "颜值与气场",
+      "yg": "表演与魅力",
+      "starship": "大众与基础"
+    },
+    "agencyReadinessSignal": {
+      "hybe": "音乐性·成长率权重前 10%",
+      "jyp": "发声稳定性·态度评分超基线",
+      "sm": "镜头适配度上升,音色差异化需补强",
+      "yg": "气场波动 — 建议强化个人色彩",
+      "starship": "大众性·稳定性达到出道线"
+    }
+  },
   "settings": {
     "title": "设置",
     "subtitle": "自定义您的 ONNODE AI COACH 体验",
@@ -491,5 +732,74 @@
     "recommendMessage": "此内容与您当前等级相符。",
     "start": "开始",
     "changeSettings": "更改通知设置 →"
+  },
+  "coaching": {
+    "song": {
+      "title": "歌曲人格分析",
+      "placeholder": "歌曲名或‘歌曲 - 艺人’",
+      "analyze": "分析",
+      "analyzing": "分析中…",
+      "reset": "重置"
+    },
+    "persona": {
+      "dancePersonaLabel": "这首歌的舞蹈人格",
+      "vocalPersonaLabel": "这首歌的声乐人格",
+      "danceAttitude": "跳这首歌时",
+      "vocalAttitude": "唱这首歌时",
+      "energy": "能量",
+      "dance": "可舞性",
+      "valence": "情绪正向"
+    },
+    "voice": {
+      "listen": "听教练声音",
+      "playing": "播放中",
+      "unsupported": "此浏览器不支持语音播放"
+    },
+    "phaseLabels": {
+      "start": "开场指导",
+      "realtime": "实时指导",
+      "mid": "中段检查",
+      "end": "总评指导"
+    },
+    "dance": {
+      "tag": "AI 舞蹈人格指导",
+      "empty": "分析歌曲后开始人格指导。",
+      "thinking": "教练正在准备评语…",
+      "activated": "人格已激活",
+      "activatingHint": "请把人格表现得更强烈",
+      "technicalScore": "技术分",
+      "emotionalScore": "表现分",
+      "keyCorrection": "关键纠正",
+      "personaComment": "人格点评"
+    },
+    "vocal": {
+      "tag": "AI 声乐 Soul 指导",
+      "empty": "分析歌曲后开始 Soul 指导。",
+      "thinking": "教练正在准备情感评语…",
+      "characteristicsLoading": "录音时将自动分析你的声音特征",
+      "pitchScore": "音准",
+      "soulScore": "Soul",
+      "emotionImage": "情感画面",
+      "visualization": "可视化练习",
+      "technicalAsEmotion": "以情感语言纠正",
+      "breathingTip": "呼吸建议",
+      "soulDirection": "Soul 方向"
+    },
+    "settings": {
+      "title": "AI 教练人格",
+      "subtitle": "选择舞蹈/声乐教练",
+      "danceLabel": "舞蹈教练",
+      "vocalLabel": "声乐教练",
+      "personas": {
+        "jyp_jung": "JYP 郑敏智 — 活力派",
+        "yg_lee": "YG 李娜来 — 直接",
+        "hybe_kim": "HYBE 金昭妍 — 直觉派",
+        "sm_choi": "SM 崔有真 — 权威",
+        "jyp_park": "JYP 朴载元 — 发声专家",
+        "sm_choi_vocal": "SM 崔有真 — 音色专家",
+        "hybe_soul": "HYBE — 情感传达",
+        "yg_vocal": "YG — Swag 律动"
+      }
+    }
   }
 }

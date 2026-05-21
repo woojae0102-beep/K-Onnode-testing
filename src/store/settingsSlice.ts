@@ -11,6 +11,8 @@ const defaultSettings = {
   coachTone: 'friendly',
   feedbackSensitivity: 3,
   coachMode: 'single',
+  dancePersona: 'jyp_jung',
+  vocalPersona: 'jyp_park',
   micSensitivity: 6,
   noiseFilter: true,
   cameraDefault: 'front',

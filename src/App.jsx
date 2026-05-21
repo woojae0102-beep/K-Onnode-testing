@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getFirestore, doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
-import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from 'firebase/auth';
+import { doc, setDoc, onSnapshot, updateDoc } from 'firebase/firestore';
+import { onAuthStateChanged } from 'firebase/auth';
+import { auth, db, appId, firebaseInitError } from './firebase';
+import { useAuth } from './contexts/AuthContext';
 import {
   Music,
   Mic,
@@ -22,70 +23,6 @@ import SettingsScreen from './screens/SettingsScreen';
 import { useSettingsStore } from './store/settingsSlice';
 import Layout from './components/Layout';
 
-function readFirebaseConfig() {
-  const fromGlobal =
-    typeof __firebase_config !== 'undefined'
-      ? __firebase_config
-      : typeof window !== 'undefined' && window.__firebase_config
-        ? window.__firebase_config
-        : null;
-  const fromEnv = import.meta.env.VITE_FIREBASE_CONFIG || null;
-  const raw = fromGlobal || fromEnv;
-  if (raw) {
-    if (typeof raw === 'string') {
-      const trimmed = raw.trim();
-      const isPlaceholder = trimmed === '__firebase_config' || trimmed === 'undefined' || trimmed === 'null';
-      if (!isPlaceholder && trimmed.startsWith('{')) {
-        try {
-          return JSON.parse(trimmed);
-        } catch {
-          // JSON 파싱 실패 시 개별 키 방식으로 폴백합니다.
-        }
-      }
-    } else if (typeof raw === 'object') {
-      return raw;
-    }
-  }
-
-  const byKeys = {
-    apiKey: import.meta.env.VITE_FIREBASE_API_KEY?.trim(),
-    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN?.trim(),
-    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID?.trim(),
-    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET?.trim(),
-    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID?.trim(),
-    appId: import.meta.env.VITE_FIREBASE_APP_ID?.trim(),
-    measurementId: import.meta.env.VITE_FIREBASE_MEASUREMENT_ID?.trim(),
-  };
-
-  if (byKeys.apiKey && byKeys.authDomain && byKeys.projectId && byKeys.appId) {
-    return byKeys;
-  }
-  return null;
-}
-
-let app = null;
-let auth = null;
-let db = null;
-let firebaseInitError = '';
-
-try {
-  const firebaseConfig = readFirebaseConfig();
-  if (!firebaseConfig?.apiKey || !firebaseConfig?.projectId) {
-    throw new Error('Firebase 설정값이 비어 있습니다. (__firebase_config 또는 VITE_FIREBASE_CONFIG 필요)');
-  }
-  app = initializeApp(firebaseConfig);
-  auth = getAuth(app);
-  db = getFirestore(app);
-} catch (err) {
-  firebaseInitError = err instanceof Error ? err.message : 'Firebase 초기화에 실패했습니다.';
-}
-
-const appId =
-  typeof __app_id !== 'undefined'
-    ? __app_id
-    : typeof window !== 'undefined' && window.__app_id
-      ? window.__app_id
-      : import.meta.env.VITE_APP_ID || 'onnode-desktop-v17';
 const DEFAULT_KOREAN_SAMPLE = '안녕하세요 온노드입니다. 오늘도 정확한 발음과 리듬으로 연습해요.';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
 const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VITE_GOOGLE_API_KEY || '';
@@ -227,7 +164,8 @@ async function buildGeminiCoachReply({ input, sessionData, history }) {
 export default function App() {
   const { t } = useTranslation();
   const coachMode = useSettingsStore((state) => state.settings?.coachMode || 'single');
-  const [user, setUser] = useState(null);
+  // user는 AuthContext에서 가져옵니다 (로그인/회원가입은 AuthScreen에서 처리됨)
+  const { user } = useAuth();
   const [viewMode, setViewMode] = useState('desktop');
   const [sessionId, setSessionId] = useState('');
   const [sessionData, setSessionData] = useState(null);
@@ -251,29 +189,15 @@ export default function App() {
     return <FirebaseSetupError message={firebaseInitError} />;
   }
 
+  // 익명 로그인은 더 이상 사용하지 않습니다.
+  // 로그인은 src/contexts/AuthContext 에서 처리되며,
+  // 비로그인 사용자는 main.jsx 의 AppGate에서 AuthScreen 으로 라우팅됩니다.
+  // 여기서는 URL 의 session 파라미터만 읽어들입니다.
   useEffect(() => {
-    if (!auth) return;
-    const initAuth = async () => {
-      try {
-        if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-          await signInWithCustomToken(auth, __initial_auth_token);
-        } else {
-          await signInAnonymously(auth);
-        }
-      } catch (err) {
-        console.error('Auth Fail', err);
-      }
-    };
-    initAuth();
-
-    const unsubscribe = onAuthStateChanged(auth, (u) => {
-      setUser(u);
-      const params = new URLSearchParams(window.location.search);
-      const sId = params.get('session');
-      if (sId) setSessionId(sId.toUpperCase());
-      setViewMode('desktop');
-    });
-    return () => unsubscribe();
+    const params = new URLSearchParams(window.location.search);
+    const sId = params.get('session');
+    if (sId) setSessionId(sId.toUpperCase());
+    setViewMode('desktop');
   }, []);
 
   useEffect(() => {

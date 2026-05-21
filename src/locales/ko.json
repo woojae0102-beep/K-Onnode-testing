@@ -1,4 +1,245 @@
 {
+  "monthly": {
+    "tag": "Monthly Evaluation",
+    "title": "월말 평가",
+    "subtitle": "5개 기획사 AI 심사위원이 한 달의 당신을 평가합니다",
+    "loadingTitle": "AI 심사위원이 당신을 평가하고 있습니다",
+    "phase": {
+      "countdown": "평가 대기",
+      "profile": "연습생 프로필 분석 중…",
+      "agency_evals": "5개 기획사 심사위원 평가 중…",
+      "debate": "심사위원 토론 진행 중…",
+      "final": "최종 결과 종합 중…",
+      "complete": "평가 완료"
+    },
+    "countdown": {
+      "headlineFar": "월말 평가까지 {{days}}일 남았습니다",
+      "headlineHot": "🔥 월말 평가가 곧 시작됩니다! D-{{days}}",
+      "headlineToday": "🏆 오늘이 월말 평가일입니다!",
+      "subFar": "연습을 이어가며 한 달의 서사를 완성하세요. 평가일이 다가오면 바로 시작할 수 있어요.",
+      "subHot": "지난 한 달의 데이터로 AI 심사위원 5명이 당신을 평가합니다.",
+      "subToday": "5개 기획사 심사위원이 이번 달의 당신을 기다리고 있습니다.",
+      "startBtn": "월말 평가 시작하기",
+      "waitingBtn": "D-{{days}} · 평가 대기 중",
+      "previewLabel": "이번 달 누적 미리보기",
+      "previewDays": "연습 일수",
+      "previewDaysSub": "이번 달",
+      "previewAvg": "평균 점수",
+      "previewAvgSub": "댄스 · 보컬 · 한국어",
+      "previewTop": "가장 많이 한 분야",
+      "previewDayUnit": "{{count}}일",
+      "previewScoreUnit": "{{value}}점",
+      "previewFieldUnit": "{{label}} ({{count}}회)",
+      "previewEmpty": "데이터 부족",
+      "previewScoreEmpty": "—",
+      "sampleNotice": "아직 이번 달 연습 기록이 충분하지 않아요. 데모용으로 샘플 데이터를 채워 평가를 미리 체험해볼 수 있습니다.",
+      "sampleBtn": "샘플 데이터 채우기",
+      "historyHeader": "최근 월말 평가 히스토리",
+      "historyDebutPct": "데뷔 가능성 {{value}}%"
+    },
+    "labels": {
+      "overallGrade": "종합 등급",
+      "totalScore": "총점",
+      "agencyPassRate": "기획사별 합격 가능성",
+      "agencyTop": "최고",
+      "debutProbability": "데뷔 가능성",
+      "debutLine": "점선 65% — 데뷔 후보 라인",
+      "vsLastMonth": "전월 대비",
+      "positionChanges": "포지션 변화",
+      "bestGrowth": "이번 달 가장 성장한 능력",
+      "biggestIssue": "가장 많이 지적된 문제",
+      "history": "연습생 히스토리",
+      "historySub": "연습생 서사 타임라인",
+      "historyEmpty": "아직 누적된 서사가 없습니다. 다음 달부터 이야기가 쌓입니다.",
+      "groupMatch": "AI 그룹 매칭",
+      "groupMatchAlt": "대안 — {{label}}",
+      "nextGoals": "📋 다음 달 목표",
+      "specialAward": "🎖 {{label}}",
+      "finalMessage": "Final Message",
+      "now": "NOW"
+    },
+    "buttons": {
+      "saveCard": "카드로 저장",
+      "share": "SNS 공유",
+      "restart": "처음으로"
+    },
+    "survival": {
+      "title": "Survival Status",
+      "debut_candidate": "데뷔 후보",
+      "top30": "TOP 30%",
+      "hold": "보류",
+      "danger": "탈락 위기",
+      "eliminated": "탈락",
+      "fallback": {
+        "debut_candidate": "이대로면 데뷔 후보 라인입니다. 멈추지 마세요.",
+        "top30": "TOP 30%. 한 끗만 더하면 데뷔 라인이 보입니다.",
+        "hold": "아직 보류 라인. 다음 달이 분기점입니다.",
+        "danger": "탈락 위기 라인. 지금이 가장 중요한 순간이에요.",
+        "eliminated": "한 번 무너졌지만, 다시 시작할 수 있어요."
+      }
+    },
+    "profile": {
+      "tagLine": "AI Trainee Profile",
+      "narrativeEmpty": "이번 달의 서사를 분석 중입니다.",
+      "tags": {
+        "strength": "강점",
+        "weakness": "약점",
+        "growthRate": "성장 속도",
+        "stagePresence": "아우라",
+        "position": "포지션",
+        "marketability": "대중성"
+      },
+      "stagePresenceValue": "{{grade}} 등급",
+      "specialNote": "이번 달 특이점 — ",
+      "growth": {
+        "very_fast": "매우 빠름 ⚡⚡",
+        "fast": "빠름 ⚡",
+        "normal": "보통",
+        "slow": "느림"
+      },
+      "marketability": {
+        "very_high": "매우 높음",
+        "high": "높음",
+        "medium": "보통",
+        "low": "낮음"
+      }
+    },
+    "agency": {
+      "subHeader": "Audition · {{name}}",
+      "passRate": "합격 가능성",
+      "loading": "평가 중…",
+      "advice": "조언 — "
+    },
+    "debate": {
+      "tag": "AI Judge Debate",
+      "headerSub": "5개 기획사 대표 심사위원 토론",
+      "keyConflict": "의견 충돌",
+      "consensus": "합의된 의견",
+      "summary": "AI 심사위원 종합"
+    },
+    "positionChange": {
+      "up": "상승",
+      "down": "보완 필요",
+      "stable": "안정",
+      "new": "신규"
+    },
+    "growth": {
+      "bestLabel": "Best Growth",
+      "issueLabel": "Most Pointed Issue"
+    },
+    "shareSummary": "[{{month}} 월말 평가]\n타입: {{type}}\n등급 {{grade}} · 데뷔 가능성 {{prob}}%",
+    "shareCopied": "결과가 클립보드에 복사되었습니다.",
+    "shareErr": "카드 저장은 현재 환경에서 지원되지 않습니다.",
+    "shareErrSave": "카드 저장 중 오류가 발생했습니다.",
+    "errorPrefix": "평가 도중 오류가 발생했습니다:",
+    "errorRestart": "처음으로"
+  },
+  "dashboard": {
+    "tag": "Trainee Asset Dashboard",
+    "title": "연습생 종합 평가",
+    "subtitle": "데뷔 가능성·역량 데이터를 기반으로 당신의 가치를 증명합니다 · 갱신 {{at}}",
+    "refresh": "데이터 갱신",
+    "strengthenCta": "데뷔 포트폴리오 강화",
+    "audition": {
+      "tag": "Audition Readiness Report",
+      "overallLabel": "데뷔 적합도 종합",
+      "delta": "전월 대비 {{sign}}{{value}}%",
+      "topStrengthPrefix": "⭐ "
+    },
+    "abilities": {
+      "dance": "댄스",
+      "vocal": "보컬",
+      "visual": "비주얼",
+      "attitude": "태도",
+      "korean": "한국어",
+      "rhythm": "리듬감",
+      "coreTag": "핵심",
+      "topPercentile": "상위 {{value}}%"
+    },
+    "hexagon": {
+      "tag": "Hexagon Ability Chart",
+      "title": "6각형 역량 그래프",
+      "previous": "전월",
+      "current": "이번 달",
+      "overall": "종합 역량",
+      "totalGrowth": "총 성장폭",
+      "tooltipScore": "{{value}}점",
+      "scoreUnit": "점"
+    },
+    "timeline": {
+      "tag": "Technical Growth Timeline",
+      "title": "AI 기술적 성장 타임라인",
+      "subtitle": "세부 기술별 점수 변화로 성장의 디테일을 증명합니다",
+      "currentScore": "현재 점수",
+      "delta30d": "30일 {{sign}}{{value}}점",
+      "mastered": "마스터 점수 획득",
+      "masterGoal": "목표 {{value}}점 · 잔여 {{remaining}}점",
+      "masterRefLabel": "마스터 점수",
+      "category": {
+        "dance": "댄스",
+        "vocal": "보컬",
+        "korean": "한국어",
+        "attitude": "태도"
+      },
+      "items": {
+        "danceIso": "아이솔레이션 정확도",
+        "vocalPitch": "고음 안정도",
+        "danceBottom": "하체 안정성",
+        "koreanIntonation": "한국어 억양"
+      }
+    },
+    "portfolio": {
+      "tag": "Portfolio Mastery",
+      "title": "데뷔 포트폴리오",
+      "inProgress": "역량 확보 중",
+      "mastered": "마스터 점수 획득",
+      "outOfTotal": "전체 {{total}}개 중",
+      "barInProgress": "역량 확보 진척도",
+      "barMastered": "마스터 도달 비율",
+      "coreStrength": "핵심 강점",
+      "ctaToday": "오늘 한 가지 역량을 증명하러 가기 →",
+      "topStrengthDummy": "댄스 하체 안정성 — 상위 5%"
+    },
+    "insight": {
+      "tag": "AI Insight",
+      "labels": {
+        "positive": "강점 시그널",
+        "caution": "보강 신호",
+        "neutral": "AI 인사이트"
+      },
+      "items": {
+        "danceBottom": {
+          "headline": "댄스 하체 안정성이 상위 5%에 진입했습니다",
+          "message": "기획사 오디션 시 \"퍼포먼스 안정감\" 카테고리에서 강력한 소구점이 됩니다. JYP·HYBE 평가 기준에서 가중치가 가장 높은 항목 중 하나예요.",
+          "cta": "댄스 리포트 보기"
+        },
+        "koreanIntonation": {
+          "headline": "한국어 억양이 30일간 +11점 상승",
+          "message": "발음 안정 → 억양 → 감정 표현 순으로 자연스럽게 연결되는 흐름입니다. SM·HYBE 글로벌 어필 라인에 직접적으로 기여합니다.",
+          "cta": "한국어 리포트"
+        },
+        "vocalColor": {
+          "headline": "음색 차별화 신호가 정체 구간",
+          "message": "SM·YG가 가중치를 높게 두는 항목입니다. 다른 트랙으로 1주일간 보컬 톤 변주를 시도하면 분기점을 만들 수 있습니다.",
+          "cta": "AI 코칭 받기"
+        }
+      }
+    },
+    "agencyReadinessTags": {
+      "hybe": "글로벌 스토리텔링",
+      "jyp": "실력파",
+      "sm": "비주얼·아우라",
+      "yg": "퍼포먼스·카리스마",
+      "starship": "대중성·기본기"
+    },
+    "agencyReadinessSignal": {
+      "hybe": "음악성·성장률 가중치에서 상위 10%",
+      "jyp": "발성 안정성·태도 점수가 기준선 초과",
+      "sm": "카메라 친화 점수 상승, 음색 차별화 보강 필요",
+      "yg": "아우라 변동성 — 자기 색깔 강화 권장",
+      "starship": "대중성 지표·꾸준함이 데뷔 라인 진입"
+    }
+  },
   "settings": {
     "title": "설정",
     "subtitle": "ONNODE AI COACH 환경을 맞춤 설정하세요",
@@ -222,12 +463,12 @@
     "training": "트레이닝",
     "profile": "프로필",
     "growth": "성장 그래프",
-    "goals": "목표 진행률",
+    "goals": "연습생 분석",
     "savedVideos": "저장한 영상",
     "feedbackHistory": "AI 피드백 히스토리",
     "danceTraining": "댄스 트레이닝",
     "vocalTraining": "보컬 트레이닝",
-    "koreanAI": "한국어 AI",
+    "koreanAI": "한국어 트레이닝",
     "discover": "DISCOVER",
     "trending": "트렌딩",
     "popularDance": "인기 안무",
@@ -491,5 +732,74 @@
     "recommendMessage": "회원님 레벨에 딱 맞는 난이도예요.",
     "start": "연습하기",
     "changeSettings": "알림 설정 변경 →"
+  },
+  "coaching": {
+    "song": {
+      "title": "곡 페르소나 분석",
+      "placeholder": "곡명 또는 ‘곡명 - 아티스트’ 입력",
+      "analyze": "분석",
+      "analyzing": "분석 중…",
+      "reset": "초기화"
+    },
+    "persona": {
+      "dancePersonaLabel": "이 곡의 댄스 페르소나",
+      "vocalPersonaLabel": "이 곡의 보컬 페르소나",
+      "danceAttitude": "이 곡을 출 때",
+      "vocalAttitude": "이 곡을 부를 때",
+      "energy": "에너지",
+      "dance": "댄서빌리티",
+      "valence": "감성"
+    },
+    "voice": {
+      "listen": "코치 목소리 듣기",
+      "playing": "재생 중",
+      "unsupported": "이 브라우저는 음성 재생을 지원하지 않습니다"
+    },
+    "phaseLabels": {
+      "start": "세션 시작 코칭",
+      "realtime": "실시간 코칭",
+      "mid": "중간 점검",
+      "end": "종합 코칭"
+    },
+    "dance": {
+      "tag": "AI 댄스 페르소나 코칭",
+      "empty": "곡을 분석하면 페르소나 코칭이 시작됩니다.",
+      "thinking": "코치가 페르소나에 맞춰 코멘트를 준비 중입니다…",
+      "activated": "페르소나가 살아있어요",
+      "activatingHint": "페르소나를 더 강하게 표현해보세요",
+      "technicalScore": "기술 점수",
+      "emotionalScore": "감정 표현 점수",
+      "keyCorrection": "핵심 교정 포인트",
+      "personaComment": "페르소나 코멘트"
+    },
+    "vocal": {
+      "tag": "AI 보컬 소울 코칭",
+      "empty": "곡을 분석하면 소울 코칭이 시작됩니다.",
+      "thinking": "코치가 감정 코멘트를 준비 중입니다…",
+      "characteristicsLoading": "녹음하면 목소리 특성을 자동 분석합니다",
+      "pitchScore": "음정 점수",
+      "soulScore": "소울 점수",
+      "emotionImage": "감정 이미지",
+      "visualization": "시각화 연습",
+      "technicalAsEmotion": "감정 언어 교정",
+      "breathingTip": "호흡 팁",
+      "soulDirection": "소울 방향성"
+    },
+    "settings": {
+      "title": "AI 코치 페르소나",
+      "subtitle": "댄스/보컬 페르소나 코치를 선택하세요",
+      "danceLabel": "댄스 코치",
+      "vocalLabel": "보컬 코치",
+      "personas": {
+        "jyp_jung": "JYP 정민지 — 활기찬",
+        "yg_lee": "YG 이나래 — 직설적",
+        "hybe_kim": "HYBE 김소연 — 직관적",
+        "sm_choi": "SM 최유진 — 권위 있는",
+        "jyp_park": "JYP 박재원 — 발성 전문",
+        "sm_choi_vocal": "SM 최유진 — 음색 전문",
+        "hybe_soul": "HYBE — 감정 전달",
+        "yg_vocal": "YG — 스웩·그루브"
+      }
+    }
   }
 }

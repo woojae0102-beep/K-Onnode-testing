@@ -95,7 +95,7 @@ export default function Layout(props) {
       case 'growth':
         return <GrowthGraphView />;
       case 'goals':
-        return <GoalsView />;
+        return <GoalsView onNavigate={handleSelectView} />;
       case 'saved-videos':
         return <SavedVideosView />;
       case 'feedback-history':

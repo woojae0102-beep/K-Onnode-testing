@@ -100,6 +100,110 @@ select:-webkit-autofill {
     inset 0 0 60px rgba(236, 72, 153, 0.06);
 }
 
+/* ── 인증/온보딩 화면 모바일 대응 ─────────────────────────────
+   - iPhone(노치/다이나믹 아일랜드) + Galaxy(엣지/펀치홀) Safe Area 지원
+   - iOS Safari 주소창 가변 높이 대응 (dvh)
+   - 모달 키보드 노출 시 폼이 스크롤되도록 overflow-y: auto
+*/
+.auth-screen {
+  position: relative;
+  min-height: 100vh;
+  min-height: 100dvh;
+  width: 100%;
+  background: #0a0a0a;
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding-top: calc(24px + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(24px + env(safe-area-inset-bottom, 0px));
+  padding-left: calc(20px + env(safe-area-inset-left, 0px));
+  padding-right: calc(20px + env(safe-area-inset-right, 0px));
+  box-sizing: border-box;
+}
+
+.auth-screen--centered {
+  justify-content: center;
+  align-items: center;
+}
+
+.auth-input {
+  width: 100%;
+  padding: 14px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 10px;
+  color: #ffffff;
+  /* iOS 자동 줌 방지: 16px 미만이면 Safari가 줌인 합니다 */
+  font-size: 16px;
+  line-height: 1.4;
+  outline: none;
+  box-sizing: border-box;
+  appearance: none;
+  -webkit-appearance: none;
+}
+.auth-input:focus {
+  border-color: #FF1F8E;
+}
+
+.auth-btn-primary {
+  width: 100%;
+  padding: 15px;
+  background: #FF1F8E;
+  border: none;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  min-height: 48px; /* 접근성 권장 터치 영역 */
+  -webkit-tap-highlight-color: transparent;
+}
+.auth-btn-primary:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
+.auth-btn-ghost {
+  width: 100%;
+  padding: 14px;
+  background: transparent;
+  border: 1px solid #333;
+  border-radius: 12px;
+  color: #ffffff;
+  font-size: 14px;
+  cursor: pointer;
+  min-height: 48px;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* 바텀시트 모달 (SubscriptionGate 업그레이드 등) */
+.bottom-sheet {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 20px 20px 0 0;
+  padding: 28px;
+  width: 100%;
+  max-width: 480px;
+  box-sizing: border-box;
+  padding-bottom: calc(28px + env(safe-area-inset-bottom, 0px));
+  max-height: calc(100dvh - env(safe-area-inset-top, 0px) - 40px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bottom-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 9999;
+}
+
 /* 카메라 박스 의사-풀스크린 (iOS Safari fallback) */
 .dance-camera-fs,
 .audition-camera-fs {

@@ -1,4 +1,245 @@
 {
+  "monthly": {
+    "tag": "Monthly Evaluation",
+    "title": "Monthly Evaluation",
+    "subtitle": "Five agency AI judges evaluate your month",
+    "loadingTitle": "AI judges are evaluating you",
+    "phase": {
+      "countdown": "Waiting",
+      "profile": "Analyzing trainee profile…",
+      "agency_evals": "Five agencies are evaluating…",
+      "debate": "Judges are debating…",
+      "final": "Composing final result…",
+      "complete": "Evaluation complete"
+    },
+    "countdown": {
+      "headlineFar": "{{days}} days until the monthly evaluation",
+      "headlineHot": "🔥 Monthly evaluation starts soon! D-{{days}}",
+      "headlineToday": "🏆 Today is your monthly evaluation!",
+      "subFar": "Keep practicing and finish this month's story. You can start once the day is near.",
+      "subHot": "Five AI judges will evaluate you based on the past month's data.",
+      "subToday": "Five agency judges are waiting for this month's you.",
+      "startBtn": "Start monthly evaluation",
+      "waitingBtn": "D-{{days}} · Waiting",
+      "previewLabel": "This month's preview",
+      "previewDays": "Practice days",
+      "previewDaysSub": "this month",
+      "previewAvg": "Avg score",
+      "previewAvgSub": "Dance · Vocal · Korean",
+      "previewTop": "Most practiced track",
+      "previewDayUnit": "{{count}}d",
+      "previewScoreUnit": "{{value}}",
+      "previewFieldUnit": "{{label}} ({{count}}x)",
+      "previewEmpty": "Not enough data",
+      "previewScoreEmpty": "—",
+      "sampleNotice": "Not enough practice data yet. You can fill in sample data to preview the evaluation flow.",
+      "sampleBtn": "Fill sample data",
+      "historyHeader": "Recent monthly evaluations",
+      "historyDebutPct": "Debut probability {{value}}%"
+    },
+    "labels": {
+      "overallGrade": "Overall Grade",
+      "totalScore": "Total",
+      "agencyPassRate": "Agency Pass Rate",
+      "agencyTop": "TOP",
+      "debutProbability": "Debut Probability",
+      "debutLine": "Dashed line 65% — debut candidate baseline",
+      "vsLastMonth": "vs last month",
+      "positionChanges": "Position Changes",
+      "bestGrowth": "Best growing skill",
+      "biggestIssue": "Most pointed issue",
+      "history": "Trainee History",
+      "historySub": "Story timeline",
+      "historyEmpty": "No story accumulated yet. Stories will start from next month.",
+      "groupMatch": "AI Group Match",
+      "groupMatchAlt": "Alternative — {{label}}",
+      "nextGoals": "📋 Next month goals",
+      "specialAward": "🎖 {{label}}",
+      "finalMessage": "Final Message",
+      "now": "NOW"
+    },
+    "buttons": {
+      "saveCard": "Save as card",
+      "share": "Share",
+      "restart": "Restart"
+    },
+    "survival": {
+      "title": "Survival Status",
+      "debut_candidate": "Debut Candidate",
+      "top30": "TOP 30%",
+      "hold": "Hold",
+      "danger": "At Risk",
+      "eliminated": "Eliminated",
+      "fallback": {
+        "debut_candidate": "You're on the debut candidate line. Don't stop.",
+        "top30": "TOP 30%. One more push to reach the debut line.",
+        "hold": "Hold line. Next month is your turning point.",
+        "danger": "Risk line. This is the most important moment.",
+        "eliminated": "You stumbled, but you can start again."
+      }
+    },
+    "profile": {
+      "tagLine": "AI Trainee Profile",
+      "narrativeEmpty": "Analyzing this month's story…",
+      "tags": {
+        "strength": "Strength",
+        "weakness": "Weakness",
+        "growthRate": "Growth rate",
+        "stagePresence": "Aura",
+        "position": "Position",
+        "marketability": "Marketability"
+      },
+      "stagePresenceValue": "Grade {{grade}}",
+      "specialNote": "Special note — ",
+      "growth": {
+        "very_fast": "Very fast ⚡⚡",
+        "fast": "Fast ⚡",
+        "normal": "Normal",
+        "slow": "Slow"
+      },
+      "marketability": {
+        "very_high": "Very high",
+        "high": "High",
+        "medium": "Medium",
+        "low": "Low"
+      }
+    },
+    "agency": {
+      "subHeader": "Audition · {{name}}",
+      "passRate": "Pass Rate",
+      "loading": "Evaluating…",
+      "advice": "Advice — "
+    },
+    "debate": {
+      "tag": "AI Judge Debate",
+      "headerSub": "Debate by five agency lead judges",
+      "keyConflict": "Conflict",
+      "consensus": "Consensus",
+      "summary": "AI Judges Summary"
+    },
+    "positionChange": {
+      "up": "Up",
+      "down": "Needs work",
+      "stable": "Stable",
+      "new": "New"
+    },
+    "growth": {
+      "bestLabel": "Best Growth",
+      "issueLabel": "Most Pointed Issue"
+    },
+    "shareSummary": "[{{month}} Monthly Eval]\nType: {{type}}\nGrade {{grade}} · Debut {{prob}}%",
+    "shareCopied": "Result copied to clipboard.",
+    "shareErr": "Card save is not supported in this environment.",
+    "shareErrSave": "Failed to save the card.",
+    "errorPrefix": "Error during evaluation:",
+    "errorRestart": "Restart"
+  },
+  "dashboard": {
+    "tag": "Trainee Asset Dashboard",
+    "title": "Trainee Comprehensive Report",
+    "subtitle": "Proving your value with debut readiness & competency data · Updated {{at}}",
+    "refresh": "Refresh",
+    "strengthenCta": "Strengthen Portfolio",
+    "audition": {
+      "tag": "Audition Readiness Report",
+      "overallLabel": "Overall Debut Readiness",
+      "delta": "{{sign}}{{value}}% vs last month",
+      "topStrengthPrefix": "⭐ "
+    },
+    "abilities": {
+      "dance": "Dance",
+      "vocal": "Vocal",
+      "visual": "Visual",
+      "attitude": "Attitude",
+      "korean": "Korean",
+      "rhythm": "Rhythm",
+      "coreTag": "Core",
+      "topPercentile": "Top {{value}}%"
+    },
+    "hexagon": {
+      "tag": "Hexagon Ability Chart",
+      "title": "Hexagon Ability Chart",
+      "previous": "Last month",
+      "current": "This month",
+      "overall": "Overall ability",
+      "totalGrowth": "Total growth",
+      "tooltipScore": "{{value}}",
+      "scoreUnit": ""
+    },
+    "timeline": {
+      "tag": "Technical Growth Timeline",
+      "title": "Technical Growth Timeline",
+      "subtitle": "Detail-level score changes prove the depth of your growth",
+      "currentScore": "Current score",
+      "delta30d": "30d {{sign}}{{value}}",
+      "mastered": "Mastered",
+      "masterGoal": "Target {{value}} · {{remaining}} to go",
+      "masterRefLabel": "Master score",
+      "category": {
+        "dance": "Dance",
+        "vocal": "Vocal",
+        "korean": "Korean",
+        "attitude": "Attitude"
+      },
+      "items": {
+        "danceIso": "Isolation accuracy",
+        "vocalPitch": "High-note stability",
+        "danceBottom": "Lower-body stability",
+        "koreanIntonation": "Korean intonation"
+      }
+    },
+    "portfolio": {
+      "tag": "Portfolio Mastery",
+      "title": "Debut Portfolio",
+      "inProgress": "Building",
+      "mastered": "Mastered",
+      "outOfTotal": "of {{total}}",
+      "barInProgress": "Building progress",
+      "barMastered": "Mastery rate",
+      "coreStrength": "Core strength",
+      "ctaToday": "Prove one ability today →",
+      "topStrengthDummy": "Lower-body stability — Top 5%"
+    },
+    "insight": {
+      "tag": "AI Insight",
+      "labels": {
+        "positive": "Strength signal",
+        "caution": "Caution signal",
+        "neutral": "AI Insight"
+      },
+      "items": {
+        "danceBottom": {
+          "headline": "Lower-body stability entered the top 5%",
+          "message": "A powerful selling point in the \"performance stability\" category at agency auditions. JYP and HYBE both weight it highly.",
+          "cta": "View dance report"
+        },
+        "koreanIntonation": {
+          "headline": "Korean intonation up +11 over 30 days",
+          "message": "Pronunciation → intonation → emotion flow nicely connects. Directly contributes to SM/HYBE global appeal.",
+          "cta": "Korean report"
+        },
+        "vocalColor": {
+          "headline": "Vocal-tone distinction is plateauing",
+          "message": "SM and YG weight this highly. Try a week of tone variation on a different track to break through.",
+          "cta": "Get AI coaching"
+        }
+      }
+    },
+    "agencyReadinessTags": {
+      "hybe": "Global storytelling",
+      "jyp": "Pure skill",
+      "sm": "Visual & aura",
+      "yg": "Performance & charisma",
+      "starship": "Mass appeal & basics"
+    },
+    "agencyReadinessSignal": {
+      "hybe": "Top 10% on musicality & growth-rate weights",
+      "jyp": "Vocal stability & attitude above baseline",
+      "sm": "Camera affinity rising; tonal distinction needs work",
+      "yg": "Aura volatility — strengthen your own color",
+      "starship": "Mass-appeal & consistency reached the debut line"
+    }
+  },
   "settings": {
     "title": "Settings",
     "subtitle": "Customize your ONNODE AI COACH experience",
@@ -491,5 +732,74 @@
     "recommendMessage": "This content matches your current level.",
     "start": "Start",
     "changeSettings": "Change notification settings →"
+  },
+  "coaching": {
+    "song": {
+      "title": "Song Persona Analysis",
+      "placeholder": "Song title or 'Song - Artist'",
+      "analyze": "Analyze",
+      "analyzing": "Analyzing…",
+      "reset": "Reset"
+    },
+    "persona": {
+      "dancePersonaLabel": "Dance Persona for This Song",
+      "vocalPersonaLabel": "Vocal Persona for This Song",
+      "danceAttitude": "When dancing to this",
+      "vocalAttitude": "When singing this",
+      "energy": "Energy",
+      "dance": "Danceability",
+      "valence": "Valence"
+    },
+    "voice": {
+      "listen": "Hear coach voice",
+      "playing": "Playing",
+      "unsupported": "Voice playback not supported in this browser"
+    },
+    "phaseLabels": {
+      "start": "Session intro",
+      "realtime": "Real-time coaching",
+      "mid": "Mid-check",
+      "end": "Final coaching"
+    },
+    "dance": {
+      "tag": "AI Dance Persona Coaching",
+      "empty": "Analyze a song to start persona coaching.",
+      "thinking": "Coach is preparing a persona-aware comment…",
+      "activated": "Persona is alive",
+      "activatingHint": "Express the persona more strongly",
+      "technicalScore": "Technique",
+      "emotionalScore": "Expression",
+      "keyCorrection": "Key Correction",
+      "personaComment": "Persona comment"
+    },
+    "vocal": {
+      "tag": "AI Vocal Soul Coaching",
+      "empty": "Analyze a song to start soul coaching.",
+      "thinking": "Coach is preparing an emotional comment…",
+      "characteristicsLoading": "Your voice characteristics will be auto-detected as you record",
+      "pitchScore": "Pitch",
+      "soulScore": "Soul",
+      "emotionImage": "Emotional image",
+      "visualization": "Visualization exercise",
+      "technicalAsEmotion": "Correction as emotion",
+      "breathingTip": "Breathing tip",
+      "soulDirection": "Soul direction"
+    },
+    "settings": {
+      "title": "AI Coach Persona",
+      "subtitle": "Choose your dance / vocal persona coaches",
+      "danceLabel": "Dance coach",
+      "vocalLabel": "Vocal coach",
+      "personas": {
+        "jyp_jung": "JYP Jung Minji — energetic",
+        "yg_lee": "YG Lee Narae — direct",
+        "hybe_kim": "HYBE Kim Soyeon — intuitive",
+        "sm_choi": "SM Choi Yujin — authoritative",
+        "jyp_park": "JYP Park Jaewon — vocal specialist",
+        "sm_choi_vocal": "SM Choi Yujin — timbre specialist",
+        "hybe_soul": "HYBE — emotion-focused",
+        "yg_vocal": "YG — swag & groove"
+      }
+    }
   }
 }

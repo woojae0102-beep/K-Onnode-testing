@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { Settings } from 'lucide-react';
 import TabBar from './TabBar';
 import MenuRow, { SectionTitle } from './MenuRow';
+import { useAuth } from '../../contexts/AuthContext';
 
 const HOME_MENUS_MY = [
   { icon: '👤', labelKey: 'leftPanel.profile', view: 'mypage' },
@@ -33,12 +34,7 @@ const DISCOVER_MENUS = [
   { icon: '🏆', labelKey: 'leftPanel.challenges', view: 'challenges' },
 ];
 
-const AICOACH_MENUS = [
-  { icon: '🔥', labelKey: 'leftPanel.todayPick', view: 'aicoach' },
-  { icon: '📈', labelKey: 'leftPanel.weakness', view: 'weakness' },
-  { icon: '📅', labelKey: 'leftPanel.routine', view: 'routine' },
-  { icon: '🎯', labelKey: 'leftPanel.coaching', view: 'coaching' },
-];
+const AICOACH_MENUS = [];
 
 export default function LeftPanel({
   activeTab,
@@ -76,9 +72,7 @@ export default function LeftPanel({
         {activeTab === 'discover' && (
           <DiscoverTabContent mainView={mainView} onSelectView={onSelectView} />
         )}
-        {activeTab === 'aicoach' && (
-          <AICoachTabContent mainView={mainView} onSelectView={onSelectView} />
-        )}
+        {activeTab === 'aicoach' && <AICoachTabContent />}
       </div>
 
       <UserMiniBar onOpenSettings={onOpenSettings} />
@@ -152,25 +146,21 @@ function DiscoverTabContent({ mainView, onSelectView }) {
   );
 }
 
-function AICoachTabContent({ mainView, onSelectView }) {
-  const { t } = useTranslation();
-  return (
-    <>
-      <SectionTitle>{t('leftPanel.aiCoach')}</SectionTitle>
-      {AICOACH_MENUS.map((item) => (
-        <MenuRow
-          key={item.view}
-          icon={item.icon}
-          label={t(item.labelKey)}
-          active={mainView === item.view}
-          onClick={() => onSelectView?.(item.view)}
-        />
-      ))}
-    </>
-  );
+function AICoachTabContent() {
+  return null;
 }
 
 function UserMiniBar({ onOpenSettings }) {
+  const { userProfile } = useAuth();
+  const displayName = userProfile?.displayName || userProfile?.email || 'onnode_user';
+  const initials = (displayName || 'ON')
+    .trim()
+    .split(/\s+/)
+    .map((v) => v?.[0] || '')
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+
   return (
     <div
       style={{
@@ -197,7 +187,11 @@ function UserMiniBar({ onOpenSettings }) {
           flexShrink: 0,
         }}
       >
-        ON
+        {userProfile?.photoURL ? (
+          <img src={userProfile.photoURL} alt="profile" style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '50%' }} />
+        ) : (
+          initials
+        )}
       </div>
       <span
         style={{
@@ -210,7 +204,7 @@ function UserMiniBar({ onOpenSettings }) {
           whiteSpace: 'nowrap',
         }}
       >
-        onnode_user
+        {displayName}
       </span>
       <button
         type="button"

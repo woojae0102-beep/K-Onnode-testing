@@ -11,6 +11,7 @@ import SmAuditionResult from '../components/audition/SmAuditionResult';
 import JypAuditionResult from '../components/audition/JypAuditionResult';
 import YgAuditionResult from '../components/audition/YgAuditionResult';
 import StarshipAuditionResult from '../components/audition/StarshipAuditionResult';
+import SubscriptionGate from '../components/auth/SubscriptionGate';
 
 const STAGES = ['select', 'lobby', 'judges', 'stage', 'result'];
 
@@ -18,7 +19,7 @@ function generateTicketNumber() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-export default function AgencyAuditionView() {
+function AgencyAuditionContent() {
   const [stage, setStage] = useState('select');
   const [agencyId, setAgencyId] = useState(null);
   const [ticketNumber, setTicketNumber] = useState(generateTicketNumber());
@@ -122,6 +123,18 @@ export default function AgencyAuditionView() {
         )
       )}
     </div>
+  );
+}
+
+export default function AgencyAuditionView() {
+  return (
+    <SubscriptionGate
+      requiredPlan="premium"
+      featureKey="agency_audition"
+      featureName="기획사 오디션"
+    >
+      <AgencyAuditionContent />
+    </SubscriptionGate>
   );
 }
 

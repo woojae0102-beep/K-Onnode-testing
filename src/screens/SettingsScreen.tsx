@@ -13,7 +13,6 @@ import {
   Mic,
   Shield,
   SlidersHorizontal,
-  Sparkles,
   Trash2,
   UserRound,
 } from 'lucide-react';
@@ -23,14 +22,16 @@ import SettingsItem from '../components/settings/SettingsItem';
 import SubscriptionCard from '../components/settings/SubscriptionCard';
 import LanguageSelector from '../components/settings/LanguageSelector';
 import { useSettings } from '../hooks/useSettings';
+import { useAuth } from '../contexts/AuthContext';
 
 const toneOptions = ['friendly', 'expert'];
 const coachModes = ['single', 'multi', 'free'];
+const dancePersonaOptions = ['jyp_jung', 'yg_lee', 'hybe_kim', 'sm_choi'];
+const vocalPersonaOptions = ['jyp_park', 'sm_choi_vocal', 'hybe_soul', 'yg_vocal'];
 const durations = ['days7', 'days30', 'unlimited'];
 const reportFormats = ['pdf', 'image'];
 const trackOrder = ['dance', 'vocal', 'korean'];
 const weekDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
-const routineSlots = ['morning', 'evening'];
 
 function getInitials(nickname) {
   return (nickname || 'ONNODE')
@@ -43,6 +44,7 @@ function getInitials(nickname) {
 
 export default function SettingsScreen({ user, db, appId, sessionData }) {
   const { t } = useTranslation();
+  const { logout, userProfile } = useAuth();
   const [permissionState, setPermissionState] = useState('');
   const [languageOpen, setLanguageOpen] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -60,7 +62,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
     setCoachLanguage,
     runUpgrade,
     runCancelSubscription,
-    generateWeeklyPlan,
   } = useSettings({ db, appId, user, sessionData });
 
   const profilePreview = useMemo(
@@ -165,27 +166,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
     } else {
       showToast(t('settings.toast.requestFailed'));
     }
-  };
-
-  const generateRoutine = async () => {
-    await generateWeeklyPlan({
-      tracks: settings.tracks,
-      level: settings.profile?.level || 'LV.1',
-    });
-    showToast(t('settings.toast.planGenerated'));
-  };
-
-  const updateRoutineSlot = (day, slot) => {
-    const value = window.prompt(t('settings.routine.slotPrompt'), settings.weeklyPlan?.[day]?.[slot] || '');
-    if (value == null) return;
-    const next = {
-      ...(settings.weeklyPlan || {}),
-      [day]: {
-        ...(settings.weeklyPlan?.[day] || {}),
-        [slot]: value,
-      },
-    };
-    updateSimpleSetting('weeklyPlan', next);
   };
 
   const toggleReminderDay = (day) => {
@@ -344,6 +324,57 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
                 {t(`settings.coachMode.options.${mode}`)}
               </button>
             ))}
+          </div>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+          <div>
+            <p className="font-bold text-slate-900">{t('coaching.settings.title')}</p>
+            <p className="text-xs text-slate-500 mt-0.5">{t('coaching.settings.subtitle')}</p>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-700">{t('coaching.settings.danceLabel')}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {dancePersonaOptions.map((persona) => (
+                <button
+                  key={persona}
+                  type="button"
+                  onClick={() => updateSimpleSetting('dancePersona', persona)}
+                  className={`rounded-xl border px-3 py-2 text-xs text-left ${
+                    settings.dancePersona === persona
+                      ? 'border-[#FF1F8E] bg-pink-50 text-[#FF1F8E] font-semibold'
+                      : 'border-slate-300 text-slate-600 bg-white'
+                  }`}
+                >
+                  {t(`coaching.settings.personas.${persona}`)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <p className="text-xs font-semibold text-slate-700">{t('coaching.settings.vocalLabel')}</p>
+            <div className="grid grid-cols-2 gap-2">
+              {vocalPersonaOptions.map((persona) => {
+                const value = persona === 'sm_choi_vocal' ? 'sm_choi' : persona;
+                const active = settings.vocalPersona === value;
+                return (
+                  <button
+                    key={persona}
+                    type="button"
+                    onClick={() => updateSimpleSetting('vocalPersona', value)}
+                    className={`rounded-xl border px-3 py-2 text-xs text-left ${
+                      active
+                        ? 'border-[#4A6BFF] bg-indigo-50 text-[#4A6BFF] font-semibold'
+                        : 'border-slate-300 text-slate-600 bg-white'
+                    }`}
+                  >
+                    {t(`coaching.settings.personas.${persona}`)}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </SettingsSection>
@@ -516,41 +547,6 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
           </div>
         </div>
 
-        <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
-          <div className="flex items-center justify-between">
-            <p className="font-bold text-slate-900 flex items-center gap-2">
-              <Sparkles size={16} />
-              {t('settings.routine.title')}
-            </p>
-            <span className="text-[10px] px-2 py-1 rounded-full bg-amber-100 text-amber-700">{t('settings.routine.recommended')}</span>
-          </div>
-          <button
-            type="button"
-            onClick={generateRoutine}
-            disabled={actionLoading}
-            className="rounded-xl bg-[#111111] text-white px-3 py-2 text-sm font-semibold"
-          >
-            {t('settings.routine.generate')}
-          </button>
-          <div className="grid grid-cols-7 gap-2">
-            {routineDaysLabel.map((day) => (
-              <div key={day.key} className="rounded-xl border border-[#E5E5E5] bg-white p-2 space-y-2">
-                <p className="text-[10px] text-[#AAAAAA] uppercase">{day.label}</p>
-                {routineSlots.map((slot) => (
-                  <button
-                    key={`${day.key}-${slot}`}
-                    type="button"
-                    onClick={() => updateRoutineSlot(day.key, slot)}
-                    className="w-full rounded-lg border border-slate-200 px-1 py-1 text-[10px] text-slate-600 bg-slate-50"
-                    title={t(`settings.routine.${slot}`)}
-                  >
-                    {(settings.weeklyPlan?.[day.key]?.[slot] || t('settings.routine.empty')).slice(0, 10)}
-                  </button>
-                ))}
-              </div>
-            ))}
-          </div>
-        </div>
       </SettingsSection>
 
       <SettingsSection title={t('settings.sections.app')}>
@@ -597,6 +593,32 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
             </a>
           </div>
           <p className="text-xs text-[#888888]">v1.0.0 (build 42)</p>
+        </div>
+
+        <div className="rounded-2xl border border-slate-200 bg-white p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-bold text-slate-900">계정</p>
+              <p className="text-xs text-[#888888]">
+                {userProfile?.email || userProfile?.displayName || '로그인됨'}
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={async () => {
+                if (window.confirm('로그아웃 하시겠어요?')) {
+                  try {
+                    await logout();
+                  } catch (err) {
+                    console.error('[logout] failed:', err);
+                  }
+                }
+              }}
+              className="rounded-xl border border-slate-300 text-slate-700 px-3 py-2 text-xs font-semibold bg-white hover:bg-slate-50"
+            >
+              로그아웃
+            </button>
+          </div>
         </div>
       </SettingsSection>
 

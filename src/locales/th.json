@@ -1,4 +1,245 @@
 {
+  "monthly": {
+    "tag": "Monthly Evaluation",
+    "title": "ประเมินสิ้นเดือน",
+    "subtitle": "กรรมการ AI จาก 5 ค่ายประเมินคุณตลอดทั้งเดือน",
+    "loadingTitle": "กรรมการ AI กำลังประเมินคุณ",
+    "phase": {
+      "countdown": "รอ",
+      "profile": "กำลังวิเคราะห์โปรไฟล์เด็กฝึก…",
+      "agency_evals": "5 ค่ายกำลังประเมิน…",
+      "debate": "กรรมการกำลังถกเถียง…",
+      "final": "กำลังสรุปผลสุดท้าย…",
+      "complete": "ประเมินเสร็จแล้ว"
+    },
+    "countdown": {
+      "headlineFar": "อีก {{days}} วันถึงประเมินสิ้นเดือน",
+      "headlineHot": "🔥 ใกล้ถึงวันประเมิน! D-{{days}}",
+      "headlineToday": "🏆 วันนี้คือวันประเมินสิ้นเดือน!",
+      "subFar": "ฝึกต่อไปและทำเรื่องราวของเดือนนี้ให้สมบูรณ์ พอใกล้วันก็เริ่มได้เลย",
+      "subHot": "กรรมการ AI 5 คนจะประเมินคุณจากข้อมูลของเดือนที่ผ่านมา",
+      "subToday": "กรรมการ 5 ค่ายกำลังรอคุณของเดือนนี้",
+      "startBtn": "เริ่มประเมินสิ้นเดือน",
+      "waitingBtn": "D-{{days}} · รอ",
+      "previewLabel": "พรีวิวยอดสะสมเดือนนี้",
+      "previewDays": "วันฝึก",
+      "previewDaysSub": "เดือนนี้",
+      "previewAvg": "คะแนนเฉลี่ย",
+      "previewAvgSub": "เต้น · ร้อง · เกาหลี",
+      "previewTop": "ฝึกบ่อยที่สุด",
+      "previewDayUnit": "{{count}} วัน",
+      "previewScoreUnit": "{{value}} คะแนน",
+      "previewFieldUnit": "{{label}} ({{count}} ครั้ง)",
+      "previewEmpty": "ข้อมูลไม่พอ",
+      "previewScoreEmpty": "—",
+      "sampleNotice": "ข้อมูลฝึกซ้อมเดือนนี้ยังไม่พอ ใส่ข้อมูลตัวอย่างเพื่อดูตัวอย่างการประเมินได้",
+      "sampleBtn": "ใส่ข้อมูลตัวอย่าง",
+      "historyHeader": "ประวัติประเมินสิ้นเดือนล่าสุด",
+      "historyDebutPct": "โอกาสเดบิวต์ {{value}}%"
+    },
+    "labels": {
+      "overallGrade": "เกรดรวม",
+      "totalScore": "คะแนนรวม",
+      "agencyPassRate": "โอกาสผ่านแต่ละค่าย",
+      "agencyTop": "สูงสุด",
+      "debutProbability": "โอกาสเดบิวต์",
+      "debutLine": "เส้นประ 65% — แนวผู้สมัครเดบิวต์",
+      "vsLastMonth": "เทียบกับเดือนก่อน",
+      "positionChanges": "การเปลี่ยนตำแหน่ง",
+      "bestGrowth": "ความสามารถที่โตขึ้นมากที่สุด",
+      "biggestIssue": "ประเด็นที่ถูกชี้บ่อยสุด",
+      "history": "ประวัติเด็กฝึก",
+      "historySub": "ไทม์ไลน์เรื่องราว",
+      "historyEmpty": "ยังไม่มีเรื่องราวสะสม เดือนหน้าจะเริ่ม",
+      "groupMatch": "AI Group Match",
+      "groupMatchAlt": "ทางเลือก — {{label}}",
+      "nextGoals": "📋 เป้าหมายเดือนหน้า",
+      "specialAward": "🎖 {{label}}",
+      "finalMessage": "Final Message",
+      "now": "NOW"
+    },
+    "buttons": {
+      "saveCard": "บันทึกเป็นการ์ด",
+      "share": "แชร์",
+      "restart": "เริ่มใหม่"
+    },
+    "survival": {
+      "title": "Survival Status",
+      "debut_candidate": "ผู้สมัครเดบิวต์",
+      "top30": "TOP 30%",
+      "hold": "พัก",
+      "danger": "เสี่ยงตกรอบ",
+      "eliminated": "ตกรอบ",
+      "fallback": {
+        "debut_candidate": "ไปต่อแบบนี้คือผู้สมัครเดบิวต์ อย่าหยุด",
+        "top30": "TOP 30%. อีกนิดก็ถึงเส้นเดบิวต์",
+        "hold": "เส้นพัก เดือนหน้าคือจุดเปลี่ยน",
+        "danger": "เส้นเสี่ยง นี่คือช่วงสำคัญที่สุด",
+        "eliminated": "เคยล้ม แต่เริ่มใหม่ได้เสมอ"
+      }
+    },
+    "profile": {
+      "tagLine": "AI Trainee Profile",
+      "narrativeEmpty": "กำลังวิเคราะห์เรื่องราวเดือนนี้…",
+      "tags": {
+        "strength": "จุดแข็ง",
+        "weakness": "จุดอ่อน",
+        "growthRate": "อัตราการเติบโต",
+        "stagePresence": "ออร่า",
+        "position": "ตำแหน่ง",
+        "marketability": "ความเป็นแมส"
+      },
+      "stagePresenceValue": "เกรด {{grade}}",
+      "specialNote": "หมายเหตุพิเศษ — ",
+      "growth": {
+        "very_fast": "เร็วมาก ⚡⚡",
+        "fast": "เร็ว ⚡",
+        "normal": "ปกติ",
+        "slow": "ช้า"
+      },
+      "marketability": {
+        "very_high": "สูงมาก",
+        "high": "สูง",
+        "medium": "ปกติ",
+        "low": "ต่ำ"
+      }
+    },
+    "agency": {
+      "subHeader": "Audition · {{name}}",
+      "passRate": "โอกาสผ่าน",
+      "loading": "กำลังประเมิน…",
+      "advice": "คำแนะนำ — "
+    },
+    "debate": {
+      "tag": "AI Judge Debate",
+      "headerSub": "การถกเถียงของกรรมการตัวแทน 5 ค่าย",
+      "keyConflict": "ประเด็นขัดแย้ง",
+      "consensus": "ฉันทามติ",
+      "summary": "บทสรุปกรรมการ AI"
+    },
+    "positionChange": {
+      "up": "เพิ่มขึ้น",
+      "down": "ต้องเสริม",
+      "stable": "คงที่",
+      "new": "ใหม่"
+    },
+    "growth": {
+      "bestLabel": "Best Growth",
+      "issueLabel": "Most Pointed Issue"
+    },
+    "shareSummary": "[ประเมิน {{month}}]\nประเภท: {{type}}\nเกรด {{grade}} · เดบิวต์ {{prob}}%",
+    "shareCopied": "คัดลอกผลลัพธ์ไปยังคลิปบอร์ดแล้ว",
+    "shareErr": "สภาพแวดล้อมนี้ไม่รองรับการบันทึกเป็นการ์ด",
+    "shareErrSave": "บันทึกการ์ดไม่สำเร็จ",
+    "errorPrefix": "เกิดข้อผิดพลาดระหว่างประเมิน:",
+    "errorRestart": "เริ่มใหม่"
+  },
+  "dashboard": {
+    "tag": "Trainee Asset Dashboard",
+    "title": "ประเมินรวมเด็กฝึก",
+    "subtitle": "พิสูจน์คุณค่าด้วยข้อมูลโอกาสเดบิวต์และความสามารถ · อัปเดต {{at}}",
+    "refresh": "รีเฟรช",
+    "strengthenCta": "เสริมพอร์ตเดบิวต์",
+    "audition": {
+      "tag": "Audition Readiness Report",
+      "overallLabel": "ความพร้อมเดบิวต์ รวม",
+      "delta": "เทียบกับเดือนก่อน {{sign}}{{value}}%",
+      "topStrengthPrefix": "⭐ "
+    },
+    "abilities": {
+      "dance": "เต้น",
+      "vocal": "ร้องเพลง",
+      "visual": "วิชวล",
+      "attitude": "ทัศนคติ",
+      "korean": "เกาหลี",
+      "rhythm": "จังหวะ",
+      "coreTag": "Core",
+      "topPercentile": "Top {{value}}%"
+    },
+    "hexagon": {
+      "tag": "Hexagon Ability Chart",
+      "title": "กราฟ 6 เหลี่ยม",
+      "previous": "เดือนก่อน",
+      "current": "เดือนนี้",
+      "overall": "ความสามารถรวม",
+      "totalGrowth": "การเติบโตรวม",
+      "tooltipScore": "{{value}} คะแนน",
+      "scoreUnit": " คะแนน"
+    },
+    "timeline": {
+      "tag": "Technical Growth Timeline",
+      "title": "ไทม์ไลน์การเติบโตเทคนิค",
+      "subtitle": "พิสูจน์การเติบโตด้วยคะแนนรายเทคนิค",
+      "currentScore": "คะแนนปัจจุบัน",
+      "delta30d": "30 วัน {{sign}}{{value}}",
+      "mastered": "ได้คะแนนมาสเตอร์",
+      "masterGoal": "เป้า {{value}} · เหลือ {{remaining}}",
+      "masterRefLabel": "Master",
+      "category": {
+        "dance": "เต้น",
+        "vocal": "ร้อง",
+        "korean": "เกาหลี",
+        "attitude": "ทัศนคติ"
+      },
+      "items": {
+        "danceIso": "ความแม่นยำ Isolation",
+        "vocalPitch": "ความเสถียรเสียงสูง",
+        "danceBottom": "ความเสถียรท่อนล่าง",
+        "koreanIntonation": "อินโทเนชันเกาหลี"
+      }
+    },
+    "portfolio": {
+      "tag": "Portfolio Mastery",
+      "title": "พอร์ตเดบิวต์",
+      "inProgress": "กำลังพัฒนา",
+      "mastered": "ได้คะแนนมาสเตอร์",
+      "outOfTotal": "จากทั้งหมด {{total}}",
+      "barInProgress": "ความคืบหน้า",
+      "barMastered": "อัตรามาสเตอร์",
+      "coreStrength": "จุดแข็งหลัก",
+      "ctaToday": "ไปพิสูจน์ความสามารถวันนี้ →",
+      "topStrengthDummy": "ความเสถียรท่อนล่าง — Top 5%"
+    },
+    "insight": {
+      "tag": "AI Insight",
+      "labels": {
+        "positive": "สัญญาณจุดแข็ง",
+        "caution": "สัญญาณต้องเสริม",
+        "neutral": "AI Insight"
+      },
+      "items": {
+        "danceBottom": {
+          "headline": "ความเสถียรท่อนล่างเข้า Top 5%",
+          "message": "เป็นจุดขายที่แข็งแกร่งในหมวด \"ความเสถียร\" ของออดิชั่น JYP·HYBE ให้น้ำหนักสูง",
+          "cta": "ดูรายงานเต้น"
+        },
+        "koreanIntonation": {
+          "headline": "อินโทเนชันเกาหลีบวก +11 ใน 30 วัน",
+          "message": "การออกเสียง → อินโทเนชัน → การถ่ายทอดอารมณ์ เชื่อมต่อเป็นธรรมชาติ ส่งผลตรงต่อ SM·HYBE",
+          "cta": "รายงานเกาหลี"
+        },
+        "vocalColor": {
+          "headline": "สัญญาณความต่างของน้ำเสียงนิ่งเฉย",
+          "message": "SM·YG ให้น้ำหนักสูง ลองเปลี่ยนแทร็กและทดลองน้ำเสียงสักสัปดาห์",
+          "cta": "ขอ AI โค้ช"
+        }
+      }
+    },
+    "agencyReadinessTags": {
+      "hybe": "สตอรี่ระดับโลก",
+      "jyp": "สายฝีมือ",
+      "sm": "วิชวล·ออร่า",
+      "yg": "เพอร์ฟอร์มานซ์·คาริสมา",
+      "starship": "แมส·พื้นฐาน"
+    },
+    "agencyReadinessSignal": {
+      "hybe": "Top 10% ในมิติดนตรี·อัตราโต",
+      "jyp": "เสถียรเสียง·ทัศนคติเหนือเส้นมาตรฐาน",
+      "sm": "กล้องเป็นมิตรขึ้น ต้องเสริมเอกลักษณ์เสียง",
+      "yg": "ออร่าผันผวน — แนะนำเสริมสไตล์ตัวเอง",
+      "starship": "ความเป็นแมส·ความสม่ำเสมอเข้าเส้นเดบิวต์"
+    }
+  },
   "settings": {
     "title": "ตั้งค่า",
     "subtitle": "ปรับประสบการณ์ ONNODE AI COACH ของคุณ",
@@ -491,5 +732,74 @@
     "recommendMessage": "คอนเทนต์นี้เหมาะกับระดับปัจจุบันของคุณ",
     "start": "เริ่ม",
     "changeSettings": "เปลี่ยนการตั้งค่าการแจ้งเตือน →"
+  },
+  "coaching": {
+    "song": {
+      "title": "วิเคราะห์เพอร์โซนาของเพลง",
+      "placeholder": "ชื่อเพลง หรือ ‘เพลง - ศิลปิน’",
+      "analyze": "วิเคราะห์",
+      "analyzing": "กำลังวิเคราะห์…",
+      "reset": "รีเซ็ต"
+    },
+    "persona": {
+      "dancePersonaLabel": "เพอร์โซนาเต้นของเพลงนี้",
+      "vocalPersonaLabel": "เพอร์โซนาร้องของเพลงนี้",
+      "danceAttitude": "เมื่อเต้นเพลงนี้",
+      "vocalAttitude": "เมื่อร้องเพลงนี้",
+      "energy": "พลังงาน",
+      "dance": "เต้นง่าย",
+      "valence": "ความรู้สึกบวก"
+    },
+    "voice": {
+      "listen": "ฟังเสียงโค้ช",
+      "playing": "กำลังเล่น",
+      "unsupported": "เบราว์เซอร์นี้ไม่รองรับการเล่นเสียง"
+    },
+    "phaseLabels": {
+      "start": "เริ่มเซสชัน",
+      "realtime": "โค้ชชิ่งเรียลไทม์",
+      "mid": "ตรวจกลางทาง",
+      "end": "สรุปการโค้ช"
+    },
+    "dance": {
+      "tag": "AI Dance Persona Coaching",
+      "empty": "วิเคราะห์เพลงเพื่อเริ่มโค้ชเพอร์โซนา",
+      "thinking": "โค้ชกำลังเตรียมคอมเมนต์…",
+      "activated": "เพอร์โซนาเปล่งประกาย",
+      "activatingHint": "แสดงเพอร์โซนาให้เข้มข้นขึ้น",
+      "technicalScore": "เทคนิค",
+      "emotionalScore": "การแสดงออก",
+      "keyCorrection": "จุดแก้ไขสำคัญ",
+      "personaComment": "คอมเมนต์เพอร์โซนา"
+    },
+    "vocal": {
+      "tag": "AI Vocal Soul Coaching",
+      "empty": "วิเคราะห์เพลงเพื่อเริ่ม Soul Coaching",
+      "thinking": "โค้ชกำลังเตรียมคอมเมนต์อารมณ์…",
+      "characteristicsLoading": "เสียงของคุณจะถูกวิเคราะห์ขณะอัด",
+      "pitchScore": "พิทช์",
+      "soulScore": "Soul",
+      "emotionImage": "ภาพอารมณ์",
+      "visualization": "ฝึกจินตนาการ",
+      "technicalAsEmotion": "แก้ไขด้วยภาษาอารมณ์",
+      "breathingTip": "เคล็ดลับการหายใจ",
+      "soulDirection": "ทิศทาง Soul"
+    },
+    "settings": {
+      "title": "เพอร์โซนาโค้ช AI",
+      "subtitle": "เลือกโค้ชเต้น / โค้ชร้อง",
+      "danceLabel": "โค้ชเต้น",
+      "vocalLabel": "โค้ชร้อง",
+      "personas": {
+        "jyp_jung": "JYP จองมินจี — มีพลัง",
+        "yg_lee": "YG อีนาแร — ตรงไปตรงมา",
+        "hybe_kim": "HYBE คิมโซยอน — สัญชาตญาณ",
+        "sm_choi": "SM ชเวยูจิน — มีบารมี",
+        "jyp_park": "JYP พัคแจวอน — ผู้เชี่ยวชาญร้อง",
+        "sm_choi_vocal": "SM ชเวยูจิน — น้ำเสียง",
+        "hybe_soul": "HYBE — สื่ออารมณ์",
+        "yg_vocal": "YG — สแว็กและกรูฟ"
+      }
+    }
   }
 }
