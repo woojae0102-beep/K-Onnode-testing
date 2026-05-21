@@ -116,6 +116,7 @@ const PENDING_PROVIDER_KEY = 'onnode.auth.pendingProvider';
 
 const env = (import.meta as any).env || {};
 const KAKAO_APP_KEY = env.VITE_KAKAO_APP_KEY || env.VITE_KAKAO_JS_KEY || '';
+const KAKAO_SDK_SRC = 'https://t1.kakaocdn.net/kakao_js_sdk/2026.4.9/kakao.min.js';
 const KAKAO_REDIRECT_URI_DEV =
   env.VITE_KAKAO_REDIRECT_URI_DEV ||
   'http://localhost:5173/oauth/callback/kakao';
@@ -136,13 +137,45 @@ function isKakaoCallbackPage() {
   return window.location.pathname === KAKAO_CALLBACK_PATH;
 }
 
-function ensureKakaoInit() {
+function waitForKakaoSdk(timeoutMs = 5000) {
+  if (typeof window === 'undefined') return Promise.resolve(false);
+  if (window.Kakao) return Promise.resolve(true);
+
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ready: boolean) => {
+      if (settled) return;
+      settled = true;
+      resolve(ready);
+    };
+
+    const existingScript = document.querySelector(`script[src="${KAKAO_SDK_SRC}"]`);
+    const script =
+      existingScript ||
+      Object.assign(document.createElement('script'), {
+        src: KAKAO_SDK_SRC,
+      });
+
+    script.addEventListener('load', () => finish(!!window.Kakao), { once: true });
+    script.addEventListener('error', () => finish(false), { once: true });
+
+    if (!existingScript) {
+      document.head.appendChild(script);
+    }
+
+    window.setTimeout(() => finish(!!window.Kakao), timeoutMs);
+  });
+}
+
+async function ensureKakaoInit() {
   if (typeof window === 'undefined') return false;
-  if (!window.Kakao) return false;
+  const sdkReady = await waitForKakaoSdk();
+  if (!sdkReady || !window.Kakao) return false;
   if (!window.Kakao.isInitialized || !window.Kakao.isInitialized()) {
-    if (!KAKAO_APP_KEY) return false;
+    const appKey = import.meta.env.VITE_KAKAO_APP_KEY || KAKAO_APP_KEY;
+    if (!appKey) return false;
     try {
-      window.Kakao.init(KAKAO_APP_KEY);
+      window.Kakao.init(appKey);
     } catch (err) {
       console.error('[Kakao] init failed:', err);
       return false;
@@ -451,7 +484,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const loginWithKakao = useCallback(async () => {
     if (!auth) throw new Error('Firebase 인증이 초기화되지 않았습니다.');
-    if (!ensureKakaoInit()) {
+    if (!(await ensureKakaoInit())) {
       throw new Error(
         '카카오 SDK가 준비되지 않았습니다. .env의 VITE_KAKAO_APP_KEY와 index.html의 SDK 스크립트를 확인하세요.',
       );
