@@ -18,7 +18,7 @@
 //
 // 운영시에는 서명검증(signature verification)을 반드시 추가해야 합니다.
 
-const { getAdmin } = require('./_firebaseAdmin');
+const { getAdmin } = require('../_lib/firebaseAdmin');
 
 const FREE_FEATURES = [
   'dance_basic',

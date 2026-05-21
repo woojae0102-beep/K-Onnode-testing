@@ -1,23 +1,11 @@
-// Firebase Admin SDK 싱글톤 초기화 모듈
-// /api/auth/* 서버리스 핸들러에서 공통으로 사용합니다.
-//
-// 환경변수:
-//  - FIREBASE_PROJECT_ID
-//  - FIREBASE_CLIENT_EMAIL
-//  - FIREBASE_PRIVATE_KEY  (\n 이스케이프 포함된 PEM)
-//
-// 참고: Firebase Console → 프로젝트 설정 → 서비스 계정 → 새 비공개 키 생성
+// Firebase Admin SDK singleton helper.
+// Serverless endpoint files import this module; it is not an endpoint itself.
 
 let cached = null;
 let initError = '';
 
 function normalizePrivateKey(raw) {
   if (!raw) return '';
-
-  // Vercel/로컬 .env 모두에서 발생 가능한 케이스를 정리합니다.
-  // 1) "-----BEGIN...\n...-----END...\n" 처럼 따옴표가 값에 포함된 경우 제거
-  // 2) \n 이스케이프 문자열을 실제 줄바꿈으로 변환
-  // 3) Windows CRLF가 섞여도 PEM 파싱 가능하도록 \r 제거
   let key = String(raw).trim();
   if (
     (key.startsWith('"') && key.endsWith('"')) ||
@@ -25,14 +13,12 @@ function normalizePrivateKey(raw) {
   ) {
     key = key.slice(1, -1);
   }
-  key = key.replace(/\\n/g, '\n').replace(/\r/g, '');
-  return key;
+  return key.replace(/\\n/g, '\n').replace(/\r/g, '');
 }
 
 function getAdmin() {
-  if (cached || initError) {
-    return { admin: cached, error: initError };
-  }
+  if (cached || initError) return { admin: cached, error: initError };
+
   try {
     const admin = require('firebase-admin');
     if (!admin.apps.length) {

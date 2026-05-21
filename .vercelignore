@@ -11,3 +11,12 @@ netlify.toml
 .idea
 .DS_Store
 Thumbs.db
+
+# Vercel Hobby plan allows up to 12 Serverless Functions per deployment.
+# These legacy endpoint files are consolidated into:
+#   /api/audition.js
+#   /api/monthly.js
+#   /api/coaching.js
+api/audition/**
+api/monthly/**
+api/coaching/**

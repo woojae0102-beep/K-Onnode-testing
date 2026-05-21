@@ -2,6 +2,18 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
     {
+      "source": "/api/audition/:path*",
+      "destination": "/api/audition?path=:path*"
+    },
+    {
+      "source": "/api/monthly/:path*",
+      "destination": "/api/monthly?path=:path*"
+    },
+    {
+      "source": "/api/coaching/:path*",
+      "destination": "/api/coaching?path=:path*"
+    },
+    {
       "source": "/oauth/callback/kakao",
       "destination": "/index.html"
     }

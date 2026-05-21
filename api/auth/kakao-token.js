@@ -5,7 +5,7 @@
 // Body B (legacy SDK v1 popup): { kakaoId, email?, nickname?, profileImage? }
 // Resp: { customToken, kakaoUser? }
 
-const { getAdmin } = require('./_firebaseAdmin');
+const { getAdmin } = require('../_lib/firebaseAdmin');
 
 async function exchangeKakaoCode({ code, redirectUri }) {
   const clientId = process.env.KAKAO_REST_API_KEY || '';

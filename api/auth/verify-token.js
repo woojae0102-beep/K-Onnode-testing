@@ -4,7 +4,7 @@
 // Body: { idToken }
 // Resp: { uid, email, displayName, photoURL, claims }
 
-const { getAdmin } = require('./_firebaseAdmin');
+const { getAdmin } = require('../_lib/firebaseAdmin');
 
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
