@@ -15,9 +15,71 @@ const GOALS = [
   { id: 'content', icon: '📱', label: '콘텐츠 크리에이터' },
 ];
 
+const COUNTRIES = [
+  { id: 'KR', label: '한국' },
+  { id: 'US', label: '미국' },
+  { id: 'JP', label: '일본' },
+  { id: 'CN', label: '중국' },
+  { id: 'TH', label: '태국' },
+  { id: 'PH', label: '필리핀' },
+  { id: 'ID', label: '인도네시아' },
+  { id: 'VN', label: '베트남' },
+  { id: 'OTHER', label: '기타' },
+];
+
+const LANGUAGES = [
+  { id: 'ko', label: '한국어' },
+  { id: 'en', label: 'English' },
+  { id: 'ja', label: '日本語' },
+  { id: 'zh', label: '中文' },
+  { id: 'es', label: 'Español' },
+  { id: 'fr', label: 'Français' },
+  { id: 'th', label: 'ไทย' },
+  { id: 'vi', label: 'Tiếng Việt' },
+];
+
+function Field({ label, required, children }) {
+  return (
+    <label style={{ display: 'block' }}>
+      <div
+        style={{
+          color: '#bbb',
+          fontSize: 13,
+          fontWeight: 600,
+          marginBottom: 8,
+        }}
+      >
+        {label}
+        {required && <span style={{ color: '#FF1F8E' }}> *</span>}
+      </div>
+      {children}
+    </label>
+  );
+}
+
+const inputStyle: React.CSSProperties = {
+  width: '100%',
+  minHeight: 48,
+  padding: '12px 14px',
+  background: '#141414',
+  border: '1px solid #333',
+  borderRadius: 12,
+  color: '#fff',
+  fontSize: 15,
+  outline: 'none',
+};
+
 export default function OnboardingScreen() {
   const { updateUserProfile, userProfile } = useAuth();
-  const [step, setStep] = useState<1 | 2>(1);
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [displayName, setDisplayName] = useState(
+    userProfile?.displayName || '',
+  );
+  const [birthYear, setBirthYear] = useState(
+    userProfile?.birthYear ? String(userProfile.birthYear) : '',
+  );
+  const [country, setCountry] = useState(userProfile?.country || 'KR');
+  const [language, setLanguage] = useState(userProfile?.language || 'ko');
   const [selectedTracks, setSelectedTracks] = useState<AuthTrack[]>(
     (userProfile?.tracks as AuthTrack[]) || [],
   );
@@ -33,12 +95,32 @@ export default function OnboardingScreen() {
     );
   };
 
+  const validateProfileStep = () => {
+    const name = displayName.trim();
+    if (!name) {
+      setError('닉네임을 입력해주세요.');
+      return false;
+    }
+    const year = Number(birthYear);
+    const currentYear = new Date().getFullYear();
+    if (!birthYear || !Number.isFinite(year) || year < 1950 || year > currentYear) {
+      setError('출생연도를 올바르게 입력해주세요.');
+      return false;
+    }
+    setError(null);
+    return true;
+  };
+
   const handleComplete = async () => {
-    if (!selectedGoal || selectedTracks.length === 0) return;
+    if (!validateProfileStep() || !selectedGoal || selectedTracks.length === 0) return;
     setIsSaving(true);
     setError(null);
     try {
       await updateUserProfile({
+        displayName: displayName.trim(),
+        birthYear: Number(birthYear),
+        country,
+        language,
         tracks: selectedTracks,
         goal: selectedGoal,
         onboardingCompleted: true,
@@ -70,7 +152,7 @@ export default function OnboardingScreen() {
       >
         <div
           style={{
-            width: `${(step / 2) * 100}%`,
+            width: `${(step / 3) * 100}%`,
             height: '100%',
             background: '#FF1F8E',
             borderRadius: 2,
@@ -80,6 +162,121 @@ export default function OnboardingScreen() {
       </div>
 
       {step === 1 && (
+        <div style={{ width: '100%', maxWidth: 400 }}>
+          <div style={{ textAlign: 'center', marginBottom: 32 }}>
+            <div
+              style={{ fontSize: 22, fontWeight: 600, color: '#fff' }}
+            >
+              프로필을 완성해주세요
+            </div>
+            <div
+              style={{ fontSize: 13, color: '#666', marginTop: 8 }}
+            >
+              코칭과 평가를 개인화하는 데 사용됩니다
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 16,
+            }}
+          >
+            <Field label="닉네임" required>
+              <input
+                type="text"
+                value={displayName}
+                onChange={(e) => setDisplayName(e.target.value)}
+                placeholder="예: ONNODE STAR"
+                autoComplete="nickname"
+                style={inputStyle}
+              />
+            </Field>
+
+            <Field label="출생연도" required>
+              <input
+                type="number"
+                value={birthYear}
+                onChange={(e) => setBirthYear(e.target.value)}
+                placeholder="예: 2004"
+                min="1950"
+                max={new Date().getFullYear()}
+                inputMode="numeric"
+                style={inputStyle}
+              />
+            </Field>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 12,
+              }}
+            >
+              <Field label="국가" required>
+                <select
+                  value={country}
+                  onChange={(e) => setCountry(e.target.value)}
+                  style={inputStyle}
+                >
+                  {COUNTRIES.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+
+              <Field label="사용 언어" required>
+                <select
+                  value={language}
+                  onChange={(e) => setLanguage(e.target.value)}
+                  style={inputStyle}
+                >
+                  {LANGUAGES.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+            </div>
+          </div>
+
+          {error && (
+            <div
+              style={{
+                marginTop: 16,
+                background: '#2a1015',
+                border: '1px solid #E24B4A44',
+                borderRadius: 8,
+                padding: '10px 14px',
+                color: '#E24B4A',
+                fontSize: 13,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <button
+            type="button"
+            onClick={() => {
+              if (validateProfileStep()) setStep(2);
+            }}
+            className="auth-btn-primary"
+            style={{
+              marginTop: 24,
+              background: '#FF1F8E',
+            }}
+          >
+            다음
+          </button>
+        </div>
+      )}
+
+      {step === 2 && (
         <div style={{ width: '100%', maxWidth: 400 }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div
@@ -145,7 +342,7 @@ export default function OnboardingScreen() {
 
           <button
             type="button"
-            onClick={() => setStep(2)}
+            onClick={() => setStep(3)}
             disabled={selectedTracks.length === 0}
             className="auth-btn-primary"
             style={{
@@ -155,10 +352,27 @@ export default function OnboardingScreen() {
           >
             다음
           </button>
+
+          <button
+            type="button"
+            onClick={() => setStep(1)}
+            style={{
+              marginTop: 12,
+              width: '100%',
+              minHeight: 44,
+              border: 'none',
+              background: 'transparent',
+              color: '#888',
+              fontSize: 14,
+              cursor: 'pointer',
+            }}
+          >
+            이전
+          </button>
         </div>
       )}
 
-      {step === 2 && (
+      {step === 3 && (
         <div style={{ width: '100%', maxWidth: 400 }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <div
@@ -238,7 +452,7 @@ export default function OnboardingScreen() {
           >
             <button
               type="button"
-              onClick={() => setStep(1)}
+                onClick={() => setStep(2)}
               disabled={isSaving}
               className="auth-btn-primary"
               style={{
