@@ -66,6 +66,42 @@ function languageLabel(language) {
   return '한국어';
 }
 
+function toneLabel(tone) {
+  if (tone === 'expert') return '전문가형: 정확한 용어와 구체적인 교정 포인트를 사용';
+  if (tone === 'strict') return '엄격형: 직설적이지만 무례하지 않게';
+  if (tone === 'brief') return '간결형: 핵심만 짧게';
+  return '친근형: 응원과 동기부여 중심';
+}
+
+function sensitivityLabel(value) {
+  const level = Math.max(1, Math.min(5, Number(value) || 3));
+  if (level <= 2) return `${level}/5: 부드러운 피드백, 장점 먼저 말하고 교정은 1개만`;
+  if (level >= 4) return `${level}/5: 엄격한 피드백, 놓친 디테일과 다음 행동을 구체적으로`;
+  return `${level}/5: 균형형 피드백, 칭찬과 교정을 함께`;
+}
+
+function coachModeLabel(mode) {
+  if (mode === 'multi') return '멀티 코치: 기술/표현/멘탈 관점을 나누어 조언';
+  if (mode === 'free') return '자유 연습: 사용자가 스스로 탐색하도록 개입을 줄이고 다음 선택지를 제시';
+  return '단일 코치: 하나의 일관된 코치 목소리로 집중 피드백';
+}
+
+function fallbackStylePrefix({ coachTone, feedbackSensitivity, coachMode } = {}) {
+  const parts = [];
+  if (coachTone === 'expert') parts.push('전문가 기준으로');
+  else if (coachTone === 'strict') parts.push('엄격하게');
+  else if (coachTone === 'brief') parts.push('짧게');
+  else parts.push('좋아요');
+
+  const level = Math.max(1, Math.min(5, Number(feedbackSensitivity) || 3));
+  if (level >= 4) parts.push('디테일까지');
+  else if (level <= 2) parts.push('부드럽게');
+
+  if (coachMode === 'multi') parts.push('기술/표현 관점에서');
+  else if (coachMode === 'free') parts.push('자유 연습 흐름으로');
+  return parts.join(' ');
+}
+
 function actionFromReq(req, body) {
   if (body?.action) return String(body.action);
   const url = new URL(req.url || '/', 'http://localhost');
@@ -118,14 +154,15 @@ async function handleAnalyzeSong(body) {
   return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
 }
 
-function danceFallback({ songAnalysis = {}, sessionPhase = 'realtime', poseData = {} }) {
+function danceFallback(args = {}) {
+  const { songAnalysis = {}, sessionPhase = 'realtime', poseData = {} } = args;
   const personaName = songAnalysis.personaName || '이 곡의 주인공';
   const overallScore = Number(poseData.overallScore) || 70;
   return {
     coachLine:
       sessionPhase === 'start'
-        ? `이 곡의 페르소나는 '${personaName}'이에요. ${songAnalysis.danceAttitude || '곡의 감정에 몸을 맡기고 시작해봐요.'}`
-        : `${personaName}의 에너지를 더 살려봐요!`,
+        ? `${fallbackStylePrefix(args)}, 이 곡의 페르소나는 '${personaName}'이에요. ${songAnalysis.danceAttitude || '곡의 감정에 몸을 맡기고 시작해봐요.'}`
+        : `${fallbackStylePrefix(args)}, ${personaName}의 에너지를 더 살려봐요!`,
     personaActivated: overallScore >= 70,
     personaComment: `${personaName}답게 표현해보세요`,
     keyCorrection: `${personaName}는 동작 끝을 칼처럼 맺어야 해요`,
@@ -144,20 +181,24 @@ async function handleDancePersona(body) {
 자세 데이터: ${JSON.stringify(body.poseData || {})}
 단계: ${body.sessionPhase || 'realtime'}
 응답 언어: ${languageLabel(body.language)}
+코치 톤: ${toneLabel(body.coachTone)}
+피드백 민감도: ${sensitivityLabel(body.feedbackSensitivity)}
+AI 코치 모드: ${coachModeLabel(body.coachMode)}
 필드: coachLine, personaActivated, personaComment, keyCorrection, encouragement, nextFocus, emotionalScore, technicalScore`;
   const result = await callClaude({ prompt, maxTokens: 500 });
   return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
 }
 
-function vocalFallback({ songAnalysis = {}, sessionPhase = 'realtime', pitchData = {} }) {
+function vocalFallback(args = {}) {
+  const { songAnalysis = {}, sessionPhase = 'realtime', pitchData = {} } = args;
   const mood = songAnalysis.mood || '감정';
   const pitchAccuracy = Number(pitchData.avgAccuracy) || 70;
   const pitchScore = Math.round(Math.min(98, Math.max(40, pitchAccuracy)));
   return {
     coachLine:
       sessionPhase === 'start'
-        ? `이 곡은 '${mood}'의 곡이에요. ${songAnalysis.vocalAttitude || '감정을 먼저 떠올린 다음 입을 여세요.'}`
-        : '지금 감정이 목소리에 충분히 실리지 않았어요. 다시 해봐요.',
+        ? `${fallbackStylePrefix(args)}, 이 곡은 '${mood}'의 곡이에요. ${songAnalysis.vocalAttitude || '감정을 먼저 떠올린 다음 입을 여세요.'}`
+        : `${fallbackStylePrefix(args)}, 지금 감정이 목소리에 충분히 실리지 않았어요. 다시 해봐요.`,
     emotionImage: `${mood}의 한가운데에 서 있는 자기 자신의 모습`,
     soulDirection: '기술보다 감정을 먼저 생각하세요',
     technicalAsEmotion: '음정이 아니라 감정의 높낮이를 생각하세요',
@@ -178,6 +219,9 @@ async function handleVocalSoul(body) {
 사용자 목소리: ${JSON.stringify(body.userVocalCharacteristics || {})}
 단계: ${body.sessionPhase || 'realtime'}
 응답 언어: ${languageLabel(body.language)}
+코치 톤: ${toneLabel(body.coachTone)}
+피드백 민감도: ${sensitivityLabel(body.feedbackSensitivity)}
+AI 코치 모드: ${coachModeLabel(body.coachMode)}
 필드: coachLine, emotionImage, soulDirection, technicalAsEmotion, breathingTip, visualizationExercise, encouragement, soulScore, pitchScore`;
   const result = await callClaude({ prompt, maxTokens: 500 });
   return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;

@@ -11,6 +11,7 @@ import { DEFAULT_FILTER } from '../hooks/useCameraWithFilter';
 import { useSpotifyAnalysis } from '../hooks/useSpotifyAnalysis';
 import { useDancePersonaCoach } from '../hooks/useDancePersonaCoach';
 import { useSettingsStore } from '../store/settingsSlice';
+import { cameraDefaultToFacingMode } from '../utils/mediaSettings';
 import SongPersonaCard from '../components/coaching/SongPersonaCard';
 import DancePersonaFeedback from '../components/coaching/DancePersonaFeedback';
 
@@ -55,6 +56,14 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   const settings = useSettingsStore((state) => state.settings);
   const coachPersona = (settings?.dancePersona || 'jyp_jung');
   const language = settings?.coachLanguage || 'ko';
+  const aiCoachOptions = useMemo(
+    () => ({
+      coachTone: settings?.coachTone || 'friendly',
+      feedbackSensitivity: settings?.feedbackSensitivity || 3,
+      coachMode: settings?.coachMode || 'single',
+    }),
+    [settings?.coachMode, settings?.coachTone, settings?.feedbackSensitivity]
+  );
 
   const [songQuery, setSongQuery] = useState('');
   const {
@@ -99,6 +108,7 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       sessionPhase: 'start',
       coachPersona,
       language,
+      ...aiCoachOptions,
     });
   };
 
@@ -114,6 +124,7 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
         sessionPhase: 'realtime',
         coachPersona,
         language,
+        ...aiCoachOptions,
       });
     }, 15000);
     return () => {
@@ -121,7 +132,7 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       window.clearInterval(interval);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [cameraOn, songAnalysis?.trackId, coachPersona, language]);
+  }, [cameraOn, songAnalysis?.trackId, coachPersona, language, aiCoachOptions]);
 
   useEffect(() => {
     if (!songAnalysis) return undefined;
@@ -134,6 +145,7 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
         sessionPhase: 'end',
         coachPersona,
         language,
+        ...aiCoachOptions,
       });
     }
     return undefined;
@@ -253,9 +265,10 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       setCameraLoading(true);
       setCameraError('');
       setVideoReady(false);
+      const facingMode = cameraDefaultToFacingMode(settings?.cameraDefault);
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
-          facingMode: 'user',
+          facingMode,
           width: { ideal: 720 },
           height: { ideal: 1280 },
         },

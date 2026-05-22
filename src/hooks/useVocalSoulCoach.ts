@@ -42,6 +42,9 @@ interface RequestArgs {
   coachPersona: VocalCoachPersona;
   userVocalCharacteristics?: VocalCharacteristics | null;
   language?: string;
+  coachTone?: string;
+  feedbackSensitivity?: number;
+  coachMode?: string;
 }
 
 export function useVocalSoulCoach() {
@@ -111,6 +114,9 @@ export function useVocalSoulCoach() {
             userVocalCharacteristics:
               args.userVocalCharacteristics || vocalCharacteristics || null,
             language: args.language || 'ko',
+            coachTone: args.coachTone || 'friendly',
+            feedbackSensitivity: args.feedbackSensitivity || 3,
+            coachMode: args.coachMode || 'single',
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

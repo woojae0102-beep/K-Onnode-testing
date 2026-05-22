@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSettingsStore } from '../store/settingsSlice';
+import { buildAudioConstraints, micSensitivityToGain } from '../utils/mediaSettings';
 
 function clamp(value, min = 0, max = 100) {
   return Math.max(min, Math.min(max, value));
@@ -49,6 +51,10 @@ function buildRealtimeFeedback({ similarity, clarity, pace, confidence, active, 
 }
 
 export function useKoreanSpeechCoach({ active = false, referenceText = '' } = {}) {
+  const micSensitivity = useSettingsStore((s) => s.settings.micSensitivity);
+  const noiseFilter = useSettingsStore((s) => s.settings.noiseFilter);
+  const mediaSettings = useMemo(() => ({ micSensitivity, noiseFilter }), [micSensitivity, noiseFilter]);
+  const micGain = micSensitivityToGain(mediaSettings.micSensitivity);
   const [transcript, setTranscript] = useState('');
   const [interimTranscript, setInterimTranscript] = useState('');
   const [volumeLevel, setVolumeLevel] = useState(0);
@@ -98,11 +104,7 @@ export function useKoreanSpeechCoach({ active = false, referenceText = '' } = {}
           return;
         }
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
+          audio: buildAudioConstraints(mediaSettings),
           video: false,
         });
         if (cancelled) {
@@ -113,10 +115,13 @@ export function useKoreanSpeechCoach({ active = false, referenceText = '' } = {}
         const ctx = new (window.AudioContext || window.webkitAudioContext)();
         audioCtxRef.current = ctx;
         const source = ctx.createMediaStreamSource(stream);
+        const gain = ctx.createGain();
+        gain.gain.value = micGain;
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 1024;
-        analyser.smoothingTimeConstant = 0.6;
-        source.connect(analyser);
+        analyser.smoothingTimeConstant = mediaSettings.noiseFilter ? 0.6 : 0.45;
+        source.connect(gain);
+        gain.connect(analyser);
         analyserRef.current = analyser;
 
         volumeTimerRef.current = setInterval(() => {
@@ -153,7 +158,7 @@ export function useKoreanSpeechCoach({ active = false, referenceText = '' } = {}
       }
       analyserRef.current = null;
     };
-  }, [active]);
+  }, [active, mediaSettings.micSensitivity, mediaSettings.noiseFilter, micGain]);
 
   useEffect(() => {
     if (!active) {

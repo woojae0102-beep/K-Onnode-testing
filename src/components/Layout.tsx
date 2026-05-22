@@ -4,6 +4,7 @@ import TopNavBar from './layout/TopNavBar';
 import LeftPanel from './layout/LeftPanel';
 import TabBar from './layout/TabBar';
 import MobileSectionBar from './layout/MobileSectionBar';
+import { usePracticeReminderNotifications } from '../hooks/usePracticeReminderNotifications';
 
 import HomeView from '../views/HomeView';
 import AICoachView from '../views/AICoachView';
@@ -59,6 +60,7 @@ export default function Layout(props) {
   const [activeTab, setActiveTab] = useState('home');
   const [mainView, setMainView] = useState('home');
   const [lastTrainingView, setLastTrainingView] = useState('dance');
+  usePracticeReminderNotifications();
 
   const handleChangeTab = useCallback((tab) => {
     setActiveTab(tab);

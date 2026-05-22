@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { buildVocalPitchFeedback, detectPitchHzAutocorr, hzToMidiFloat, midiToNoteName } from '../training/trainingPitch';
+import { useSettingsStore } from '../store/settingsSlice';
+import { buildAudioConstraints, micSensitivityToGain } from '../utils/mediaSettings';
 
 const ANALYZE_INTERVAL_MS = 90;
 const WAVE_BAR_COUNT = 48;
@@ -65,6 +67,10 @@ function median(numbers) {
 }
 
 export function useAudioAnalysis({ active = false, targetMidi = 60 } = {}) {
+  const micSensitivity = useSettingsStore((s) => s.settings.micSensitivity);
+  const noiseFilter = useSettingsStore((s) => s.settings.noiseFilter);
+  const mediaSettings = useMemo(() => ({ micSensitivity, noiseFilter }), [micSensitivity, noiseFilter]);
+  const micGain = micSensitivityToGain(mediaSettings.micSensitivity);
   const [pitchSeries, setPitchSeries] = useState([]);
   const [pitchScore, setPitchScore] = useState(0);
   const [rhythmScore, setRhythmScore] = useState(0);
@@ -137,11 +143,7 @@ export function useAudioAnalysis({ active = false, targetMidi = 60 } = {}) {
         }
         setMicError('');
         const stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
+          audio: buildAudioConstraints(mediaSettings),
           video: false,
         });
         if (cancelled) {
@@ -154,16 +156,19 @@ export function useAudioAnalysis({ active = false, targetMidi = 60 } = {}) {
         sampleRateRef.current = ctx.sampleRate;
 
         const source = ctx.createMediaStreamSource(stream);
+        const gain = ctx.createGain();
+        gain.gain.value = micGain;
         const hp = ctx.createBiquadFilter();
         hp.type = 'highpass';
-        hp.frequency.value = 80;
+        hp.frequency.value = mediaSettings.noiseFilter ? 100 : 40;
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
-        lp.frequency.value = 1500;
+        lp.frequency.value = mediaSettings.noiseFilter ? 1500 : 5000;
         const analyser = ctx.createAnalyser();
         analyser.fftSize = 2048;
-        analyser.smoothingTimeConstant = 0.55;
-        source.connect(hp);
+        analyser.smoothingTimeConstant = mediaSettings.noiseFilter ? 0.6 : 0.45;
+        source.connect(gain);
+        gain.connect(hp);
         hp.connect(lp);
         lp.connect(analyser);
         analyserRef.current = analyser;
@@ -193,7 +198,9 @@ export function useAudioAnalysis({ active = false, targetMidi = 60 } = {}) {
           setWaveBars(buildWaveBars(wave));
 
           const energyRise = rms - prevRmsRef.current;
-          if (rms > 0.03 && energyRise > 0.012) {
+          const noiseGate = mediaSettings.noiseFilter ? 0.03 : 0.018;
+          const energyGate = mediaSettings.noiseFilter ? 0.012 : 0.007;
+          if (rms > noiseGate && energyRise > energyGate) {
             const last = onsetMsRef.current[onsetMsRef.current.length - 1] || 0;
             if (now - last > 190) {
               onsetMsRef.current.push(now);
@@ -298,7 +305,7 @@ export function useAudioAnalysis({ active = false, targetMidi = 60 } = {}) {
       }
       analyserRef.current = null;
     };
-  }, [active, targetMidi]);
+  }, [active, targetMidi, mediaSettings.micSensitivity, mediaSettings.noiseFilter, micGain]);
 
   useEffect(() => {
     setTargetNote(midiToNoteName(targetMidi));

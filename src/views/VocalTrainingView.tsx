@@ -50,6 +50,14 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
   const settings = useSettingsStore((state) => state.settings);
   const vocalCoachPersona = (settings?.vocalPersona || 'jyp_park');
   const language = settings?.coachLanguage || 'ko';
+  const aiCoachOptions = useMemo(
+    () => ({
+      coachTone: settings?.coachTone || 'friendly',
+      feedbackSensitivity: settings?.feedbackSensitivity || 3,
+      coachMode: settings?.coachMode || 'single',
+    }),
+    [settings?.coachMode, settings?.coachTone, settings?.feedbackSensitivity]
+  );
   const [songQuery, setSongQuery] = useState('');
   const {
     songAnalysis,
@@ -84,6 +92,7 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
       coachPersona: vocalCoachPersona,
       userVocalCharacteristics: vocalCharacteristics,
       language,
+      ...aiCoachOptions,
     });
   };
 
@@ -130,6 +139,7 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
       coachPersona: vocalCoachPersona,
       userVocalCharacteristics: vocalCharacteristics,
       language,
+      ...aiCoachOptions,
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pitchAccuracy, recording, songAnalysis?.trackId]);
@@ -155,6 +165,7 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
         coachPersona: vocalCoachPersona,
         userVocalCharacteristics: vocalCharacteristics,
         language,
+        ...aiCoachOptions,
       });
     }
     prevRecordingRef.current = recording;

@@ -31,6 +31,9 @@ interface RequestArgs {
   sessionPhase: DanceSessionPhase;
   coachPersona: DanceCoachPersona;
   language?: string;
+  coachTone?: string;
+  feedbackSensitivity?: number;
+  coachMode?: string;
 }
 
 export function useDancePersonaCoach() {
@@ -53,6 +56,9 @@ export function useDancePersonaCoach() {
             sessionPhase: args.sessionPhase,
             coachPersona: args.coachPersona,
             language: args.language || 'ko',
+            coachTone: args.coachTone || 'friendly',
+            feedbackSensitivity: args.feedbackSensitivity || 3,
+            coachMode: args.coachMode || 'single',
           }),
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);

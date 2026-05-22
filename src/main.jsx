@@ -84,8 +84,7 @@ function FirebaseSetupErrorScreen({ message }) {
           </li>
           <li>Firebase Console에서 Authentication / Firestore를 활성화하세요.</li>
           <li>
-            소셜 로그인은 Google, Apple, 이메일/비밀번호 sign-in method를 켜야
-            합니다.
+            소셜 로그인은 Google, 이메일/비밀번호 sign-in method를 켜야 합니다.
           </li>
         </ol>
       </div>

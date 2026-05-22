@@ -11,7 +11,9 @@
 // 5. iOS/Android WebKit: 숨긴 video(opacity:0) + 캔버스는 디코딩이 멈춰 검은 화면이 될 수 있음.
 //    surface: 'auto' 는 prefersDirectVideoDisplay() 에서 video 직접 표시로 전환합니다.
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSettingsStore } from '../store/settingsSlice';
 import { prefersDirectVideoDisplay } from '../utils/cameraDisplay';
+import { buildAudioConstraints, cameraDefaultToFacingMode, micSensitivityToGain } from '../utils/mediaSettings';
 
 export interface CameraFilter {
   brightness: number; // 0.2 ~ 2.5 (1.0 = 기본)
@@ -65,7 +67,12 @@ export interface UseCameraWithFilterOptions {
 }
 
 export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
-  const { audio = false, defaultFacingMode = 'user', manualStart = false, surface = 'auto' } = options;
+  const noiseFilter = useSettingsStore((s) => s.settings.noiseFilter);
+  const micSensitivity = useSettingsStore((s) => s.settings.micSensitivity);
+  const cameraDefault = useSettingsStore((s) => s.settings.cameraDefault);
+  const appMediaSettings = { noiseFilter, micSensitivity, cameraDefault };
+  const configuredFacingMode = cameraDefaultToFacingMode(appMediaSettings.cameraDefault);
+  const { audio = false, defaultFacingMode = configuredFacingMode, manualStart = false, surface = 'auto' } = options;
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const displayCanvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -73,6 +80,7 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
   const rafRef = useRef<number>(0);
   const filterRef = useRef<CameraFilter>(DEFAULT_FILTER);
   const recorderRef = useRef<MediaRecorder | null>(null);
+  const recorderAudioCtxRef = useRef<AudioContext | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   const [filter, setFilterState] = useState<CameraFilter>(DEFAULT_FILTER);
@@ -139,6 +147,10 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       }
     }
     recorderRef.current = null;
+    if (recorderAudioCtxRef.current) {
+      recorderAudioCtxRef.current.close().catch(() => {});
+      recorderAudioCtxRef.current = null;
+    }
     chunksRef.current = [];
     setIsRecording(false);
     if (streamRef.current) {
@@ -151,6 +163,33 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
     setIsReady(false);
     setPlaybackBlocked(false);
   }, [stopRenderLoop]);
+
+  const addConfiguredAudioTracks = useCallback(
+    (targetStream: MediaStream) => {
+      if (!audio || !streamRef.current) return;
+      const audioTracks = streamRef.current.getAudioTracks();
+      if (!audioTracks.length) return;
+
+      try {
+        if (recorderAudioCtxRef.current) {
+          recorderAudioCtxRef.current.close().catch(() => {});
+          recorderAudioCtxRef.current = null;
+        }
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const source = ctx.createMediaStreamSource(new MediaStream(audioTracks));
+        const gain = ctx.createGain();
+        gain.gain.value = micSensitivityToGain(appMediaSettings.micSensitivity);
+        const destination = ctx.createMediaStreamDestination();
+        source.connect(gain);
+        gain.connect(destination);
+        destination.stream.getAudioTracks().forEach((track) => targetStream.addTrack(track));
+        recorderAudioCtxRef.current = ctx;
+      } catch {
+        audioTracks.forEach((track) => targetStream.addTrack(track));
+      }
+    },
+    [appMediaSettings.micSensitivity, audio]
+  );
 
   const startCamera = useCallback(async () => {
     setError(null);
@@ -183,7 +222,7 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
     const ideal = prefersDirectVideoDisplay() ? { width: 720, height: 1280 } : { width: 1280, height: 720 };
 
     const audioConstraints = audio
-      ? { echoCancellation: true, noiseSuppression: true, autoGainControl: false }
+      ? buildAudioConstraints(appMediaSettings)
       : false;
 
     const requestStream = async () => {
@@ -263,7 +302,7 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       setPlaybackBlocked(false);
       return false;
     }
-  }, [audio, facingMode, surface, startRenderLoop, stopRenderLoop]);
+  }, [appMediaSettings.noiseFilter, audio, facingMode, surface, startRenderLoop, stopRenderLoop]);
 
   const resumePlayback = useCallback(async () => {
     const video = videoRef.current;
@@ -322,9 +361,7 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       }
       try {
         const captured = (video as any).captureStream(30);
-        if (audio) {
-          streamRef.current.getAudioTracks().forEach((t) => captured.addTrack(t));
-        }
+        addConfiguredAudioTracks(captured);
         chunksRef.current = [];
         const recorder = new MediaRecorder(captured, {
           mimeType,
@@ -362,11 +399,8 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       return false;
     }
 
-    // 원본 마이크 오디오 트랙을 captured 스트림에 추가 (audio 옵션이 켜진 경우)
-    if (audio) {
-      const audioTracks = streamRef.current.getAudioTracks();
-      audioTracks.forEach((track) => captured.addTrack(track));
-    }
+    // 설정된 마이크 민감도를 거친 오디오 트랙을 captured 스트림에 추가합니다.
+    addConfiguredAudioTracks(captured);
 
     try {
       const recorder = new MediaRecorder(captured, {
@@ -384,7 +418,7 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       setError('녹화를 시작하지 못했습니다.');
       return false;
     }
-  }, [audio, displaySurface]);
+  }, [addConfiguredAudioTracks, audio, displaySurface]);
 
   const stopRecording = useCallback((): Promise<Blob | null> => {
     return new Promise((resolve) => {
@@ -398,6 +432,10 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
         const blob = new Blob(chunksRef.current, { type: mimeType });
         chunksRef.current = [];
         recorderRef.current = null;
+        if (recorderAudioCtxRef.current) {
+          recorderAudioCtxRef.current.close().catch(() => {});
+          recorderAudioCtxRef.current = null;
+        }
         setIsRecording(false);
         resolve(blob);
       };

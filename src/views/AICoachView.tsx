@@ -11,6 +11,7 @@ import LyricsVocabMode from '../components/korean/LyricsVocabMode';
 import ReportListView from './ReportListView';
 import MonthlyEvalView from './MonthlyEvalView';
 import { useLanguageStore } from '../store/languageStore';
+import { SETTINGS_STORAGE_KEY, useSettingsStore } from '../store/settingsSlice';
 import { useMonthlyData } from '../hooks/useMonthlyData';
 
 const QUICK_COMMANDS = [
@@ -117,8 +118,7 @@ const GEMINI_API_KEY = import.meta.env.VITE_GEMINI_API_KEY || import.meta.env.VI
 const GEMINI_MODEL = import.meta.env.VITE_GEMINI_MODEL || 'gemini-1.5-flash';
 const COACH_TONES = [
   { id: 'friendly', label: '친절형' },
-  { id: 'strict', label: '엄격형' },
-  { id: 'brief', label: '짧은형' },
+  { id: 'expert', label: '전문가형' },
 ];
 const SUPPORTED_LANGUAGES = ['ko', 'en', 'th', 'vi', 'ja', 'es', 'fr', 'zh'];
 const LANGUAGE_OPTIONS = [
@@ -136,7 +136,7 @@ const UI_TEXT = {
     tabs: { chat: 'AI코칭', dance: '댄스', vocal: '보컬', korean: '한국어', report: '리포트', monthly: '월말 평가' },
     languageLabel: '언어',
     toneLabel: '코치 스타일',
-    tone: { friendly: '친절형', strict: '엄격형', brief: '짧은형' },
+    tone: { friendly: '친절형', expert: '전문가형', strict: '엄격형', brief: '짧은형' },
     report: {
       periodSummaryTitle: '기간별 요약',
       noDataForPeriod: '선택한 기간의 데이터가 없습니다. 날짜를 바꾸거나 연습 데이터를 더 쌓아보세요.',
@@ -207,7 +207,7 @@ const UI_TEXT = {
     tabs: { chat: 'AI Coach', dance: 'Dance', vocal: 'Vocal', korean: 'Korean', report: 'Report', monthly: 'Monthly Eval' },
     languageLabel: 'Language',
     toneLabel: 'Coach tone',
-    tone: { friendly: 'Friendly', strict: 'Strict', brief: 'Brief' },
+    tone: { friendly: 'Friendly', expert: 'Expert', strict: 'Strict', brief: 'Brief' },
     report: {
       periodSummaryTitle: 'Period summary',
       noDataForPeriod: 'No data for this period. Change the date or add more practice sessions.',
@@ -280,7 +280,7 @@ UI_TEXT.ja = {
   tabs: { chat: 'AIコーチ', dance: 'ダンス', vocal: 'ボーカル', korean: '韓国語', report: 'レポート', monthly: '月末評価' },
   languageLabel: '言語',
   toneLabel: 'コーチトーン',
-  tone: { friendly: '親切', strict: '厳格', brief: '簡潔' },
+  tone: { friendly: '親切', expert: '専門家', strict: '厳格', brief: '簡潔' },
   report: {
     ...UI_TEXT.en.report,
     periodSummaryTitle: '期間サマリー',
@@ -353,7 +353,7 @@ UI_TEXT.th = {
   tabs: { chat: 'AI โค้ช', dance: 'เต้น', vocal: 'ร้องเพลง', korean: 'เกาหลี', report: 'รายงาน', monthly: 'ประเมินสิ้นเดือน' },
   languageLabel: 'ภาษา',
   toneLabel: 'โทนโค้ช',
-  tone: { friendly: 'เป็นมิตร', strict: 'เข้มงวด', brief: 'สั้นกระชับ' },
+  tone: { friendly: 'เป็นมิตร', expert: 'ผู้เชี่ยวชาญ', strict: 'เข้มงวด', brief: 'สั้นกระชับ' },
   report: {
     ...UI_TEXT.en.report,
     periodSummaryTitle: 'สรุปตามช่วงเวลา',
@@ -426,7 +426,7 @@ UI_TEXT.vi = {
   tabs: { chat: 'AI Coach', dance: 'Nhảy', vocal: 'Thanh nhạc', korean: 'Tiếng Hàn', report: 'Báo cáo', monthly: 'Đánh giá tháng' },
   languageLabel: 'Ngôn ngữ',
   toneLabel: 'Giọng điệu huấn luyện',
-  tone: { friendly: 'Thân thiện', strict: 'Nghiêm khắc', brief: 'Ngắn gọn' },
+  tone: { friendly: 'Thân thiện', expert: 'Chuyên gia', strict: 'Nghiêm khắc', brief: 'Ngắn gọn' },
   report: {
     ...UI_TEXT.en.report,
     periodSummaryTitle: 'Tổng hợp theo giai đoạn',
@@ -499,7 +499,7 @@ UI_TEXT.es = {
   tabs: { chat: 'AI Coach', dance: 'Baile', vocal: 'Vocal', korean: 'Coreano', report: 'Informe', monthly: 'Eval. mensual' },
   languageLabel: 'Idioma',
   toneLabel: 'Tono del coach',
-  tone: { friendly: 'Amable', strict: 'Estricto', brief: 'Breve' },
+  tone: { friendly: 'Amable', expert: 'Experto', strict: 'Estricto', brief: 'Breve' },
   report: {
     ...UI_TEXT.en.report,
     periodSummaryTitle: 'Resumen por periodo',
@@ -572,7 +572,7 @@ UI_TEXT.fr = {
   tabs: { chat: 'AI Coach', dance: 'Danse', vocal: 'Vocal', korean: 'Coréen', report: 'Rapport', monthly: 'Éval mensuelle' },
   languageLabel: 'Langue',
   toneLabel: 'Ton du coach',
-  tone: { friendly: 'Bienveillant', strict: 'Strict', brief: 'Bref' },
+  tone: { friendly: 'Bienveillant', expert: 'Expert', strict: 'Strict', brief: 'Bref' },
   report: {
     ...UI_TEXT.en.report,
     periodSummaryTitle: 'Resume par periode',
@@ -645,7 +645,7 @@ UI_TEXT.zh = {
   tabs: { chat: 'AI 教练', dance: '舞蹈', vocal: '声乐', korean: '韩语', report: '报告', monthly: '月末评估' },
   languageLabel: '语言',
   toneLabel: '教练语气',
-  tone: { friendly: '友好型', strict: '严格型', brief: '简洁型' },
+  tone: { friendly: '友好型', expert: '专家型', strict: '严格型', brief: '简洁型' },
   report: {
     ...UI_TEXT.en.report,
     periodSummaryTitle: '周期总结',
@@ -1484,21 +1484,49 @@ function buildFallbackCoachReply(input, reportCard, context, language = 'ko') {
 function toneInstruction(tone, language = 'ko') {
   const lang = normalizeLanguage(language);
   if (lang === 'ko') {
+    if (tone === 'expert') return '톤: 전문가 코치처럼 구체적인 근거, 정확한 용어, 실행 가능한 교정을 제시.';
     if (tone === 'strict') return '톤: 코치처럼 엄격하고 직설적이되 무례하지 않게.';
     if (tone === 'brief') return '톤: 핵심만 짧고 명확하게. 문장 수를 최소화.';
     return '톤: 친절하고 동기부여 중심.';
   }
   if (lang === 'zh') {
+    if (tone === 'expert') return '语气：像专业教练一样，给出具体依据、准确术语和可执行修正。';
     if (tone === 'strict') return '语气：像教练一样严格直接，但保持礼貌。';
     if (tone === 'brief') return '语气：简短明确，只说核心要点。';
     return '语气：友好且有激励感。';
   }
+  if (tone === 'expert') return 'Tone: expert coach style with concrete evidence, accurate terms, and actionable corrections.';
   if (tone === 'strict') return 'Tone: strict and direct like a coach, but respectful.';
   if (tone === 'brief') return 'Tone: brief and clear, keep sentences minimal.';
   return 'Tone: friendly and motivating.';
 }
 
-async function requestGeminiCoachReply({ input, conversationSnapshot, context, reportCard, coachTone = 'friendly', language = 'ko' }) {
+function sensitivityInstruction(value, language = 'ko') {
+  const level = Math.max(1, Math.min(5, Number(value) || 3));
+  const lang = normalizeLanguage(language);
+  if (lang === 'ko') {
+    if (level <= 2) return `피드백 민감도 ${level}/5: 부드럽게, 장점 먼저, 교정은 부담 없게 1개 위주.`;
+    if (level >= 4) return `피드백 민감도 ${level}/5: 엄격하게, 놓친 디테일과 바로 고칠 행동을 구체적으로.`;
+    return `피드백 민감도 ${level}/5: 칭찬과 교정을 균형 있게.`;
+  }
+  if (level <= 2) return `Feedback sensitivity ${level}/5: gentle, strengths first, one light correction.`;
+  if (level >= 4) return `Feedback sensitivity ${level}/5: strict, mention missed details and concrete fixes.`;
+  return `Feedback sensitivity ${level}/5: balanced praise and correction.`;
+}
+
+function coachModeInstruction(mode, language = 'ko') {
+  const lang = normalizeLanguage(language);
+  if (lang === 'ko') {
+    if (mode === 'multi') return 'AI 코치 모드: 멀티 코치. 기술/표현/멘탈 관점을 나누어 조언.';
+    if (mode === 'free') return 'AI 코치 모드: 자유 연습. 과한 개입을 줄이고 사용자가 선택할 다음 연습 옵션을 제시.';
+    return 'AI 코치 모드: 단일 코치. 하나의 일관된 코치 목소리로 집중 피드백.';
+  }
+  if (mode === 'multi') return 'AI coach mode: multi-coach. Split advice into technique, expression, and mindset viewpoints.';
+  if (mode === 'free') return 'AI coach mode: free practice. Reduce intervention and offer next practice options.';
+  return 'AI coach mode: single coach. Use one consistent focused coaching voice.';
+}
+
+async function requestGeminiCoachReply({ input, conversationSnapshot, context, reportCard, coachTone = 'friendly', feedbackSensitivity = 3, coachMode = 'single', language = 'ko' }) {
   if (!GEMINI_API_KEY) return buildFallbackCoachReply(input, reportCard, context, language);
   const lang = normalizeLanguage(language);
   const langNameMap = {
@@ -1520,6 +1548,8 @@ async function requestGeminiCoachReply({ input, conversationSnapshot, context, r
     '당신은 ONNODE의 AI 코치입니다.',
     '목표: 사용자의 질문 의도를 파악하고, 주어진 실시간 연습/리포트 데이터를 근거로 개인화 피드백을 제공합니다.',
     toneInstruction(coachTone, lang),
+    sensitivityInstruction(feedbackSensitivity, lang),
+    coachModeInstruction(coachMode, lang),
     '규칙:',
     `- 반드시 ${langNameMap[lang]}로 답변`,
     '- 3~6문장으로 간결하게',
@@ -1576,7 +1606,6 @@ export default function AICoachView() {
   const [inputValue, setInputValue] = useState('');
   const [activeFeature, setActiveFeature] = useState('none');
   const [activeTab, setActiveTab] = useState('chat');
-  const [coachTone, setCoachTone] = useState('friendly');
   const [reportPeriod, setReportPeriod] = useState('weekly');
   const [reportDate, setReportDate] = useState(dayKey(Date.now()));
   const [coachLoading, setCoachLoading] = useState(false);
@@ -1597,6 +1626,8 @@ export default function AICoachView() {
     korean: [],
   });
   const [persistedSessions, setPersistedSessions] = useState(() => loadPersistedSessions());
+  const chatScrollRef = useRef(null);
+  const chatEndRef = useRef(null);
   const historyMetaRef = useRef({
     dance: { lastAt: 0, lastScore: null },
     vocal: { lastAt: 0, lastScore: null },
@@ -1604,7 +1635,12 @@ export default function AICoachView() {
   });
   const storeLanguage = useLanguageStore((s) => s.language);
   const setStoreLanguage = useLanguageStore((s) => s.setLanguage);
-  const currentLanguage = normalizeLanguage(storeLanguage || i18n.resolvedLanguage || i18n.language);
+  const settings = useSettingsStore((state) => state.settings);
+  const updateSetting = useSettingsStore((state) => state.updateSetting);
+  const coachTone = settings?.coachTone || 'friendly';
+  const feedbackSensitivity = settings?.feedbackSensitivity || 3;
+  const coachMode = settings?.coachMode || 'single';
+  const currentLanguage = normalizeLanguage(settings?.coachLanguage || storeLanguage || i18n.resolvedLanguage || i18n.language);
   const { recordSession: recordMonthlySession } = useMonthlyData();
   const ui = textPack(currentLanguage);
   const bottomTabs = useMemo(
@@ -1615,6 +1651,17 @@ export default function AICoachView() {
       })),
     [ui.tabs]
   );
+
+  const scrollChatToBottom = useCallback(() => {
+    requestAnimationFrame(() => {
+      chatEndRef.current?.scrollIntoView({ block: 'end' });
+    });
+  }, []);
+
+  useEffect(() => {
+    if (activeTab !== 'chat') return;
+    scrollChatToBottom();
+  }, [activeTab, coachLoading, messages.length, scrollChatToBottom]);
 
   const onReportUpdate = useCallback((domain, payload) => {
     setReports((prev) => {
@@ -1663,6 +1710,46 @@ export default function AICoachView() {
 
   const showQuickCommands = inputValue.startsWith('/');
   const featureComponent = useMemo(() => renderFeatureComponent(activeFeature, onReportUpdate), [activeFeature, onReportUpdate]);
+  const handleCoachLanguageChange = useCallback(
+    (value) => {
+      const nextLanguage = normalizeLanguage(value);
+      setStoreLanguage(nextLanguage);
+      updateSetting('coachLanguage', nextLanguage);
+      updateSetting('preferredLanguage', nextLanguage);
+      if (typeof window !== 'undefined') {
+        window.localStorage.setItem('onnode.preferredLanguage', nextLanguage);
+        window.localStorage.setItem('onnode-language', nextLanguage);
+        const localRaw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+        let localSettings = {};
+        try {
+          localSettings = localRaw ? JSON.parse(localRaw) : {};
+        } catch {
+          localSettings = {};
+        }
+        window.localStorage.setItem(
+          SETTINGS_STORAGE_KEY,
+          JSON.stringify({ ...localSettings, coachLanguage: nextLanguage, preferredLanguage: nextLanguage })
+        );
+      }
+    },
+    [setStoreLanguage, updateSetting]
+  );
+
+  const handleCoachToneChange = useCallback(
+    (tone) => {
+      updateSetting('coachTone', tone);
+      if (typeof window === 'undefined') return;
+      const localRaw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
+      let localSettings = {};
+      try {
+        localSettings = localRaw ? JSON.parse(localRaw) : {};
+      } catch {
+        localSettings = {};
+      }
+      window.localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify({ ...localSettings, coachTone: tone }));
+    },
+    [updateSetting]
+  );
 
   const handleSubmitMessage = async (rawText) => {
     if (coachLoading) return;
@@ -1781,6 +1868,8 @@ export default function AICoachView() {
           context,
           reportCard,
           coachTone,
+          feedbackSensitivity,
+          coachMode,
           language: currentLanguage,
         });
       } catch (error) {
@@ -1799,7 +1888,7 @@ export default function AICoachView() {
         return `${fallback}\n\n(${note} - ${error?.message || 'unknown error'})`;
       }
     },
-    [activeFeature, coachTone, currentLanguage, persistedSessions, reportDate, reportHistory, reportPeriod, reports]
+    [activeFeature, coachMode, coachTone, currentLanguage, feedbackSensitivity, persistedSessions, reportDate, reportHistory, reportPeriod, reports]
   );
 
   const handleBottomTab = (tabId) => {
@@ -1830,7 +1919,7 @@ export default function AICoachView() {
   }, [activeTab, reportDate, reportPeriod, refreshReportCard]);
 
   return (
-    <div className="h-full flex flex-col bg-white">
+    <div className="h-full min-h-0 flex flex-col bg-white">
       <header className="h-16 border-b border-[#E5E5E5] px-6 flex items-center justify-between">
         <div>
           <p className="font-bold text-[#111111]">{t('views.aicoach')}</p>
@@ -1839,7 +1928,7 @@ export default function AICoachView() {
           <p className="text-xs text-[#666666]">{ui.languageLabel}</p>
           <select
             value={currentLanguage}
-            onChange={(e) => setStoreLanguage(normalizeLanguage(e.target.value))}
+            onChange={(e) => handleCoachLanguageChange(e.target.value)}
             className="rounded-md border border-[#E5E5E5] px-2 py-1 text-xs bg-white"
           >
             {LANGUAGE_OPTIONS.map((item) => (
@@ -1853,7 +1942,7 @@ export default function AICoachView() {
 
       {activeTab === 'chat' ? (
         <>
-          <div className="flex-1 overflow-y-auto p-6 space-y-4 bg-[#F5F5F7]">
+          <div ref={chatScrollRef} className="flex-1 min-h-0 overflow-y-auto p-4 sm:p-6 space-y-4 bg-[#F5F5F7]">
             <div className="rounded-xl border border-[#E5E5E5] bg-white p-3">
               <p className="text-[11px] text-[#666666] mb-2">{ui.toneLabel}</p>
               <div className="flex gap-2">
@@ -1861,7 +1950,7 @@ export default function AICoachView() {
                   <button
                     key={tone.id}
                     type="button"
-                    onClick={() => setCoachTone(tone.id)}
+                    onClick={() => handleCoachToneChange(tone.id)}
                     className={`rounded-md px-2 py-1 text-[11px] border ${
                       coachTone === tone.id ? 'bg-[#FF1F8E] text-white border-[#FF1F8E]' : 'bg-white text-[#666666] border-[#E5E5E5]'
                     }`}
@@ -1899,6 +1988,7 @@ export default function AICoachView() {
                 </div>
               </div>
             ) : null}
+            <div ref={chatEndRef} className="h-1" />
           </div>
 
           <form
@@ -1906,7 +1996,8 @@ export default function AICoachView() {
               e.preventDefault();
               handleSubmitMessage(inputValue);
             }}
-            className="p-4 border-t border-[#E5E5E5] bg-white"
+            className="shrink-0 border-t border-[#E5E5E5] bg-white p-3 sm:p-4"
+            style={{ paddingBottom: 'calc(12px + env(safe-area-inset-bottom, 0px))' }}
           >
             <div className="relative">
               {showQuickCommands && (
@@ -1927,9 +2018,10 @@ export default function AICoachView() {
                 <input
                   value={inputValue}
                   onChange={(e) => setInputValue(e.target.value)}
+                  onFocus={scrollChatToBottom}
                   placeholder={t('aicoach.placeholder')}
                   disabled={coachLoading}
-                  className="flex-1 text-sm outline-none bg-transparent"
+                  className="flex-1 min-w-0 text-[16px] leading-6 outline-none bg-transparent"
                 />
                 <button type="submit" disabled={coachLoading} className="w-9 h-9 rounded-xl bg-[#FF1F8E] text-white grid place-items-center disabled:opacity-60">
                   <Send size={16} />

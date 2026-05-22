@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 
-export type SocialProvider = 'google' | 'kakao' | 'apple';
+export type SocialProvider = 'google' | 'kakao';
 
 interface ProviderConfig {
   label: string;
@@ -50,27 +50,18 @@ const PROVIDER_CONFIG: Record<SocialProvider, ProviderConfig> = {
       </svg>
     ),
   },
-  apple: {
-    label: 'Apple로 계속하기',
-    bg: '#000',
-    color: '#fff',
-    border: '1px solid #333',
-    icon: (
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="white">
-        <path d="M18.71 19.5c-.83 1.24-1.71 2.45-3.05 2.47-1.34.03-1.77-.79-3.29-.79-1.53 0-2 .77-3.27.82-1.31.05-2.3-1.32-3.14-2.53C4.25 17 2.94 12.45 4.7 9.39c.87-1.52 2.43-2.48 4.12-2.51 1.28-.02 2.5.87 3.29.87.78 0 2.26-1.07 3.8-.91.65.03 2.47.26 3.64 1.98-.09.06-2.17 1.28-2.15 3.81.03 3.02 2.65 4.03 2.68 4.04-.03.07-.42 1.44-1.38 2.83M13 3.5c.73-.83 1.94-1.46 2.94-1.5.13 1.17-.34 2.35-1.04 3.19-.69.85-1.83 1.51-2.95 1.42-.15-1.15.41-2.35 1.05-3.11z" />
-      </svg>
-    ),
-  },
 };
 
 export interface SocialLoginButtonProps {
   provider: SocialProvider;
+  rememberLogin?: boolean;
 }
 
 export default function SocialLoginButton({
   provider,
+  rememberLogin = false,
 }: SocialLoginButtonProps) {
-  const { loginWithGoogle, loginWithApple, loginWithKakao } = useAuth();
+  const { loginWithGoogle, loginWithKakao } = useAuth();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const config = PROVIDER_CONFIG[provider];
@@ -79,9 +70,8 @@ export default function SocialLoginButton({
     setIsLoading(true);
     setError(null);
     try {
-      if (provider === 'google') await loginWithGoogle();
-      else if (provider === 'kakao') await loginWithKakao();
-      else if (provider === 'apple') await loginWithApple();
+      if (provider === 'google') await loginWithGoogle({ rememberLogin });
+      else if (provider === 'kakao') await loginWithKakao({ rememberLogin });
     } catch (err: any) {
       const code = err?.code || '';
       if (

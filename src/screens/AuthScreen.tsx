@@ -7,14 +7,13 @@ import SignUpScreen from './SignUpScreen';
 type Mode = 'landing' | 'login' | 'signup';
 
 // 환경변수로 소셜 로그인 제공자를 토글합니다.
-// .env 에서 VITE_ENABLE_APPLE_LOGIN=false 처럼 명시적으로 끄지 않는 한 모두 표시됩니다.
 const env = (import.meta as any).env || {};
 const ENABLE_GOOGLE = env.VITE_ENABLE_GOOGLE_LOGIN !== 'false';
 const ENABLE_KAKAO = env.VITE_ENABLE_KAKAO_LOGIN !== 'false';
-const ENABLE_APPLE = env.VITE_ENABLE_APPLE_LOGIN !== 'false';
 
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>('landing');
+  const [rememberLogin, setRememberLogin] = useState(false);
 
   if (mode === 'login') {
     return (
@@ -128,9 +127,42 @@ export default function AuthScreen() {
             gap: 12,
           }}
         >
-          {ENABLE_GOOGLE && <SocialLoginButton provider="google" />}
-          {ENABLE_KAKAO && <SocialLoginButton provider="kakao" />}
-          {ENABLE_APPLE && <SocialLoginButton provider="apple" />}
+          <label
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 10,
+              minHeight: 44,
+              padding: '10px 12px',
+              border: '1px solid #242424',
+              borderRadius: 12,
+              background: '#111',
+              color: '#ddd',
+              fontSize: 13,
+              cursor: 'pointer',
+              WebkitTapHighlightColor: 'transparent',
+            }}
+          >
+            <input
+              type="checkbox"
+              checked={rememberLogin}
+              onChange={(e) => setRememberLogin(e.target.checked)}
+              style={{
+                width: 18,
+                height: 18,
+                accentColor: '#FF1F8E',
+              }}
+            />
+            <span>
+              자동 로그인 유지
+              <span style={{ display: 'block', color: '#666', fontSize: 11, marginTop: 2 }}>
+                체크하면 다음 방문 시에도 로그인 상태를 유지합니다.
+              </span>
+            </span>
+          </label>
+
+          {ENABLE_GOOGLE && <SocialLoginButton provider="google" rememberLogin={rememberLogin} />}
+          {ENABLE_KAKAO && <SocialLoginButton provider="kakao" rememberLogin={rememberLogin} />}
 
           <div
             style={{

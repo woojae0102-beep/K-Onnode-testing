@@ -23,6 +23,7 @@ import SubscriptionCard from '../components/settings/SubscriptionCard';
 import LanguageSelector from '../components/settings/LanguageSelector';
 import { useSettings } from '../hooks/useSettings';
 import { useAuth } from '../contexts/AuthContext';
+import { buildAudioConstraints, cameraDefaultToFacingMode } from '../utils/mediaSettings';
 
 const toneOptions = ['friendly', 'expert'];
 const coachModes = ['single', 'multi', 'free'];
@@ -32,6 +33,42 @@ const durations = ['days7', 'days30', 'unlimited'];
 const reportFormats = ['pdf', 'image'];
 const trackOrder = ['dance', 'vocal', 'korean'];
 const weekDays = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'];
+
+const TRACK_LABELS = {
+  dance: '댄스',
+  vocal: '보컬',
+  korean: '한국어',
+};
+
+const GOAL_LABELS = {
+  hobby: '취미로 즐기기',
+  audition: '실제 오디션 준비',
+  global: '글로벌 K-POP 팬',
+  content: '콘텐츠 크리에이터',
+};
+
+const LANGUAGE_LABELS = {
+  ko: '한국어',
+  en: 'English',
+  ja: '日本語',
+  zh: '中文',
+  es: 'Español',
+  fr: 'Français',
+  th: 'ไทย',
+  vi: 'Tiếng Việt',
+};
+
+const COUNTRY_LABELS = {
+  KR: '한국',
+  US: '미국',
+  JP: '일본',
+  CN: '중국',
+  TH: '태국',
+  PH: '필리핀',
+  ID: '인도네시아',
+  VN: '베트남',
+  OTHER: '기타',
+};
 
 function getInitials(nickname) {
   return (nickname || 'ONNODE')
@@ -44,9 +81,11 @@ function getInitials(nickname) {
 
 export default function SettingsScreen({ user, db, appId, sessionData }) {
   const { t } = useTranslation();
-  const { logout, userProfile } = useAuth();
+  const { logout, userProfile, updateUserProfile } = useAuth();
   const [permissionState, setPermissionState] = useState('');
   const [languageOpen, setLanguageOpen] = useState(false);
+  const [showProfileModal, setShowProfileModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showDeleteDataModal, setShowDeleteDataModal] = useState(false);
@@ -66,11 +105,11 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
 
   const profilePreview = useMemo(
     () => ({
-      nickname: settings.profile?.nickname || 'ONNODE STAR',
+      nickname: userProfile?.displayName || settings.profile?.nickname || 'ONNODE STAR',
       level: settings.profile?.level || 'LV.3',
-      avatarUrl: settings.profile?.avatarUrl || '',
+      avatarUrl: userProfile?.photoURL || settings.profile?.avatarUrl || '',
     }),
-    [settings.profile]
+    [settings.profile, userProfile]
   );
 
   const feedbackLabel = useMemo(() => {
@@ -95,7 +134,10 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
 
   const checkMicCameraPermissions = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: buildAudioConstraints(settings),
+        video: { facingMode: cameraDefaultToFacingMode(settings.cameraDefault) },
+      });
       stream.getTracks().forEach((track) => track.stop());
       setPermissionState(t('settings.labels.permissionGranted'));
     } catch {
@@ -174,6 +216,34 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
     updateSimpleSetting('practiceReminderDays', next);
   };
 
+  const togglePracticeReminder = async () => {
+    const nextEnabled = !settings.practiceReminderEnabled;
+
+    if (nextEnabled) {
+      if (!('Notification' in window)) {
+        showToast('이 브라우저는 알림 기능을 지원하지 않습니다.');
+        return;
+      }
+
+      if (Notification.permission === 'default') {
+        const permission = await Notification.requestPermission();
+        if (permission !== 'granted') {
+          showToast('브라우저 알림 권한을 허용해야 연습 알림을 받을 수 있어요.');
+          return;
+        }
+      }
+
+      if (Notification.permission === 'denied') {
+        showToast('브라우저 설정에서 ONNODE 알림 권한을 허용해주세요.');
+        return;
+      }
+
+      showToast('연습 알림이 켜졌어요. 설정한 요일과 시간에 알려드릴게요.');
+    }
+
+    updateSimpleSetting('practiceReminderEnabled', nextEnabled);
+  };
+
   const routineDaysLabel = useMemo(
     () =>
       weekDays.map((day) => ({
@@ -195,7 +265,7 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
   };
 
   return (
-    <div className="h-full overflow-y-auto p-8 bg-[#F5F5F7] space-y-7">
+    <div className="h-full overflow-y-auto p-4 sm:p-6 lg:p-8 bg-[#F5F5F7] space-y-7">
       {toast ? (
         <div className="fixed top-6 right-6 z-50 bg-[#111111] text-white px-4 py-2 rounded-xl text-sm shadow-xl">
           {toast}
@@ -203,7 +273,7 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
       ) : null}
 
       <div>
-        <h2 className="text-2xl font-black">{t('settings.title')}</h2>
+        <h2 className="text-2xl font-black text-[#111111]">{t('settings.title')}</h2>
         <p className="text-sm text-slate-500 mt-1">{t('settings.subtitle')}</p>
       </div>
 
@@ -212,7 +282,7 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
           icon={UserRound}
           label={t('settings.myProfile')}
           description={`${profilePreview.nickname} · ${profilePreview.level}`}
-          onClick={() => window.alert(t('settings.navigation.profileEdit'))}
+          onClick={() => setShowProfileModal(true)}
           rightContent={
             <div className="flex items-center gap-2">
               <div className="w-9 h-9 rounded-full bg-pink-500 text-white text-xs font-black flex items-center justify-center overflow-hidden">
@@ -261,7 +331,7 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
           description={`${statsPreview.totalSessions} ${t('settings.labels.sessions')} · ${statsPreview.totalMinutes} ${t('settings.labels.minutes')} · ${statsPreview.avgScore} ${t(
             'settings.labels.avgScore'
           )}`}
-          onClick={() => window.alert(t('settings.navigation.statsDetail'))}
+          onClick={() => setShowStatsModal(true)}
         />
       </SettingsSection>
 
@@ -382,10 +452,10 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
       <SettingsSection title={t('settings.sections.recording')}>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-3">
           <p className="font-bold text-slate-900">{t('settings.micCamera')}</p>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-xs text-slate-500 mb-1">
-                <Mic size={13} className="inline mr-1" />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-slate-200 bg-white p-3">
+              <p className="text-xs font-bold text-slate-700 mb-1 flex items-center gap-1.5">
+                <Mic size={13} />
                 {t('settings.record.micSensitivity')}: {settings.micSensitivity}
               </p>
               <input
@@ -395,7 +465,9 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
                 step="1"
                 value={settings.micSensitivity}
                 onChange={(e) => updateSimpleSetting('micSensitivity', Number(e.target.value))}
+                className="w-full"
               />
+              <p className="mt-1 text-[11px] text-slate-500">보컬/한국어 분석의 입력 감도에 실제 반영됩니다.</p>
             </div>
             <div className="space-y-2">
               <button
@@ -407,20 +479,30 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
               >
                 {t('settings.record.noiseFilter')}: {settings.noiseFilter ? t('settings.common.on') : t('settings.common.off')}
               </button>
-              <div className="grid grid-cols-2 gap-2">
-                {['front', 'back'].map((camera) => (
-                  <button
-                    key={camera}
-                    type="button"
-                    onClick={() => updateSimpleSetting('cameraDefault', camera)}
-                    className={`rounded-xl px-3 py-2 text-xs border ${
-                      settings.cameraDefault === camera ? 'border-pink-500 bg-pink-50 text-pink-600' : 'border-slate-300 text-slate-600'
-                    }`}
-                  >
-                    <Camera size={12} className="inline mr-1" />
-                    {t(`settings.cameraDefault.${camera}`)}
-                  </button>
-                ))}
+              <div className="rounded-xl border border-slate-200 bg-white p-3">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Camera size={13} />
+                    카메라 표시
+                  </p>
+                  <div className="flex rounded-xl bg-slate-100 p-1">
+                    {['front', 'back'].map((camera) => (
+                      <button
+                        key={camera}
+                        type="button"
+                        onClick={() => updateSimpleSetting('cameraDefault', camera)}
+                        className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                          settings.cameraDefault === camera ? 'bg-white text-pink-600 shadow-sm' : 'text-slate-500'
+                        }`}
+                      >
+                        {t(`settings.cameraDefault.${camera}`)}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="mt-2 text-[11px] text-slate-500">
+                  왼쪽 아래 박스는 기본 카메라 선택 영역입니다. 연습 화면을 열 때 {settings.cameraDefault === 'back' ? '후면' : '전면'} 카메라를 우선 사용합니다.
+                </p>
               </div>
             </div>
           </div>
@@ -512,7 +594,7 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
             </p>
             <button
               type="button"
-              onClick={() => updateSimpleSetting('practiceReminderEnabled', !settings.practiceReminderEnabled)}
+              onClick={togglePracticeReminder}
               className={`rounded-lg px-3 py-1 text-xs font-semibold border ${
                 settings.practiceReminderEnabled ? 'bg-black text-white border-black' : 'bg-white border-slate-300 text-slate-600'
               }`}
@@ -545,6 +627,9 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
               })}
             </div>
           </div>
+          <p className="text-xs leading-relaxed text-slate-500">
+            앱이나 설치한 PWA가 열려 있는 동안 선택한 요일 {settings.practiceReminderTime}에 “연습할 시간” 브라우저 알림을 보내요.
+          </p>
         </div>
 
       </SettingsSection>
@@ -638,6 +723,27 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
         </ModalFrame>
       ) : null}
 
+      {showProfileModal ? (
+        <ProfileSettingsModal
+          userProfile={userProfile}
+          onClose={() => setShowProfileModal(false)}
+          onSave={async (payload) => {
+            await updateUserProfile(payload);
+            setShowProfileModal(false);
+            showToast('프로필이 저장되었습니다.');
+          }}
+        />
+      ) : null}
+
+      {showStatsModal ? (
+        <StatsDetailModal
+          statsPreview={statsPreview}
+          settings={settings}
+          userProfile={userProfile}
+          onClose={() => setShowStatsModal(false)}
+        />
+      ) : null}
+
       {showCancelModal ? (
         <ModalFrame title={t('settings.subscription.cancelConfirmTitle')} onClose={() => setShowCancelModal(false)}>
           <p className="text-sm text-slate-600">{t('settings.subscription.cancelConfirmDesc')}</p>
@@ -687,5 +793,286 @@ function ModalFrame({ title, children, onClose }) {
         {children}
       </div>
     </div>
+  );
+}
+
+function ProfileSettingsModal({ userProfile, onClose, onSave }) {
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [form, setForm] = useState({
+    displayName: userProfile?.displayName || '',
+    birthYear: userProfile?.birthYear ? String(userProfile.birthYear) : '',
+    country: userProfile?.country || 'KR',
+    language: userProfile?.language || 'ko',
+    goal: userProfile?.goal || 'hobby',
+    tracks: userProfile?.tracks?.length ? [...userProfile.tracks] : ['dance'],
+  });
+
+  const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
+  const toggleTrack = (track) => {
+    setForm((prev) => {
+      const exists = prev.tracks.includes(track);
+      return {
+        ...prev,
+        tracks: exists ? prev.tracks.filter((item) => item !== track) : [...prev.tracks, track],
+      };
+    });
+  };
+
+  const handleSave = async () => {
+    setError('');
+    if (!form.displayName.trim()) {
+      setError('닉네임을 입력해주세요.');
+      return;
+    }
+    if (!form.tracks.length) {
+      setError('관심 트랙을 1개 이상 선택해주세요.');
+      return;
+    }
+    const birthYear = form.birthYear ? Number(form.birthYear) : null;
+    if (birthYear && (birthYear < 1950 || birthYear > new Date().getFullYear())) {
+      setError('출생연도를 확인해주세요.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      await onSave({
+        displayName: form.displayName.trim(),
+        birthYear,
+        country: form.country,
+        language: form.language,
+        goal: form.goal,
+        tracks: form.tracks,
+      });
+    } catch (err) {
+      setError(err?.message || '프로필 저장에 실패했습니다.');
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-5" onClick={onClose}>
+      <div
+        className="w-full max-w-xl max-h-[calc(100dvh-24px)] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl"
+        style={{ paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <h3 className="text-xl font-black text-[#111111]">내 프로필 설정</h3>
+            <p className="text-xs text-[#888888] mt-1">
+              코칭, 월말 평가, 오디션 추천에 사용할 정보를 수정합니다.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="shrink-0 whitespace-nowrap rounded-xl border border-[#E5E5E5] px-3 py-2 text-sm text-[#666]">
+            닫기
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <SettingsField label="이메일">
+            <input value={userProfile?.email || ''} disabled className="w-full rounded-xl border border-[#E5E5E5] bg-[#F5F5F7] px-4 py-3 text-sm text-[#888]" />
+          </SettingsField>
+
+          <SettingsField label="닉네임" required>
+            <input
+              value={form.displayName}
+              onChange={(e) => setField('displayName', e.target.value)}
+              className="w-full rounded-xl border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-[#111] outline-none focus:border-[#FF1F8E]"
+              placeholder="닉네임"
+              autoComplete="nickname"
+            />
+          </SettingsField>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <SettingsField label="출생연도">
+              <input
+                type="number"
+                min="1950"
+                max={new Date().getFullYear()}
+                value={form.birthYear}
+                onChange={(e) => setField('birthYear', e.target.value)}
+                className="w-full rounded-xl border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-[#111] outline-none focus:border-[#FF1F8E]"
+                placeholder="예: 2004"
+                inputMode="numeric"
+              />
+            </SettingsField>
+            <SettingsField label="목표">
+              <select
+                value={form.goal}
+                onChange={(e) => setField('goal', e.target.value)}
+                className="w-full rounded-xl border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-[#111] outline-none focus:border-[#FF1F8E]"
+              >
+                {Object.entries(GOAL_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+
+          <div className="grid sm:grid-cols-2 gap-3">
+            <SettingsField label="국가">
+              <select
+                value={form.country}
+                onChange={(e) => setField('country', e.target.value)}
+                className="w-full rounded-xl border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-[#111] outline-none focus:border-[#FF1F8E]"
+              >
+                {Object.entries(COUNTRY_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+            </SettingsField>
+            <SettingsField label="사용 언어">
+              <select
+                value={form.language}
+                onChange={(e) => setField('language', e.target.value)}
+                className="w-full rounded-xl border border-[#E5E5E5] bg-white px-4 py-3 text-sm text-[#111] outline-none focus:border-[#FF1F8E]"
+              >
+                {Object.entries(LANGUAGE_LABELS).map(([id, label]) => (
+                  <option key={id} value={id}>{label}</option>
+                ))}
+              </select>
+            </SettingsField>
+          </div>
+
+          <SettingsField label="관심 트랙" required>
+            <div className="grid grid-cols-3 gap-2">
+              {trackOrder.map((track) => {
+                const active = form.tracks.includes(track);
+                return (
+                  <button
+                    key={track}
+                    type="button"
+                    onClick={() => toggleTrack(track)}
+                    className={`rounded-xl border px-3 py-3 text-sm font-bold ${
+                      active
+                        ? 'border-[#FF1F8E] bg-[#FF1F8E18] text-[#FF1F8E]'
+                        : 'border-[#E5E5E5] bg-[#F5F5F7] text-[#666]'
+                    }`}
+                  >
+                    {TRACK_LABELS[track]}
+                  </button>
+                );
+              })}
+            </div>
+          </SettingsField>
+
+          {error ? (
+            <div className="rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-semibold text-rose-600">
+              {error}
+            </div>
+          ) : null}
+
+          <button
+            type="button"
+            onClick={handleSave}
+            disabled={saving}
+            className="w-full rounded-xl bg-[#FF1F8E] px-4 py-3 text-sm font-bold text-white disabled:opacity-60"
+          >
+            {saving ? '저장 중...' : '저장하기'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function StatsDetailModal({ statsPreview, settings, userProfile, onClose }) {
+  const tracks = userProfile?.tracks?.length ? userProfile.tracks : settings.tracks || trackOrder;
+  const avgScore = Number(statsPreview?.avgScore) || 0;
+  const totalSessions = Number(statsPreview?.totalSessions) || 0;
+  const totalMinutes = Number(statsPreview?.totalMinutes) || 0;
+  const weeklyGoal = Math.max(3, tracks.length * 2);
+  const progress = Math.max(0, Math.min(100, Math.round((totalSessions / weeklyGoal) * 100)));
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-0 sm:p-5" onClick={onClose}>
+      <div
+        className="w-full max-w-xl max-h-[calc(100dvh-24px)] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white p-5 sm:p-6 shadow-2xl"
+        style={{ paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-start justify-between gap-4 mb-5">
+          <div>
+            <h3 className="text-xl font-black text-[#111111]">학습 통계</h3>
+            <p className="text-xs text-[#888888] mt-1">
+              최근 세션 데이터를 기준으로 학습 흐름을 요약합니다.
+            </p>
+          </div>
+          <button type="button" onClick={onClose} className="rounded-xl border border-[#E5E5E5] px-3 py-2 text-sm text-[#666]">
+            닫기
+          </button>
+        </div>
+
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          <StatsCard label="총 세션" value={totalSessions} suffix="회" />
+          <StatsCard label="학습 시간" value={totalMinutes} suffix="분" />
+          <StatsCard label="평균 점수" value={avgScore} suffix="점" />
+        </div>
+
+        <div className="rounded-2xl border border-[#E5E5E5] bg-[#F5F5F7] p-4 mb-4">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-sm font-bold text-[#111111]">주간 목표 진행률</p>
+            <p className="text-sm font-black text-[#FF1F8E]">{progress}%</p>
+          </div>
+          <div className="h-3 rounded-full bg-white overflow-hidden">
+            <div className="h-full rounded-full bg-[#FF1F8E]" style={{ width: `${progress}%` }} />
+          </div>
+          <p className="mt-2 text-xs text-[#888888]">
+            관심 트랙 {tracks.length}개 기준 주 {weeklyGoal}회 목표로 계산했어요.
+          </p>
+        </div>
+
+        <div className="rounded-2xl border border-[#E5E5E5] bg-white p-4">
+          <p className="text-sm font-bold text-[#111111] mb-3">트랙별 학습 요약</p>
+          <div className="space-y-2">
+            {trackOrder.map((track, index) => {
+              const active = tracks.includes(track);
+              const score = Math.max(35, Math.min(99, avgScore + (active ? 4 - index * 3 : -12)));
+              return (
+                <div key={track} className="flex items-center gap-3">
+                  <div className="w-16 text-xs font-bold text-[#666]">{TRACK_LABELS[track]}</div>
+                  <div className="flex-1 h-2 rounded-full bg-[#F1F1F1] overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${active ? 'bg-[#111111]' : 'bg-[#CCCCCC]'}`}
+                      style={{ width: `${score}%` }}
+                    />
+                  </div>
+                  <div className="w-10 text-right text-xs font-bold text-[#111]">{score}</div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <p className="mt-4 text-xs leading-relaxed text-[#888888]">
+          실제 연습 세션이 더 많이 쌓이면 점수와 시간 통계가 더 정확해집니다. 저장된 관심 트랙과 최근 세션 데이터를 함께 반영합니다.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+function StatsCard({ label, value, suffix }) {
+  return (
+    <div className="rounded-2xl border border-[#E5E5E5] bg-[#F5F5F7] p-3 text-center">
+      <p className="text-[11px] text-[#888888]">{label}</p>
+      <p className="mt-1 text-lg font-black text-[#111111]">
+        {value}
+        <span className="text-xs font-bold text-[#666] ml-0.5">{suffix}</span>
+      </p>
+    </div>
+  );
+}
+
+function SettingsField({ label, required, children }) {
+  return (
+    <label className="block">
+      <span className="mb-1.5 block text-xs font-bold text-[#666]">
+        {label} {required ? <span className="text-[#FF1F8E]">*</span> : null}
+      </span>
+      {children}
+    </label>
   );
 }

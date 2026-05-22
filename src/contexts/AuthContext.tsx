@@ -14,13 +14,15 @@ import {
   signInWithRedirect,
   getRedirectResult,
   GoogleAuthProvider,
-  OAuthProvider,
   AuthProvider as FirebaseAuthProvider,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signInWithCustomToken,
   signOut,
   updateProfile,
+  setPersistence,
+  browserLocalPersistence,
+  browserSessionPersistence,
 } from 'firebase/auth';
 import {
   doc,
@@ -53,7 +55,7 @@ export interface UserProfile {
   goal: string;
   subscription: SubscriptionInfo;
   onboardingCompleted: boolean;
-  provider: 'google' | 'apple' | 'kakao' | 'email' | string;
+  provider: 'google' | 'kakao' | 'email' | string;
   createdAt: Date;
 }
 
@@ -71,9 +73,8 @@ interface AuthContextType {
   userProfile: UserProfile | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  loginWithGoogle: () => Promise<void>;
-  loginWithApple: () => Promise<void>;
-  loginWithKakao: () => Promise<void>;
+  loginWithGoogle: (options?: LoginOptions) => Promise<void>;
+  loginWithKakao: (options?: LoginOptions) => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
   signUpWithEmail: (data: SignUpData) => Promise<void>;
   logout: () => Promise<void>;
@@ -114,6 +115,11 @@ function isStandalonePWA(): boolean {
 // 진행중인 소셜 로그인 종류 (redirect 후 createUserDocument 시 provider 결정용)
 const PENDING_PROVIDER_KEY = 'onnode.auth.pendingProvider';
 const PENDING_KAKAO_REDIRECT_URI_KEY = 'onnode.auth.kakaoRedirectUri';
+const PENDING_REMEMBER_LOGIN_KEY = 'onnode.auth.rememberLogin';
+
+type LoginOptions = {
+  rememberLogin?: boolean;
+};
 
 const env = (import.meta as any).env || {};
 const KAKAO_APP_KEY = env.VITE_KAKAO_APP_KEY || env.VITE_KAKAO_JS_KEY || '';
@@ -148,6 +154,23 @@ function getPendingKakaoRedirectUri() {
 function isKakaoCallbackPage() {
   if (typeof window === 'undefined') return false;
   return window.location.pathname === KAKAO_CALLBACK_PATH;
+}
+
+function getPendingRememberLogin() {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(PENDING_REMEMBER_LOGIN_KEY) === 'true';
+  } catch {
+    return false;
+  }
+}
+
+async function applyAuthPersistence(rememberLogin = false) {
+  if (!auth) return;
+  await setPersistence(
+    auth,
+    rememberLogin ? browserLocalPersistence : browserSessionPersistence,
+  );
 }
 
 function waitForKakaoSdk(timeoutMs = 5000) {
@@ -341,6 +364,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               : undefined;
           try {
             window.localStorage.removeItem(PENDING_PROVIDER_KEY);
+            window.localStorage.removeItem(PENDING_REMEMBER_LOGIN_KEY);
           } catch {
             /* noop */
           }
@@ -427,6 +451,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const { customToken, kakaoUser } = await res.json();
         if (!customToken) throw new Error('카카오 customToken 응답이 비어 있습니다.');
 
+        await applyAuthPersistence(getPendingRememberLogin());
         const result = await signInWithCustomToken(auth, customToken);
         await createUserDocument(result.user, {
           provider: 'kakao',
@@ -441,6 +466,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           window.localStorage.removeItem(PENDING_PROVIDER_KEY);
           window.localStorage.removeItem(PENDING_KAKAO_REDIRECT_URI_KEY);
+          window.localStorage.removeItem(PENDING_REMEMBER_LOGIN_KEY);
         } catch {
           /* noop */
         }
@@ -455,13 +481,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     async (
       provider: FirebaseAuthProvider,
       providerName: UserProfile['provider'],
+      options?: LoginOptions,
     ) => {
       if (!auth) throw new Error('Firebase 인증이 초기화되지 않았습니다.');
+      await applyAuthPersistence(!!options?.rememberLogin);
 
       const preferRedirect = isMobileDevice() || isStandalonePWA();
       const tryRedirect = async () => {
         try {
           window.localStorage.setItem(PENDING_PROVIDER_KEY, providerName);
+          window.localStorage.setItem(
+            PENDING_REMEMBER_LOGIN_KEY,
+            options?.rememberLogin ? 'true' : 'false',
+          );
         } catch {
           /* noop */
         }
@@ -495,23 +527,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   );
 
   // ── 로그인 메서드 ───────────────────────────────────────────
-  const loginWithGoogle = useCallback(async () => {
+  const loginWithGoogle = useCallback(async (options?: LoginOptions) => {
     const provider = new GoogleAuthProvider();
     provider.addScope('profile');
     provider.addScope('email');
     provider.setCustomParameters({ prompt: 'select_account' });
-    await signInWithProvider(provider, 'google');
+    await signInWithProvider(provider, 'google', options);
   }, [signInWithProvider]);
 
-  const loginWithApple = useCallback(async () => {
-    const provider = new OAuthProvider('apple.com');
-    provider.addScope('name');
-    provider.addScope('email');
-    await signInWithProvider(provider, 'apple');
-  }, [signInWithProvider]);
-
-  const loginWithKakao = useCallback(async () => {
+  const loginWithKakao = useCallback(async (options?: LoginOptions) => {
     if (!auth) throw new Error('Firebase 인증이 초기화되지 않았습니다.');
+    await applyAuthPersistence(!!options?.rememberLogin);
     if (!(await ensureKakaoInit())) {
       throw new Error(
         '카카오 SDK가 준비되지 않았습니다. .env의 VITE_KAKAO_APP_KEY와 index.html의 SDK 스크립트를 확인하세요.',
@@ -526,6 +552,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       try {
         window.localStorage.setItem(PENDING_PROVIDER_KEY, 'kakao');
         window.localStorage.setItem(PENDING_KAKAO_REDIRECT_URI_KEY, redirectUri);
+        window.localStorage.setItem(
+          PENDING_REMEMBER_LOGIN_KEY,
+          options?.rememberLogin ? 'true' : 'false',
+        );
       } catch {
         /* noop */
       }
@@ -543,6 +573,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
 
     // 1) 카카오 SDK(v1) 로그인
+    await applyAuthPersistence(!!options?.rememberLogin);
     await new Promise<void>((resolve, reject) => {
       window.Kakao.Auth.login({
         success: () => resolve(),
@@ -654,7 +685,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       isLoading,
       isAuthenticated: !!user,
       loginWithGoogle,
-      loginWithApple,
       loginWithKakao,
       loginWithEmail,
       signUpWithEmail,
@@ -667,7 +697,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       userProfile,
       isLoading,
       loginWithGoogle,
-      loginWithApple,
       loginWithKakao,
       loginWithEmail,
       signUpWithEmail,
