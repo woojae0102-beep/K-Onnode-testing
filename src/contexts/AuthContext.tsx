@@ -116,7 +116,7 @@ const PENDING_PROVIDER_KEY = 'onnode.auth.pendingProvider';
 
 const env = (import.meta as any).env || {};
 const KAKAO_APP_KEY = env.VITE_KAKAO_APP_KEY || env.VITE_KAKAO_JS_KEY || '';
-const KAKAO_SDK_SRC = 'https://t1.kakaocdn.net/kakao_js_sdk/2026.4.9/kakao.min.js';
+const KAKAO_SDK_SRC = 'https://t1.kakaocdn.net/kakao_js_sdk/2.7.2/kakao.min.js';
 const KAKAO_REDIRECT_URI_DEV =
   env.VITE_KAKAO_REDIRECT_URI_DEV ||
   'http://localhost:5173/oauth/callback/kakao';
