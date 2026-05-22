@@ -9,6 +9,7 @@ const { getAdmin } = require('../_lib/firebaseAdmin');
 
 async function exchangeKakaoCode({ code, redirectUri }) {
   const clientId = process.env.KAKAO_REST_API_KEY || '';
+  const clientSecret = process.env.KAKAO_CLIENT_SECRET || '';
   if (!clientId) {
     const err = new Error('KAKAO_REST_API_KEY is required for Kakao authorization-code flow');
     err.statusCode = 500;
@@ -22,15 +23,20 @@ async function exchangeKakaoCode({ code, redirectUri }) {
     throw err;
   }
 
+  const tokenParams = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    code,
+  });
+  if (clientSecret) {
+    tokenParams.set('client_secret', clientSecret);
+  }
+
   const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
-    body: new URLSearchParams({
-      grant_type: 'authorization_code',
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      code,
-    }).toString(),
+    body: tokenParams.toString(),
   });
   const tokenData = await tokenRes.json().catch(() => ({}));
   if (!tokenRes.ok || !tokenData.access_token) {
