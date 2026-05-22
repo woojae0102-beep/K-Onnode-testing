@@ -113,6 +113,7 @@ function isStandalonePWA(): boolean {
 
 // 진행중인 소셜 로그인 종류 (redirect 후 createUserDocument 시 provider 결정용)
 const PENDING_PROVIDER_KEY = 'onnode.auth.pendingProvider';
+const PENDING_KAKAO_REDIRECT_URI_KEY = 'onnode.auth.kakaoRedirectUri';
 
 const env = (import.meta as any).env || {};
 const KAKAO_APP_KEY = env.VITE_KAKAO_APP_KEY || env.VITE_KAKAO_JS_KEY || '';
@@ -130,6 +131,18 @@ function getKakaoRedirectUri() {
   // 개발 서버에서는 Kakao Developers에 등록한 localhost 콜백을 사용합니다.
   if (env.PROD) return KAKAO_REDIRECT_URI_PROD;
   return KAKAO_REDIRECT_URI_DEV;
+}
+
+function getPendingKakaoRedirectUri() {
+  if (typeof window === 'undefined') return getKakaoRedirectUri();
+  try {
+    return (
+      window.localStorage.getItem(PENDING_KAKAO_REDIRECT_URI_KEY) ||
+      getKakaoRedirectUri()
+    );
+  } catch {
+    return getKakaoRedirectUri();
+  }
 }
 
 function isKakaoCallbackPage() {
@@ -387,7 +400,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     (async () => {
       try {
-        const redirectUri = getKakaoRedirectUri();
+        const redirectUri = getPendingKakaoRedirectUri();
         const res = await fetch('/api/auth/kakao-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -413,6 +426,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } finally {
         try {
           window.localStorage.removeItem(PENDING_PROVIDER_KEY);
+          window.localStorage.removeItem(PENDING_KAKAO_REDIRECT_URI_KEY);
         } catch {
           /* noop */
         }
@@ -497,6 +511,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (typeof window.Kakao.Auth.authorize === 'function') {
       try {
         window.localStorage.setItem(PENDING_PROVIDER_KEY, 'kakao');
+        window.localStorage.setItem(PENDING_KAKAO_REDIRECT_URI_KEY, redirectUri);
       } catch {
         /* noop */
       }
