@@ -183,10 +183,16 @@ function waitForKakaoSdk(timeoutMs = 5000) {
 async function ensureKakaoInit() {
   if (typeof window === 'undefined') return false;
   const sdkReady = await waitForKakaoSdk();
-  if (!sdkReady || !window.Kakao) return false;
+  if (!sdkReady || !window.Kakao) {
+    console.warn('[Kakao] SDK script is not ready.');
+    return false;
+  }
   if (!window.Kakao.isInitialized || !window.Kakao.isInitialized()) {
     const appKey = import.meta.env.VITE_KAKAO_APP_KEY || KAKAO_APP_KEY;
-    if (!appKey) return false;
+    if (!appKey) {
+      console.warn('[Kakao] VITE_KAKAO_APP_KEY is missing from the deployed bundle.');
+      return false;
+    }
     try {
       window.Kakao.init(appKey);
     } catch (err) {
@@ -260,6 +266,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // 페이지 로드 직후 SDK를 미리 초기화해 로그인 버튼 클릭 시점의 실패 가능성을 줄입니다.
+  useEffect(() => {
+    ensureKakaoInit().then((ready) => {
+      if (!ready) return;
+      console.info('[Kakao] SDK initialized.');
+    });
+  }, []);
 
   const loadUserProfile = useCallback(async (uid: string) => {
     if (!db) return null;
