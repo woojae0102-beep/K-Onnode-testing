@@ -531,7 +531,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       window.Kakao.Auth.authorize({
         redirectUri,
-        scope: 'profile_nickname,profile_image',
       });
       return;
     }
