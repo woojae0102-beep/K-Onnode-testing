@@ -1,7 +1,10 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import VideoUploader from '../components/teaching/VideoUploader';
+import TeachingStepBar from '../components/teaching/TeachingStepBar';
+import TeachingPracticePanel from '../components/teaching/TeachingPracticePanel';
+import TeachingReviewPanel from '../components/teaching/TeachingReviewPanel';
+import TeachingUploadFallback from '../components/teaching/TeachingUploadFallback';
 import { AnalysisLoadingScreen } from '../components/teaching/AnalysisLoadingScreen';
 import SplitScreenPlayer from '../components/teaching/SplitScreenPlayer';
 import PronunciationWave from '../components/teaching/PronunciationWave';
@@ -9,7 +12,6 @@ import SyllableAccuracyBar from '../components/teaching/SyllableAccuracyBar';
 import IntonationCompareGraph from '../components/teaching/IntonationCompareGraph';
 import KoreanPersonaCoach from '../components/teaching/KoreanPersonaCoach';
 import { useKoreanPronunciation } from '../hooks/useKoreanPronunciation';
-import { useAudioRecorder } from '../hooks/useAudioRecorder';
 import { useTeachingTts } from '../hooks/useTeachingTts';
 import { getKoreanCoachMessage } from '../utils/koreanCoaching';
 import { saveTeachingReport } from '../services/teachingReportStore';
@@ -27,7 +29,7 @@ const SAMPLE_LINES = '안녕하세요, 오늘도 열심히 연습해 볼게요. 
 
 export default function KoreanTeachingView({ onNavigate }) {
   const { t } = useTranslation();
-  const [phase, setPhase] = useState('upload');
+  const [phase, setPhase] = useState('setup');
   const [audioFile, setAudioFile] = useState(null);
   const [myAudioUrl, setMyAudioUrl] = useState('');
   const [referenceText, setReferenceText] = useState(SAMPLE_LINES);
@@ -53,7 +55,6 @@ export default function KoreanTeachingView({ onNavigate }) {
     isGenerating,
     reset,
   } = useKoreanPronunciation();
-  const { isRecording, startRecording, stopRecording, error: recError } = useAudioRecorder();
   const { playAudioUrl } = useTeachingTts();
 
   const coachMessage = useMemo(() => getKoreanCoachMessage(analysis, currentTime), [analysis, currentTime]);
@@ -66,19 +67,6 @@ export default function KoreanTeachingView({ onNavigate }) {
     }
     return undefined;
   }, [audioFile]);
-
-  const handleRecordToggle = async () => {
-    if (isRecording) {
-      try {
-        const file = await stopRecording();
-        setAudioFile(file);
-      } catch {
-        /* ignore */
-      }
-    } else {
-      await startRecording();
-    }
-  };
 
   const handleLoadLyrics = async () => {
     try {
@@ -108,7 +96,7 @@ export default function KoreanTeachingView({ onNavigate }) {
         updatedAt: Date.now(),
       });
     } catch {
-      setPhase('upload');
+      setPhase('review');
     }
   };
 
@@ -134,29 +122,12 @@ export default function KoreanTeachingView({ onNavigate }) {
     setIsPlaying(playing);
   };
 
-  if (phase === 'upload') {
+  if (phase === 'setup') {
     return (
       <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
-        <h1 className="text-xl font-bold mb-2">한국어 티칭 — 발음 교정</h1>
-        <p className="text-sm text-white/50 mb-6">내 발음을 녹음하면 AI가 내 목소리 톤으로 교정 발음을 생성합니다.</p>
-        <VideoUploader
-          label="내 발음 녹음 올리기"
-          hint="mp3, wav, m4a"
-          accept="audio"
-          maxSizeMb={50}
-          onFile={setAudioFile}
-          className="mb-3"
-        />
-        <button
-          type="button"
-          onClick={handleRecordToggle}
-          className={`w-full py-3 rounded-xl font-semibold mb-6 border-2 ${isRecording ? 'border-rose-500 bg-rose-500/20 text-rose-300' : 'border-[#FF1F8E]/50 text-[#FF1F8E]'}`}
-        >
-          {isRecording ? t('teaching.korean.stopRecord') : t('teaching.korean.startRecord')}
-        </button>
-        {(recError || error) && phase === 'upload' ? (
-          <p className="text-rose-400 text-sm mb-4">{recError || error}</p>
-        ) : null}
+        <TeachingStepBar current="setup" />
+        <h1 className="text-xl font-bold mb-1">{t('teaching.session.koreanTitle')}</h1>
+        <p className="text-sm text-white/50 mb-6">{t('teaching.session.koreanSubtitle')}</p>
         <div className="mb-4">
           <label className="text-sm font-semibold block mb-2">연습할 텍스트/가사</label>
           <textarea
@@ -166,8 +137,8 @@ export default function KoreanTeachingView({ onNavigate }) {
             className="w-full rounded-xl border border-white/20 bg-black/30 px-3 py-2 text-sm"
           />
         </div>
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 mb-6 space-y-2">
-          <p className="text-sm font-semibold">K-POP 곡 가사 자동 불러오기</p>
+        <div className="rounded-xl border border-white/10 bg-white/5 p-4 mb-4 space-y-2">
+          <p className="text-sm font-semibold">K-POP 가사 불러오기</p>
           <div className="flex gap-2 flex-wrap">
             <input
               value={songTitle}
@@ -186,15 +157,61 @@ export default function KoreanTeachingView({ onNavigate }) {
             </button>
           </div>
         </div>
+        <TeachingUploadFallback
+          accept="audio"
+          maxSizeMb={50}
+          label={t('teaching.korean.uploadLabel')}
+          hint="mp3, wav, m4a"
+          onFile={(f) => {
+            setAudioFile(f);
+            setPhase('review');
+          }}
+        />
+        {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
         <button
           type="button"
-          disabled={!audioFile}
-          onClick={handleStart}
-          className="w-full py-4 rounded-xl font-bold disabled:opacity-40"
+          disabled={!referenceText.trim()}
+          onClick={() => setPhase('practice')}
+          className="w-full py-4 rounded-xl font-bold disabled:opacity-40 mt-4"
           style={{ background: '#FF1F8E' }}
         >
-          분석 시작
+          {t('teaching.session.practiceFirst')}
         </button>
+      </div>
+    );
+  }
+
+  if (phase === 'practice') {
+    return (
+      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+        <TeachingStepBar current="practice" />
+        <p className="text-xs text-white/50 mb-3 line-clamp-2">{referenceText}</p>
+        <TeachingPracticePanel
+          mode="vocal"
+          onComplete={(file) => {
+            setAudioFile(file);
+            setPhase('review');
+          }}
+          onCancel={() => setPhase('setup')}
+        />
+      </div>
+    );
+  }
+
+  if (phase === 'review') {
+    return (
+      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+        <TeachingStepBar current="review" />
+        <TeachingReviewPanel
+          file={audioFile}
+          mode="vocal"
+          isLoading={isGenerating}
+          onRetake={() => {
+            setAudioFile(null);
+            setPhase('practice');
+          }}
+          onAnalyze={handleStart}
+        />
       </div>
     );
   }
@@ -219,7 +236,7 @@ export default function KoreanTeachingView({ onNavigate }) {
         <p className="text-4xl font-black text-[#FF1F8E] mb-2">{analysis?.accuracy ?? 0}%</p>
         <p className="text-sm text-white/60 mb-4">인식: {analysis?.transcript}</p>
         <SyllableAccuracyBar syllables={analysis?.syllables} />
-        <button type="button" onClick={() => { reset(); setPhase('upload'); }} className="w-full py-3 rounded-xl bg-[#FF1F8E] mt-6">
+        <button type="button" onClick={() => { reset(); setPhase('setup'); }} className="w-full py-3 rounded-xl bg-[#FF1F8E] mt-6">
           다시 연습
         </button>
       </div>

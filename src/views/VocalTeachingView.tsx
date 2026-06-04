@@ -1,6 +1,10 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import VideoUploader from '../components/teaching/VideoUploader';
+import { useTranslation } from 'react-i18next';
+import TeachingStepBar from '../components/teaching/TeachingStepBar';
+import TeachingPracticePanel from '../components/teaching/TeachingPracticePanel';
+import TeachingReviewPanel from '../components/teaching/TeachingReviewPanel';
+import TeachingUploadFallback from '../components/teaching/TeachingUploadFallback';
 import { AnalysisLoadingScreen } from '../components/teaching/AnalysisLoadingScreen';
 import SplitScreenPlayer from '../components/teaching/SplitScreenPlayer';
 import PitchCompareGraph from '../components/teaching/PitchCompareGraph';
@@ -31,7 +35,8 @@ function WaveBars({ bars, color }) {
 }
 
 export default function VocalTeachingView({ onNavigate }) {
-  const [phase, setPhase] = useState('upload');
+  const { t } = useTranslation();
+  const [phase, setPhase] = useState('setup');
   const [audioFile, setAudioFile] = useState(null);
   const [myAudioUrl, setMyAudioUrl] = useState('');
   const [songTitle, setSongTitle] = useState('');
@@ -132,7 +137,7 @@ export default function VocalTeachingView({ onNavigate }) {
         updatedAt: Date.now(),
       });
     } catch {
-      setPhase('upload');
+      setPhase('review');
     }
   };
 
@@ -152,20 +157,14 @@ export default function VocalTeachingView({ onNavigate }) {
     setIsPlaying(playing);
   };
 
-  if (phase === 'upload') {
+  if (phase === 'setup') {
     return (
       <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
-        <h1 className="text-xl font-bold mb-6">보컬 티칭 — 내 목소리 vs AI 모범창</h1>
-        <VideoUploader
-          label="내가 부른 녹음/영상 업로드"
-          hint="mp3, wav, m4a, mp4, mov"
-          accept="audio"
-          maxSizeMb={100}
-          onFile={setAudioFile}
-          className="mb-6"
-        />
+        <TeachingStepBar current="setup" />
+        <h1 className="text-xl font-bold mb-1">{t('teaching.session.vocalTitle')}</h1>
+        <p className="text-sm text-white/50 mb-6">{t('teaching.session.vocalSubtitle')}</p>
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 mb-4 space-y-3">
-          <p className="text-sm font-semibold">원곡 정보</p>
+          <p className="text-sm font-semibold">원곡 정보 (선택)</p>
           <div className="flex gap-2 flex-wrap">
             <input
               value={songTitle}
@@ -180,28 +179,71 @@ export default function VocalTeachingView({ onNavigate }) {
               className="flex-1 min-w-[120px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
             />
             <button type="button" onClick={() => analyzeSong([songTitle, songArtist].filter(Boolean).join(' '))} className="rounded-lg px-3 py-2 bg-white/10 text-sm">
-              Spotify 검색
+              Spotify
             </button>
           </div>
         </div>
         <label className="flex items-center gap-2 text-sm mb-2">
           <input type="checkbox" checked={enableClone} onChange={(e) => setEnableClone(e.target.checked)} />
-          내 목소리로 모범창 생성 (ElevenLabs)
+          내 목소리로 모범창 생성
         </label>
-        <label className="flex items-center gap-2 text-sm mb-6">
+        <label className="flex items-center gap-2 text-sm mb-4">
           <input type="checkbox" checked={enablePitchGraph} onChange={(e) => setEnablePitchGraph(e.target.checked)} />
           음정 그래프 비교
         </label>
-        {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
+        <TeachingUploadFallback
+          accept="audio"
+          maxSizeMb={100}
+          label="녹음 파일 업로드"
+          hint="mp3, wav, m4a"
+          onFile={(f) => {
+            setAudioFile(f);
+            setPhase('review');
+          }}
+        />
         <button
           type="button"
-          disabled={!audioFile}
-          onClick={handleStart}
-          className="w-full py-4 rounded-xl font-bold disabled:opacity-40"
+          onClick={() => setPhase('practice')}
+          className="w-full py-4 rounded-xl font-bold mt-4"
           style={{ background: '#FF1F8E' }}
         >
-          분석 시작
+          {t('teaching.session.practiceFirst')}
         </button>
+      </div>
+    );
+  }
+
+  if (phase === 'practice') {
+    return (
+      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+        <TeachingStepBar current="practice" />
+        <TeachingPracticePanel
+          mode="vocal"
+          onComplete={(file) => {
+            setAudioFile(file);
+            setPhase('review');
+          }}
+          onCancel={() => setPhase('setup')}
+        />
+      </div>
+    );
+  }
+
+  if (phase === 'review') {
+    return (
+      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+        <TeachingStepBar current="review" />
+        {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
+        <TeachingReviewPanel
+          file={audioFile}
+          mode="vocal"
+          isLoading={isCloning}
+          onRetake={() => {
+            setAudioFile(null);
+            setPhase('practice');
+          }}
+          onAnalyze={handleStart}
+        />
       </div>
     );
   }
@@ -230,7 +272,7 @@ export default function VocalTeachingView({ onNavigate }) {
         <p className="text-4xl font-black text-[#FF1F8E] mb-4">{score}%</p>
         <p className="text-white/70 text-sm mb-2">{analysis?.feedback?.pitchAnalysis}</p>
         <p className="text-white/70 text-sm mb-6">{analysis?.coachingAdvice || analysis?.feedback?.coachingAdvice}</p>
-        <button type="button" onClick={() => { reset(); setPhase('upload'); }} className="w-full py-3 rounded-xl bg-[#FF1F8E]">
+        <button type="button" onClick={() => { reset(); setPhase('setup'); }} className="w-full py-3 rounded-xl bg-[#FF1F8E]">
           다시 연습
         </button>
       </div>

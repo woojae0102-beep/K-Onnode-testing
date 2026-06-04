@@ -1,6 +1,11 @@
 // @ts-nocheck
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import VideoUploader from '../components/teaching/VideoUploader';
+import TeachingStepBar from '../components/teaching/TeachingStepBar';
+import TeachingPracticePanel from '../components/teaching/TeachingPracticePanel';
+import TeachingReviewPanel from '../components/teaching/TeachingReviewPanel';
+import TeachingUploadFallback from '../components/teaching/TeachingUploadFallback';
 import { AnalysisLoadingScreen } from '../components/teaching/AnalysisLoadingScreen';
 import SplitScreenPlayer from '../components/teaching/SplitScreenPlayer';
 import SkeletonOverlay from '../components/teaching/SkeletonOverlay';
@@ -26,7 +31,8 @@ function toEmbed(url) {
 }
 
 export default function DanceTeachingView({ onNavigate }) {
-  const [phase, setPhase] = useState('upload');
+  const { t } = useTranslation();
+  const [phase, setPhase] = useState('setup');
   const [myFile, setMyFile] = useState(null);
   const [refFile, setRefFile] = useState(null);
   const [myUrl, setMyUrl] = useState('');
@@ -133,9 +139,8 @@ export default function DanceTeachingView({ onNavigate }) {
     syncVideos(t, isPlaying);
   };
 
-  const canAnalyze = myFile && (refFile || refUrl);
-
   const handleStartAnalysis = async () => {
+    if (!myFile || !(refFile || refUrl)) return;
     setPhase('analyzing');
     setLoadingStep(1);
     try {
@@ -152,7 +157,7 @@ export default function DanceTeachingView({ onNavigate }) {
       setPhase('teaching');
       setCurrentTime(0);
     } catch {
-      setPhase('upload');
+      setPhase('review');
     }
   };
 
@@ -170,29 +175,26 @@ export default function DanceTeachingView({ onNavigate }) {
     if (q) analyzeSong(q);
   };
 
-  if (phase === 'upload') {
+  const hasRef = refFile || refUrl;
+
+  if (phase === 'setup') {
     return (
       <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
-        <h1 className="text-xl font-bold mb-1">댄스 티칭 — 원본 vs 내 댄스 비교</h1>
-        <p className="text-sm text-white/50 mb-6">영상을 업로드한 뒤 AI가 스켈레톤을 비교합니다.</p>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
-          <VideoUploader
-            label="내 댄스 영상을 올려주세요"
-            hint="mp4, mov, avi, webm · 최대 500MB"
-            onFile={setMyFile}
-          />
-          <VideoUploader
-            label="원본/레퍼런스 영상을 올려주세요"
-            hint="파일 업로드 또는 유튜브 URL"
-            showYoutube
-            youtubeUrl={youtubeUrl}
-            onYoutubeUrlChange={setYoutubeUrl}
-            onYoutubeLoad={handleYoutubeLoad}
-            onFile={setRefFile}
-          />
-        </div>
+        <TeachingStepBar current="setup" />
+        <h1 className="text-xl font-bold mb-1">{t('teaching.session.danceTitle')}</h1>
+        <p className="text-sm text-white/50 mb-6">{t('teaching.session.danceSubtitle')}</p>
+        <VideoUploader
+          label="원본/레퍼런스 영상"
+          hint="파일 또는 유튜브 URL"
+          showYoutube
+          youtubeUrl={youtubeUrl}
+          onYoutubeUrlChange={setYoutubeUrl}
+          onYoutubeLoad={handleYoutubeLoad}
+          onFile={setRefFile}
+          className="mb-4"
+        />
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 mb-6 space-y-3">
-          <p className="text-sm font-semibold">곡 정보</p>
+          <p className="text-sm font-semibold">곡 정보 (선택)</p>
           <div className="flex flex-col sm:flex-row gap-2">
             <input
               value={songTitle}
@@ -212,25 +214,74 @@ export default function DanceTeachingView({ onNavigate }) {
               disabled={isSongAnalyzing}
               className="rounded-lg px-4 py-2 bg-white/10 text-sm font-semibold shrink-0"
             >
-              Spotify 자동 검색
+              Spotify
             </button>
           </div>
           {songAnalysis ? (
             <p className="text-xs text-[#FF1F8E]">
-              {songAnalysis.trackName} — {songAnalysis.personaName} ({songAnalysis.danceStyle})
+              {songAnalysis.trackName} — {songAnalysis.personaName}
             </p>
           ) : null}
         </div>
-        {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
+        <TeachingUploadFallback
+          label="내 댄스 영상 파일"
+          hint="mp4, webm · 최대 500MB"
+          onFile={(f) => {
+            setMyFile(f);
+            setPhase('review');
+          }}
+        />
         <button
           type="button"
-          disabled={!canAnalyze || isRunning}
-          onClick={handleStartAnalysis}
-          className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-40"
+          disabled={!hasRef}
+          onClick={() => setPhase('practice')}
+          className="w-full py-4 rounded-xl font-bold text-white disabled:opacity-40 mt-4"
           style={{ background: '#FF1F8E' }}
         >
-          분석 시작
+          {t('teaching.session.practiceFirst')}
         </button>
+      </div>
+    );
+  }
+
+  if (phase === 'practice') {
+    const refPreview =
+      refUrl?.includes('youtube.com/embed') ? (
+        <iframe title="ref" src={`${refUrl}?mute=1`} className="w-full h-full" />
+      ) : refUrl ? (
+        <video src={refUrl} className="w-full h-full object-cover" muted playsInline />
+      ) : null;
+    return (
+      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+        <TeachingStepBar current="practice" />
+        <TeachingPracticePanel
+          mode="dance"
+          referencePreview={refPreview}
+          onComplete={(file) => {
+            setMyFile(file);
+            setPhase('review');
+          }}
+          onCancel={() => setPhase('setup')}
+        />
+      </div>
+    );
+  }
+
+  if (phase === 'review') {
+    return (
+      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+        <TeachingStepBar current="review" />
+        {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
+        <TeachingReviewPanel
+          file={myFile}
+          mode="dance"
+          isLoading={isRunning}
+          onRetake={() => {
+            setMyFile(null);
+            setPhase('practice');
+          }}
+          onAnalyze={handleStartAnalysis}
+        />
       </div>
     );
   }
@@ -273,7 +324,7 @@ export default function DanceTeachingView({ onNavigate }) {
             type="button"
             onClick={() => {
               resetAnalysis();
-              setPhase('upload');
+              setPhase('setup');
               setMyFile(null);
               setRefFile(null);
             }}

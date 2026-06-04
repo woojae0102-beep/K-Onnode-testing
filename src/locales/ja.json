@@ -491,6 +491,29 @@
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
   },
   "teaching": {
+    "session": {
+      "steps": { "setup": "準備", "practice": "練習", "review": "確認" },
+      "practiceFirst": "今すぐ練習",
+      "uploadInstead": "ファイルでアップロード（任意）",
+      "poseLoading": "ポーズ認識を準備中...",
+      "poseScore": "フォーム",
+      "readyMic": "準備完了 — 録音を開始",
+      "recording": "録音中 — 終わったら完了を押してください",
+      "startPractice": "録画開始",
+      "finishPractice": "練習完了",
+      "practiceHint": "ライブヒントは簡易です。精密分析は練習後にAIが行います。",
+      "back": "戻る",
+      "reviewTitle": "練習の確認",
+      "reviewSubtitle": "問題なければAI分析を開始。撮り直す場合は再練習。",
+      "retake": "再練習",
+      "analyze": "AI分析開始",
+      "danceTitle": "ダンスティーチング",
+      "danceSubtitle": "リファレンスを設定し、今踊ってからAI比較分析。",
+      "vocalTitle": "ボーカルティーチング",
+      "vocalSubtitle": "今歌ってから、音程分析とAI模範ボーカル。",
+      "koreanTitle": "韓国語ティーチング",
+      "koreanSubtitle": "テキストを読み、練習後に音節単位で矯正。"
+    },
     "korean": {
       "title": "韓国語ティーチング — 発音矯正",
       "subtitle": "発音を録音すると、あなたの声質で矯正発音を生成します。",

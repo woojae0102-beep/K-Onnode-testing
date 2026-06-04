@@ -491,6 +491,29 @@
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
   },
   "teaching": {
+    "session": {
+      "steps": { "setup": "Setup", "practice": "Practice", "review": "Review" },
+      "practiceFirst": "Practice now",
+      "uploadInstead": "Upload a file instead (optional)",
+      "poseLoading": "Loading pose detection...",
+      "poseScore": "Form",
+      "readyMic": "Ready — tap to start recording",
+      "recording": "Recording — tap Done when finished",
+      "startPractice": "Start recording",
+      "finishPractice": "Done",
+      "practiceHint": "Live hints are lightweight. Full AI analysis runs after your session.",
+      "back": "Back",
+      "reviewTitle": "Review your session",
+      "reviewSubtitle": "Start AI analysis or re-record if needed.",
+      "retake": "Re-record",
+      "analyze": "Start AI analysis",
+      "danceTitle": "Dance teaching",
+      "danceSubtitle": "Set a reference, dance now, then get AI comparison.",
+      "vocalTitle": "Vocal teaching",
+      "vocalSubtitle": "Sing now, then get pitch analysis and AI guide vocal.",
+      "koreanTitle": "Korean teaching",
+      "koreanSubtitle": "Read the text, then get syllable-level correction."
+    },
     "korean": {
       "title": "Korean Teaching — Pronunciation",
       "subtitle": "Record your voice and AI generates corrected pronunciation in your tone.",
