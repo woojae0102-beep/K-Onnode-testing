@@ -41,6 +41,7 @@ export default function DanceTeachingView({ onNavigate }) {
   const [songTitle, setSongTitle] = useState('');
   const [songArtist, setSongArtist] = useState('');
   const [loadingStep, setLoadingStep] = useState(1);
+  const [analyzeError, setAnalyzeError] = useState('');
   const [currentTime, setCurrentTime] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const [playbackRate, setPlaybackRate] = useState(1);
@@ -141,6 +142,11 @@ export default function DanceTeachingView({ onNavigate }) {
 
   const handleStartAnalysis = async () => {
     if (!myFile || !(refFile || refUrl)) return;
+    if (!refFile && refUrl && /youtube\.com|youtu\.be/i.test(refUrl)) {
+      setAnalyzeError('유튜브는 분석용 레퍼런스로 쓸 수 없습니다. mp4/webm 파일을 업로드해 주세요.');
+      return;
+    }
+    setAnalyzeError('');
     setPhase('analyzing');
     setLoadingStep(1);
     try {
@@ -156,7 +162,8 @@ export default function DanceTeachingView({ onNavigate }) {
       });
       setPhase('teaching');
       setCurrentTime(0);
-    } catch {
+    } catch (e) {
+      setAnalyzeError(String(e?.message || error || '분석에 실패했습니다.'));
       setPhase('review');
     }
   };
@@ -184,8 +191,8 @@ export default function DanceTeachingView({ onNavigate }) {
         <h1 className="text-xl font-bold mb-1">{t('teaching.session.danceTitle')}</h1>
         <p className="text-sm text-white/50 mb-6">{t('teaching.session.danceSubtitle')}</p>
         <VideoUploader
-          label="원본/레퍼런스 영상"
-          hint="파일 또는 유튜브 URL"
+          label="원본/레퍼런스 영상 (파일 필수)"
+          hint="분석용: mp4/webm 파일 업로드 · 유튜브는 연습 미리보기만"
           showYoutube
           youtubeUrl={youtubeUrl}
           onYoutubeUrlChange={setYoutubeUrl}
@@ -271,7 +278,9 @@ export default function DanceTeachingView({ onNavigate }) {
     return (
       <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="review" />
-        {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
+        {(analyzeError || error) ? (
+          <p className="text-rose-400 text-sm mb-4">{analyzeError || error}</p>
+        ) : null}
         <TeachingReviewPanel
           file={myFile}
           mode="dance"
@@ -290,6 +299,9 @@ export default function DanceTeachingView({ onNavigate }) {
     return (
       <div className="min-h-full bg-[#0a0a0f]">
         <AnalysisLoadingScreen currentStep={loadingStep} />
+        {analyzeError ? (
+          <p className="text-center text-rose-400 text-sm px-6 -mt-4 pb-8">{analyzeError}</p>
+        ) : null}
       </div>
     );
   }

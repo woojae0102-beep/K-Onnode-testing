@@ -74,6 +74,9 @@ export function useDanceAnalysis() {
         const refSource = referenceFile || referenceUrl;
         if (!refSource) throw new Error('레퍼런스 영상이 필요합니다.');
         const refF = await extractReferenceVideo(refSource, onStepChange);
+        if (!myF?.length || !refF?.length) {
+          throw new Error('스켈레톤 데이터가 부족합니다. 레퍼런스·내 영상 모두 전신이 보이게 다시 촬영해 주세요.');
+        }
 
         onStepChange?.(4);
         setStep(4);

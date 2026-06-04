@@ -2,9 +2,9 @@
 import React from 'react';
 
 const DEFAULT_STEPS = [
-  { id: 1, label: '영상 업로드 중...', icon: '📤' },
-  { id: 2, label: '원본 영상 스켈레톤 추출 중...', icon: '🦴' },
-  { id: 3, label: '내 영상 자세 분석 중...', icon: '🔍' },
+  { id: 1, label: '분석 준비 중...', icon: '📤' },
+  { id: 2, label: '내 영상 스켈레톤 추출 중...', icon: '🦴' },
+  { id: 3, label: '레퍼런스 스켈레톤 추출 중...', icon: '🔍' },
   { id: 4, label: '프레임별 비교 중...', icon: '📊' },
   { id: 5, label: 'AI 페르소나 피드백 생성 중...', icon: '🤖' },
   { id: 6, label: '분석 완료!', icon: '✅' },
