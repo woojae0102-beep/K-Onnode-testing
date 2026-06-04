@@ -13,6 +13,7 @@ import MonthlyEvalView from './MonthlyEvalView';
 import { useLanguageStore } from '../store/languageStore';
 import { SETTINGS_STORAGE_KEY, useSettingsStore } from '../store/settingsSlice';
 import { useMonthlyData } from '../hooks/useMonthlyData';
+import { loadTeachingReports } from '../services/teachingReportStore';
 
 const QUICK_COMMANDS = [
   { id: 'dance', label: '/댄스' },
@@ -1668,6 +1669,7 @@ export default function AICoachView() {
       const next = { ...prev };
       if (domain === 'dance') next.dance = payload;
       else if (domain === 'vocal') next.vocal = payload;
+      else if (domain === 'korean') next.korean = { ...next.korean, teaching: payload };
       else if (domain === 'korean-pronunciation') next.korean = { ...next.korean, pronunciation: payload };
       else if (domain === 'korean-follow') next.korean = { ...next.korean, follow: payload };
       else if (domain === 'korean-correction') next.korean = { ...next.korean, correction: payload };
@@ -1707,6 +1709,19 @@ export default function AICoachView() {
       console.warn('[monthly] recordSession failed', err);
     }
   }, [recordMonthlySession]);
+
+  useEffect(() => {
+    const stored = loadTeachingReports();
+    Object.entries(stored).forEach(([domain, entry]) => {
+      if (entry?.payload) onReportUpdate(domain, entry.payload);
+    });
+    const handler = (e) => {
+      const { domain, payload } = e.detail || {};
+      if (domain && payload) onReportUpdate(domain, payload);
+    };
+    window.addEventListener('onnode-teaching-report', handler);
+    return () => window.removeEventListener('onnode-teaching-report', handler);
+  }, [onReportUpdate]);
 
   const showQuickCommands = inputValue.startsWith('/');
   const featureComponent = useMemo(() => renderFeatureComponent(activeFeature, onReportUpdate), [activeFeature, onReportUpdate]);

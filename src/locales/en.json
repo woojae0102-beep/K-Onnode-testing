@@ -466,9 +466,15 @@
     "goals": "Goals",
     "savedVideos": "Saved Videos",
     "feedbackHistory": "AI Feedback History",
+    "danceSection": "Dance",
+    "vocalSection": "Vocal",
+    "koreanSection": "Korean",
     "danceTraining": "Dance Training",
+    "danceTeaching": "AI Dance Teaching",
     "vocalTraining": "Vocal Training",
+    "vocalTeaching": "AI Vocal Teaching",
     "koreanAI": "Korean AI",
+    "koreanTeaching": "AI Pronunciation Teaching",
     "discover": "DISCOVER",
     "trending": "Trending",
     "popularDance": "Popular Dance",
@@ -483,6 +489,16 @@
     "noConversations": "No conversations.",
     "agencyAudition": "Agency Audition",
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "teaching": {
+    "korean": {
+      "title": "Korean Teaching — Pronunciation",
+      "subtitle": "Record your voice and AI generates corrected pronunciation in your tone.",
+      "uploadLabel": "Upload pronunciation recording",
+      "startRecord": "🎙 Record now",
+      "stopRecord": "⏹ Stop recording",
+      "coachName": "Korean pronunciation coach"
+    }
   },
   "audition": {
     "selectAgency": "Select an agency to audition for",

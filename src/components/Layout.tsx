@@ -1,16 +1,20 @@
 // @ts-nocheck
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import TopNavBar from './layout/TopNavBar';
 import LeftPanel from './layout/LeftPanel';
 import TabBar from './layout/TabBar';
 import MobileSectionBar from './layout/MobileSectionBar';
 import { usePracticeReminderNotifications } from '../hooks/usePracticeReminderNotifications';
+import { loadTeachingReports } from '../services/teachingReportStore';
 
 import HomeView from '../views/HomeView';
 import AICoachView from '../views/AICoachView';
 import DanceTrainingView from '../views/DanceTrainingView';
 import VocalTrainingView from '../views/VocalTrainingView';
 import KoreanAIView from '../views/KoreanAIView';
+import DanceTeachingView from '../views/DanceTeachingView';
+import VocalTeachingView from '../views/VocalTeachingView';
+import KoreanTeachingView from '../views/KoreanTeachingView';
 import MyPageView from '../views/MyPageView';
 import NotificationsView from '../views/NotificationsView';
 import SettingsView from '../views/SettingsView';
@@ -43,6 +47,9 @@ const VIEW_TO_TAB = {
   dance: 'home',
   vocal: 'home',
   korean: 'home',
+  'dance-teaching': 'home',
+  'vocal-teaching': 'home',
+  'korean-teaching': 'home',
   'agency-audition': 'home',
   trending: 'discover',
   'popular-dance': 'discover',
@@ -54,13 +61,25 @@ const VIEW_TO_TAB = {
   coaching: 'aicoach',
 };
 
-const TRAINING_VIEWS = ['dance', 'vocal', 'korean', 'aicoach'];
+const TRAINING_VIEWS = [
+  'dance',
+  'vocal',
+  'korean',
+  'dance-teaching',
+  'vocal-teaching',
+  'korean-teaching',
+  'aicoach',
+];
 
 export default function Layout(props) {
   const [activeTab, setActiveTab] = useState('home');
   const [mainView, setMainView] = useState('home');
-  const [lastTrainingView, setLastTrainingView] = useState('dance');
+  const [lastTrainingView, setLastTrainingView] = useState('dance-teaching');
   usePracticeReminderNotifications();
+
+  useEffect(() => {
+    loadTeachingReports();
+  }, []);
 
   const handleChangeTab = useCallback((tab) => {
     setActiveTab(tab);
@@ -108,6 +127,12 @@ export default function Layout(props) {
         return <VocalTrainingView onNavigate={handleSelectView} />;
       case 'korean':
         return <KoreanAIView />;
+      case 'dance-teaching':
+        return <DanceTeachingView onNavigate={handleSelectView} />;
+      case 'vocal-teaching':
+        return <VocalTeachingView onNavigate={handleSelectView} />;
+      case 'korean-teaching':
+        return <KoreanTeachingView onNavigate={handleSelectView} />;
       case 'agency-audition':
         return <AgencyAuditionView />;
       case 'trending':

@@ -466,9 +466,15 @@
     "goals": "目標進捗",
     "savedVideos": "保存した動画",
     "feedbackHistory": "AIフィードバック履歴",
+    "danceSection": "ダンス",
+    "vocalSection": "ボーカル",
+    "koreanSection": "韓国語",
     "danceTraining": "ダンス練習",
+    "danceTeaching": "AIダンスティーチング",
     "vocalTraining": "ボーカル練習",
+    "vocalTeaching": "AIボーカルティーチング",
     "koreanAI": "韓国語AI",
+    "koreanTeaching": "AI発音ティーチング",
     "discover": "DISCOVER",
     "trending": "トレンド",
     "popularDance": "人気の振付",
@@ -483,6 +489,16 @@
     "noConversations": "会話がありません。",
     "agencyAudition": "事務所オーディション",
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "teaching": {
+    "korean": {
+      "title": "韓国語ティーチング — 発音矯正",
+      "subtitle": "発音を録音すると、あなたの声質で矯正発音を生成します。",
+      "uploadLabel": "発音録音をアップロード",
+      "startRecord": "🎙 今すぐ録音",
+      "stopRecord": "⏹ 録音停止",
+      "coachName": "韓国語発音コーチ"
+    }
   },
   "audition": {
     "selectAgency": "オーディションを受ける事務所を選んでください",

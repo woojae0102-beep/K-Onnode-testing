@@ -466,9 +466,15 @@
     "goals": "연습생 분석",
     "savedVideos": "저장한 영상",
     "feedbackHistory": "AI 피드백 히스토리",
+    "danceSection": "댄스",
+    "vocalSection": "보컬",
+    "koreanSection": "한국어",
     "danceTraining": "댄스 트레이닝",
+    "danceTeaching": "AI 댄스 티칭",
     "vocalTraining": "보컬 트레이닝",
-    "koreanAI": "한국어 트레이닝",
+    "vocalTeaching": "AI 보컬 티칭",
+    "koreanAI": "한국어 AI",
+    "koreanTeaching": "AI 발음 티칭",
     "discover": "DISCOVER",
     "trending": "트렌딩",
     "popularDance": "인기 안무",
@@ -483,6 +489,16 @@
     "noConversations": "대화가 없습니다.",
     "agencyAudition": "기획사 오디션",
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
+  },
+  "teaching": {
+    "korean": {
+      "title": "한국어 티칭 — 발음 교정",
+      "subtitle": "내 발음을 녹음하면 AI가 내 목소리 톤으로 교정 발음을 생성합니다.",
+      "uploadLabel": "내 발음 녹음 올리기",
+      "startRecord": "🎙 지금 바로 녹음하기",
+      "stopRecord": "⏹ 녹음 중지",
+      "coachName": "한국어 발음 코치"
+    }
   },
   "audition": {
     "selectAgency": "오디션 볼 기획사를 선택하세요",

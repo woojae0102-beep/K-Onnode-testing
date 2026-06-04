@@ -14,10 +14,31 @@ const HOME_MENUS_MY = [
   { icon: '📋', labelKey: 'leftPanel.feedbackHistory', view: 'feedback-history' },
 ];
 
-const HOME_MENUS_TRAINING = [
-  { icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
-  { icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
-  { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
+const TRAINING_GROUPS = [
+  {
+    titleKey: 'leftPanel.danceSection',
+    items: [
+      { icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
+      { icon: '🎯', labelKey: 'leftPanel.danceTeaching', view: 'dance-teaching', sub: true },
+    ],
+  },
+  {
+    titleKey: 'leftPanel.vocalSection',
+    items: [
+      { icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
+      { icon: '🎵', labelKey: 'leftPanel.vocalTeaching', view: 'vocal-teaching', sub: true },
+    ],
+  },
+  {
+    titleKey: 'leftPanel.koreanSection',
+    items: [
+      { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
+      { icon: '🗣️', labelKey: 'leftPanel.koreanTeaching', view: 'korean-teaching', sub: true },
+    ],
+  },
+];
+
+const HOME_MENUS_EXTRA = [
   {
     icon: '🏆',
     labelKey: 'leftPanel.agencyAudition',
@@ -33,8 +54,6 @@ const DISCOVER_MENUS = [
   { icon: '🎵', labelKey: 'leftPanel.popularSongs', view: 'popular-songs' },
   { icon: '🏆', labelKey: 'leftPanel.challenges', view: 'challenges' },
 ];
-
-const AICOACH_MENUS = [];
 
 export default function LeftPanel({
   activeTab,
@@ -95,7 +114,32 @@ function HomeTabContent({ mainView, onSelectView }) {
         />
       ))}
       <SectionTitle>{t('leftPanel.training')}</SectionTitle>
-      {HOME_MENUS_TRAINING.map((item) => (
+      {TRAINING_GROUPS.map((group) => (
+        <div key={group.titleKey}>
+          <p
+            style={{
+              fontSize: 10,
+              color: '#BBBBBB',
+              padding: '8px 16px 2px',
+              margin: 0,
+              fontWeight: 600,
+            }}
+          >
+            {t(group.titleKey)}
+          </p>
+          {group.items.map((item) => (
+            <div key={item.view} style={{ paddingLeft: item.sub ? 8 : 0 }}>
+              <MenuRow
+                icon={item.icon}
+                label={t(item.labelKey)}
+                active={mainView === item.view}
+                onClick={() => onSelectView?.(item.view)}
+              />
+            </div>
+          ))}
+        </div>
+      ))}
+      {HOME_MENUS_EXTRA.map((item) => (
         <MenuRow
           key={item.view}
           icon={item.icon}
