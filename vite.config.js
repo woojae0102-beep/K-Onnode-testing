@@ -16,8 +16,29 @@ function devApiPlugin() {
     configureServer(server) {
       server.middlewares.use(async (req, res, next) => {
         if (!req.url || !req.url.startsWith('/api/')) return next();
-        const urlPath = req.url.split('?')[0].replace(/\/+$/, '') || '/';
-        const rel = urlPath.slice(1); // remove leading "/"
+
+        // Mirror vercel.json rewrites for consolidated routers (Hobby ≤12 functions).
+        const CONSOLIDATED = [
+          { prefix: '/api/audition/', entry: '/api/audition' },
+          { prefix: '/api/monthly/', entry: '/api/monthly' },
+          { prefix: '/api/coaching/', entry: '/api/coaching' },
+          { prefix: '/api/teaching/', entry: '/api/teaching' },
+        ];
+        const [rawPath, rawQuery = ''] = req.url.split('?');
+        const urlPath = rawPath.replace(/\/+$/, '') || '/';
+        for (const { prefix, entry } of CONSOLIDATED) {
+          const base = prefix.slice(0, -1);
+          if (urlPath === base || urlPath.startsWith(prefix)) {
+            const sub = urlPath === base ? '' : urlPath.slice(prefix.length);
+            const qs = new URLSearchParams(rawQuery);
+            if (sub) qs.set('path', sub);
+            req.url = `${entry}?${qs.toString()}`;
+            break;
+          }
+        }
+
+        const resolvedPath = devUrl.split('?')[0].replace(/\/+$/, '') || '/';
+        const rel = resolvedPath.slice(1);
         const candidates = [
           path.resolve(process.cwd(), `${rel}.js`),
           path.resolve(process.cwd(), rel, 'index.js'),
@@ -41,8 +62,9 @@ function devApiPlugin() {
           // Invalidate require cache for all files under ./api so changes
           // to nested helper modules (e.g. _lib/trending.js) are picked up.
           const apiDir = path.resolve(process.cwd(), 'api');
+          const libHandlers = path.resolve(process.cwd(), 'lib', 'api-handlers');
           for (const k of Object.keys(__require.cache)) {
-            if (k.startsWith(apiDir)) delete __require.cache[k];
+            if (k.startsWith(apiDir) || k.startsWith(libHandlers)) delete __require.cache[k];
           }
           const mod = __require(handlerPath);
           const fn = typeof mod === 'function' ? mod : (mod.default || mod.handler);
