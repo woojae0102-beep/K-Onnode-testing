@@ -6,8 +6,10 @@ import AgencyPersonaSelector from './AgencyPersonaSelector';
 
 export function TVModeEntry({
   onStart,
+  onBack,
 }: {
   onStart: (agency: Agency, mode: TrainingMode) => void;
+  onBack?: () => void;
 }) {
   const [selectedAgency, setSelectedAgency] = useState('hybe');
   const [selectedMode, setSelectedMode] = useState('dance');
@@ -26,18 +28,42 @@ export function TVModeEntry({
 
   return (
     <div
-      className="tv-mode"
+      className="tv-mode tv-entry-screen"
       style={{
-        minHeight: '100vh',
+        minHeight: '100dvh',
         background: '#030308',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        padding: '40px 24px',
+        padding: 'calc(24px + env(safe-area-inset-top, 0px)) 16px calc(32px + env(safe-area-inset-bottom, 0px))',
         fontFamily: 'Inter, sans-serif',
+        overflowY: 'auto',
+        WebkitOverflowScrolling: 'touch',
       }}
     >
+      {onBack ? (
+        <button
+          type="button"
+          onClick={onBack}
+          className="tv-entry-back"
+          style={{
+            position: 'fixed',
+            top: 'calc(12px + env(safe-area-inset-top, 0px))',
+            left: 12,
+            zIndex: 10,
+            padding: '8px 14px',
+            background: 'rgba(255,255,255,0.08)',
+            border: '1px solid rgba(255,255,255,0.12)',
+            borderRadius: 8,
+            color: 'rgba(255,255,255,0.8)',
+            fontSize: 13,
+            cursor: 'pointer',
+          }}
+        >
+          ← 홈
+        </button>
+      ) : null}
       <div
         style={{
           position: 'fixed',
@@ -73,6 +99,19 @@ export function TVModeEntry({
         </div>
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
           실제 기획사 연습실 AI 트레이닝 시스템
+        </div>
+        <div
+          style={{
+            fontSize: 12,
+            color: '#00FF88',
+            marginTop: 10,
+            padding: '6px 12px',
+            background: 'rgba(0,255,136,0.08)',
+            borderRadius: 8,
+            display: 'inline-block',
+          }}
+        >
+          📱 iPhone · Android 스마트폰에서도 바로 연습 가능
         </div>
       </div>
 

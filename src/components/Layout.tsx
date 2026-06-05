@@ -139,7 +139,7 @@ export default function Layout(props) {
       case 'agency-audition':
         return <AgencyAuditionView />;
       case 'tv-mode':
-        return <TVModeView />;
+        return <TVModeView onNavigate={handleSelectView} />;
       case 'trending':
         return <TrendingView onNavigate={handleSelectView} />;
       case 'popular-dance':
@@ -166,7 +166,7 @@ export default function Layout(props) {
   };
 
   if (mainView === 'tv-mode') {
-    return <TVModeView />;
+    return <TVModeView onNavigate={handleSelectView} />;
   }
 
   return (

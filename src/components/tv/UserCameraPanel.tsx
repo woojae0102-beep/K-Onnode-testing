@@ -1,6 +1,137 @@
 // @ts-nocheck
-import React from 'react';
+import React, { memo } from 'react';
 import type { PoseData } from '../../types/tv';
+
+const TVCameraViewport = memo(function TVCameraViewport({
+  isTracking,
+  videoRef,
+  canvasRef,
+  onStartTracking,
+  agencyColor,
+}: {
+  isTracking: boolean;
+  videoRef: React.RefObject<HTMLVideoElement>;
+  canvasRef: React.RefObject<HTMLCanvasElement>;
+  onStartTracking: () => void;
+  agencyColor: string;
+}) {
+  return (
+    <>
+      <video
+        ref={videoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{
+          width: '100%',
+          height: '100%',
+          objectFit: 'cover',
+          transform: 'scaleX(-1) translateZ(0)',
+          backfaceVisibility: 'hidden',
+        }}
+      />
+      <canvas
+        ref={canvasRef}
+        style={{
+          position: 'absolute',
+          inset: 0,
+          width: '100%',
+          height: '100%',
+          transform: 'scaleX(-1) translateZ(0)',
+          pointerEvents: 'none',
+        }}
+      />
+      {!isTracking ? (
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'rgba(3,3,8,0.85)',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 16,
+          }}
+        >
+          <div style={{ fontSize: 40 }}>📸</div>
+          <div style={{ fontSize: 14, color: '#fff', fontWeight: 500, marginBottom: 4 }}>
+            카메라를 활성화하세요
+          </div>
+          <div
+            style={{
+              fontSize: 12,
+              color: 'rgba(255,255,255,0.4)',
+              marginBottom: 16,
+              textAlign: 'center',
+              padding: '0 20px',
+            }}
+          >
+            전신이 화면에 들어오도록 서주세요
+          </div>
+          <button
+            type="button"
+            onClick={onStartTracking}
+            style={{
+              padding: '10px 24px',
+              background: agencyColor,
+              border: 'none',
+              borderRadius: 8,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              boxShadow: `0 0 20px ${agencyColor}60`,
+            }}
+          >
+            카메라 시작
+          </button>
+        </div>
+      ) : null}
+    </>
+  );
+});
+
+const JointAccuracyBadges = memo(function JointAccuracyBadges({
+  poseData,
+}: {
+  poseData: PoseData | null;
+}) {
+  if (!poseData?.jointAccuracies) return null;
+
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        bottom: 12,
+        left: 12,
+        right: 12,
+        display: 'flex',
+        gap: 6,
+        flexWrap: 'wrap',
+        pointerEvents: 'none',
+      }}
+    >
+      {Object.entries(poseData.jointAccuracies)
+        .slice(0, 6)
+        .map(([joint, accuracy]) => (
+          <div
+            key={joint}
+            style={{
+              padding: '3px 8px',
+              background: 'rgba(0,0,0,0.7)',
+              borderRadius: 4,
+              fontSize: 10,
+              color: accuracy > 80 ? '#00FF88' : accuracy > 60 ? '#FFD700' : '#FF4444',
+              fontWeight: 500,
+            }}
+          >
+            {joint}: {Math.round(accuracy)}%
+          </div>
+        ))}
+    </div>
+  );
+});
 
 export function UserCameraPanel({
   mode = 'dance',
@@ -9,6 +140,8 @@ export function UserCameraPanel({
   onStartTracking,
   agencyColor,
   vocalMetrics = null,
+  videoRef = null,
+  canvasRef = null,
 }: {
   mode?: 'dance' | 'vocal';
   poseData: PoseData | null;
@@ -21,8 +154,11 @@ export function UserCameraPanel({
     tuningState: string;
     pitchScore: number;
   } | null;
+  videoRef?: React.RefObject<HTMLVideoElement> | null;
+  canvasRef?: React.RefObject<HTMLCanvasElement> | null;
 }) {
   const isVocal = mode === 'vocal';
+
   return (
     <div
       className="tv-panel"
@@ -84,33 +220,18 @@ export function UserCameraPanel({
       </div>
 
       <div style={{ flex: 1, position: 'relative', background: '#030308', minHeight: 0 }}>
-        {!isVocal && (
+        {!isVocal && videoRef && canvasRef ? (
           <>
-            <video
-              id="user-camera-video"
-              autoPlay
-              playsInline
-              muted
-              style={{
-                width: '100%',
-                height: '100%',
-                objectFit: 'cover',
-                transform: 'scaleX(-1)',
-              }}
+            <TVCameraViewport
+              isTracking={isTracking}
+              videoRef={videoRef}
+              canvasRef={canvasRef}
+              onStartTracking={onStartTracking}
+              agencyColor={agencyColor}
             />
-            <canvas
-              id="skeleton-canvas"
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                transform: 'scaleX(-1)',
-                pointerEvents: 'none',
-              }}
-            />
+            {isTracking ? <JointAccuracyBadges poseData={poseData} /> : null}
           </>
-        )}
+        ) : null}
 
         {isVocal && (
           <div
@@ -173,95 +294,25 @@ export function UserCameraPanel({
                 </div>
               </>
             )}
-          </div>
-        )}
-
-        {!isTracking && (
-          <div
-            style={{
-              position: 'absolute',
-              inset: 0,
-              background: 'rgba(3,3,8,0.85)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 16,
-            }}
-          >
-            <div style={{ fontSize: 40 }}>{isVocal ? '🎤' : '📸'}</div>
-            <div
-              style={{
-                fontSize: 14,
-                color: '#fff',
-                fontWeight: 500,
-                marginBottom: 4,
-              }}
-            >
-              {isVocal ? '마이크를 활성화하세요' : '카메라를 활성화하세요'}
-            </div>
-            <div
-              style={{
-                fontSize: 12,
-                color: 'rgba(255,255,255,0.4)',
-                marginBottom: 16,
-                textAlign: 'center',
-                padding: '0 20px',
-              }}
-            >
-              {isVocal
-                ? '조용한 환경에서 노래하거나 발성 연습을 해주세요'
-                : '전신이 화면에 들어오도록 서주세요'}
-            </div>
-            <button
-              type="button"
-              onClick={onStartTracking}
-              style={{
-                padding: '10px 24px',
-                background: agencyColor,
-                border: 'none',
-                borderRadius: 8,
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                boxShadow: `0 0 20px ${agencyColor}60`,
-              }}
-            >
-              {isVocal ? '마이크 시작' : '카메라 시작'}
-            </button>
-          </div>
-        )}
-
-        {!isVocal && isTracking && poseData && (
-          <div
-            style={{
-              position: 'absolute',
-              bottom: 12,
-              left: 12,
-              right: 12,
-              display: 'flex',
-              gap: 6,
-              flexWrap: 'wrap',
-            }}
-          >
-            {Object.entries(poseData.jointAccuracies || {})
-              .slice(0, 6)
-              .map(([joint, accuracy]) => (
-                <div
-                  key={joint}
-                  style={{
-                    padding: '3px 8px',
-                    background: 'rgba(0,0,0,0.7)',
-                    borderRadius: 4,
-                    fontSize: 10,
-                    color: accuracy > 80 ? '#00FF88' : accuracy > 60 ? '#FFD700' : '#FF4444',
-                    fontWeight: 500,
-                  }}
-                >
-                  {joint}: {Math.round(accuracy)}%
-                </div>
-              ))}
+            {!isTracking && (
+              <button
+                type="button"
+                onClick={onStartTracking}
+                style={{
+                  padding: '10px 24px',
+                  background: agencyColor,
+                  border: 'none',
+                  borderRadius: 8,
+                  color: '#fff',
+                  fontSize: 13,
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  boxShadow: `0 0 20px ${agencyColor}60`,
+                }}
+              >
+                마이크 시작
+              </button>
+            )}
           </div>
         )}
       </div>

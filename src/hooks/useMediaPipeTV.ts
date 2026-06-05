@@ -4,12 +4,7 @@ import type { PoseData } from '../types/tv';
 import { computePoseMetrics } from '../utils/poseMetrics';
 import { applyInlineVideoAttributes, buildMobileVideoConstraints } from '../utils/mobileMedia';
 import { useSettingsStore } from '../store/settingsSlice';
-import {
-  cancelVideoFrame,
-  getOptimizedCanvasContext,
-  scheduleVideoFrame,
-  syncCanvasToDisplayRect,
-} from '../utils/cameraFrameLoop';
+import { getOptimizedCanvasContext, syncCanvasToDisplayRect } from '../utils/cameraFrameLoop';
 
 const JOINT_MAP = {
   nose: 0,
@@ -42,15 +37,24 @@ const CONNECTIONS = [
   ['right_knee', 'right_ankle'],
 ];
 
-const DETECT_INTERVAL_MS = 1000 / 15;
-const STATE_UPDATE_INTERVAL_MS = 100;
+const DETECT_INTERVAL_MS = 100;
+const STATE_UPDATE_INTERVAL_MS = 250;
+
+function buildTVVideoConstraints(settings) {
+  const base = buildMobileVideoConstraints(settings);
+  return {
+    ...base,
+    width: { ideal: 640, max: 1280 },
+    height: { ideal: 480, max: 720 },
+    frameRate: { ideal: 24, max: 30 },
+  };
+}
 
 function drawSkeletonOnCanvas(canvas, joints, accuracies) {
   if (!canvas || !joints) return;
   const ctx = getOptimizedCanvasContext(canvas);
   if (!ctx) return;
 
-  syncCanvasToDisplayRect(canvas);
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   CONNECTIONS.forEach(([start, end]) => {
@@ -83,44 +87,66 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   const settings = useSettingsStore((s) => s.settings);
   const [poseData, setPoseData] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
+
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const detectorRef = useRef(null);
   const streamRef = useRef(null);
-  const frameHandleRef = useRef(null);
+  const detectTimerRef = useRef(0);
+  const resizeObserverRef = useRef(null);
   const agencyColorRef = useRef(agencyColor);
   const latestPoseRef = useRef(null);
-  const lastDetectAtRef = useRef(0);
   const lastStateUpdateAtRef = useRef(0);
   const isDetectingRef = useRef(false);
+  const detectTimestampRef = useRef(0);
 
   useEffect(() => {
     agencyColorRef.current = agencyColor;
   }, [agencyColor]);
 
-  const stopLoop = useCallback(() => {
-    cancelVideoFrame(frameHandleRef.current);
-    frameHandleRef.current = null;
-  }, []);
+  const bindCanvasResizeObserver = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  const startDetectionLoop = useCallback((video) => {
-    stopLoop();
+    resizeObserverRef.current?.disconnect();
+    syncCanvasToDisplayRect(canvas);
 
-    const tick = (now) => {
-      const detector = detectorRef.current;
-      if (!detector || !video) return;
-
-      const canvas = document.querySelector('#skeleton-canvas');
+    resizeObserverRef.current = new ResizeObserver(() => {
+      syncCanvasToDisplayRect(canvas);
       const cached = latestPoseRef.current;
       if (cached?.joints) {
         drawSkeletonOnCanvas(canvas, cached.joints, cached.jointAccuracies);
       }
+    });
+    resizeObserverRef.current.observe(canvas);
+  }, []);
 
-      if (
-        video.videoWidth > 0 &&
-        !isDetectingRef.current &&
-        now - lastDetectAtRef.current >= DETECT_INTERVAL_MS
-      ) {
+  const stopDetectionLoop = useCallback(() => {
+    if (detectTimerRef.current) {
+      clearTimeout(detectTimerRef.current);
+      detectTimerRef.current = 0;
+    }
+    resizeObserverRef.current?.disconnect();
+    resizeObserverRef.current = null;
+  }, []);
+
+  const startDetectionLoop = useCallback(() => {
+    stopDetectionLoop();
+    bindCanvasResizeObserver();
+
+    const runDetection = () => {
+      const detector = detectorRef.current;
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+
+      if (!detector || !video) {
+        detectTimerRef.current = window.setTimeout(runDetection, DETECT_INTERVAL_MS);
+        return;
+      }
+
+      if (video.videoWidth > 0 && !isDetectingRef.current) {
         isDetectingRef.current = true;
-        lastDetectAtRef.current = now;
+        const now = performance.now();
 
         try {
           const results = detector.detectForVideo(video, now);
@@ -155,6 +181,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
 
             if (now - lastStateUpdateAtRef.current >= STATE_UPDATE_INTERVAL_MS) {
               lastStateUpdateAtRef.current = now;
+              detectTimestampRef.current = now;
               setPoseData(nextPose);
             }
           }
@@ -165,21 +192,21 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
         }
       }
 
-      frameHandleRef.current = scheduleVideoFrame(video, tick);
+      detectTimerRef.current = window.setTimeout(runDetection, DETECT_INTERVAL_MS);
     };
 
-    frameHandleRef.current = scheduleVideoFrame(video, tick);
-  }, [stopLoop]);
+    detectTimerRef.current = window.setTimeout(runDetection, DETECT_INTERVAL_MS);
+  }, [bindCanvasResizeObserver, stopDetectionLoop]);
 
   const startTracking = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: buildMobileVideoConstraints(settings),
+        video: buildTVVideoConstraints(settings),
         audio: false,
       });
       streamRef.current = stream;
 
-      const video = document.querySelector('#user-camera-video');
+      const video = videoRef.current;
       if (video) {
         applyInlineVideoAttributes(video);
         video.srcObject = stream;
@@ -190,7 +217,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       const { PoseLandmarker, FilesetResolver } = visionModule;
 
       const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@latest/wasm',
+        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm',
       );
 
       const createDetector = async (delegate) =>
@@ -211,18 +238,18 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       }
 
       latestPoseRef.current = null;
-      lastDetectAtRef.current = 0;
       lastStateUpdateAtRef.current = 0;
+      detectTimestampRef.current = 0;
 
       setIsTracking(true);
-      if (video) startDetectionLoop(video);
+      startDetectionLoop();
     } catch (err) {
       console.error('카메라 시작 실패:', err);
     }
   }, [settings, startDetectionLoop]);
 
   const stopTracking = useCallback(() => {
-    stopLoop();
+    stopDetectionLoop();
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     detectorRef.current?.close?.();
@@ -231,14 +258,24 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
     setIsTracking(false);
     setPoseData(null);
 
-    const canvas = document.querySelector('#skeleton-canvas');
+    const canvas = canvasRef.current;
     const ctx = canvas ? getOptimizedCanvasContext(canvas) : null;
     if (ctx && canvas) ctx.clearRect(0, 0, canvas.width, canvas.height);
-  }, [stopLoop]);
+
+    const video = videoRef.current;
+    if (video) video.srcObject = null;
+  }, [stopDetectionLoop]);
 
   useEffect(() => () => stopTracking(), [stopTracking]);
 
-  return { poseData, isTracking, startTracking, stopTracking };
+  return {
+    poseData,
+    isTracking,
+    startTracking,
+    stopTracking,
+    videoRef,
+    canvasRef,
+  };
 }
 
 export default useMediaPipeTV;

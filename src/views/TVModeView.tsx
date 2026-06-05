@@ -10,7 +10,7 @@ import { saveTeachingReport } from '../services/teachingReportStore';
 
 type Phase = 'entry' | 'training' | 'result';
 
-export default function TVModeView() {
+export default function TVModeView({ onNavigate } = {}) {
   const { user } = useAuth();
   const [phase, setPhase] = useState('entry');
   const [selectedAgency, setSelectedAgency] = useState('hybe');
@@ -71,10 +71,11 @@ export default function TVModeView() {
     document.body.classList.remove('tv-active');
     setPhase('entry');
     setSessionData(null);
-  }, []);
+    onNavigate?.('home');
+  }, [onNavigate]);
 
   if (phase === 'entry') {
-    return <TVModeEntry onStart={handleStart} />;
+    return <TVModeEntry onStart={handleStart} onBack={() => onNavigate?.('home')} />;
   }
 
   if (phase === 'training') {

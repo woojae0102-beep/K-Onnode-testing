@@ -67,7 +67,7 @@ export function TVLayout({
       className="tv-mode"
       style={{
         width: '100%',
-        height: '100vh',
+        height: '100dvh',
         background: '#030308',
         display: 'flex',
         flexDirection: 'column',
@@ -186,6 +186,8 @@ export function TVLayout({
           onStartTracking={startTracking}
           agencyColor={agencyColor}
           vocalMetrics={vocalMetrics}
+          videoRef={isDance ? dance.videoRef : null}
+          canvasRef={isDance ? dance.canvasRef : null}
         />
         <RealtimeScorePanel scores={scores} agency={agency} agencyColor={agencyColor} />
         <RealtimeFeedbackPanel feedback={feedback} agency={agency} agencyColor={agencyColor} />

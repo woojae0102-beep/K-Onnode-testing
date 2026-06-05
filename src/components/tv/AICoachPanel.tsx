@@ -28,14 +28,32 @@ export function AICoachPanel({
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext('2d', { alpha: true, desynchronized: true });
     if (!ctx) return;
 
-    let frame = 0;
-    const draw = () => {
+    const syncSize = () => {
       const rect = canvas.getBoundingClientRect();
-      canvas.width = rect.width;
-      canvas.height = rect.height;
+      const w = Math.max(1, Math.round(rect.width));
+      const h = Math.max(1, Math.round(rect.height));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+    };
+
+    syncSize();
+    const resizeObserver = new ResizeObserver(syncSize);
+    resizeObserver.observe(canvas);
+
+    let frame = 0;
+    let lastDrawAt = 0;
+    const draw = (now) => {
+      if (now - lastDrawAt < 33) {
+        animRef.current = requestAnimationFrame(draw);
+        return;
+      }
+      lastDrawAt = now;
+
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const cx = canvas.width / 2;
@@ -78,8 +96,6 @@ export function AICoachPanel({
 
       ctx.strokeStyle = agencyColor;
       ctx.lineWidth = 3;
-      ctx.shadowColor = agencyColor;
-      ctx.shadowBlur = 10;
 
       lines.forEach(([a, b]) => {
         const p1 = joints[a];
@@ -97,7 +113,6 @@ export function AICoachPanel({
         ctx.fill();
       });
 
-      ctx.shadowBlur = 0;
       ctx.fillStyle = 'rgba(255,255,255,0.4)';
       ctx.font = '11px Inter, sans-serif';
       ctx.textAlign = 'center';
@@ -111,8 +126,11 @@ export function AICoachPanel({
       animRef.current = requestAnimationFrame(draw);
     };
 
-    draw();
-    return () => cancelAnimationFrame(animRef.current);
+    animRef.current = requestAnimationFrame(draw);
+    return () => {
+      resizeObserver.disconnect();
+      cancelAnimationFrame(animRef.current);
+    };
   }, [agencyColor, speed, isPlaying, mode]);
 
   return (

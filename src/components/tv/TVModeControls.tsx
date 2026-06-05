@@ -26,7 +26,7 @@ export function TVModeControls({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-between',
-        padding: '12px 24px',
+        padding: '12px 16px calc(12px + env(safe-area-inset-bottom, 0px))',
         borderTop: '1px solid rgba(255,255,255,0.06)',
         background: 'rgba(0,0,0,0.5)',
         backdropFilter: 'blur(10px)',

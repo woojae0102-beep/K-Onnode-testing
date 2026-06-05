@@ -58,6 +58,19 @@ body.tv-active {
   opacity: 0.6;
 }
 
+.tv-panel video {
+  transform: scaleX(-1) translateZ(0);
+  -webkit-transform: scaleX(-1) translateZ(0);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.tv-panel canvas {
+  transform: scaleX(-1) translateZ(0);
+  -webkit-transform: scaleX(-1) translateZ(0);
+  pointer-events: none;
+}
+
 .tv-panel::after {
   content: '';
   position: absolute;
@@ -97,16 +110,35 @@ body.tv-active {
   min-height: 0;
 }
 
+.tv-mode.tv-entry-screen .tv-entry-back {
+  min-height: 44px;
+  touch-action: manipulation;
+}
+
 @media (max-width: 767px) {
+  .tv-mode {
+    min-height: 100dvh;
+  }
+
+  .tv-entry-screen {
+    justify-content: flex-start;
+    padding-top: calc(56px + env(safe-area-inset-top, 0px)) !important;
+  }
+
   .tv-layout-grid {
     grid-template-columns: 1fr;
     grid-template-rows: auto;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    padding-bottom: env(safe-area-inset-bottom, 0px);
   }
 
   .tv-layout-grid > * {
-    min-height: 220px;
+    min-height: 200px;
+  }
+
+  .tv-mode .tv-panel {
+    min-height: 200px;
   }
 
   .tv-entry-agencies {
