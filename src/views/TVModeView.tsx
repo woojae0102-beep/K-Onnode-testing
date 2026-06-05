@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import '../styles/tv-mode.css';
 import type { Agency, SessionData, TrainingMode } from '../types/tv';
 import { useAuth } from '../contexts/AuthContext';
@@ -67,11 +67,20 @@ export default function TVModeView({ onNavigate } = {}) {
   }, []);
 
   const handleHome = useCallback(() => {
-    document.body.classList.remove('tv-active');
+    document.body.classList.remove('tv-active', 'tv-result-open');
     setPhase('entry');
     setSessionData(null);
     onNavigate?.('home');
   }, [onNavigate]);
+
+  useEffect(() => {
+    if (phase === 'result') {
+      document.body.classList.add('tv-result-open');
+    } else {
+      document.body.classList.remove('tv-result-open');
+    }
+    return () => document.body.classList.remove('tv-result-open');
+  }, [phase]);
 
   if (phase === 'entry') {
     return <TVModeEntry onStart={handleStart} onBack={() => onNavigate?.('home')} />;
