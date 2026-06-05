@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useState } from 'react';
+import { buildDancePersonaFallback } from '../utils/coachingFallbacks';
 import type { SongAnalysis } from './useSpotifyAnalysis';
 
 export type DanceSessionPhase = 'start' | 'mid' | 'end' | 'realtime';
@@ -61,13 +62,17 @@ export function useDancePersonaCoach() {
             coachMode: args.coachMode || 'single',
           }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as DanceCoachFeedback;
-        setLatest(data);
-        return data;
+        if (res.ok) {
+          const data = (await res.json()) as DanceCoachFeedback;
+          setLatest(data);
+          return data;
+        }
+        throw new Error(`HTTP ${res.status}`);
       } catch (err: any) {
-        setError(String(err?.message || err));
-        return null;
+        const fallback = buildDancePersonaFallback(args) as DanceCoachFeedback;
+        setLatest(fallback);
+        setError(null);
+        return fallback;
       } finally {
         setIsLoading(false);
       }

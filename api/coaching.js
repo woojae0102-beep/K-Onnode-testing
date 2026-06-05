@@ -211,6 +211,122 @@ function vocalFallback(args = {}) {
   };
 }
 
+function vocalCloneFallback(body = {}) {
+  const vc = body.vocalCharacteristics || {};
+  const avgPitch = Number(vc.avgPitch) || 220;
+  return {
+    voiceId: `voice_${Date.now()}`,
+    profile: {
+      avgPitch,
+      range: vc.range || '중음역',
+      type: vc.type || '맑은 중음형',
+      stability: Number(vc.stability) || 70,
+      timbre: avgPitch > 250 ? '밝고 맑은 톤' : avgPitch > 180 ? '안정적인 중음' : '깊고 따뜻한 저음',
+    },
+    teachingNote: '당신의 목소리 톤을 학습했습니다. AI가 같은 음색으로 모범창을 불러드릴게요.',
+    source: 'fallback',
+  };
+}
+
+async function handleVocalClone(body) {
+  const fallback = vocalCloneFallback(body);
+  const prompt = `보컬 목소리 클론 프로필 JSON을 생성하세요.
+사용자 목소리 특성: ${JSON.stringify(body.vocalCharacteristics || {})}
+곡: ${JSON.stringify(body.songAnalysis || {})}
+필드: voiceId, profile(avgPitch,range,type,stability,timbre), teachingNote`;
+  const result = await callClaude({ prompt, maxTokens: 350 });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+}
+
+function vocalCoverFallback(body = {}) {
+  const song = body.songAnalysis || {};
+  const lyrics = Array.isArray(body.lyrics) && body.lyrics.length
+    ? body.lyrics
+    : ['첫 소절을 감정을 담아 부르세요', '호흡을 먼저 느끼고 음정을 얹어보세요'];
+  return {
+    teachingIntro: `'${song.trackName || '이 곡'}'을 당신 목소리 톤으로 모범창해 드릴게요. 내 녹음과 비교하며 따라 불러보세요.`,
+    coverLines: lyrics.map((text, i) => ({
+      text: typeof text === 'string' ? text : String(text),
+      tip: i === 0 ? '가사보다 감정을 먼저 떠올리세요' : '이전 음정을 이어가세요',
+    })),
+    comparisonTip: 'AI 모범창을 듣고 바로 이어서 내 목소리로 따라 불러보세요. 차이가 큰 구간을 반복 연습하세요.',
+    source: 'fallback',
+  };
+}
+
+async function handleVocalCover(body) {
+  const fallback = vocalCoverFallback(body);
+  const prompt = `보컬 목소리 카피 모범창 가이드 JSON을 생성하세요.
+곡: ${JSON.stringify(body.songAnalysis || {})}
+목소리 프로필: ${JSON.stringify(body.voiceProfile || {})}
+가사: ${JSON.stringify(body.lyrics || [])}
+필드: teachingIntro, coverLines(array of {text,tip}), comparisonTip`;
+  const result = await callClaude({ prompt, maxTokens: 700 });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+}
+
+function koreanLyricsFallback(body = {}) {
+  const title = body.songTitle || '연습 곡';
+  const artist = body.songArtist ? ` — ${body.songArtist}` : '';
+  return {
+    lyrics: [
+      `${title}${artist}의 분위기에 맞춰 천천히 읽어보세요.`,
+      '오늘도 정확한 발음과 리듬으로 연습해요.',
+      '받침을 또렷하게, 억양은 자연스럽게 이어가세요.',
+      '한 문장씩 끊어 말하면 발음이 더 안정됩니다.',
+    ].join('\n'),
+    source: 'fallback',
+  };
+}
+
+async function handleKoreanLyrics(body) {
+  const fallback = koreanLyricsFallback(body);
+  const prompt = `K-POP/K-드라마 가사 연습용 한국어 텍스트를 생성하세요.
+곡명: ${body.songTitle || ''}
+아티스트: ${body.songArtist || ''}
+4~8문장, 줄바꿈으로 구분. JSON 필드: lyrics (string)`;
+  const result = await callClaude({ prompt, maxTokens: 500 });
+  return result.ok && result.parsed?.lyrics ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+}
+
+function koreanPronunciationFallback(body = {}) {
+  const similarity = Number(body.metrics?.similarity) || Number(body.metrics?.overall) || 0;
+  const tips = [];
+  if (similarity < 60) tips.push('받침과 어미를 기준 문장과 동일하게 맞춰보세요.');
+  if ((body.metrics?.pace || 100) < 60) tips.push('속도를 줄이고 음절마다 끊어 읽어보세요.');
+  if ((body.metrics?.clarity || 100) < 60) tips.push('자음을 더 또렷하게 내보세요.');
+  if (!tips.length) tips.push('발음이 안정적입니다. 억양 디테일을 더 살려보세요.');
+  const personaName = body.songAnalysis?.personaName || '한국어 코치';
+  return {
+    coachLine:
+      body.sessionPhase === 'start'
+        ? `${personaName} 페르소나로 발음 연습을 시작해요.`
+        : body.transcript
+          ? tips[0]
+          : '마이크에 대고 기준 문장을 따라 읽어주세요.',
+    accuracy: similarity || Number(body.metrics?.overall) || 50,
+    syllableTips: tips,
+    correctedReading: body.referenceText || '',
+    encouragement: similarity >= 70 ? '좋아요! 이 흐름을 유지하세요.' : '천천히 한 번 더 따라해 보세요.',
+    personaComment: body.songAnalysis?.vocalAttitude || '가사의 감정을 먼저 떠올리고 발음하세요.',
+    source: 'fallback',
+  };
+}
+
+async function handleKoreanPronunciation(body) {
+  const fallback = koreanPronunciationFallback(body);
+  const prompt = `한국어 발음 코칭 JSON을 생성하세요.
+기준 문장: ${body.referenceText || ''}
+사용자 발화: ${body.transcript || ''}
+지표: ${JSON.stringify(body.metrics || {})}
+곡 페르소나: ${JSON.stringify(body.songAnalysis || {})}
+단계: ${body.sessionPhase || 'realtime'}
+응답 언어: ${languageLabel(body.language)}
+필드: coachLine, accuracy, syllableTips(array), correctedReading, encouragement, personaComment`;
+  const result = await callClaude({ prompt, maxTokens: 500 });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+}
+
 async function handleVocalSoul(body) {
   const fallback = vocalFallback(body);
   const prompt = `보컬 소울 코칭 JSON을 생성하세요.
@@ -237,5 +353,9 @@ module.exports = async function handler(req, res) {
   if (action === 'analyze-song') return res.status(200).json(await handleAnalyzeSong(body));
   if (action === 'dance-persona') return res.status(200).json(await handleDancePersona(body));
   if (action === 'vocal-soul') return res.status(200).json(await handleVocalSoul(body));
+  if (action === 'vocal-clone') return res.status(200).json(await handleVocalClone(body));
+  if (action === 'vocal-cover') return res.status(200).json(await handleVocalCover(body));
+  if (action === 'korean-lyrics') return res.status(200).json(await handleKoreanLyrics(body));
+  if (action === 'korean-pronunciation') return res.status(200).json(await handleKoreanPronunciation(body));
   return res.status(404).json({ error: 'Unknown coaching action', action });
 };

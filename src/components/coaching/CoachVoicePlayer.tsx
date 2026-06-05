@@ -2,7 +2,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { applySpeechRate } from '../../utils/playbackSpeed';
-import { applySpeechRate } from '../../utils/playbackSpeed';
 
 // Web Speech API (브라우저 내장 TTS) 기반 — 무료, 추가 비용 0원.
 // 코치 페르소나마다 rate/pitch만 다르게 설정해 ‘목소리 톤’을 흉내냄.

@@ -3,12 +3,19 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useKoreanSpeechCoach } from '../../hooks/useKoreanSpeechCoach';
 
-export default function PronunciationMode({ onReportUpdate }) {
+export default function PronunciationMode({
+  onReportUpdate,
+  referenceText,
+  onSpeechUpdate,
+  koreanFeedback,
+}) {
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
   const [showRomanized, setShowRomanized] = useState(false);
   const [showTranslation, setShowTranslation] = useState(false);
-  const sampleSentence = t('korean.sampleSentence', { defaultValue: '안녕하세요. 오늘도 또렷한 발음으로 연습해요.' });
+  const sampleSentence =
+    referenceText?.trim() ||
+    t('korean.sampleSentence', { defaultValue: '안녕하세요. 오늘도 또렷한 발음으로 연습해요.' });
   const romanized = 'annyeonghaseyo oneuldo ttoryeothan bareumeuro yeonseuphaeyo';
   const translated = 'Hello. Today again, I practice with clear pronunciation.';
   const { combinedTranscript, volumeLevel, micError, speechError, metrics } = useKoreanSpeechCoach({
@@ -17,6 +24,7 @@ export default function PronunciationMode({ onReportUpdate }) {
   });
 
   useEffect(() => {
+    onSpeechUpdate?.({ transcript: combinedTranscript, metrics, isRecording: recording });
     onReportUpdate?.({
       mode: 'korean-pronunciation',
       recording,
@@ -25,7 +33,7 @@ export default function PronunciationMode({ onReportUpdate }) {
       metrics,
       updatedAt: Date.now(),
     });
-  }, [combinedTranscript, metrics, onReportUpdate, recording, volumeLevel]);
+  }, [combinedTranscript, metrics, onReportUpdate, onSpeechUpdate, recording, volumeLevel]);
 
   return (
     <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">
@@ -63,6 +71,12 @@ export default function PronunciationMode({ onReportUpdate }) {
         ))}
       </div>
       <p className="text-xs text-[#777777]">{t('korean.syllableFeedback')} · 마이크 볼륨 {volumeLevel}%</p>
+      {koreanFeedback?.coachLine ? (
+        <div className="rounded-lg border border-[#1DB971]/30 bg-[#F0FFF7] p-3 text-sm text-[#111111]">
+          <p className="text-[10px] font-semibold text-[#1DB971] mb-1">AI 발음 코치</p>
+          {koreanFeedback.coachLine}
+        </div>
+      ) : null}
       {micError ? <p className="text-xs text-rose-500">{micError}</p> : null}
       {speechError ? <p className="text-xs text-rose-500">{speechError}</p> : null}
     </div>

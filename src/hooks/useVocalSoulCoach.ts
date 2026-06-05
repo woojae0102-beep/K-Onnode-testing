@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useState } from 'react';
+import { buildVocalSoulFallback } from '../utils/coachingFallbacks';
 import type { SongAnalysis } from './useSpotifyAnalysis';
 
 export type VocalSessionPhase = 'start' | 'mid' | 'end' | 'realtime';
@@ -119,13 +120,17 @@ export function useVocalSoulCoach() {
             coachMode: args.coachMode || 'single',
           }),
         });
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as VocalSoulFeedback;
-        setLatest(data);
-        return data;
+        if (res.ok) {
+          const data = (await res.json()) as VocalSoulFeedback;
+          setLatest(data);
+          return data;
+        }
+        throw new Error(`HTTP ${res.status}`);
       } catch (err: any) {
-        setError(String(err?.message || err));
-        return null;
+        const fallback = buildVocalSoulFallback(args) as VocalSoulFeedback;
+        setLatest(fallback);
+        setError(null);
+        return fallback;
       } finally {
         setIsLoading(false);
       }

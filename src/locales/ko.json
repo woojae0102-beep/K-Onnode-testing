@@ -823,6 +823,16 @@
     },
     "dance": {
       "tag": "AI 댄스 페르소나 코칭",
+      "panelTitle": "AI 댄스 페르소나 티칭",
+      "panelSubtitle": "곡을 분석하면 이 곡의 캐릭터가 생성되고, 그 페르소나로 실시간 코칭합니다",
+      "waitingTitle": "페르소나 생성 대기 중",
+      "waitingDesc": "위에서 곡명을 입력하고 분석을 눌러주세요",
+      "cameraHint": "카메라를 켜면 페르소나 코치가 실시간으로 자세를 교정합니다",
+      "steps": {
+        "search": "곡 검색",
+        "persona": "페르소나 생성",
+        "practice": "따라 연습"
+      },
       "empty": "곡을 분석하면 페르소나 코칭이 시작됩니다.",
       "thinking": "코치가 페르소나에 맞춰 코멘트를 준비 중입니다…",
       "activated": "페르소나가 살아있어요",
@@ -831,6 +841,30 @@
       "emotionalScore": "감정 표현 점수",
       "keyCorrection": "핵심 교정 포인트",
       "personaComment": "페르소나 코멘트"
+    },
+    "korean": {
+      "tag": "AI 한국어 발음 코칭",
+      "panelTitle": "AI 한국어 발음 티칭",
+      "panelSubtitle": "곡 가사·문장을 불러와 페르소나 코치가 실시간 발음을 교정합니다",
+      "defaultPersona": "한국어 발음 코치",
+      "empty": "연습 문장을 입력하고 녹음을 시작하세요.",
+      "thinking": "발음 코치가 피드백을 준비 중입니다…",
+      "accuracy": "발음 정확도 {{value}}%",
+      "correctReading": "모범 발음 문장",
+      "songTitle": "곡명",
+      "songArtist": "아티스트",
+      "loadLyrics": "가사 불러오기",
+      "loadingLyrics": "가사 로딩…",
+      "analyzePersona": "페르소나 분석",
+      "practiceText": "연습 문장",
+      "practicePlaceholder": "연습할 한국어 문장을 입력하거나 가사를 불러오세요",
+      "coachSpeed": "코치 음성 속도",
+      "recordHint": "아래 모드에서 녹음을 시작하면 실시간 발음 코칭이 시작됩니다",
+      "steps": {
+        "lyrics": "가사/문장",
+        "persona": "페르소나",
+        "speak": "따라 말하기"
+      }
     },
     "vocal": {
       "tag": "AI 보컬 소울 코칭",
@@ -843,7 +877,26 @@
       "visualization": "시각화 연습",
       "technicalAsEmotion": "감정 언어 교정",
       "breathingTip": "호흡 팁",
-      "soulDirection": "소울 방향성"
+      "soulDirection": "소울 방향성",
+      "cover": {
+        "panelTitle": "AI 목소리 카피 티칭",
+        "panelSubtitle": "내 목소리를 학습해 같은 음색으로 모범창을 불러줍니다",
+        "waitSong": "곡을 먼저 분석해주세요",
+        "waitSongDesc": "곡 페르소나가 생성되면 목소리 카피 티칭을 시작할 수 있어요",
+        "myVoice": "내 녹음",
+        "aiCover": "AI 모범창 (내 목소리)",
+        "recordHint": "녹음 버튼으로 샘플을 남기거나, 아래 실시간 녹음을 이용하세요",
+        "liveCapturing": "실시간 녹음 중 — 목소리 특성을 분석하고 있어요",
+        "liveOn": "실시간 마이크 입력 연동 중",
+        "startRecord": "샘플 녹음",
+        "stopRecord": "녹음 중지",
+        "coverHint": "목소리 샘플이 준비되면 모범창을 생성할 수 있어요",
+        "generate": "AI 모범창 생성",
+        "generating": "생성 중…",
+        "lyricsGuide": "가사별 티칭 가이드",
+        "pitchStatus": "현재 음정 정확도 {{value}}%",
+        "reset": "목소리 카피 초기화"
+      }
     },
     "settings": {
       "title": "AI 코치 페르소나",

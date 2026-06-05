@@ -7,7 +7,7 @@ function normalize(text) {
   return String(text || '').toLowerCase().replace(/[^0-9a-zA-Z가-힣]/g, '');
 }
 
-export default function LyricsVocabMode({ onReportUpdate }) {
+export default function LyricsVocabMode({ onReportUpdate, referenceText, onSpeechUpdate, koreanFeedback }) {
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
   const vocab = [
@@ -16,7 +16,9 @@ export default function LyricsVocabMode({ onReportUpdate }) {
     { word: '발음', meaning: 'pronunciation' },
     { word: '리듬', meaning: 'rhythm' },
   ];
-  const referenceSentence = '무대 위에서 연습한 발음과 리듬을 정확하게 보여줄게요.';
+  const referenceSentence =
+    referenceText?.trim().split('\n')[0] ||
+    '무대 위에서 연습한 발음과 리듬을 정확하게 보여줄게요.';
   const { combinedTranscript, metrics, micError, speechError } = useKoreanSpeechCoach({
     active: recording,
     referenceText: referenceSentence,
@@ -33,6 +35,7 @@ export default function LyricsVocabMode({ onReportUpdate }) {
   const overall = Math.round(vocabScore * 0.5 + metrics.overall * 0.5);
 
   useEffect(() => {
+    onSpeechUpdate?.({ transcript: combinedTranscript, metrics, isRecording: recording });
     onReportUpdate?.({
       mode: 'korean-lyrics',
       recording,
@@ -44,7 +47,7 @@ export default function LyricsVocabMode({ onReportUpdate }) {
       overall,
       updatedAt: Date.now(),
     });
-  }, [combinedTranscript, matchedCount, matchedWords.length, metrics, onReportUpdate, overall, recording, vocabScore]);
+  }, [combinedTranscript, matchedCount, matchedWords.length, metrics, onReportUpdate, onSpeechUpdate, overall, recording, vocabScore]);
 
   return (
     <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">

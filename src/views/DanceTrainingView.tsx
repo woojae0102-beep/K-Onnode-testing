@@ -21,8 +21,7 @@ import {
   shouldPreferDirectVideoDisplay,
   syncCanvasToVideo,
 } from '../utils/cameraFrameLoop';
-import SongPersonaCard from '../components/coaching/SongPersonaCard';
-import DancePersonaFeedback from '../components/coaching/DancePersonaFeedback';
+import DancePersonaCoachPanel from '../components/coaching/DancePersonaCoachPanel';
 import PlaybackSpeedControl from '../components/common/PlaybackSpeedControl';
 import YouTubePlayer from '../components/dance/YouTubePlayer';
 
@@ -388,7 +387,30 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   };
 
   return (
-    <div className="min-h-full p-4 md:p-6 bg-[#F5F5F7]">
+    <div className="min-h-full p-4 md:p-6 bg-[#F5F5F7] space-y-4">
+      <DancePersonaCoachPanel
+        songQuery={songQuery}
+        onSongQueryChange={setSongQuery}
+        onAnalyze={handleAnalyzeSong}
+        onReset={() => {
+          resetSongAnalysis();
+          resetDanceCoach();
+          setSongQuery('');
+          setCurrentPhase('idle');
+        }}
+        isSongAnalyzing={isSongAnalyzing}
+        songAnalysis={songAnalysis}
+        feedback={danceCoachFeedback}
+        coachPersona={coachPersona}
+        language={language}
+        loading={isCoachLoading}
+        phaseLabel={phaseLabel}
+        currentPhase={currentPhase}
+        playbackSpeed={rate}
+        autoPlay={currentPhase !== 'realtime' || cameraOn}
+        cameraOn={cameraOn}
+      />
+
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <div className="xl:col-span-3 rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">
           <YouTubeImport onLoad={setVideoUrl} initialUrl={DEFAULT_YOUTUBE_URL} />
@@ -421,59 +443,6 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
         </div>
 
         <div className="xl:col-span-2 space-y-3">
-          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3 space-y-2">
-            <p className="text-xs font-semibold text-[#111111]">
-              {t('coaching.song.title')}
-            </p>
-            <div className="flex gap-2">
-              <input
-                value={songQuery}
-                onChange={(e) => setSongQuery(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleAnalyzeSong();
-                }}
-                placeholder={t('coaching.song.placeholder')}
-                className="flex-1 rounded-lg border border-[#E5E5E5] px-3 py-2 text-sm"
-              />
-              <button
-                type="button"
-                onClick={handleAnalyzeSong}
-                disabled={isSongAnalyzing || !songQuery.trim()}
-                className="rounded-lg bg-[#FF1F8E] px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-              >
-                {isSongAnalyzing ? t('coaching.song.analyzing') : t('coaching.song.analyze')}
-              </button>
-              {songAnalysis ? (
-                <button
-                  type="button"
-                  onClick={() => {
-                    resetSongAnalysis();
-                    resetDanceCoach();
-                    setSongQuery('');
-                    setCurrentPhase('idle');
-                  }}
-                  className="rounded-lg border border-[#E5E5E5] px-2 py-2 text-xs text-slate-500"
-                >
-                  {t('coaching.song.reset')}
-                </button>
-              ) : null}
-            </div>
-            {songAnalysis ? <SongPersonaCard analysis={songAnalysis} mode="dance" /> : null}
-          </div>
-
-          {songAnalysis ? (
-            <DancePersonaFeedback
-              feedback={danceCoachFeedback}
-              coachPersona={coachPersona}
-              language={language}
-              personaName={songAnalysis.personaName}
-              loading={isCoachLoading}
-              phaseLabel={phaseLabel}
-              autoPlay={currentPhase !== 'realtime' || cameraOn}
-              playbackSpeed={rate}
-            />
-          ) : null}
-
           <div
             ref={cameraBoxRef}
             className={`rounded-xl border border-[#E5E5E5] bg-black relative overflow-hidden ${

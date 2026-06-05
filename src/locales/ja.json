@@ -819,6 +819,16 @@
     },
     "dance": {
       "tag": "AIダンスペルソナコーチング",
+      "panelTitle": "AIダンスペルソナティーチング",
+      "panelSubtitle": "曲を分析するとキャラクターが生成され、リアルタイムでコーチングします",
+      "waitingTitle": "ペルソナ生成待ち",
+      "waitingDesc": "上で曲名を入力して分析を押してください",
+      "cameraHint": "カメラをオンにするとリアルタイムで姿勢をコーチングします",
+      "steps": {
+        "search": "曲検索",
+        "persona": "ペルソナ生成",
+        "practice": "フォロー練習"
+      },
       "empty": "曲を分析するとペルソナコーチングが始まります。",
       "thinking": "コーチがコメントを準備中…",
       "activated": "ペルソナが生きています",
@@ -827,6 +837,30 @@
       "emotionalScore": "表現スコア",
       "keyCorrection": "重要な修正ポイント",
       "personaComment": "ペルソナコメント"
+    },
+    "korean": {
+      "tag": "AI韓国語発音コーチング",
+      "panelTitle": "AI韓国語発音ティーチング",
+      "panelSubtitle": "歌詞を読み込み、ペルソナコーチがリアルタイムで発音を矯正します",
+      "defaultPersona": "韓国語発音コーチ",
+      "empty": "練習文を入力して録音を開始してください。",
+      "thinking": "発音コーチがフィードバックを準備中…",
+      "accuracy": "発音精度 {{value}}%",
+      "correctReading": "模範発音文",
+      "songTitle": "曲名",
+      "songArtist": "アーティスト",
+      "loadLyrics": "歌詞を読み込む",
+      "loadingLyrics": "歌詞読み込み中…",
+      "analyzePersona": "ペルソナ分析",
+      "practiceText": "練習文",
+      "practicePlaceholder": "練習する韓国語文を入力するか歌詞を読み込んでください",
+      "coachSpeed": "コーチ音声速度",
+      "recordHint": "下のモードで録音を開始するとライブコーチングが始まります",
+      "steps": {
+        "lyrics": "歌詞/文",
+        "persona": "ペルソナ",
+        "speak": "まねて話す"
+      }
     },
     "vocal": {
       "tag": "AIボーカル ソウルコーチング",
@@ -839,7 +873,26 @@
       "visualization": "可視化トレーニング",
       "technicalAsEmotion": "感情言語で修正",
       "breathingTip": "呼吸ティップ",
-      "soulDirection": "ソウルの方向"
+      "soulDirection": "ソウルの方向",
+      "cover": {
+        "panelTitle": "AI声カピーティーチング",
+        "panelSubtitle": "あなたの声を学習し、同じ音色で模範歌唱します",
+        "waitSong": "まず曲を分析してください",
+        "waitSongDesc": "曲ペルソナ生成後に声カピーが始まります",
+        "myVoice": "自分の録音",
+        "aiCover": "AI模範（自分の声）",
+        "recordHint": "サンプル録音または下のリアルタイム録音を使ってください",
+        "liveCapturing": "リアルタイム録音中 — 声を分析しています",
+        "liveOn": "ライブマイク入力連携中",
+        "startRecord": "サンプル録音",
+        "stopRecord": "録音停止",
+        "coverHint": "声サンプルが準備できたら模範を生成できます",
+        "generate": "AI模範生成",
+        "generating": "生成中…",
+        "lyricsGuide": "歌詞別ガイド",
+        "pitchStatus": "現在の音程精度 {{value}}%",
+        "reset": "声カピーをリセット"
+      }
     },
     "settings": {
       "title": "AIコーチ ペルソナ",

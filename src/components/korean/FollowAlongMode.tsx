@@ -19,17 +19,23 @@ const PRACTICE_LINES = [
   '같이 가도 될까요?',
 ];
 
-export default function FollowAlongMode({ onReportUpdate }) {
+export default function FollowAlongMode({ onReportUpdate, practiceLines, onSpeechUpdate, koreanFeedback }) {
   const { t } = useTranslation();
+  const lines = practiceLines?.length ? practiceLines : PRACTICE_LINES;
   const [activeLineIdx, setActiveLineIdx] = useState(-1);
   const [recording, setRecording] = useState(false);
-  const [lineScores, setLineScores] = useState(Array.from({ length: PRACTICE_LINES.length }, () => null));
+  const [lineScores, setLineScores] = useState(Array.from({ length: lines.length }, () => null));
   const scoreAccRef = useRef({ sum: 0, count: 0 });
   const currentLineRef = useRef(-1);
   const { combinedTranscript, metrics, micError, speechError } = useKoreanSpeechCoach({
     active: recording,
-    referenceText: activeLineIdx >= 0 ? PRACTICE_LINES[activeLineIdx] : '',
+    referenceText: activeLineIdx >= 0 ? lines[activeLineIdx] : '',
   });
+
+  useEffect(() => {
+    setLineScores(Array.from({ length: lines.length }, () => null));
+    setActiveLineIdx(-1);
+  }, [lines]);
 
   const finalizeLineScore = () => {
     const idx = currentLineRef.current;
@@ -53,6 +59,10 @@ export default function FollowAlongMode({ onReportUpdate }) {
     }, 500);
     return () => clearInterval(timer);
   }, [metrics.overall, recording]);
+
+  useEffect(() => {
+    onSpeechUpdate?.({ transcript: combinedTranscript, metrics, isRecording: recording });
+  }, [combinedTranscript, metrics, onSpeechUpdate, recording]);
 
   useEffect(() => {
     const validScores = lineScores.filter((value) => Number.isFinite(value));
@@ -118,7 +128,7 @@ export default function FollowAlongMode({ onReportUpdate }) {
       </div>
       <div className="h-px bg-[#EDEDED]" />
       <p className="text-[11px] text-[#888888]">아래 한 줄씩 녹음 → 점수 확인 → 다시 듣기 흐름으로 연습해요.</p>
-      {PRACTICE_LINES.map((line, idx) => (
+      {lines.map((line, idx) => (
         <div key={idx} className="rounded-lg border border-[#E5E5E5] p-3 flex items-center justify-between">
           <div className="flex-1">
             <p className="text-sm text-[#111111]">{line}</p>

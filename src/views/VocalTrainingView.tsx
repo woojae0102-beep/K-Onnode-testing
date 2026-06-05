@@ -12,6 +12,7 @@ import { useVocalSoulCoach } from '../hooks/useVocalSoulCoach';
 import { useSettingsStore } from '../store/settingsSlice';
 import SongPersonaCard from '../components/coaching/SongPersonaCard';
 import VocalSoulFeedback from '../components/coaching/VocalSoulFeedback';
+import VocalVoiceTeachingPanel from '../components/coaching/VocalVoiceTeachingPanel';
 import PlaybackSpeedControl from '../components/common/PlaybackSpeedControl';
 
 export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
@@ -78,6 +79,7 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
   const [soulPhase, setSoulPhase] = useState('idle');
   const lastRealtimeAtRef = useRef(0);
   const pitchHistoryRef = useRef([]);
+  const [pitchSampleCount, setPitchSampleCount] = useState(0);
   const characteristicsDoneRef = useRef(false);
 
   const handleAnalyzeSong = async () => {
@@ -102,11 +104,13 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
   useEffect(() => {
     if (!recording) return undefined;
     pitchHistoryRef.current = [];
+    setPitchSampleCount(0);
     characteristicsDoneRef.current = false;
     const id = window.setInterval(() => {
       const hz = Number(currentHz);
       if (Number.isFinite(hz) && hz > 0) {
         pitchHistoryRef.current.push(hz);
+        setPitchSampleCount(pitchHistoryRef.current.length);
         if (
           !characteristicsDoneRef.current &&
           pitchHistoryRef.current.length >= 30
@@ -367,8 +371,22 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
               playbackSpeed={playbackSpeed}
             />
           </div>
+          <VocalVoiceTeachingPanel
+            songAnalysis={songAnalysis}
+            vocalCharacteristics={vocalCharacteristics}
+            vocalCoachPersona={vocalCoachPersona}
+            language={language}
+            playbackSpeed={playbackSpeed}
+            lyrics={lines}
+            liveRecording={recording}
+            pitchHistory={pitchHistoryRef.current}
+            pitchSampleCount={pitchSampleCount}
+            pitchAccuracy={pitchAccuracy}
+          />
         </div>
-      ) : null}
+      ) : (
+        <VocalVoiceTeachingPanel songAnalysis={null} />
+      )}
 
       <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">
         <VoiceMatchCoachPanel

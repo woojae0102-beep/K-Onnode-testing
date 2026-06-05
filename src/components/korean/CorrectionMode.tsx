@@ -14,17 +14,23 @@ function buildCorrectionReply(userText, metrics) {
   return tips.join(' ');
 }
 
-export default function CorrectionMode({ onReportUpdate }) {
+export default function CorrectionMode({ onReportUpdate, referenceText, onSpeechUpdate, koreanFeedback }) {
   const { t } = useTranslation();
   const [recording, setRecording] = useState(false);
-  const reference = t('korean.correctionUser', { defaultValue: '오늘도 정확한 발음으로 연습하겠습니다.' });
+  const reference =
+    referenceText?.trim() ||
+    t('korean.correctionUser', { defaultValue: '오늘도 정확한 발음으로 연습하겠습니다.' });
   const { combinedTranscript, interimTranscript, metrics, micError, speechError } = useKoreanSpeechCoach({
     active: recording,
     referenceText: reference,
   });
-  const aiReply = useMemo(() => buildCorrectionReply(combinedTranscript, metrics), [combinedTranscript, metrics]);
+  const aiReply = useMemo(
+    () => koreanFeedback?.coachLine || buildCorrectionReply(combinedTranscript, metrics),
+    [combinedTranscript, koreanFeedback?.coachLine, metrics]
+  );
 
   useEffect(() => {
+    onSpeechUpdate?.({ transcript: combinedTranscript || interimTranscript, metrics, isRecording: recording });
     onReportUpdate?.({
       mode: 'korean-correction',
       recording,
@@ -33,7 +39,7 @@ export default function CorrectionMode({ onReportUpdate }) {
       aiReply,
       updatedAt: Date.now(),
     });
-  }, [aiReply, combinedTranscript, interimTranscript, metrics, onReportUpdate, recording]);
+  }, [aiReply, combinedTranscript, interimTranscript, metrics, onReportUpdate, onSpeechUpdate, recording]);
 
   return (
     <div className="rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">

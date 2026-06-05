@@ -819,6 +819,16 @@
     },
     "dance": {
       "tag": "AI Dance Persona Coaching",
+      "panelTitle": "AI Dance Persona Teaching",
+      "panelSubtitle": "Analyze a song to generate its character and get real-time persona coaching",
+      "waitingTitle": "Waiting for persona",
+      "waitingDesc": "Enter a song above and tap Analyze",
+      "cameraHint": "Turn on the camera for real-time persona pose coaching",
+      "steps": {
+        "search": "Search song",
+        "persona": "Create persona",
+        "practice": "Follow along"
+      },
       "empty": "Analyze a song to start persona coaching.",
       "thinking": "Coach is preparing a persona-aware comment…",
       "activated": "Persona is alive",
@@ -827,6 +837,30 @@
       "emotionalScore": "Expression",
       "keyCorrection": "Key Correction",
       "personaComment": "Persona comment"
+    },
+    "korean": {
+      "tag": "AI Korean Pronunciation Coaching",
+      "panelTitle": "AI Korean Pronunciation Teaching",
+      "panelSubtitle": "Load lyrics and get real-time persona coaching on your pronunciation",
+      "defaultPersona": "Korean pronunciation coach",
+      "empty": "Enter practice text and start recording.",
+      "thinking": "Coach is preparing pronunciation feedback…",
+      "accuracy": "Pronunciation accuracy {{value}}%",
+      "correctReading": "Model pronunciation",
+      "songTitle": "Song title",
+      "songArtist": "Artist",
+      "loadLyrics": "Load lyrics",
+      "loadingLyrics": "Loading lyrics…",
+      "analyzePersona": "Analyze persona",
+      "practiceText": "Practice text",
+      "practicePlaceholder": "Enter Korean text or load lyrics",
+      "coachSpeed": "Coach voice speed",
+      "recordHint": "Start recording in a mode below for live coaching",
+      "steps": {
+        "lyrics": "Lyrics/text",
+        "persona": "Persona",
+        "speak": "Follow along"
+      }
     },
     "vocal": {
       "tag": "AI Vocal Soul Coaching",
@@ -839,7 +873,26 @@
       "visualization": "Visualization exercise",
       "technicalAsEmotion": "Correction as emotion",
       "breathingTip": "Breathing tip",
-      "soulDirection": "Soul direction"
+      "soulDirection": "Soul direction",
+      "cover": {
+        "panelTitle": "AI Voice-Copy Teaching",
+        "panelSubtitle": "Learns your voice and sings a demo cover in your tone",
+        "waitSong": "Analyze a song first",
+        "waitSongDesc": "Voice-copy teaching starts after the song persona is ready",
+        "myVoice": "My recording",
+        "aiCover": "AI demo (my voice)",
+        "recordHint": "Record a sample or use live mic recording below",
+        "liveCapturing": "Live recording — analyzing your voice",
+        "liveOn": "Live mic input connected",
+        "startRecord": "Record sample",
+        "stopRecord": "Stop recording",
+        "coverHint": "Create a demo once your voice sample is ready",
+        "generate": "Generate AI demo",
+        "generating": "Generating…",
+        "lyricsGuide": "Line-by-line guide",
+        "pitchStatus": "Current pitch accuracy {{value}}%",
+        "reset": "Reset voice copy"
+      }
     },
     "settings": {
       "title": "AI Coach Persona",
