@@ -48,6 +48,8 @@ export default function TVModeView({ onNavigate } = {}) {
       weaknesses: data.weaknesses,
       recommendations: data.recommendations,
       passProbability: data.passProbability,
+      coachReview: data.coachReview,
+      feedback: data.feedback,
       completedAt: new Date().toISOString(),
     });
 

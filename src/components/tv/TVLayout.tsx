@@ -5,11 +5,9 @@ import { AGENCY_COLORS } from '../../types/tv';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
 import { useTVMicrophone } from '../../hooks/useTVMicrophone';
 import { useTVMode } from '../../hooks/useTVMode';
+import { buildLocalCoachReview } from '../../utils/tvCoachReview';
 import AICoachPanel from './AICoachPanel';
 import UserCameraPanel from './UserCameraPanel';
-import RealtimeScorePanel from './RealtimeScorePanel';
-import RealtimeFeedbackPanel from './RealtimeFeedbackPanel';
-import TVModeControls from './TVModeControls';
 
 export function TVLayout({
   agency,
@@ -21,7 +19,7 @@ export function TVLayout({
   onExit: (data: any) => void;
 }) {
   const agencyColor = AGENCY_COLORS[agency];
-  const [playbackSpeed, setPlaybackSpeed] = useState(1);
+  const [completing, setCompleting] = useState(false);
 
   const dance = useMediaPipeTV(agencyColor);
   const vocal = useTVMicrophone();
@@ -41,18 +39,13 @@ export function TVLayout({
       }
     : null;
 
-  const { scores, feedback, sessionTime, buildSessionData } = useTVMode({
+  const { feedback, sessionTime, buildSessionData } = useTVMode({
     poseData,
     vocalMetrics,
     agency,
     mode,
-    playbackSpeed,
+    playbackSpeed: 1,
   });
-
-  const handleExit = useCallback(() => {
-    stopTracking();
-    onExit(buildSessionData());
-  }, [stopTracking, onExit, buildSessionData]);
 
   const formatTime = () => {
     const m = Math.floor(sessionTime / 60)
@@ -62,144 +55,86 @@ export function TVLayout({
     return `${m}:${s}`;
   };
 
+  const handleComplete = useCallback(async () => {
+    if (completing) return;
+    setCompleting(true);
+    stopTracking();
+
+    const base = buildSessionData({ feedback });
+    let coachReview = buildLocalCoachReview(base);
+
+    try {
+      const res = await fetch('/api/tv/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          agency,
+          language: 'ko',
+          poseData: poseData || { jointAccuracies: {} },
+          sessionSummary: {
+            overallScore: base.overallScore,
+            weaknesses: base.weaknesses,
+            strengths: base.strengths,
+            mode,
+          },
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.feedback) coachReview = data.feedback;
+      }
+    } catch {
+      /* local review */
+    }
+
+    onExit(buildSessionData({ feedback, coachReview }));
+  }, [completing, stopTracking, buildSessionData, feedback, agency, poseData, mode, onExit]);
+
   return (
-    <div
-      className="tv-mode"
-      style={{
-        width: '100%',
-        height: '100dvh',
-        background: '#030308',
-        display: 'flex',
-        flexDirection: 'column',
-        fontFamily: 'Inter, sans-serif',
-        overflow: 'hidden',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          background: 'rgba(0,0,0,0.4)',
-          backdropFilter: 'blur(10px)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              width: 32,
-              height: 32,
-              background: '#FF1F8E',
-              borderRadius: 8,
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: 14,
-              fontWeight: 700,
-              color: '#fff',
-            }}
-          >
-            O
-          </div>
-          <div>
-            <div style={{ fontSize: 13, fontWeight: 600, color: '#fff', letterSpacing: '0.05em' }}>
-              ONNODE
-            </div>
-            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.4)' }}>TV 연습실 모드</div>
-          </div>
+    <div className="tv-mode tv-training-screen">
+      <header className="tv-training-header">
+        <div className="tv-training-header-left">
+          <span className="tv-training-agency" style={{ color: agencyColor }}>
+            {agency.toUpperCase()}
+          </span>
+          <span className="tv-training-mode">{mode === 'dance' ? '댄스' : '보컬'}</span>
         </div>
+        <span className="tv-training-timer">{formatTime()}</span>
+      </header>
 
-        <div className="tv-header-center" style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-          <div
-            style={{
-              padding: '4px 16px',
-              background: `${agencyColor}22`,
-              border: `1px solid ${agencyColor}66`,
-              borderRadius: 20,
-              fontSize: 12,
-              fontWeight: 600,
-              color: agencyColor,
-              boxShadow: `0 0 12px ${agencyColor}40`,
-            }}
-          >
-            {agency.toUpperCase()} 코치
-          </div>
-          <div
-            style={{
-              padding: '4px 16px',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.1)',
-              borderRadius: 20,
-              fontSize: 12,
-              color: 'rgba(255,255,255,0.6)',
-            }}
-          >
-            {mode === 'dance' ? '🕺 댄스' : '🎤 보컬'}
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div
-            style={{
-              fontSize: 18,
-              fontWeight: 700,
-              color: '#fff',
-              letterSpacing: '0.1em',
-              fontVariantNumeric: 'tabular-nums',
-            }}
-          >
-            {formatTime()}
-          </div>
-          <button
-            type="button"
-            onClick={handleExit}
-            style={{
-              padding: '6px 16px',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 8,
-              color: 'rgba(255,255,255,0.6)',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
-          >
-            종료
-          </button>
-        </div>
-      </div>
-
-      <div className="tv-layout-grid">
-        <AICoachPanel
-          agency={agency}
-          mode={mode}
-          agencyColor={agencyColor}
-          playbackSpeed={playbackSpeed}
-          onSpeedChange={setPlaybackSpeed}
-        />
+      <div className="tv-split-layout">
+        <AICoachPanel agency={agency} mode={mode} agencyColor={agencyColor} />
         <UserCameraPanel
           mode={mode}
-          poseData={poseData}
+          poseData={null}
           isTracking={isTracking}
           onStartTracking={startTracking}
           agencyColor={agencyColor}
           vocalMetrics={vocalMetrics}
           videoRef={isDance ? dance.videoRef : null}
           canvasRef={isDance ? dance.canvasRef : null}
+          showJointBadges={false}
         />
-        <RealtimeScorePanel scores={scores} agency={agency} agencyColor={agencyColor} />
-        <RealtimeFeedbackPanel feedback={feedback} agency={agency} agencyColor={agencyColor} />
       </div>
 
-      <TVModeControls
-        agency={agency}
-        agencyColor={agencyColor}
-        sessionTime={sessionTime}
-        isTracking={isTracking}
-        onToggleTracking={isTracking ? stopTracking : startTracking}
-      />
+      <footer className="tv-training-footer">
+        <button
+          type="button"
+          className="tv-footer-btn tv-footer-btn-secondary"
+          onClick={isTracking ? stopTracking : startTracking}
+        >
+          {isTracking ? (isDance ? '카메라 끄기' : '마이크 끄기') : isDance ? '카메라 켜기' : '마이크 켜기'}
+        </button>
+        <button
+          type="button"
+          className="tv-footer-btn tv-footer-btn-primary"
+          style={{ background: agencyColor }}
+          onClick={handleComplete}
+          disabled={completing}
+        >
+          {completing ? '분석 중...' : '완료'}
+        </button>
+      </footer>
     </div>
   );
 }

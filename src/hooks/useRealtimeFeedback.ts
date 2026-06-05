@@ -70,7 +70,9 @@ export function useRealtimeFeedback(
   mode = 'dance',
   vocalMetrics = null,
   playbackSpeed = 1,
+  options: { silent?: boolean } = {},
 ) {
+  const silent = options.silent === true;
   const [feedback, setFeedback] = useState([]);
   const lastFeedbackTime = useRef(0);
   const lastTimestamp = useRef(0);
@@ -123,11 +125,11 @@ export function useRealtimeFeedback(
 
     setFeedback((prev) => [newFeedback, ...prev].slice(0, 8));
 
-    if (Math.random() < 0.3) {
+    if (!silent && Math.random() < 0.3) {
       speakText(poolFeedback, AGENCY_JUDGE_IDS[agencyId], playbackSpeed);
     }
 
-    if (Math.random() < 0.3) {
+    if (!silent && Math.random() < 0.3) {
       fetchAIFeedback(pose, agencyId);
     }
   };
@@ -156,7 +158,7 @@ export function useRealtimeFeedback(
         timestamp: formatTime(),
       };
       setFeedback((prev) => [newFeedback, ...prev].slice(0, 8));
-      if (Math.random() < 0.3) speakText(vocalMsg, AGENCY_JUDGE_IDS[agency], playbackSpeed);
+      if (!silent && Math.random() < 0.3) speakText(vocalMsg, AGENCY_JUDGE_IDS[agency], playbackSpeed);
       return;
     }
 

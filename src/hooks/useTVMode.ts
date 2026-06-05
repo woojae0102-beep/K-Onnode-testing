@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRealtimeFeedback } from './useRealtimeFeedback';
-import type { Agency, PoseData, ScoreData, SessionData, TrainingMode } from '../types/tv';
+import type { Agency, FeedbackItem, PoseData, ScoreData, SessionData, TrainingMode } from '../types/tv';
 import { metricsToTVScores, vocalMeterToTVScores } from '../utils/poseMetrics';
 
 const AGENCY_WEIGHTS = {
@@ -101,7 +101,9 @@ export function useTVMode({
   const wristHistory = useRef([]);
   const startTime = useRef(Date.now());
 
-  const { feedback } = useRealtimeFeedback(poseData, agency, mode, vocalMetrics, playbackSpeed);
+  const { feedback } = useRealtimeFeedback(poseData, agency, mode, vocalMetrics, playbackSpeed, {
+    silent: true,
+  });
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -151,7 +153,7 @@ export function useTVMode({
 
   const overallScore = useMemo(() => calcOverall(scores, agency), [scores, agency]);
 
-  const buildSessionData = (): SessionData => {
+  const buildSessionData = (extra: { feedback?: FeedbackItem[]; coachReview?: string } = {}): SessionData => {
     const { strengths, weaknesses } = getStrengthsWeaknesses(scores);
     const prevOverall =
       scoreHistory.current.length > 10
@@ -175,6 +177,8 @@ export function useTVMode({
         95,
         Math.max(15, overallScore - 10 + (agency === 'sm' ? 5 : 0)),
       ),
+      feedback: extra.feedback || feedback,
+      coachReview: extra.coachReview,
     };
   };
 

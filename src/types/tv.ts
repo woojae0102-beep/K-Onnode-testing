@@ -46,6 +46,8 @@ export interface SessionData {
   weaknesses: string[];
   recommendations: string[];
   passProbability: number;
+  feedback?: FeedbackItem[];
+  coachReview?: string;
 }
 
 export const AGENCY_COLORS: Record<Agency, string> = {

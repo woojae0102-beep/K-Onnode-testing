@@ -142,6 +142,7 @@ export function UserCameraPanel({
   vocalMetrics = null,
   videoRef = null,
   canvasRef = null,
+  showJointBadges = true,
 }: {
   mode?: 'dance' | 'vocal';
   poseData: PoseData | null;
@@ -156,67 +157,17 @@ export function UserCameraPanel({
   } | null;
   videoRef?: React.RefObject<HTMLVideoElement> | null;
   canvasRef?: React.RefObject<HTMLCanvasElement> | null;
+  showJointBadges?: boolean;
 }) {
   const isVocal = mode === 'vocal';
 
   return (
-    <div
-      className="tv-panel"
-      style={{
-        background: '#0a0a14',
-        border: '1px solid rgba(255,255,255,0.08)',
-        borderRadius: 16,
-        display: 'flex',
-        flexDirection: 'column',
-        position: 'relative',
-        overflow: 'hidden',
-        minHeight: 0,
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          padding: '12px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
-          flexShrink: 0,
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-          <div
-            style={{
-              width: 8,
-              height: 8,
-              borderRadius: '50%',
-              background: isTracking ? '#00FF88' : '#FF4444',
-              boxShadow: isTracking ? '0 0 8px #00FF88' : '0 0 8px #FF4444',
-            }}
-          />
-          <span
-            style={{
-              fontSize: 11,
-              fontWeight: 600,
-              letterSpacing: '0.1em',
-              color: 'rgba(255,255,255,0.5)',
-              textTransform: 'uppercase',
-            }}
-          >
-            {isVocal ? '실시간 음정 분석' : '실시간 분석'}
-          </span>
-        </div>
-        {isTracking && (
-          <div
-            style={{
-              fontSize: 10,
-              color: '#00FF88',
-              fontWeight: 600,
-              letterSpacing: '0.05em',
-            }}
-          >
-            {isVocal ? 'MIC ACTIVE' : 'TRACKING ACTIVE'}
-          </div>
-        )}
+    <div className="tv-simple-panel tv-camera-panel">
+      <div className="tv-panel-label">
+        {isVocal ? '내 마이크' : '내 카메라'}
+        {isTracking ? (
+          <span style={{ marginLeft: 8, color: '#00FF88', fontSize: 10 }}>● ON</span>
+        ) : null}
       </div>
 
       <div style={{ flex: 1, position: 'relative', background: '#030308', minHeight: 0 }}>
@@ -229,7 +180,7 @@ export function UserCameraPanel({
               onStartTracking={onStartTracking}
               agencyColor={agencyColor}
             />
-            {isTracking ? <JointAccuracyBadges poseData={poseData} /> : null}
+            {isTracking && showJointBadges ? <JointAccuracyBadges poseData={poseData} /> : null}
           </>
         ) : null}
 
