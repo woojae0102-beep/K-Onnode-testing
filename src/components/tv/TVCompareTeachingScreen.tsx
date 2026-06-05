@@ -237,6 +237,7 @@ export default function TVCompareTeachingScreen({
           onChange={setPlaybackRate}
           variant="dark"
           label="페르소나 영상 속도"
+          compact
         />
       </div>
 

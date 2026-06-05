@@ -371,12 +371,122 @@ body.tv-active {
   50% { opacity: 0.3; }
 }
 
-/* ── 모바일 ── */
-@media (max-width: 767px) {
-  .tv-split-layout {
-    grid-template-columns: 1fr;
-    grid-template-rows: minmax(200px, 1fr) minmax(240px, 1.2fr);
+/* ── 분할 패널 공통 (높이 채우기) ── */
+.tv-split-layout .tv-simple-panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  overflow: hidden;
+}
+
+.tv-reference-panel .tv-reference-body,
+.tv-compare-persona-wrap,
+.tv-compare-right-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.tv-reference-player,
+.tv-compare-persona-wrap > .tv-compare-ref-video,
+.tv-compare-persona-wrap > .relative,
+.tv-compare-persona-wrap > .bg-black {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  flex: unset;
+}
+
+.tv-compare-my-video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* ── 모바일 세로: 위·아래 스택 ── */
+@media (max-width: 767px) and (orientation: portrait) {
+  .tv-training-screen,
+  .tv-compare-screen {
+    height: 100dvh;
+    height: 100svh;
     overflow: hidden;
+  }
+
+  .tv-split-layout,
+  .tv-compare-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 6px;
+    padding: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .tv-training-header {
+    padding-top: calc(8px + env(safe-area-inset-top, 0px));
+    padding-bottom: 8px;
+    min-height: unset;
+  }
+
+  .tv-compare-feedback-banner {
+    padding: 6px 12px;
+  }
+
+  .tv-compare-speed {
+    padding: 6px 12px;
+  }
+
+  .tv-compare-controls {
+    padding: 0 12px 6px;
+  }
+
+  .tv-compare-review {
+    max-height: 56px;
+    padding: 0 12px 4px;
+  }
+
+  .tv-compare-review .tv-result-coach {
+    padding: 8px 10px;
+    gap: 8px;
+  }
+
+  .tv-compare-review .tv-result-coach-avatar {
+    width: 40px;
+    height: 40px;
+  }
+
+  .tv-compare-review .tv-result-coach-avatar span {
+    font-size: 24px !important;
+  }
+
+  .tv-compare-review .tv-result-coach-bubble {
+    font-size: 11px;
+    line-height: 1.4;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .tv-compare-footer {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 8px 12px;
+    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tv-compare-footer .tv-footer-btn {
+    min-width: 0;
+    flex: 1;
+    min-height: 44px;
+    font-size: 12px;
+    padding: 0 6px;
   }
 
   .tv-entry-screen {
@@ -397,17 +507,77 @@ body.tv-active {
   }
 }
 
+/* ── 모바일 가로: 좌·우 나란히 (노트북과 동일) ── */
+@media (max-width: 767px) and (orientation: landscape) {
+  .tv-training-screen,
+  .tv-compare-screen {
+    height: 100dvh;
+    height: 100svh;
+    overflow: hidden;
+  }
+
+  .tv-split-layout,
+  .tv-compare-split {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 6px;
+    padding: 6px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .tv-training-header {
+    padding-top: calc(6px + env(safe-area-inset-top, 0px));
+    padding-bottom: 6px;
+    min-height: unset;
+  }
+
+  .tv-compare-feedback-banner {
+    padding: 4px 12px;
+  }
+
+  .tv-compare-speed {
+    padding: 4px 12px;
+  }
+
+  .tv-compare-controls {
+    padding: 0 12px 4px;
+  }
+
+  .tv-compare-review {
+    max-height: 48px;
+    padding: 0 12px 4px;
+  }
+
+  .tv-compare-review .tv-result-coach {
+    padding: 6px 10px;
+  }
+
+  .tv-compare-review .tv-result-coach-avatar {
+    width: 36px;
+    height: 36px;
+  }
+
+  .tv-compare-footer {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 6px 12px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tv-compare-footer .tv-footer-btn {
+    min-width: 0;
+    flex: 1;
+    min-height: 40px;
+    font-size: 12px;
+  }
+}
+
 @media (min-width: 768px) and (max-width: 1024px) {
   .tv-split-layout {
     gap: 10px;
     padding: 10px;
-  }
-}
-
-@media (max-width: 767px) and (orientation: landscape) {
-  .tv-split-layout {
-    grid-template-columns: 1fr 1fr;
-    grid-template-rows: 1fr;
   }
 }
 
@@ -560,7 +730,13 @@ body.tv-active {
   min-height: 0;
   position: relative;
   background: #030308;
-  display: flex;
+}
+
+.tv-compare-right-body > * {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
 }
 
 .tv-compare-right-body .tv-simple-panel,
@@ -571,14 +747,8 @@ body.tv-active {
   min-height: 0;
 }
 
-.tv-compare-my-video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
 
 .tv-compare-vocal-recording {
-  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -637,19 +807,16 @@ body.tv-active {
 }
 
 .tv-compare-footer {
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
 }
 
 .tv-compare-footer .tv-footer-btn {
-  min-width: calc(33% - 8px);
+  min-width: 0;
+  flex: 1;
 }
 
-@media (max-width: 767px) {
+@media (min-width: 768px) {
   .tv-compare-review {
-    max-height: 100px;
-  }
-
-  .tv-compare-footer .tv-footer-btn {
-    min-width: calc(50% - 6px);
+    max-height: 140px;
   }
 }

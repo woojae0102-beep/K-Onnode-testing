@@ -93,10 +93,12 @@ const YouTubeTVPlayer = forwardRef(function YouTubeTVPlayer(
     }
   }, [playbackRate]);
 
-  if (!videoId) return <div className={`bg-black ${className}`} />;
+  if (!videoId) {
+    return <div className={`absolute inset-0 w-full h-full bg-black ${className}`} />;
+  }
 
   return (
-    <div className={`relative overflow-hidden bg-black ${className}`}>
+    <div className={`absolute inset-0 w-full h-full overflow-hidden bg-black ${className}`}>
       <div ref={hostRef} className="absolute inset-0 w-full h-full" />
     </div>
   );
