@@ -496,6 +496,13 @@
     "agencyAudition": "기획사 오디션",
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
   },
+  "training": {
+    "tabs": {
+      "aria": "트레이닝 모드",
+      "practice": "실시간 연습",
+      "teaching": "AI 티칭"
+    }
+  },
   "teaching": {
     "session": {
       "steps": {
@@ -751,7 +758,8 @@
       "pronunciation": "발음 연습",
       "follow": "문장 따라 말하기",
       "correction": "AI 발음 교정",
-      "lyricsVocab": "가사 기반 학습"
+      "lyricsVocab": "가사 기반 학습",
+      "teaching": "AI 발음 티칭"
     },
     "sampleSentence": "오늘도 정확한 발음과 리듬으로 연습해요.",
     "toggleRomanized": "로마자 보기/숨기기",

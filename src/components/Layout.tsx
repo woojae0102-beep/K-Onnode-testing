@@ -12,9 +12,6 @@ import AICoachView from '../views/AICoachView';
 import DanceTrainingView from '../views/DanceTrainingView';
 import VocalTrainingView from '../views/VocalTrainingView';
 import KoreanAIView from '../views/KoreanAIView';
-import DanceTeachingView from '../views/DanceTeachingView';
-import VocalTeachingView from '../views/VocalTeachingView';
-import KoreanTeachingView from '../views/KoreanTeachingView';
 import MyPageView from '../views/MyPageView';
 import NotificationsView from '../views/NotificationsView';
 import SettingsView from '../views/SettingsView';
@@ -77,7 +74,7 @@ const TRAINING_VIEWS = [
 export default function Layout(props) {
   const [activeTab, setActiveTab] = useState('home');
   const [mainView, setMainView] = useState('home');
-  const [lastTrainingView, setLastTrainingView] = useState('dance-teaching');
+  const [lastTrainingView, setLastTrainingView] = useState('dance');
   usePracticeReminderNotifications();
 
   useEffect(() => {
@@ -131,11 +128,11 @@ export default function Layout(props) {
       case 'korean':
         return <KoreanAIView />;
       case 'dance-teaching':
-        return <DanceTeachingView onNavigate={handleSelectView} />;
+        return <DanceTrainingView onNavigate={handleSelectView} initialSection="teaching" />;
       case 'vocal-teaching':
-        return <VocalTeachingView onNavigate={handleSelectView} />;
+        return <VocalTrainingView onNavigate={handleSelectView} initialSection="teaching" />;
       case 'korean-teaching':
-        return <KoreanTeachingView onNavigate={handleSelectView} />;
+        return <KoreanAIView initialSection="teaching" />;
       case 'agency-audition':
         return <AgencyAuditionView />;
       case 'tv-mode':

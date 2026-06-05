@@ -53,34 +53,33 @@ export function SplitScreenPlayer({
           className="w-full accent-[#FF1F8E] touch-manipulation min-h-[32px]"
           style={{ background: `linear-gradient(to right, #FF1F8E ${pct}%, #333 ${pct}%)` }}
         />
-        <div className="flex flex-wrap items-center gap-2 justify-center">
-          <button
-            type="button"
-            onClick={onPlayPause}
-            className="min-h-[44px] px-4 py-2 rounded-lg bg-[#FF1F8E] text-white text-sm font-semibold touch-manipulation"
-          >
-            {isPlaying ? '⏸ 정지' : '⏵ 재생'}
-          </button>
-          <div className="w-full sm:w-auto min-w-[200px]">
-            <PlaybackSpeedControl
-              value={playbackRate}
-              onChange={onRateChange}
-              variant="dark"
-              compact
-              showPresets={false}
-            />
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center gap-2 justify-center">
+            <button
+              type="button"
+              onClick={onPlayPause}
+              className="min-h-[44px] px-4 py-2 rounded-lg bg-[#FF1F8E] text-white text-sm font-semibold touch-manipulation"
+            >
+              {isPlaying ? '⏸ 정지' : '⏵ 재생'}
+            </button>
+            <button
+              type="button"
+              onClick={onLoopToggle}
+              className={`min-h-[44px] px-3 py-2 rounded-lg text-sm touch-manipulation ${loop ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/10 text-white'}`}
+            >
+              루프
+            </button>
+            {extraControls}
+            <span className="text-xs text-white/50 ml-auto tabular-nums">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
           </div>
-          <button
-            type="button"
-            onClick={onLoopToggle}
-            className={`min-h-[44px] px-3 py-2 rounded-lg text-sm touch-manipulation ${loop ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/10 text-white'}`}
-          >
-            루프
-          </button>
-          {extraControls}
-          <span className="text-xs text-white/50 w-full text-center sm:w-auto sm:ml-auto">
-            {formatTime(currentTime)} / {formatTime(duration)}
-          </span>
+          <PlaybackSpeedControl
+            value={playbackRate}
+            onChange={onRateChange}
+            variant="dark"
+            label="재생 속도"
+          />
         </div>
       </div>
     </div>

@@ -13,9 +13,16 @@ import { useSettingsStore } from '../store/settingsSlice';
 import SongPersonaCard from '../components/coaching/SongPersonaCard';
 import VocalSoulFeedback from '../components/coaching/VocalSoulFeedback';
 import PlaybackSpeedControl from '../components/teaching/PlaybackSpeedControl';
+import TrainingSectionTabs from '../components/training/TrainingSectionTabs';
+import VocalTeachingView from './VocalTeachingView';
 
-export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
+export default function VocalTrainingView({ onNavigate, onReportUpdate, initialSection = 'practice' }) {
   const { t } = useTranslation();
+  const [section, setSection] = useState(initialSection);
+
+  useEffect(() => {
+    setSection(initialSection);
+  }, [initialSection]);
   const [recording, setRecording] = useState(false);
   const [targetMidi, setTargetMidi] = useState(60);
   const [autoTarget, setAutoTarget] = useState(true);
@@ -308,8 +315,20 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
     return Math.round(pitch * 0.38 + rhythm * 0.22 + voice * 0.24 + emotion * 0.16);
   }, [pitchAccuracy, rhythmScore, summary?.emotion, summary?.voice]);
 
+  if (section === 'teaching') {
+    return (
+      <div className="min-h-full bg-[#0a0a0f]">
+        <div className="p-4 md:p-6 pb-0">
+          <TrainingSectionTabs active={section} onChange={setSection} variant="dark" />
+        </div>
+        <VocalTeachingView onNavigate={onNavigate} embedded />
+      </div>
+    );
+  }
+
   return (
     <div className="h-full overflow-y-auto p-6 bg-[#F5F5F7] space-y-4">
+      <TrainingSectionTabs active={section} onChange={setSection} />
       <header className="rounded-xl border border-[#E5E5E5] bg-white p-4 flex items-center justify-between">
         <input
           value={songQuery}
@@ -346,12 +365,11 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
 
       {songAnalysis ? (
         <div className="space-y-3">
-          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3">
+          <div className="rounded-xl border border-[#E5E5E5] bg-[#FAFAFA] p-3">
             <PlaybackSpeedControl
               value={playbackSpeed}
               onChange={setPlaybackSpeed}
               variant="light"
-              compact
               label="코치 음성 속도"
             />
           </div>

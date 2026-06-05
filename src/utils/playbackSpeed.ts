@@ -4,7 +4,7 @@ export const PLAYBACK_SPEED_MAX = 2;
 export const PLAYBACK_SPEED_STEP = 0.1;
 export const PLAYBACK_SPEED_DEFAULT = 1;
 
-export const PLAYBACK_SPEED_PRESETS = [0.1, 0.25, 0.5, 0.75, 1, 1.25, 1.5, 2];
+export const PLAYBACK_SPEED_PRESETS = [0.1, 0.3, 0.5, 0.8, 1, 1.3, 1.5, 2];
 
 export function clampPlaybackSpeed(value) {
   const n = Number(value);

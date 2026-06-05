@@ -496,6 +496,13 @@
     "agencyAudition": "Agency Audition",
     "agencyAuditionSub": "HYBE · YG · JYP · SM · Starship"
   },
+  "training": {
+    "tabs": {
+      "aria": "Training mode",
+      "practice": "Live Practice",
+      "teaching": "AI Teaching"
+    }
+  },
   "teaching": {
     "session": {
       "steps": { "setup": "Setup", "practice": "Practice", "review": "Review" },
@@ -747,7 +754,8 @@
       "pronunciation": "Pronunciation",
       "follow": "Follow Along",
       "correction": "AI Correction",
-      "lyricsVocab": "Lyrics Vocabulary"
+      "lyricsVocab": "Lyrics Vocabulary",
+      "teaching": "AI Pronunciation Teaching"
     },
     "sampleSentence": "Practice with clear pronunciation and rhythm today.",
     "toggleRomanized": "Romanization Toggle",

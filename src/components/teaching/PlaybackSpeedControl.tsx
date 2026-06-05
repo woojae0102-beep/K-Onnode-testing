@@ -10,7 +10,7 @@ import {
 } from '../../utils/playbackSpeed';
 
 /**
- * AI 페르소나 티칭/피드백 재생 속도 (0.1x ~ 2x)
+ * 재생 속도 조절 (0.1x ~ 2x) — 모바일 터치 친화 칩 UI
  */
 export function PlaybackSpeedControl({
   value = 1,
@@ -23,47 +23,38 @@ export function PlaybackSpeedControl({
   const speed = clampPlaybackSpeed(value);
   const isDark = variant === 'dark';
 
-  const labelStyle = {
-    fontSize: compact ? 10 : 11,
-    color: isDark ? 'rgba(255,255,255,0.4)' : '#888888',
-    letterSpacing: '0.05em',
-    whiteSpace: 'nowrap',
-  };
+  const borderIdle = isDark ? 'border-white/15 bg-white/5 text-white/60' : 'border-[#E5E5E5] bg-white text-[#666666]';
+  const borderActive = isDark
+    ? 'border-[#FF1F8E] bg-[#FF1F8E]/25 text-[#FF1F8E]'
+    : 'border-[#FF1F8E] bg-[#FFF0F7] text-[#FF1F8E]';
+  const labelColor = isDark ? 'text-white/45' : 'text-[#888888]';
 
-  const sliderAccent = isDark ? '#FF1F8E' : '#FF1F8E';
-
-  return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: compact ? 'row' : 'column',
-        gap: compact ? 8 : 10,
-        alignItems: compact ? 'center' : 'stretch',
-        width: compact ? 'auto' : '100%',
-      }}
-    >
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          gap: 8,
-          minWidth: compact ? 120 : undefined,
-        }}
-      >
-        <span style={labelStyle}>{label}</span>
-        <span
-          style={{
-            fontSize: compact ? 11 : 12,
-            fontWeight: 700,
-            color: isDark ? '#FF1F8E' : '#FF1F8E',
-            fontVariantNumeric: 'tabular-nums',
-            minWidth: 36,
-            textAlign: 'right',
-          }}
-        >
+  if (compact && !showPresets) {
+    return (
+      <div className="flex items-center gap-2 min-w-[160px]">
+        <span className={`text-[10px] font-medium tracking-wide shrink-0 ${labelColor}`}>{label}</span>
+        <input
+          type="range"
+          min={PLAYBACK_SPEED_MIN}
+          max={PLAYBACK_SPEED_MAX}
+          step={PLAYBACK_SPEED_STEP}
+          value={speed}
+          onChange={(e) => onChange?.(clampPlaybackSpeed(Number(e.target.value)))}
+          className="flex-1 min-w-[72px] accent-[#FF1F8E] touch-manipulation min-h-[32px]"
+          aria-label={label}
+        />
+        <span className="text-[11px] font-bold text-[#FF1F8E] tabular-nums min-w-[36px] text-right">
           {formatPlaybackSpeed(speed)}
         </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className={`w-full ${compact ? '' : 'space-y-3'}`}>
+      <div className="flex items-center justify-between gap-3">
+        <span className={`text-[11px] font-semibold tracking-wide ${labelColor}`}>{label}</span>
+        <span className="text-sm font-bold text-[#FF1F8E] tabular-nums">{formatPlaybackSpeed(speed)}</span>
       </div>
 
       <input
@@ -73,22 +64,14 @@ export function PlaybackSpeedControl({
         step={PLAYBACK_SPEED_STEP}
         value={speed}
         onChange={(e) => onChange?.(clampPlaybackSpeed(Number(e.target.value)))}
-        className="touch-manipulation"
-        style={{
-          width: compact ? 100 : '100%',
-          accentColor: sliderAccent,
-          minHeight: 28,
-        }}
+        className="w-full accent-[#FF1F8E] touch-manipulation min-h-[36px]"
         aria-label={label}
       />
 
-      {showPresets && (
+      {showPresets ? (
         <div
-          style={{
-            display: 'flex',
-            flexWrap: 'wrap',
-            gap: 6,
-          }}
+          className="flex gap-2 overflow-x-auto pb-1 -mx-0.5 px-0.5"
+          style={{ WebkitOverflowScrolling: 'touch', scrollbarWidth: 'none' }}
         >
           {PLAYBACK_SPEED_PRESETS.map((preset) => {
             const active = speed === preset;
@@ -97,37 +80,17 @@ export function PlaybackSpeedControl({
                 key={preset}
                 type="button"
                 onClick={() => onChange?.(preset)}
-                style={{
-                  padding: compact ? '3px 8px' : '4px 10px',
-                  fontSize: compact ? 10 : 11,
-                  fontWeight: active ? 600 : 500,
-                  borderRadius: 6,
-                  border: `1px solid ${
-                    active
-                      ? isDark
-                        ? '#FF1F8E'
-                        : '#FF1F8E'
-                      : isDark
-                        ? 'rgba(255,255,255,0.1)'
-                        : '#E5E5E5'
-                  }`,
-                  background: active
-                    ? isDark
-                      ? 'rgba(255,31,142,0.2)'
-                      : '#FFF0F7'
-                    : isDark
-                      ? 'rgba(255,255,255,0.06)'
-                      : '#FFFFFF',
-                  color: active ? '#FF1F8E' : isDark ? 'rgba(255,255,255,0.5)' : '#888888',
-                  cursor: 'pointer',
-                }}
+                className={`shrink-0 min-w-[52px] min-h-[44px] px-3 rounded-xl border text-sm font-semibold tabular-nums touch-manipulation transition-colors ${
+                  active ? borderActive : borderIdle
+                }`}
+                aria-pressed={active}
               >
                 {formatPlaybackSpeed(preset)}
               </button>
             );
           })}
         </div>
-      )}
+      ) : null}
     </div>
   );
 }

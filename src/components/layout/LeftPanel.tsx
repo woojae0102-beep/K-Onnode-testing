@@ -27,21 +27,18 @@ const TRAINING_GROUPS = [
     titleKey: 'leftPanel.danceSection',
     items: [
       { icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
-      { icon: '🎯', labelKey: 'leftPanel.danceTeaching', view: 'dance-teaching', sub: true },
     ],
   },
   {
     titleKey: 'leftPanel.vocalSection',
     items: [
       { icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
-      { icon: '🎵', labelKey: 'leftPanel.vocalTeaching', view: 'vocal-teaching', sub: true },
     ],
   },
   {
     titleKey: 'leftPanel.koreanSection',
     items: [
       { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
-      { icon: '🗣️', labelKey: 'leftPanel.koreanTeaching', view: 'korean-teaching', sub: true },
     ],
   },
 ];
