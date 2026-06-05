@@ -23,9 +23,7 @@ import {
 } from '../utils/cameraFrameLoop';
 import SongPersonaCard from '../components/coaching/SongPersonaCard';
 import DancePersonaFeedback from '../components/coaching/DancePersonaFeedback';
-import PlaybackSpeedControl from '../components/teaching/PlaybackSpeedControl';
-import TrainingSectionTabs from '../components/training/TrainingSectionTabs';
-import DanceTeachingView from './DanceTeachingView';
+import PlaybackSpeedControl from '../components/common/PlaybackSpeedControl';
 import YouTubePlayer from '../components/dance/YouTubePlayer';
 
 const DEFAULT_YOUTUBE_URL =
@@ -33,13 +31,8 @@ const DEFAULT_YOUTUBE_URL =
 const DEFAULT_EMBED_URL =
   'https://www.youtube.com/embed/MPyvBYaCoLc?list=RDMPyvBYaCoLc';
 
-export default function DanceTrainingView({ onNavigate, onReportUpdate, initialSection = 'practice' }) {
+export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   const { t } = useTranslation();
-  const [section, setSection] = useState(initialSection);
-  useEffect(() => {
-    setSection(initialSection);
-  }, [initialSection]);
-
   const [videoUrl, setVideoUrl] = useState(DEFAULT_EMBED_URL);
   const [rate, setRate] = useState(1.0);
   const [mirror, setMirror] = useState(false);
@@ -394,20 +387,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate, initialS
     }
   };
 
-  if (section === 'teaching') {
-    return (
-      <div className="min-h-full bg-[#0a0a0f]">
-        <div className="p-4 md:p-6 pb-0">
-          <TrainingSectionTabs active={section} onChange={setSection} variant="dark" />
-        </div>
-        <DanceTeachingView onNavigate={onNavigate} embedded />
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-full p-4 md:p-6 bg-[#F5F5F7]">
-      <TrainingSectionTabs active={section} onChange={setSection} />
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
         <div className="xl:col-span-3 rounded-xl border border-[#E5E5E5] bg-white p-4 space-y-3">
           <YouTubeImport onLoad={setVideoUrl} initialUrl={DEFAULT_YOUTUBE_URL} />

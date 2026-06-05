@@ -86,17 +86,6 @@ textarea::placeholder {
     caret-color: #ffffff;
   }
 
-  .teaching-dark-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden']),
-  .teaching-dark-shell textarea,
-  .teaching-dark-shell select {
-    color: #ffffff;
-  }
-
-  .teaching-dark-shell input:not([type='checkbox']):not([type='radio']):not([type='range']):not([type='file']):not([type='hidden'])::placeholder,
-  .teaching-dark-shell textarea::placeholder {
-    color: rgba(255, 255, 255, 0.45);
-    opacity: 1;
-  }
 }
 
 input:-webkit-autofill,

@@ -2,7 +2,6 @@
 // TODO: replace with GET /api/user/stats
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { HOME_QUICK_START_TEACHING } from '../config/homeTrainingMenus';
 
 const COLOR = {
   bgPrimary: 'var(--color-background-primary, #FFFFFF)',
@@ -281,15 +280,15 @@ function QuickStartCard({ track, onNavigate }) {
 
 function QuickStartSection({ onNavigate }) {
   const { t } = useTranslation();
-  const teachingTracks = HOME_QUICK_START_TEACHING.map((item) => ({
-    view: item.view,
-    icon: item.icon,
-    accentColor: item.accentColor,
-    title: t(item.titleKey),
-    desc: t(item.descKey),
-    isNew: item.isNew,
-  }));
   const trainingTracks = [
+    {
+      view: 'tv-mode',
+      icon: '📺',
+      accentColor: '#FF1F8E',
+      title: t('leftPanel.tvMode'),
+      desc: t('home.tvModeDesc'),
+      isNew: true,
+    },
     {
       view: 'dance',
       ...QUICK_TRACK_STYLES.dance,
@@ -324,12 +323,6 @@ function QuickStartSection({ onNavigate }) {
   };
   return (
     <section id="quick-start">
-      <p style={sectionLabelStyle}>{t('home.aiTeaching', { defaultValue: 'AI 티칭 · TV 연습실' })}</p>
-      <div style={{ ...gridStyle, marginBottom: 18 }}>
-        {teachingTracks.map((track) => (
-          <QuickStartCard key={track.view} track={track} onNavigate={onNavigate} />
-        ))}
-      </div>
       <p style={sectionLabelStyle}>{t('home.quickStart')}</p>
       <div style={gridStyle}>
         {trainingTracks.map((track) => (

@@ -45,9 +45,6 @@ const VIEW_TO_TAB = {
   dance: 'home',
   vocal: 'home',
   korean: 'home',
-  'dance-teaching': 'home',
-  'vocal-teaching': 'home',
-  'korean-teaching': 'home',
   'agency-audition': 'home',
   'tv-mode': 'home',
   trending: 'discover',
@@ -64,9 +61,6 @@ const TRAINING_VIEWS = [
   'dance',
   'vocal',
   'korean',
-  'dance-teaching',
-  'vocal-teaching',
-  'korean-teaching',
   'tv-mode',
   'aicoach',
 ];
@@ -127,12 +121,6 @@ export default function Layout(props) {
         return <VocalTrainingView onNavigate={handleSelectView} />;
       case 'korean':
         return <KoreanAIView />;
-      case 'dance-teaching':
-        return <DanceTrainingView onNavigate={handleSelectView} initialSection="teaching" />;
-      case 'vocal-teaching':
-        return <VocalTrainingView onNavigate={handleSelectView} initialSection="teaching" />;
-      case 'korean-teaching':
-        return <KoreanAIView initialSection="teaching" />;
       case 'agency-audition':
         return <AgencyAuditionView />;
       case 'tv-mode':

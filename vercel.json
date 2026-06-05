@@ -17,10 +17,6 @@
       "destination": "/api/coaching?path=:path*"
     },
     {
-      "source": "/api/teaching/:path*",
-      "destination": "/api/teaching?path=:path*"
-    },
-    {
       "source": "/api/tv/:path*",
       "destination": "/api/tv?path=:path*"
     },
