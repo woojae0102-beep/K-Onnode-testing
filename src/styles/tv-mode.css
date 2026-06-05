@@ -454,59 +454,164 @@ body.tv-active.tv-result-open {
     min-height: unset;
   }
 
-  .tv-compare-feedback-banner {
-    padding: 6px 12px;
+  .tv-compare-screen {
+    position: fixed;
+    inset: 0;
+    z-index: 35;
+    height: 100dvh;
+    height: 100svh;
   }
 
-  .tv-compare-speed {
-    padding: 6px 12px;
+  .tv-compare-desktop-panel {
+    display: none;
   }
 
-  .tv-compare-controls {
-    padding: 0 12px 6px;
+  .tv-compare-dock {
+    display: flex;
+    flex-shrink: 0;
+    gap: 6px;
+    padding: 6px 10px;
+    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+    background: rgba(0, 0, 0, 0.88);
+    border-top: 1px solid var(--tv-border);
+    z-index: 45;
   }
 
-  .tv-compare-review {
-    max-height: 56px;
-    padding: 0 12px 4px;
+  .tv-compare-dock-btn {
+    flex: 1;
+    min-height: 44px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 2px;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.75);
+    font-size: 10px;
+    font-weight: 600;
+    touch-action: manipulation;
+    cursor: pointer;
   }
 
-  .tv-compare-review .tv-result-coach {
-    padding: 8px 10px;
+  .tv-compare-dock-btn-active {
+    background: rgba(255, 31, 142, 0.15);
+    border-color: rgba(255, 31, 142, 0.45);
+    color: #ff1f8e;
+  }
+
+  .tv-compare-dock-icon {
+    font-size: 14px;
+    line-height: 1;
+  }
+
+  .tv-compare-sheet-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 48;
+    background: rgba(0, 0, 0, 0.55);
+    border: none;
+    cursor: pointer;
+  }
+
+  .tv-compare-sheet {
+    display: flex;
+    flex-direction: column;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 50;
+    max-height: min(72vh, 520px);
+    background: #0a0a14;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(0, 0, 0, 0.5);
+    animation: tv-sheet-up 0.28s ease;
+  }
+
+  @keyframes tv-sheet-up {
+    from {
+      transform: translateY(100%);
+    }
+    to {
+      transform: translateY(0);
+    }
+  }
+
+  .tv-compare-sheet-handle {
+    width: 40px;
+    height: 4px;
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.2);
+    margin: 8px auto 4px;
+    flex-shrink: 0;
+  }
+
+  .tv-compare-sheet-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 4px 16px 8px;
+    flex-shrink: 0;
+  }
+
+  .tv-compare-sheet-header h3 {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 700;
+    color: #fff;
+  }
+
+  .tv-compare-sheet-close {
+    border: none;
+    background: transparent;
+    color: rgba(255, 255, 255, 0.55);
+    font-size: 12px;
+    min-height: 36px;
+    padding: 0 8px;
+    cursor: pointer;
+  }
+
+  .tv-compare-sheet-body {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding: 0 16px 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  .tv-compare-sheet-sync,
+  .tv-compare-sheet-menu {
+    display: flex;
+    flex-direction: column;
     gap: 8px;
   }
 
-  .tv-compare-review .tv-result-coach-avatar {
-    width: 40px;
-    height: 40px;
+  .tv-compare-sheet-feedback .tv-result-coach {
+    margin-bottom: 12px;
   }
 
-  .tv-compare-review .tv-result-coach-avatar span {
-    font-size: 24px !important;
+  .tv-compare-header {
+    padding-top: calc(6px + env(safe-area-inset-top, 0px));
+    padding-bottom: 6px;
+    min-height: unset;
   }
 
-  .tv-compare-review .tv-result-coach-bubble {
-    font-size: 11px;
-    line-height: 1.4;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
+  .tv-compare-panel-label {
+    display: none;
   }
 
-  .tv-compare-footer {
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding: 8px 12px;
-    padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
-  }
-
-  .tv-compare-footer .tv-footer-btn {
-    min-width: 0;
+  .tv-compare-split {
     flex: 1;
-    min-height: 44px;
-    font-size: 12px;
-    padding: 0 6px;
+    min-height: 0;
+  }
+
+  .tv-compare-panel {
+    min-height: 0;
   }
 
   .tv-entry-screen {
@@ -553,44 +658,47 @@ body.tv-active.tv-result-open {
     min-height: unset;
   }
 
-  .tv-compare-feedback-banner {
-    padding: 4px 12px;
+  .tv-compare-header {
+    padding-top: calc(4px + env(safe-area-inset-top, 0px));
+    padding-bottom: 4px;
   }
 
-  .tv-compare-speed {
-    padding: 4px 12px;
+  .tv-compare-training-mode,
+  .tv-training-mode {
+    font-size: 11px;
   }
 
-  .tv-compare-controls {
-    padding: 0 12px 4px;
+  .tv-compare-persona-overlay {
+    top: 6px;
+    left: 6px;
+    padding: 4px 8px;
   }
 
-  .tv-compare-review {
-    max-height: 48px;
-    padding: 0 12px 4px;
+  .tv-compare-avatar {
+    width: 32px;
+    height: 32px;
   }
 
-  .tv-compare-review .tv-result-coach {
-    padding: 6px 10px;
+  .tv-compare-avatar span {
+    font-size: 18px !important;
   }
 
-  .tv-compare-review .tv-result-coach-avatar {
-    width: 36px;
-    height: 36px;
+  .tv-compare-persona-name {
+    font-size: 10px;
   }
 
-  .tv-compare-footer {
-    flex-wrap: nowrap;
-    gap: 6px;
-    padding: 6px 12px;
-    padding-bottom: calc(6px + env(safe-area-inset-bottom, 0px));
+  .tv-compare-dock {
+    padding: 4px 8px;
+    padding-bottom: calc(4px + env(safe-area-inset-bottom, 0px));
   }
 
-  .tv-compare-footer .tv-footer-btn {
-    min-width: 0;
-    flex: 1;
-    min-height: 40px;
-    font-size: 12px;
+  .tv-compare-dock-btn {
+    min-height: 38px;
+    font-size: 9px;
+  }
+
+  .tv-compare-sheet {
+    max-height: min(65vh, 400px);
   }
 }
 
@@ -680,6 +788,40 @@ body.tv-active.tv-result-open {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+}
+
+.tv-compare-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.tv-compare-header-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tv-compare-score-chip {
+  font-size: 12px;
+  font-weight: 700;
+  color: #ff1f8e;
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: rgba(255, 31, 142, 0.12);
+  border: 1px solid rgba(255, 31, 142, 0.25);
+}
+
+.tv-compare-desktop-panel {
+  flex-shrink: 0;
+}
+
+.tv-compare-dock,
+.tv-compare-sheet,
+.tv-compare-sheet-backdrop {
+  display: none;
 }
 
 .tv-compare-feedback-banner {
@@ -847,5 +989,19 @@ body.tv-active.tv-result-open {
 @media (min-width: 768px) {
   .tv-compare-review {
     max-height: 140px;
+  }
+
+  .tv-compare-dock,
+  .tv-compare-sheet,
+  .tv-compare-sheet-backdrop {
+    display: none !important;
+  }
+
+  .tv-compare-desktop-panel {
+    display: block;
+  }
+
+  .tv-compare-panel-label {
+    display: block;
   }
 }
