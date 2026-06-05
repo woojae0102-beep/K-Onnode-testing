@@ -16,6 +16,7 @@ interface Props {
   loading?: boolean;
   phaseLabel?: string;
   autoPlay?: boolean;
+  playbackSpeed?: number;
 }
 
 export default function VocalSoulFeedback({
@@ -26,6 +27,7 @@ export default function VocalSoulFeedback({
   loading = false,
   phaseLabel,
   autoPlay = true,
+  playbackSpeed = 1,
 }: Props) {
   const { t } = useTranslation();
 
@@ -65,6 +67,7 @@ export default function VocalSoulFeedback({
           coachPersona={coachPersona}
           language={language}
           autoPlay={autoPlay}
+          playbackSpeed={playbackSpeed}
         />
       </div>
 

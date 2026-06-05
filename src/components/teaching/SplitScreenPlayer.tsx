@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import { useMobileLayout } from '../../hooks/useMobileLayout';
+import PlaybackSpeedControl from './PlaybackSpeedControl';
 
 export function SplitScreenPlayer({
   leftLabel = '내 영상',
@@ -60,16 +61,15 @@ export function SplitScreenPlayer({
           >
             {isPlaying ? '⏸ 정지' : '⏵ 재생'}
           </button>
-          {[0.5, 1].map((r) => (
-            <button
-              key={r}
-              type="button"
-              onClick={() => onRateChange?.(r)}
-              className={`min-h-[44px] px-3 py-2 rounded-lg text-sm touch-manipulation ${playbackRate === r ? 'bg-white text-black' : 'bg-white/10 text-white'}`}
-            >
-              {r}x
-            </button>
-          ))}
+          <div className="w-full sm:w-auto min-w-[200px]">
+            <PlaybackSpeedControl
+              value={playbackRate}
+              onChange={onRateChange}
+              variant="dark"
+              compact
+              showPresets={false}
+            />
+          </div>
           <button
             type="button"
             onClick={onLoopToggle}

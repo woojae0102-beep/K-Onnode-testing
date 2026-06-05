@@ -24,16 +24,17 @@ export function PersonaTeacher({
   personaAvatar = '🎤',
   autoSpeak = true,
   intervalSec = 10,
+  playbackSpeed = 1,
 }) {
-  const { speak, supported } = useJudgeVoice();
+  const { speakText, supported } = useJudgeVoice();
   const text = comment?.instruction
     ? `${JOINT_LABELS[comment.problemJoint] || comment.problemJoint}: ${comment.instruction}`
     : '좋아요! 리듬을 유지하면서 동작 크기를 키워 보세요.';
 
   useEffect(() => {
     if (!autoSpeak || !supported || !text) return;
-    speak(text, 'teaching-coach');
-  }, [text, autoSpeak, supported, speak, intervalSec]);
+    speakText(text, 'teaching-coach', playbackSpeed);
+  }, [text, autoSpeak, supported, speakText, intervalSec, playbackSpeed]);
 
   return (
     <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-black/90 to-transparent">

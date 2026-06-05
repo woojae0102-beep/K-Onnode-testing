@@ -12,6 +12,7 @@ interface Props {
   loading?: boolean;
   phaseLabel?: string;
   autoPlay?: boolean;
+  playbackSpeed?: number;
 }
 
 export default function DancePersonaFeedback({
@@ -22,6 +23,7 @@ export default function DancePersonaFeedback({
   loading = false,
   phaseLabel,
   autoPlay = true,
+  playbackSpeed = 1,
 }: Props) {
   const { t } = useTranslation();
 
@@ -62,6 +64,7 @@ export default function DancePersonaFeedback({
           coachPersona={coachPersona}
           language={language}
           autoPlay={autoPlay}
+          playbackSpeed={playbackSpeed}
         />
       </div>
 

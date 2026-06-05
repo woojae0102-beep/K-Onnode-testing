@@ -1,17 +1,19 @@
 // @ts-nocheck
 import { useCallback, useRef } from 'react';
 import { useJudgeVoice } from './useJudgeVoice';
+import { clampPlaybackSpeed } from '../utils/playbackSpeed';
 
 /**
  * ElevenLabs data URL 재생 실패 시 Web Speech API 폴백
  */
 export function useTeachingTts() {
-  const { speak, stop, supported: speechSupported } = useJudgeVoice();
+  const { speakText, stopSpeaking, supported: speechSupported } = useJudgeVoice();
   const audioRef = useRef(null);
 
   const playAudioUrl = useCallback(
-    async (url, fallbackText = '') => {
-      stop?.();
+    async (url, fallbackText = '', playbackSpeed = 1) => {
+      const speed = clampPlaybackSpeed(playbackSpeed);
+      stopSpeaking?.();
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current = null;
@@ -20,6 +22,7 @@ export function useTeachingTts() {
         try {
           await new Promise((resolve, reject) => {
             const audio = new Audio(url);
+            audio.playbackRate = speed;
             audioRef.current = audio;
             audio.onended = resolve;
             audio.onerror = reject;
@@ -31,26 +34,26 @@ export function useTeachingTts() {
         }
       }
       if (fallbackText && speechSupported) {
-        await speak(fallbackText, 'teaching-tts-fallback');
+        await speakText(fallbackText, 'teaching-tts-fallback', speed);
         return { source: 'webspeech' };
       }
       return { source: 'none' };
     },
-    [speak, stop, speechSupported]
+    [speakText, stopSpeaking, speechSupported],
   );
 
   const speakCoaching = useCallback(
-    async (text, id = 'coach') => {
+    async (text, id = 'coach', playbackSpeed = 1) => {
       if (!text) return;
-      stop?.();
+      stopSpeaking?.();
       if (speechSupported) {
-        await speak(text, id);
+        await speakText(text, id, clampPlaybackSpeed(playbackSpeed));
       }
     },
-    [speak, stop, speechSupported]
+    [speakText, stopSpeaking, speechSupported],
   );
 
-  return { playAudioUrl, speakCoaching, speechSupported };
+  return { playAudioUrl, speakCoaching, speechSupported, speakText, stopSpeaking };
 }
 
 export default useTeachingTts;

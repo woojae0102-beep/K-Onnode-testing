@@ -75,6 +75,7 @@ export function useTVMode({
   vocalMetrics,
   agency,
   mode,
+  playbackSpeed = 1,
 }: {
   poseData: PoseData | null;
   vocalMetrics?: {
@@ -85,6 +86,7 @@ export function useTVMode({
   } | null;
   agency: Agency;
   mode: TrainingMode;
+  playbackSpeed?: number;
 }) {
   const [sessionTime, setSessionTime] = useState(0);
   const [scores, setScores] = useState({
@@ -99,7 +101,7 @@ export function useTVMode({
   const wristHistory = useRef([]);
   const startTime = useRef(Date.now());
 
-  const { feedback } = useRealtimeFeedback(poseData, agency, mode, vocalMetrics);
+  const { feedback } = useRealtimeFeedback(poseData, agency, mode, vocalMetrics, playbackSpeed);
 
   useEffect(() => {
     const timer = setInterval(() => {

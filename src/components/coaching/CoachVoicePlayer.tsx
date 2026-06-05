@@ -1,6 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { applySpeechRate } from '../../utils/playbackSpeed';
+import { applySpeechRate } from '../../utils/playbackSpeed';
 
 // Web Speech API (브라우저 내장 TTS) 기반 — 무료, 추가 비용 0원.
 // 코치 페르소나마다 rate/pitch만 다르게 설정해 ‘목소리 톤’을 흉내냄.
@@ -57,6 +59,7 @@ interface Props {
   language?: string;
   autoPlay?: boolean;
   compact?: boolean;
+  playbackSpeed?: number;
 }
 
 export default function CoachVoicePlayer({
@@ -65,6 +68,7 @@ export default function CoachVoicePlayer({
   language,
   autoPlay = false,
   compact = false,
+  playbackSpeed = 1,
 }: Props) {
   const { i18n, t } = useTranslation();
   const [isPlaying, setIsPlaying] = useState(false);
@@ -81,7 +85,7 @@ export default function CoachVoicePlayer({
       window.speechSynthesis.cancel();
       const utterance = new SpeechSynthesisUtterance(coachLine);
       const settings = VOICE_SETTINGS[coachPersona] || { rate: 1.0, pitch: 1.0 };
-      utterance.rate = settings.rate;
+      utterance.rate = applySpeechRate(settings.rate, playbackSpeed);
       utterance.pitch = settings.pitch;
       const langCode = pickLangCode(language || i18n.language);
       utterance.lang = langCode;
@@ -111,7 +115,7 @@ export default function CoachVoicePlayer({
     const id = window.setTimeout(playCoachVoice, 400);
     return () => window.clearTimeout(id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [coachLine, autoPlay]);
+  }, [coachLine, autoPlay, playbackSpeed]);
 
   useEffect(() => {
     return () => {

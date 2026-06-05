@@ -11,9 +11,19 @@ import { DEFAULT_FILTER } from '../hooks/useCameraWithFilter';
 import { useSpotifyAnalysis } from '../hooks/useSpotifyAnalysis';
 import { useDancePersonaCoach } from '../hooks/useDancePersonaCoach';
 import { useSettingsStore } from '../store/settingsSlice';
-import { cameraDefaultToFacingMode } from '../utils/mediaSettings';
+import { buildMobileVideoConstraints } from '../utils/mobileMedia';
+import { applyInlineVideoAttributes } from '../utils/mobileMedia';
+import {
+  cancelVideoFrame,
+  getOptimizedCanvasContext,
+  isDefaultCameraFilter,
+  scheduleVideoFrame,
+  shouldPreferDirectVideoDisplay,
+  syncCanvasToVideo,
+} from '../utils/cameraFrameLoop';
 import SongPersonaCard from '../components/coaching/SongPersonaCard';
 import DancePersonaFeedback from '../components/coaching/DancePersonaFeedback';
+import PlaybackSpeedControl from '../components/teaching/PlaybackSpeedControl';
 
 const DEFAULT_YOUTUBE_URL =
   'https://www.youtube.com/watch?v=MPyvBYaCoLc&list=RDMPyvBYaCoLc&start_radio=1';
@@ -41,7 +51,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   const displayCanvasRef = useRef(null);
   const cameraBoxRef = useRef(null);
   const streamRef = useRef(null);
-  const filterRafRef = useRef(0);
+  const filterFrameRef = useRef(null);
+  const useDirectVideoRef = useRef(true);
   const [cameraFilter, setCameraFilter] = useState(DEFAULT_FILTER);
   const cameraFilterRef = useRef(DEFAULT_FILTER);
   const [showFilterPanel, setShowFilterPanel] = useState(false);
@@ -186,10 +197,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       streamRef.current = null;
     }
     if (videoRef.current) videoRef.current.srcObject = null;
-    if (filterRafRef.current) {
-      cancelAnimationFrame(filterRafRef.current);
-      filterRafRef.current = 0;
-    }
+    cancelVideoFrame(filterFrameRef.current);
+    filterFrameRef.current = null;
     setVideoReady(false);
     setCameraOn(false);
   };
@@ -204,35 +213,43 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   // 시각적 필터는 CSS filter로 적용 (ctx.filter는 iOS Safari 18 미만에서 무시되므로 비신뢰)
   // CSS filter는 모든 브라우저에서 GPU 가속으로 정확히 동작.
   const buildFilterString = (f) => {
-    if (f.brightness === 1 && f.contrast === 1 && f.saturation === 1) return 'none';
+    if (isDefaultCameraFilter(f)) return 'none';
     return `brightness(${f.brightness}) contrast(${f.contrast}) saturate(${f.saturation})`;
   };
 
+  const useDirectVideo = cameraOn && shouldPreferDirectVideoDisplay(cameraFilter);
+
+  const stopFilterRenderLoop = () => {
+    cancelVideoFrame(filterFrameRef.current);
+    filterFrameRef.current = null;
+  };
+
   const startFilterRenderLoop = () => {
-    if (filterRafRef.current) cancelAnimationFrame(filterRafRef.current);
+    stopFilterRenderLoop();
+
+    const useDirect = shouldPreferDirectVideoDisplay(cameraFilterRef.current);
+    useDirectVideoRef.current = useDirect;
+    if (useDirect) return;
+
     const loop = () => {
       const v = videoRef.current;
       const c = displayCanvasRef.current;
       if (!v || !c) {
-        filterRafRef.current = requestAnimationFrame(loop);
+        filterFrameRef.current = scheduleVideoFrame(v, loop);
         return;
       }
       if (v.readyState < 2 || !v.videoWidth || !v.videoHeight) {
-        filterRafRef.current = requestAnimationFrame(loop);
+        filterFrameRef.current = scheduleVideoFrame(v, loop);
         return;
       }
-      if (c.width !== v.videoWidth || c.height !== v.videoHeight) {
-        c.width = v.videoWidth;
-        c.height = v.videoHeight;
-      }
-      const ctx = c.getContext('2d');
+      syncCanvasToVideo(c, v);
+      const ctx = getOptimizedCanvasContext(c);
       if (ctx) {
-        // 캔버스에는 원본만 그림. 시각 필터는 캔버스 element의 CSS filter로 처리.
         ctx.drawImage(v, 0, 0, c.width, c.height);
       }
-      filterRafRef.current = requestAnimationFrame(loop);
+      filterFrameRef.current = scheduleVideoFrame(v, loop);
     };
-    filterRafRef.current = requestAnimationFrame(loop);
+    filterFrameRef.current = scheduleVideoFrame(videoRef.current, loop);
   };
 
   const attachStreamToVideo = async () => {
@@ -240,11 +257,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
     const video = videoRef.current;
     if (!stream || !video) return false;
     try {
+      applyInlineVideoAttributes(video);
       video.srcObject = stream;
-      video.muted = true;
-      video.setAttribute('muted', 'true');
-      video.setAttribute('playsinline', 'true');
-      video.setAttribute('autoplay', 'true');
       await video.play();
       return true;
     } catch {
@@ -266,13 +280,8 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       setCameraLoading(true);
       setCameraError('');
       setVideoReady(false);
-      const facingMode = cameraDefaultToFacingMode(settings?.cameraDefault);
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode,
-          width: { ideal: 720 },
-          height: { ideal: 1280 },
-        },
+        video: buildMobileVideoConstraints(settings),
         audio: false,
       });
       streamRef.current = stream;
@@ -307,6 +316,11 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
       setCameraLoading(false);
     }
   };
+
+  useEffect(() => {
+    if (!cameraOn) return;
+    startFilterRenderLoop();
+  }, [cameraFilter]);
 
   useEffect(() => {
     if (!cameraOn || !streamRef.current || !videoRef.current) return;
@@ -399,14 +413,13 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
-              <p className="text-xs text-[#888888]">{t('dance.speed')}</p>
-              <div className="flex gap-2">
-                {[0.25, 0.5, 0.75, 1.0].map((item) => (
-                  <button key={item} type="button" className={`rounded-lg px-2 py-1 text-xs border ${rate === item ? 'border-[#FF1F8E] text-[#FF1F8E]' : 'border-[#E5E5E5] text-[#888888]'}`} onClick={() => setRate(item)}>
-                    {item}x
-                  </button>
-                ))}
-              </div>
+              <PlaybackSpeedControl
+                value={rate}
+                onChange={setRate}
+                variant="light"
+                compact
+                label={t('dance.speed')}
+              />
             </div>
             <MirrorModeToggle value={mirror} onChange={setMirror} />
             <DifficultySlider value={difficulty} onChange={setDifficulty} />
@@ -463,6 +476,7 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
               loading={isCoachLoading}
               phaseLabel={phaseLabel}
               autoPlay={currentPhase !== 'realtime' || cameraOn}
+              playbackSpeed={rate}
             />
           ) : null}
 
@@ -472,21 +486,22 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
               isFullscreen ? 'dance-camera-fs' : 'h-56 md:h-64'
             }`}
           >
-            {/* 원본 video: MediaPipe 분석용으로 살아있어야 하므로 opacity 0으로 숨김 */}
             <video
               ref={videoRef}
               playsInline
               muted
               autoPlay
-              className="absolute inset-0 h-full w-full object-cover opacity-0 pointer-events-none"
+              className={`absolute inset-0 h-full w-full object-cover scale-x-[-1] transition-opacity duration-150 ${
+                useDirectVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
+              }`}
+              style={useDirectVideo ? { filter: buildFilterString(cameraFilter) } : undefined}
             />
-            {/* 필터 적용된 디스플레이 캔버스 (CSS filter로 명암 적용) */}
             <canvas
               ref={displayCanvasRef}
-              className={`h-full w-full object-cover scale-x-[-1] transition-opacity duration-150 ${
-                cameraOn ? 'opacity-100' : 'opacity-0'
+              className={`absolute inset-0 h-full w-full object-cover scale-x-[-1] transition-opacity duration-150 ${
+                cameraOn && !useDirectVideo ? 'opacity-100' : 'opacity-0 pointer-events-none'
               }`}
-              style={{ filter: buildFilterString(cameraFilter) }}
+              style={!useDirectVideo ? { filter: buildFilterString(cameraFilter) } : undefined}
             />
             <canvas
               ref={overlayCanvasRef}

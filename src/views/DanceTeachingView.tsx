@@ -420,6 +420,7 @@ export default function DanceTeachingView({ onNavigate }) {
               comment={coachingComment}
               personaName={songAnalysis?.personaName || 'AI 댄스 코치'}
               personaAvatar="💃"
+              playbackSpeed={playbackRate}
             />
           </>
         }

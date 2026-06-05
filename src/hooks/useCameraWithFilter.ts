@@ -13,6 +13,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useSettingsStore } from '../store/settingsSlice';
 import { prefersDirectVideoDisplay } from '../utils/cameraDisplay';
+import {
+  cancelVideoFrame,
+  getOptimizedCanvasContext,
+  scheduleVideoFrame,
+  syncCanvasToVideo,
+} from '../utils/cameraFrameLoop';
 import { buildAudioConstraints, cameraDefaultToFacingMode, micSensitivityToGain } from '../utils/mediaSettings';
 
 export interface CameraFilter {
@@ -77,7 +83,7 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const displayCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const rafRef = useRef<number>(0);
+  const frameHandleRef = useRef(null);
   const filterRef = useRef<CameraFilter>(DEFAULT_FILTER);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const recorderAudioCtxRef = useRef<AudioContext | null>(null);
@@ -104,10 +110,8 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
   const resetFilter = useCallback(() => setFilter(DEFAULT_FILTER), [setFilter]);
 
   const stopRenderLoop = useCallback(() => {
-    if (rafRef.current) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = 0;
-    }
+    cancelVideoFrame(frameHandleRef.current);
+    frameHandleRef.current = null;
   }, []);
 
   const startRenderLoop = useCallback(() => {
@@ -116,25 +120,20 @@ export function useCameraWithFilter(options: UseCameraWithFilterOptions = {}) {
       const video = videoRef.current;
       const canvas = displayCanvasRef.current;
       if (!video || !canvas) {
-        rafRef.current = requestAnimationFrame(render);
+        frameHandleRef.current = scheduleVideoFrame(video, render);
         return;
       }
       if (video.readyState < 2 || !video.videoWidth || !video.videoHeight) {
-        rafRef.current = requestAnimationFrame(render);
+        frameHandleRef.current = scheduleVideoFrame(video, render);
         return;
       }
-      if (canvas.width !== video.videoWidth || canvas.height !== video.videoHeight) {
-        canvas.width = video.videoWidth;
-        canvas.height = video.videoHeight;
-      }
-      const ctx = canvas.getContext('2d');
+      syncCanvasToVideo(canvas, video);
+      const ctx = getOptimizedCanvasContext(canvas);
       if (!ctx) return;
-      // 시각 필터는 캔버스 element의 CSS filter로 처리 (iOS Safari 18 미만에서 ctx.filter가 무시되기 때문).
-      // 따라서 여기는 원본 프레임만 그린다.
       ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
-      rafRef.current = requestAnimationFrame(render);
+      frameHandleRef.current = scheduleVideoFrame(video, render);
     };
-    rafRef.current = requestAnimationFrame(render);
+    frameHandleRef.current = scheduleVideoFrame(videoRef.current, render);
   }, [stopRenderLoop]);
 
   const stopCamera = useCallback(() => {

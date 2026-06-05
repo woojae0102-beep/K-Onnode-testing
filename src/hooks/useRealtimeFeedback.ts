@@ -69,6 +69,7 @@ export function useRealtimeFeedback(
   agency: Agency,
   mode = 'dance',
   vocalMetrics = null,
+  playbackSpeed = 1,
 ) {
   const [feedback, setFeedback] = useState([]);
   const lastFeedbackTime = useRef(0);
@@ -123,7 +124,7 @@ export function useRealtimeFeedback(
     setFeedback((prev) => [newFeedback, ...prev].slice(0, 8));
 
     if (Math.random() < 0.3) {
-      speakText(poolFeedback, AGENCY_JUDGE_IDS[agencyId]);
+      speakText(poolFeedback, AGENCY_JUDGE_IDS[agencyId], playbackSpeed);
     }
 
     if (Math.random() < 0.3) {
@@ -155,7 +156,7 @@ export function useRealtimeFeedback(
         timestamp: formatTime(),
       };
       setFeedback((prev) => [newFeedback, ...prev].slice(0, 8));
-      if (Math.random() < 0.3) speakText(vocalMsg, AGENCY_JUDGE_IDS[agency]);
+      if (Math.random() < 0.3) speakText(vocalMsg, AGENCY_JUDGE_IDS[agency], playbackSpeed);
       return;
     }
 
@@ -165,7 +166,7 @@ export function useRealtimeFeedback(
     lastFeedbackTime.current = now;
 
     generateFeedback(poseData, agency);
-  }, [poseData, agency, mode, vocalMetrics]);
+  }, [poseData, agency, mode, vocalMetrics, playbackSpeed]);
 
   return { feedback };
 }

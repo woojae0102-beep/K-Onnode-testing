@@ -2,17 +2,24 @@
 import React, { useEffect, useRef, useState } from 'react';
 import type { Agency, TrainingMode } from '../../types/tv';
 import { useAgencyPersona } from '../../hooks/useAgencyPersona';
+import PlaybackSpeedControl from '../teaching/PlaybackSpeedControl';
 
 export function AICoachPanel({
   agency,
   mode,
   agencyColor,
+  playbackSpeed: controlledSpeed,
+  onSpeedChange,
 }: {
   agency: Agency;
   mode: TrainingMode;
   agencyColor: string;
+  playbackSpeed?: number;
+  onSpeedChange?: (speed: number) => void;
 }) {
-  const [speed, setSpeed] = useState(1.0);
+  const [internalSpeed, setInternalSpeed] = useState(1);
+  const speed = controlledSpeed ?? internalSpeed;
+  const setSpeed = onSpeedChange ?? setInternalSpeed;
   const [isPlaying, setIsPlaying] = useState(true);
   const canvasRef = useRef(null);
   const animRef = useRef(0);
@@ -271,38 +278,16 @@ export function AICoachPanel({
         style={{
           padding: '12px 16px',
           borderTop: '1px solid rgba(255,255,255,0.06)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
           flexShrink: 0,
         }}
       >
-        <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)', letterSpacing: '0.05em' }}>
-          재생 속도
-        </span>
-        <div style={{ display: 'flex', gap: 6 }}>
-          {[0.5, 0.75, 1.0].map((s) => (
-            <button
-              key={s}
-              type="button"
-              onClick={() => setSpeed(s)}
-              style={{
-                padding: '4px 12px',
-                background: speed === s ? agencyColor : 'rgba(255,255,255,0.06)',
-                border: `1px solid ${speed === s ? agencyColor : 'rgba(255,255,255,0.1)'}`,
-                borderRadius: 6,
-                color: speed === s ? '#fff' : 'rgba(255,255,255,0.5)',
-                fontSize: 11,
-                fontWeight: 500,
-                cursor: 'pointer',
-                transition: 'all 0.15s',
-                boxShadow: speed === s ? `0 0 10px ${agencyColor}60` : 'none',
-              }}
-            >
-              {s}x
-            </button>
-          ))}
-        </div>
+        <PlaybackSpeedControl
+          value={speed}
+          onChange={setSpeed}
+          variant="dark"
+          compact={false}
+          label="재생 속도"
+        />
       </div>
     </div>
   );

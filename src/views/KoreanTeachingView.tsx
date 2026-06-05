@@ -39,6 +39,7 @@ export default function KoreanTeachingView({ onNavigate }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(10);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [playMode, setPlayMode] = useState('both');
 
   const myAudioRef = useRef(null);
@@ -102,14 +103,16 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   useEffect(() => {
     if (!correctedAudioUrl && correctedFallbackText && phase === 'teaching') {
-      playAudioUrl('', correctedFallbackText);
+      playAudioUrl('', correctedFallbackText, playbackRate);
     }
-  }, [correctedAudioUrl, correctedFallbackText, phase, playAudioUrl]);
+  }, [correctedAudioUrl, correctedFallbackText, phase, playAudioUrl, playbackRate]);
 
   const syncPlay = (playing) => {
     const my = myAudioRef.current;
     const corrected = correctedRef.current;
     if (!my) return;
+    my.playbackRate = playbackRate;
+    if (corrected) corrected.playbackRate = playbackRate;
     if (playing) {
       if (playMode === 'mine' || playMode === 'both') my.play().catch(() => {});
       else my.pause();
@@ -260,6 +263,12 @@ export default function KoreanTeachingView({ onNavigate }) {
         currentTime={currentTime}
         duration={duration}
         isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        onRateChange={(r) => {
+          setPlaybackRate(r);
+          if (myAudioRef.current) myAudioRef.current.playbackRate = r;
+          if (correctedRef.current) correctedRef.current.playbackRate = r;
+        }}
         onSeek={(t) => {
           setCurrentTime(t);
           if (myAudioRef.current) myAudioRef.current.currentTime = t;
@@ -336,6 +345,7 @@ export default function KoreanTeachingView({ onNavigate }) {
         personaName={t('teaching.korean.coachName')}
         personaAvatar="🇰🇷"
         autoSpeak
+        playbackSpeed={playbackRate}
       />
     </div>
   );

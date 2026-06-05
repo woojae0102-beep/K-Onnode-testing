@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { useEffect, useRef } from 'react';
 import type { PoseData } from '../../types/tv';
+import { getOptimizedCanvasContext, syncCanvasToDisplayRect } from '../../utils/cameraFrameLoop';
 
 const CONNECTIONS = [
   ['left_shoulder', 'right_shoulder'],
@@ -32,12 +33,10 @@ export function SkeletonMirror({
     const canvas = canvasRef.current;
     if (!canvas || !poseData) return;
 
-    const ctx = canvas.getContext('2d');
+    const ctx = getOptimizedCanvasContext(canvas);
     if (!ctx) return;
 
-    const rect = canvas.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    syncCanvasToDisplayRect(canvas);
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     const { joints, jointAccuracies } = poseData;
@@ -55,10 +54,7 @@ export function SkeletonMirror({
       ctx.lineTo(e.x * canvas.width, e.y * canvas.height);
       ctx.strokeStyle = color;
       ctx.lineWidth = 2;
-      ctx.shadowColor = color;
-      ctx.shadowBlur = 6;
       ctx.stroke();
-      ctx.shadowBlur = 0;
     });
 
     Object.entries(joints).forEach(([name, joint]) => {

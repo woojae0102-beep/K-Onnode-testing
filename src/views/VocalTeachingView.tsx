@@ -47,6 +47,7 @@ export default function VocalTeachingView({ onNavigate }) {
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(60);
   const [isPlaying, setIsPlaying] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const [playMode, setPlayMode] = useState('both');
 
   const myAudioRef = useRef(null);
@@ -87,9 +88,9 @@ export default function VocalTeachingView({ onNavigate }) {
 
   useEffect(() => {
     if (phase === 'teaching' && !coverUrl && coverFallbackText) {
-      playAudioUrl('', coverFallbackText);
+      playAudioUrl('', coverFallbackText, playbackRate);
     }
-  }, [phase, coverUrl, coverFallbackText, playAudioUrl]);
+  }, [phase, coverUrl, coverFallbackText, playAudioUrl, playbackRate]);
 
   const handleStart = async () => {
     if (!audioFile) return;
@@ -145,6 +146,8 @@ export default function VocalTeachingView({ onNavigate }) {
     const my = myAudioRef.current;
     const cover = coverAudioRef.current;
     if (!my) return;
+    my.playbackRate = playbackRate;
+    if (cover) cover.playbackRate = playbackRate;
     if (playing) {
       if (playMode === 'mine' || playMode === 'both') my.play().catch(() => {});
       else my.pause();
@@ -294,6 +297,12 @@ export default function VocalTeachingView({ onNavigate }) {
         currentTime={currentTime}
         duration={duration}
         isPlaying={isPlaying}
+        playbackRate={playbackRate}
+        onRateChange={(r) => {
+          setPlaybackRate(r);
+          if (myAudioRef.current) myAudioRef.current.playbackRate = r;
+          if (coverAudioRef.current) coverAudioRef.current.playbackRate = r;
+        }}
         onSeek={(t) => {
           setCurrentTime(t);
           if (myAudioRef.current) myAudioRef.current.currentTime = t;
@@ -367,6 +376,7 @@ export default function VocalTeachingView({ onNavigate }) {
         personaName={songAnalysis?.personaName || '보컬 페르소나 코치'}
         personaAvatar="🎤"
         autoSpeak
+        playbackSpeed={playbackRate}
       />
     </div>
   );

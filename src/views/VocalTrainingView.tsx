@@ -12,6 +12,7 @@ import { useVocalSoulCoach } from '../hooks/useVocalSoulCoach';
 import { useSettingsStore } from '../store/settingsSlice';
 import SongPersonaCard from '../components/coaching/SongPersonaCard';
 import VocalSoulFeedback from '../components/coaching/VocalSoulFeedback';
+import PlaybackSpeedControl from '../components/teaching/PlaybackSpeedControl';
 
 export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
   const { t } = useTranslation();
@@ -19,6 +20,7 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
   const [targetMidi, setTargetMidi] = useState(60);
   const [autoTarget, setAutoTarget] = useState(true);
   const [lineScores, setLineScores] = useState([]);
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const lineScoreAccRef = useRef({ sum: 0, count: 0 });
   const currentLineIdxRef = useRef(0);
   const liveScoreRef = useRef(0);
@@ -343,17 +345,29 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
       </header>
 
       {songAnalysis ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <SongPersonaCard analysis={songAnalysis} mode="vocal" />
-          <VocalSoulFeedback
-            feedback={soulFeedback}
-            coachPersona={vocalCoachPersona}
-            language={language}
-            vocalCharacteristics={vocalCharacteristics}
-            loading={isSoulLoading}
-            phaseLabel={phaseLabel}
-            autoPlay={soulPhase !== 'realtime' || !recording}
-          />
+        <div className="space-y-3">
+          <div className="rounded-xl border border-[#E5E5E5] bg-white p-3">
+            <PlaybackSpeedControl
+              value={playbackSpeed}
+              onChange={setPlaybackSpeed}
+              variant="light"
+              compact
+              label="코치 음성 속도"
+            />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <SongPersonaCard analysis={songAnalysis} mode="vocal" />
+            <VocalSoulFeedback
+              feedback={soulFeedback}
+              coachPersona={vocalCoachPersona}
+              language={language}
+              vocalCharacteristics={vocalCharacteristics}
+              loading={isSoulLoading}
+              phaseLabel={phaseLabel}
+              autoPlay={soulPhase !== 'realtime' || !recording}
+              playbackSpeed={playbackSpeed}
+            />
+          </div>
         </div>
       ) : null}
 

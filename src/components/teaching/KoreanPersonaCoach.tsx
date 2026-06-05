@@ -8,6 +8,7 @@ export function KoreanPersonaCoach({
   personaName = '한국어 발음 코치',
   personaAvatar = '🇰🇷',
   autoSpeak = true,
+  playbackSpeed = 1,
 }) {
   const { speakCoaching } = useTeachingTts();
   const lastRef = useRef('');
@@ -15,8 +16,8 @@ export function KoreanPersonaCoach({
   useEffect(() => {
     if (!autoSpeak || !instruction || lastRef.current === instruction) return;
     lastRef.current = instruction;
-    speakCoaching(instruction, 'korean-teaching-coach');
-  }, [instruction, autoSpeak, speakCoaching]);
+    speakCoaching(instruction, 'korean-teaching-coach', playbackSpeed);
+  }, [instruction, autoSpeak, speakCoaching, playbackSpeed]);
 
   return (
     <div className="rounded-2xl border border-[#FF1F8E]/30 bg-gradient-to-r from-[#FF1F8E]/10 to-transparent p-4">

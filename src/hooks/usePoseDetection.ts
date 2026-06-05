@@ -1,8 +1,15 @@
 // @ts-nocheck
 import { useEffect, useRef, useState } from 'react';
 import { FilesetResolver, HolisticLandmarker } from '@mediapipe/tasks-vision';
+import {
+  cancelVideoFrame,
+  getOptimizedCanvasContext,
+  scheduleVideoFrame,
+  syncCanvasToVideo,
+} from '../utils/cameraFrameLoop';
 
-const ANALYZE_INTERVAL_MS = 1000 / 20;
+const ANALYZE_INTERVAL_MS = 1000 / 15;
+const STATE_UPDATE_INTERVAL_MS = 100;
 const WRIST_HISTORY_WINDOW_MS = 1800;
 const POSE_EDGES = [
   [11, 13],
@@ -159,11 +166,8 @@ function renderOverlay(canvas, video, poseLandmarks, leftHandLandmarks, rightHan
   const w = video.videoWidth || 0;
   const h = video.videoHeight || 0;
   if (!w || !h) return;
-  if (canvas.width !== w || canvas.height !== h) {
-    canvas.width = w;
-    canvas.height = h;
-  }
-  const ctx = canvas.getContext('2d');
+  syncCanvasToVideo(canvas, video);
+  const ctx = getOptimizedCanvasContext(canvas);
   if (!ctx) return;
   ctx.clearRect(0, 0, w, h);
   if (!poseLandmarks?.length) return;
@@ -206,8 +210,11 @@ export function usePoseDetection({ active = false, videoRef = null, overlayCanva
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   const landmarkerRef = useRef(null);
-  const rafRef = useRef(null);
+  const frameHandleRef = useRef(null);
   const lastAnalyzeAtRef = useRef(0);
+  const lastStateUpdateAtRef = useRef(0);
+  const isDetectingRef = useRef(false);
+  const overlayCacheRef = useRef({ pose: null, leftHand: null, rightHand: null });
   const startAtRef = useRef(0);
   const bestScoreRef = useRef(0);
   const bestMomentMsRef = useRef(0);
@@ -264,17 +271,34 @@ export function usePoseDetection({ active = false, videoRef = null, overlayCanva
       return Math.min(100, Math.round(sum * 4500));
     };
 
-    const loop = () => {
+    const loop = (now) => {
       if (cancelled || !landmarkerRef.current) return;
-      const now = performance.now();
 
-      if (video.videoWidth > 0 && now - lastAnalyzeAtRef.current >= ANALYZE_INTERVAL_MS) {
+      const cached = overlayCacheRef.current;
+      renderOverlay(
+        overlayCanvasRef?.current,
+        video,
+        cached.pose,
+        cached.leftHand,
+        cached.rightHand,
+      );
+
+      if (
+        video.videoWidth > 0 &&
+        !isDetectingRef.current &&
+        now - lastAnalyzeAtRef.current >= ANALYZE_INTERVAL_MS
+      ) {
+        isDetectingRef.current = true;
         lastAnalyzeAtRef.current = now;
+
         const result = landmarkerRef.current.detectForVideo(video, now);
         const pl = result?.poseLandmarks?.[0] || null;
         const leftHand = result?.leftHandLandmarks?.[0] || null;
         const rightHand = result?.rightHandLandmarks?.[0] || null;
+
+        overlayCacheRef.current = { pose: pl, leftHand, rightHand };
         renderOverlay(overlayCanvasRef?.current, video, pl, leftHand, rightHand);
+
         if (pl?.length) {
           const leftElbowDeg = pl[11] && pl[13] && pl[15] ? angleDeg(pl[11].x, pl[11].y, pl[13].x, pl[13].y, pl[15].x, pl[15].y) : null;
           const rightElbowDeg = pl[12] && pl[14] && pl[16] ? angleDeg(pl[12].x, pl[12].y, pl[14].x, pl[14].y, pl[16].x, pl[16].y) : null;
@@ -334,21 +358,28 @@ export function usePoseDetection({ active = false, videoRef = null, overlayCanva
             bestMomentMsRef.current = elapsed;
           }
 
-          setScore(totalScore);
-          setIssue(buildIssue(nextMetrics));
-          setHistory((prev) => [...prev.slice(-79), totalScore]);
-          setMetrics(nextMetrics);
-          setFeedbackList(buildFeedbackList(nextMetrics));
-          setSummary({
-            totalScore,
-            bestMoment: toClockText(bestMomentMsRef.current),
-            needs: buildNeeds(nextMetrics),
-          });
-        } else {
+          if (now - lastStateUpdateAtRef.current >= STATE_UPDATE_INTERVAL_MS) {
+            lastStateUpdateAtRef.current = now;
+            setScore(totalScore);
+            setIssue(buildIssue(nextMetrics));
+            setHistory((prev) => [...prev.slice(-79), totalScore]);
+            setMetrics(nextMetrics);
+            setFeedbackList(buildFeedbackList(nextMetrics));
+            setSummary({
+              totalScore,
+              bestMoment: toClockText(bestMomentMsRef.current),
+              needs: buildNeeds(nextMetrics),
+            });
+          }
+        } else if (now - lastStateUpdateAtRef.current >= STATE_UPDATE_INTERVAL_MS) {
+          lastStateUpdateAtRef.current = now;
           setIssue('포즈를 찾는 중입니다. 화면에 전신이 보이도록 위치를 조정해주세요.');
         }
+
+        isDetectingRef.current = false;
       }
-      rafRef.current = requestAnimationFrame(loop);
+
+      frameHandleRef.current = scheduleVideoFrame(video, loop);
     };
 
     (async () => {
@@ -390,7 +421,9 @@ export function usePoseDetection({ active = false, videoRef = null, overlayCanva
         bestMomentMsRef.current = 0;
         leftWristHistRef.current = [];
         rightWristHistRef.current = [];
-        rafRef.current = requestAnimationFrame(loop);
+        overlayCacheRef.current = { pose: null, leftHand: null, rightHand: null };
+        lastStateUpdateAtRef.current = 0;
+        frameHandleRef.current = scheduleVideoFrame(video, loop);
       } catch (error) {
         setIsAnalyzing(false);
         setIssue('AI 포즈 모델을 불러오지 못했습니다. 네트워크 상태를 확인해주세요.');
@@ -401,13 +434,16 @@ export function usePoseDetection({ active = false, videoRef = null, overlayCanva
     return () => {
       cancelled = true;
       setIsAnalyzing(false);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
+      cancelVideoFrame(frameHandleRef.current);
+      frameHandleRef.current = null;
       landmarkerRef.current?.close?.();
       landmarkerRef.current = null;
       leftWristHistRef.current = [];
       rightWristHistRef.current = [];
       lastAnalyzeAtRef.current = 0;
+      lastStateUpdateAtRef.current = 0;
+      isDetectingRef.current = false;
+      overlayCacheRef.current = { pose: null, leftHand: null, rightHand: null };
       const canvas = overlayCanvasRef?.current;
       if (canvas) {
         const ctx = canvas.getContext('2d');

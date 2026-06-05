@@ -8,17 +8,18 @@ export function VocalPersonaCoach({
   personaAvatar = '🎤',
   highlightText = '',
   autoSpeak = true,
+  playbackSpeed = 1,
 }) {
-  const { speak, supported, stop } = useJudgeVoice();
+  const { speakText, supported, stopSpeaking } = useJudgeVoice();
   const lastSpokenRef = useRef('');
 
   useEffect(() => {
     if (!autoSpeak || !supported || !instruction) return;
     if (lastSpokenRef.current === instruction) return;
     lastSpokenRef.current = instruction;
-    stop?.();
-    speak(instruction, 'vocal-teaching-coach');
-  }, [instruction, autoSpeak, supported, speak, stop]);
+    stopSpeaking?.();
+    speakText(instruction, 'vocal-teaching-coach', playbackSpeed);
+  }, [instruction, autoSpeak, supported, speakText, stopSpeaking, playbackSpeed]);
 
   return (
     <div className="rounded-2xl border border-[#FF1F8E]/30 bg-gradient-to-r from-[#FF1F8E]/10 to-transparent p-4">

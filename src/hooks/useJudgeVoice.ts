@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { applySpeechRate } from '../utils/playbackSpeed';
 
 // Per-judge voice tuning. Each entry tweaks rate/pitch/lang so the same
 // browser TTS engine still feels distinct between Yang Taejun and Jung Minji.
@@ -83,7 +84,7 @@ export function useJudgeVoice() {
   }, [supported]);
 
   const speakText = useCallback(
-    (text: string, judgeId: string): Promise<void> => {
+    (text: string, judgeId: string, playbackSpeed = 1): Promise<void> => {
       return new Promise<void>((resolve) => {
         if (!supported || !enabled || !text) {
           resolve();
@@ -96,7 +97,7 @@ export function useJudgeVoice() {
         }
         const settings = VOICE_SETTINGS[judgeId] ?? DEFAULT_SETTINGS;
         const utterance = new window.SpeechSynthesisUtterance(text);
-        utterance.rate = settings.rate;
+        utterance.rate = applySpeechRate(settings.rate, playbackSpeed);
         utterance.pitch = settings.pitch;
         utterance.lang = settings.lang;
 
@@ -157,7 +158,11 @@ export function useJudgeVoice() {
     enabled,
     speakingId,
     speakText,
+    /** @deprecated use speakText */
+    speak: speakText,
     stopSpeaking,
+    /** @deprecated use stopSpeaking */
+    stop: stopSpeaking,
     setVoiceEnabled,
   };
 }

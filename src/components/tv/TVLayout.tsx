@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback } from 'react';
+import React, { useCallback, useState } from 'react';
 import type { Agency, TrainingMode } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
@@ -21,6 +21,7 @@ export function TVLayout({
   onExit: (data: any) => void;
 }) {
   const agencyColor = AGENCY_COLORS[agency];
+  const [playbackSpeed, setPlaybackSpeed] = useState(1);
 
   const dance = useMediaPipeTV(agencyColor);
   const vocal = useTVMicrophone();
@@ -45,6 +46,7 @@ export function TVLayout({
     vocalMetrics,
     agency,
     mode,
+    playbackSpeed,
   });
 
   const handleExit = useCallback(() => {
@@ -170,7 +172,13 @@ export function TVLayout({
       </div>
 
       <div className="tv-layout-grid">
-        <AICoachPanel agency={agency} mode={mode} agencyColor={agencyColor} />
+        <AICoachPanel
+          agency={agency}
+          mode={mode}
+          agencyColor={agencyColor}
+          playbackSpeed={playbackSpeed}
+          onSpeedChange={setPlaybackSpeed}
+        />
         <UserCameraPanel
           mode={mode}
           poseData={poseData}
