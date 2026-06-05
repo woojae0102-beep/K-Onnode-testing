@@ -5,6 +5,7 @@ import PersonaCoachAvatar from './PersonaCoachAvatar';
 import { useVocalVoiceClone } from '../../hooks/useVocalVoiceClone';
 import { speakCoverLines } from '../../utils/voiceCoverTts';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
+import VocalLineCoachingLoop from './VocalLineCoachingLoop';
 
 export default function VocalVoiceTeachingPanel({
   songAnalysis,
@@ -17,6 +18,9 @@ export default function VocalVoiceTeachingPanel({
   pitchHistory = [],
   pitchSampleCount = 0,
   pitchAccuracy = 0,
+  lineScores = [],
+  tuningState = 'idle',
+  pitchFeedback = '',
 }) {
   const { t } = useTranslation();
   const {
@@ -218,6 +222,21 @@ export default function VocalVoiceTeachingPanel({
         {(error || recError) ? (
           <p className="text-xs text-rose-500">{error || recError}</p>
         ) : null}
+
+        <VocalLineCoachingLoop
+          songAnalysis={songAnalysis}
+          vocalCharacteristics={vocalCharacteristics}
+          lyrics={lyrics}
+          lineScores={lineScores}
+          pitchHistory={pitchHistory}
+          pitchAccuracy={pitchAccuracy}
+          tuningState={tuningState}
+          pitchFeedback={pitchFeedback}
+          language={language}
+          playbackSpeed={playbackSpeed}
+          micActive={liveRecording}
+          autoStart={!liveRecording && lineScores.some((s) => Number.isFinite(s) && s < 75)}
+        />
 
         {cloneProfile || cover ? (
           <button

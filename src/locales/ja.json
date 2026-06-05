@@ -892,6 +892,28 @@
         "lyricsGuide": "歌詞別ガイド",
         "pitchStatus": "現在の音程精度 {{value}}%",
         "reset": "声カピーをリセット"
+      },
+      "lineLoop": {
+        "title": "不足フレーズAIコーチング",
+        "subtitle": "自分の声で模範 → 一緒に歌う → リアルタイムフィードバック",
+        "idle": "待機",
+        "preparing": "声を学習中…",
+        "aiSinging": "AI模範再生中",
+        "userRetry": "一緒に歌ってください",
+        "evaluating": "分析中…",
+        "passed": "フレーズ合格！",
+        "needsPractice": "追加練習が必要",
+        "targetLine": "{{n}}番フレーズ",
+        "prevScore": "前回スコア {{score}}点",
+        "weakDetected": "{{n}}番フレーズが不足 ({{score}}点)",
+        "noWeak": "不足フレーズがないか、スコアがありません。",
+        "retryScore": "再挑戦 {{score}}点 ({{attempt}}/3回)",
+        "start": "不足フレーズコーチング開始",
+        "singNow": "一緒に歌う",
+        "evaluate": "評価完了",
+        "replayAi": "AI模範をもう一度",
+        "nextWeak": "次の不足フレーズ",
+        "reset": "リセット"
       }
     },
     "settings": {

@@ -48,6 +48,8 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
     suggestedNote,
   } = useAudioAnalysis({ active: recording, targetMidi });
   const [lineIdx, setLineIdx] = useState(0);
+  const [coachingKick, setCoachingKick] = useState(0);
+  const coachingRef = useRef(null);
 
   // ── 곡 페르소나 + 보컬 소울 코칭 ──
   const settings = useSettingsStore((state) => state.settings);
@@ -371,18 +373,24 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
               playbackSpeed={playbackSpeed}
             />
           </div>
-          <VocalVoiceTeachingPanel
-            songAnalysis={songAnalysis}
-            vocalCharacteristics={vocalCharacteristics}
-            vocalCoachPersona={vocalCoachPersona}
-            language={language}
-            playbackSpeed={playbackSpeed}
-            lyrics={lines}
-            liveRecording={recording}
-            pitchHistory={pitchHistoryRef.current}
-            pitchSampleCount={pitchSampleCount}
-            pitchAccuracy={pitchAccuracy}
-          />
+          <div ref={coachingRef}>
+            <VocalVoiceTeachingPanel
+              songAnalysis={songAnalysis}
+              vocalCharacteristics={vocalCharacteristics}
+              vocalCoachPersona={vocalCoachPersona}
+              language={language}
+              playbackSpeed={playbackSpeed}
+              lyrics={lines}
+              liveRecording={recording}
+              pitchHistory={pitchHistoryRef.current}
+              pitchSampleCount={pitchSampleCount}
+              pitchAccuracy={pitchAccuracy}
+              lineScores={lineScores}
+              tuningState={tuningState}
+              pitchFeedback={pitchFeedback}
+              key={coachingKick}
+            />
+          </div>
         </div>
       ) : (
         <VocalVoiceTeachingPanel songAnalysis={null} />
@@ -516,7 +524,16 @@ export default function VocalTrainingView({ onNavigate, onReportUpdate }) {
           </div>
         ) : null}
         <div className="grid grid-cols-3 gap-2">
-          <button type="button" className="rounded-lg border border-[#E5E5E5] py-2 text-xs">{t('vocal.retry')}</button>
+          <button
+            type="button"
+            className="rounded-lg border border-[#E5E5E5] py-2 text-xs"
+            onClick={() => {
+              setCoachingKick((v) => v + 1);
+              coachingRef.current?.scrollIntoView?.({ behavior: 'smooth', block: 'start' });
+            }}
+          >
+            {t('vocal.retry')}
+          </button>
           <button type="button" className="rounded-lg border border-[#E5E5E5] py-2 text-xs">{t('vocal.save')}</button>
           <button type="button" className="rounded-lg bg-[#FF1F8E] text-white py-2 text-xs">
             {t('vocal.share')}

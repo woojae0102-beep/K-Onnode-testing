@@ -50,6 +50,15 @@ export interface SessionData {
   coachReview?: string;
   referenceVideoUrl?: string;
   recordedMediaUrl?: string;
+  lineScores?: number[];
+  lyrics?: string[];
+  pitchHistory?: number[];
+  vocalCharacteristics?: {
+    avgPitch?: number;
+    range?: string;
+    type?: string;
+    stability?: number;
+  };
 }
 
 export const AGENCY_COLORS: Record<Agency, string> = {

@@ -892,6 +892,28 @@
         "lyricsGuide": "Line-by-line guide",
         "pitchStatus": "Current pitch accuracy {{value}}%",
         "reset": "Reset voice copy"
+      },
+      "lineLoop": {
+        "title": "Weak-line AI coaching",
+        "subtitle": "AI demo in your voice → you sing → real-time feedback",
+        "idle": "Idle",
+        "preparing": "Learning your voice…",
+        "aiSinging": "Playing AI demo",
+        "userRetry": "Sing along now",
+        "evaluating": "Analyzing…",
+        "passed": "Line passed!",
+        "needsPractice": "More practice needed",
+        "targetLine": "Line {{n}}",
+        "prevScore": "Previous score {{score}}",
+        "weakDetected": "Line {{n}} needs work ({{score}} pts)",
+        "noWeak": "No weak lines yet or scores unavailable.",
+        "retryScore": "Retry score {{score}} (attempt {{attempt}}/3)",
+        "start": "Start weak-line coaching",
+        "singNow": "Sing along",
+        "evaluate": "Finish evaluation",
+        "replayAi": "Replay AI demo",
+        "nextWeak": "Next weak line",
+        "reset": "Reset"
       }
     },
     "settings": {

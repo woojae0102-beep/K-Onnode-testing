@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { Agency, SessionData, TrainingMode } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import { useAgencyPersona } from '../../hooks/useAgencyPersona';
@@ -10,6 +10,7 @@ import YouTubeTVPlayer from './YouTubeTVPlayer';
 import UserCameraPanel from './UserCameraPanel';
 import CoachReviewBlock from './CoachReviewBlock';
 import { buildLocalCoachReview } from '../../utils/tvCoachReview';
+import VocalLineCoachingLoop from '../coaching/VocalLineCoachingLoop';
 
 export default function TVCompareTeachingScreen({
   sessionData,
@@ -42,6 +43,17 @@ export default function TVCompareTeachingScreen({
   const isDance = mode === 'dance';
   const dance = useMediaPipeTV(agencyColor);
   const vocal = useTVMicrophone();
+  const [vocalCoachKick, setVocalCoachKick] = useState(0);
+
+  const tvSongAnalysis = useMemo(
+    () => ({
+      trackName: `${agency.toUpperCase()} TV 보컬 연습`,
+      personaName: persona.coachName,
+      mood: '연습',
+      vocalAttitude: '감정을 먼저 떠올리고 노래하세요',
+    }),
+    [agency, persona.coachName],
+  );
 
   const stopSync = useCallback(() => {
     if (syncTimerRef.current) {
@@ -109,6 +121,9 @@ export default function TVCompareTeachingScreen({
       await dance.startTracking();
     } else if (!isDance && !vocal.isTracking) {
       await vocal.startTracking();
+      setVocalCoachKick((v) => v + 1);
+    } else if (!isDance) {
+      setVocalCoachKick((v) => v + 1);
     }
   };
 
@@ -240,6 +255,24 @@ export default function TVCompareTeachingScreen({
           compact
         />
       </div>
+
+      {!isDance ? (
+        <div className="tv-compare-vocal-coach" key={vocalCoachKick}>
+          <VocalLineCoachingLoop
+            variant="dark"
+            songAnalysis={tvSongAnalysis}
+            vocalCharacteristics={data.vocalCharacteristics}
+            lyrics={data.lyrics || []}
+            lineScores={data.lineScores || []}
+            pitchHistory={data.pitchHistory || []}
+            pitchAccuracy={vocal.pitchAccuracy}
+            tuningState={vocal.tuningState}
+            pitchFeedback={vocal.pitchFeedback}
+            micActive={rightMode === 'live' && vocal.isTracking}
+            autoStart={rightMode === 'live'}
+          />
+        </div>
+      ) : null}
 
       <div className="tv-compare-controls">
         <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={isPlaying ? stopSync : startSync}>

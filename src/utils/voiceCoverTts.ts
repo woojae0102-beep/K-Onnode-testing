@@ -67,3 +67,53 @@ export function speakCoverLines({
   speakNext();
   return () => synth.cancel();
 }
+
+export function speakLineWithCoaching({
+  lineText = '',
+  tip = '',
+  intro = '',
+  voiceProfile,
+  language = 'ko',
+  playbackSpeed = 1,
+  onStart,
+  onComplete,
+}) {
+  if (typeof window === 'undefined' || !window.speechSynthesis) {
+    onComplete?.();
+    return () => {};
+  }
+  const synth = window.speechSynthesis;
+  synth.cancel();
+
+  const pitch = pitchFromAvgHz(voiceProfile?.avgPitch ?? voiceProfile?.profile?.avgPitch);
+  const rate = applySpeechRate(0.92, playbackSpeed);
+  const queue = [intro, lineText, tip].filter((t) => t && String(t).trim());
+  let idx = 0;
+
+  const speakNext = () => {
+    if (idx >= queue.length) {
+      onComplete?.();
+      return;
+    }
+    const text = queue[idx];
+    const utter = new SpeechSynthesisUtterance(text);
+    utter.lang = pickLangCode(language);
+    utter.rate = rate;
+    utter.pitch = pitch;
+    utter.onstart = () => {
+      if (idx === (intro ? 1 : 0) || (!intro && idx === 0)) onStart?.(text);
+    };
+    utter.onend = () => {
+      idx += 1;
+      window.setTimeout(speakNext, intro && idx === 1 ? 180 : 320);
+    };
+    utter.onerror = () => {
+      idx += 1;
+      speakNext();
+    };
+    synth.speak(utter);
+  };
+
+  speakNext();
+  return () => synth.cancel();
+}

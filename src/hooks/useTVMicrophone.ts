@@ -7,18 +7,20 @@ export function useTVMicrophone() {
   const [stream, setStream] = useState(null);
   const streamRef = useRef(null);
 
-  const { volumeLevel, pitchFeedback, tuningState } = useLiveAudioMeter({
+  const { volumeLevel, pitchFeedback, tuningState, pitchAccuracy } = useLiveAudioMeter({
     stream,
     active: isTracking && !!stream,
     targetMidi: 60,
   });
 
   const pitchScore =
-    tuningState === 'in-tune'
-      ? Math.min(100, 75 + volumeLevel * 0.2)
-      : tuningState === 'idle'
-        ? 0
-        : Math.max(35, 65 - Math.abs(volumeLevel - 50) * 0.3);
+    pitchAccuracy > 0
+      ? pitchAccuracy
+      : tuningState === 'in-tune'
+        ? Math.min(100, 75 + volumeLevel * 0.2)
+        : tuningState === 'idle'
+          ? 0
+          : Math.max(35, 65 - Math.abs(volumeLevel - 50) * 0.3);
 
   const startTracking = useCallback(async () => {
     try {
@@ -55,6 +57,7 @@ export function useTVMicrophone() {
     pitchFeedback,
     tuningState,
     pitchScore,
+    pitchAccuracy,
     getStream,
   };
 }

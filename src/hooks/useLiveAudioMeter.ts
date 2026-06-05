@@ -17,6 +17,7 @@ export function useLiveAudioMeter({ stream, active = false, targetMidi = 60 } = 
   const [volumeLevel, setVolumeLevel] = useState(0);
   const [pitchFeedback, setPitchFeedback] = useState('마이크에 대고 연습해 보세요.');
   const [tuningState, setTuningState] = useState('idle');
+  const [pitchAccuracy, setPitchAccuracy] = useState(0);
   const timerRef = useRef(null);
   const ctxRef = useRef(null);
 
@@ -24,6 +25,7 @@ export function useLiveAudioMeter({ stream, active = false, targetMidi = 60 } = 
     if (!active || !stream) {
       setVolumeLevel(0);
       setTuningState('idle');
+      setPitchAccuracy(0);
       setPitchFeedback('마이크에 대고 연습해 보세요.');
       if (timerRef.current) clearInterval(timerRef.current);
       timerRef.current = null;
@@ -53,10 +55,12 @@ export function useLiveAudioMeter({ stream, active = false, targetMidi = 60 } = 
       const hz = detectPitchHzAutocorr(buf, ctx.sampleRate);
       if (!hz || rms < 0.008) {
         setTuningState('idle');
+        setPitchAccuracy(0);
         setPitchFeedback(rms < 0.008 ? '목소리를 더 크게 내 보세요.' : '음정을 감지하는 중...');
         return;
       }
       const fb = buildVocalPitchFeedback(hz, targetMidi);
+      setPitchAccuracy(fb.accuracy || 0);
       setPitchFeedback(fb.feedback);
       if (Math.abs(fb.centsRaw ?? 0) <= 15) setTuningState('in-tune');
       else if ((fb.centsRaw ?? 0) > 0) setTuningState('sharp');
@@ -73,7 +77,7 @@ export function useLiveAudioMeter({ stream, active = false, targetMidi = 60 } = 
     };
   }, [active, stream, targetMidi]);
 
-  return { volumeLevel, pitchFeedback, tuningState };
+  return { volumeLevel, pitchFeedback, tuningState, pitchAccuracy };
 }
 
 export default useLiveAudioMeter;

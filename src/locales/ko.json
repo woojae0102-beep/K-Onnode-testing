@@ -896,6 +896,28 @@
         "lyricsGuide": "가사별 티칭 가이드",
         "pitchStatus": "현재 음정 정확도 {{value}}%",
         "reset": "목소리 카피 초기화"
+      },
+      "lineLoop": {
+        "title": "부족한 구간 AI 코칭",
+        "subtitle": "내 목소리로 모범창 → 따라 부르기 → 실시간 피드백",
+        "idle": "대기",
+        "preparing": "목소리 학습 중…",
+        "aiSinging": "AI 모범창 재생 중",
+        "userRetry": "따라 불러보세요",
+        "evaluating": "분석 중…",
+        "passed": "구간 통과!",
+        "needsPractice": "추가 연습 필요",
+        "targetLine": "{{n}}번 문장",
+        "prevScore": "이전 점수 {{score}}점",
+        "weakDetected": "{{n}}번 문장이 부족해요 ({{score}}점)",
+        "noWeak": "부족한 구간이 없거나 아직 점수가 없어요.",
+        "retryScore": "재시도 점수 {{score}}점 (시도 {{attempt}}/3)",
+        "start": "부족한 구간 코칭 시작",
+        "singNow": "따라 불러보세요",
+        "evaluate": "평가 완료",
+        "replayAi": "AI 모범창 다시 듣기",
+        "nextWeak": "다음 부족한 구간",
+        "reset": "초기화"
       }
     },
     "settings": {

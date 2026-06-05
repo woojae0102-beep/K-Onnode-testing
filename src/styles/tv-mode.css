@@ -781,6 +781,15 @@ body.tv-active {
   color: rgba(255, 255, 255, 0.45);
 }
 
+.tv-compare-vocal-coach {
+  flex-shrink: 0;
+  padding: 6px 12px;
+  border-top: 1px solid var(--tv-border);
+  background: rgba(0, 0, 0, 0.4);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
 .tv-compare-speed {
   flex-shrink: 0;
   padding: 8px 16px;
