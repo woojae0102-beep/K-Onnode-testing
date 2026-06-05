@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import type { Agency, SessionData, TrainingMode } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import { useAgencyPersona } from '../../hooks/useAgencyPersona';
@@ -36,6 +37,17 @@ export default function TVCompareTeachingScreen({
   const [isPlaying, setIsPlaying] = useState(false);
   const [syncTime, setSyncTime] = useState(0);
   const [sheetTab, setSheetTab] = useState(null);
+  const [isMobileUi, setIsMobileUi] = useState(
+    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
+  );
+
+  useEffect(() => {
+    const mq = window.matchMedia('(max-width: 767px)');
+    const onChange = () => setIsMobileUi(mq.matches);
+    onChange();
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
 
   const refPlayerRef = useRef(null);
   const myVideoRef = useRef(null);
@@ -348,29 +360,39 @@ export default function TVCompareTeachingScreen({
         </footer>
       </div>
 
-      {/* 모바일: 하단 독 + 시트 */}
-      <TVCompareBottomDock activeTab={sheetTab} onTabChange={setSheetTab} agencyColor={agencyColor} />
-      <TVCompareBottomSheet
-        open={Boolean(sheetTab)}
-        tab={sheetTab}
-        onClose={() => setSheetTab(null)}
-        agency={agency}
-        agencyColor={agencyColor}
-        playbackRate={playbackRate}
-        onPlaybackRateChange={setPlaybackRate}
-        isPlaying={isPlaying}
-        onToggleSync={isPlaying ? stopSync : startSync}
-        onSeekStart={handleSeekStart}
-        coachReview={coachReview}
-        isDance={isDance}
-        vocalCoachProps={!isDance ? vocalCoachProps : null}
-        vocalCoachKey={vocalCoachKick}
-        rightMode={rightMode}
-        onPracticeWeak={handlePracticeWeak}
-        onBackToRecording={handleBackToRecording}
-        onShowResult={onShowResult}
-        onRetrySession={onRetrySession}
-      />
+      {isMobileUi && typeof document !== 'undefined'
+        ? createPortal(
+            <div className="tv-compare-mobile-portal">
+              <TVCompareBottomDock
+                activeTab={sheetTab}
+                onTabChange={setSheetTab}
+                agencyColor={agencyColor}
+              />
+              <TVCompareBottomSheet
+                open={Boolean(sheetTab)}
+                tab={sheetTab}
+                onClose={() => setSheetTab(null)}
+                agency={agency}
+                agencyColor={agencyColor}
+                playbackRate={playbackRate}
+                onPlaybackRateChange={setPlaybackRate}
+                isPlaying={isPlaying}
+                onToggleSync={isPlaying ? stopSync : startSync}
+                onSeekStart={handleSeekStart}
+                coachReview={coachReview}
+                isDance={isDance}
+                vocalCoachProps={!isDance ? vocalCoachProps : null}
+                vocalCoachKey={vocalCoachKick}
+                rightMode={rightMode}
+                onPracticeWeak={handlePracticeWeak}
+                onBackToRecording={handleBackToRecording}
+                onShowResult={onShowResult}
+                onRetrySession={onRetrySession}
+              />
+            </div>,
+            document.body,
+          )
+        : null}
     </div>
   );
 }
