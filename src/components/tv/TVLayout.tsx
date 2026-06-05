@@ -1,12 +1,13 @@
 // @ts-nocheck
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import type { Agency, TrainingMode } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
 import { useTVMicrophone } from '../../hooks/useTVMicrophone';
 import { useTVMode } from '../../hooks/useTVMode';
+import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { buildLocalCoachReview } from '../../utils/tvCoachReview';
-import AICoachPanel from './AICoachPanel';
+import TVReferencePanel from './TVReferencePanel';
 import UserCameraPanel from './UserCameraPanel';
 
 export function TVLayout({
@@ -20,15 +21,16 @@ export function TVLayout({
 }) {
   const agencyColor = AGENCY_COLORS[agency];
   const [completing, setCompleting] = useState(false);
+  const [referenceVideoUrl, setReferenceVideoUrl] = useState('');
+  const refPlayerRef = useRef(null);
 
   const dance = useMediaPipeTV(agencyColor);
   const vocal = useTVMicrophone();
+  const recorder = useTVRecorder();
 
   const isDance = mode === 'dance';
   const poseData = isDance ? dance.poseData : null;
   const isTracking = isDance ? dance.isTracking : vocal.isTracking;
-  const startTracking = isDance ? dance.startTracking : vocal.startTracking;
-  const stopTracking = isDance ? dance.stopTracking : vocal.stopTracking;
 
   const vocalMetrics = !isDance
     ? {
@@ -55,10 +57,28 @@ export function TVLayout({
     return `${m}:${s}`;
   };
 
+  const handleStartTracking = useCallback(async () => {
+    if (isDance) {
+      await dance.startTracking();
+      const stream = dance.getStream();
+      if (stream) recorder.startRecording(stream);
+    } else {
+      await vocal.startTracking();
+      const stream = vocal.getStream();
+      if (stream) recorder.startRecording(stream);
+    }
+  }, [dance, vocal, isDance, recorder]);
+
+  const handleStopTracking = useCallback(() => {
+    if (isDance) dance.stopTracking();
+    else vocal.stopTracking();
+  }, [dance, vocal, isDance]);
+
   const handleComplete = useCallback(async () => {
     if (completing) return;
     setCompleting(true);
-    stopTracking();
+    handleStopTracking();
+    const recordedMediaUrl = await recorder.stopRecording();
 
     const base = buildSessionData({ feedback });
     let coachReview = buildLocalCoachReview(base);
@@ -87,8 +107,23 @@ export function TVLayout({
       /* local review */
     }
 
-    onExit(buildSessionData({ feedback, coachReview }));
-  }, [completing, stopTracking, buildSessionData, feedback, agency, poseData, mode, onExit]);
+    onExit({
+      ...buildSessionData({ feedback, coachReview }),
+      referenceVideoUrl,
+      recordedMediaUrl: recordedMediaUrl || recorder.recordedUrl,
+    });
+  }, [
+    completing,
+    handleStopTracking,
+    recorder,
+    buildSessionData,
+    feedback,
+    agency,
+    poseData,
+    mode,
+    onExit,
+    referenceVideoUrl,
+  ]);
 
   return (
     <div className="tv-mode tv-training-screen">
@@ -97,18 +132,25 @@ export function TVLayout({
           <span className="tv-training-agency" style={{ color: agencyColor }}>
             {agency.toUpperCase()}
           </span>
-          <span className="tv-training-mode">{mode === 'dance' ? '댄스' : '보컬'}</span>
+          <span className="tv-training-mode">
+            {mode === 'dance' ? '댄스 트레이닝' : '보컬 트레이닝'}
+          </span>
         </div>
         <span className="tv-training-timer">{formatTime()}</span>
       </header>
 
       <div className="tv-split-layout">
-        <AICoachPanel agency={agency} mode={mode} agencyColor={agencyColor} />
+        <TVReferencePanel
+          mode={mode}
+          embedUrl={referenceVideoUrl}
+          onEmbedUrlChange={setReferenceVideoUrl}
+          playerRef={refPlayerRef}
+        />
         <UserCameraPanel
           mode={mode}
-          poseData={null}
+          poseData={isDance ? poseData : null}
           isTracking={isTracking}
-          onStartTracking={startTracking}
+          onStartTracking={handleStartTracking}
           agencyColor={agencyColor}
           vocalMetrics={vocalMetrics}
           videoRef={isDance ? dance.videoRef : null}
@@ -121,9 +163,15 @@ export function TVLayout({
         <button
           type="button"
           className="tv-footer-btn tv-footer-btn-secondary"
-          onClick={isTracking ? stopTracking : startTracking}
+          onClick={isTracking ? handleStopTracking : handleStartTracking}
         >
-          {isTracking ? (isDance ? '카메라 끄기' : '마이크 끄기') : isDance ? '카메라 켜기' : '마이크 켜기'}
+          {isTracking
+            ? isDance
+              ? '카메라 끄기'
+              : '마이크 끄기'
+            : isDance
+              ? '카메라 켜기'
+              : '마이크 켜기'}
         </button>
         <button
           type="button"

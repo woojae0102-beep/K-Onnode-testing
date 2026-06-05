@@ -143,6 +143,7 @@ export function UserCameraPanel({
   videoRef = null,
   canvasRef = null,
   showJointBadges = true,
+  embedded = false,
 }: {
   mode?: 'dance' | 'vocal';
   poseData: PoseData | null;
@@ -158,19 +159,12 @@ export function UserCameraPanel({
   videoRef?: React.RefObject<HTMLVideoElement> | null;
   canvasRef?: React.RefObject<HTMLCanvasElement> | null;
   showJointBadges?: boolean;
+  embedded?: boolean;
 }) {
   const isVocal = mode === 'vocal';
 
-  return (
-    <div className="tv-simple-panel tv-camera-panel">
-      <div className="tv-panel-label">
-        {isVocal ? '내 마이크' : '내 카메라'}
-        {isTracking ? (
-          <span style={{ marginLeft: 8, color: '#00FF88', fontSize: 10 }}>● ON</span>
-        ) : null}
-      </div>
-
-      <div style={{ flex: 1, position: 'relative', background: '#030308', minHeight: 0 }}>
+  const body = (
+      <div style={{ flex: 1, position: 'relative', background: '#030308', minHeight: 0, width: '100%', height: embedded ? '100%' : undefined }}>
         {!isVocal && videoRef && canvasRef ? (
           <>
             <TVCameraViewport
@@ -267,6 +261,19 @@ export function UserCameraPanel({
           </div>
         )}
       </div>
+  );
+
+  if (embedded) return body;
+
+  return (
+    <div className="tv-simple-panel tv-camera-panel">
+      <div className="tv-panel-label">
+        {isVocal ? '내 마이크' : '내 카메라'}
+        {isTracking ? (
+          <span style={{ marginLeft: 8, color: '#00FF88', fontSize: 10 }}>● ON</span>
+        ) : null}
+      </div>
+      {body}
     </div>
   );
 }

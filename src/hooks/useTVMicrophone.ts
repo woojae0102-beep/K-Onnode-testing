@@ -45,6 +45,8 @@ export function useTVMicrophone() {
     setIsTracking(false);
   }, []);
 
+  const getStream = useCallback(() => streamRef.current, []);
+
   return {
     isTracking,
     startTracking,
@@ -53,6 +55,7 @@ export function useTVMicrophone() {
     pitchFeedback,
     tuningState,
     pitchScore,
+    getStream,
   };
 }
 

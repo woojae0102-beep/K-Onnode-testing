@@ -5,10 +5,11 @@ import type { Agency, SessionData, TrainingMode } from '../types/tv';
 import { useAuth } from '../contexts/AuthContext';
 import TVModeEntry from '../components/tv/TVModeEntry';
 import TVLayout from '../components/tv/TVLayout';
+import TVCompareTeachingScreen from '../components/tv/TVCompareTeachingScreen';
 import TrainingResultScreen from '../components/tv/TrainingResultScreen';
 import { saveTeachingReport } from '../services/teachingReportStore';
 
-type Phase = 'entry' | 'training' | 'result';
+type Phase = 'entry' | 'training' | 'compare' | 'result';
 
 export default function TVModeView({ onNavigate } = {}) {
   const { user } = useAuth();
@@ -24,17 +25,8 @@ export default function TVModeView({ onNavigate } = {}) {
   }, []);
 
   const handleEnd = useCallback(async (data: SessionData) => {
-    document.body.classList.remove('tv-active');
-    if (document.fullscreenElement) {
-      try {
-        await document.exitFullscreen();
-      } catch {
-        /* ignore */
-      }
-    }
-
     setSessionData(data);
-    setPhase('result');
+    setPhase('compare');
 
     saveTeachingReport('tv-mode', {
       title: `TV 연습실 — ${data.agency.toUpperCase()} ${data.mode === 'dance' ? '댄스' : '보컬'}`,
@@ -69,6 +61,11 @@ export default function TVModeView({ onNavigate } = {}) {
     setSessionData(null);
   }, []);
 
+  const handleRestartTraining = useCallback(() => {
+    setSessionData(null);
+    setPhase('training');
+  }, []);
+
   const handleHome = useCallback(() => {
     document.body.classList.remove('tv-active');
     setPhase('entry');
@@ -83,6 +80,18 @@ export default function TVModeView({ onNavigate } = {}) {
   if (phase === 'training') {
     return (
       <TVLayout agency={selectedAgency} mode={selectedMode} onExit={handleEnd} />
+    );
+  }
+
+  if (phase === 'compare') {
+    return (
+      <TVCompareTeachingScreen
+        sessionData={sessionData}
+        agency={selectedAgency}
+        mode={selectedMode}
+        onShowResult={() => setPhase('result')}
+        onRetrySession={handleRestartTraining}
+      />
     );
   }
 

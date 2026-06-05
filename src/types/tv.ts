@@ -48,6 +48,8 @@ export interface SessionData {
   passProbability: number;
   feedback?: FeedbackItem[];
   coachReview?: string;
+  referenceVideoUrl?: string;
+  recordedMediaUrl?: string;
 }
 
 export const AGENCY_COLORS: Record<Agency, string> = {

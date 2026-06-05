@@ -268,6 +268,8 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
 
   useEffect(() => () => stopTracking(), [stopTracking]);
 
+  const getStream = useCallback(() => streamRef.current, []);
+
   return {
     poseData,
     isTracking,
@@ -275,6 +277,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
     stopTracking,
     videoRef,
     canvasRef,
+    getStream,
   };
 }
 
