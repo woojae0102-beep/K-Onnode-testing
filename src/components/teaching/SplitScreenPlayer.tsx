@@ -25,7 +25,7 @@ export function SplitScreenPlayer({
   const gridCols = isNarrow ? 'grid-cols-1' : 'grid-cols-2';
 
   return (
-    <div className="flex flex-col h-full bg-[#0a0a0f] rounded-2xl overflow-hidden border border-white/10">
+    <div className="teaching-dark-shell flex flex-col h-full bg-[#0a0a0f] rounded-2xl overflow-hidden border border-white/10">
       <div className={`grid ${gridCols} border-b border-white/10`}>
         <div className={`px-4 py-2 text-xs font-bold text-[#FF1F8E] ${isNarrow ? '' : 'border-r border-white/10'}`}>
           {leftLabel}

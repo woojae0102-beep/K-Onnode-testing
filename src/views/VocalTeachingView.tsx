@@ -162,7 +162,7 @@ export default function VocalTeachingView({ onNavigate }) {
 
   if (phase === 'setup') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="setup" />
         <h1 className="text-xl font-bold mb-1">{t('teaching.session.vocalTitle')}</h1>
         <p className="text-sm text-white/50 mb-6">{t('teaching.session.vocalSubtitle')}</p>
@@ -173,13 +173,13 @@ export default function VocalTeachingView({ onNavigate }) {
               value={songTitle}
               onChange={(e) => setSongTitle(e.target.value)}
               placeholder="곡명"
-              className="flex-1 min-w-[120px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
+              className="input-on-dark flex-1 min-w-[120px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
             />
             <input
               value={songArtist}
               onChange={(e) => setSongArtist(e.target.value)}
               placeholder="아티스트"
-              className="flex-1 min-w-[120px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
+              className="input-on-dark flex-1 min-w-[120px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
             />
             <button type="button" onClick={() => analyzeSong([songTitle, songArtist].filter(Boolean).join(' '))} className="rounded-lg px-3 py-2 bg-white/10 text-sm">
               Spotify
@@ -218,7 +218,7 @@ export default function VocalTeachingView({ onNavigate }) {
 
   if (phase === 'practice') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="practice" />
         <TeachingPracticePanel
           mode="vocal"
@@ -234,7 +234,7 @@ export default function VocalTeachingView({ onNavigate }) {
 
   if (phase === 'review') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="review" />
         {error ? <p className="text-rose-400 text-sm mb-4">{error}</p> : null}
         <TeachingReviewPanel
@@ -253,7 +253,7 @@ export default function VocalTeachingView({ onNavigate }) {
 
   if (phase === 'cloning' || phase === 'analyzing' || phase === 'generating') {
     return (
-      <div className="min-h-full bg-[#0a0a0f]">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f]">
         <AnalysisLoadingScreen steps={VOCAL_STEPS} currentStep={loadingStep} title="보컬 분석" />
         {isCloning ? (
           <div className="max-w-md mx-auto px-6 -mt-20">
@@ -270,7 +270,7 @@ export default function VocalTeachingView({ onNavigate }) {
   if (phase === 'result') {
     const score = analysis?.overallPitchScore ?? analysis?.feedback?.overallScore ?? 0;
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-6">
         <h2 className="text-2xl font-bold mb-4">보컬 결과</h2>
         <p className="text-4xl font-black text-[#FF1F8E] mb-4">{score}%</p>
         <p className="text-white/70 text-sm mb-2">{analysis?.feedback?.pitchAnalysis}</p>
@@ -284,7 +284,7 @@ export default function VocalTeachingView({ onNavigate }) {
 
   return (
     <div
-      className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
+      className="teaching-dark-shell min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
       style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex justify-between">

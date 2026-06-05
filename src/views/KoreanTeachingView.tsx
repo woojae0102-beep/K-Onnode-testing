@@ -127,7 +127,7 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   if (phase === 'setup') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="setup" />
         <h1 className="text-xl font-bold mb-1">{t('teaching.session.koreanTitle')}</h1>
         <p className="text-sm text-white/50 mb-6">{t('teaching.session.koreanSubtitle')}</p>
@@ -137,7 +137,7 @@ export default function KoreanTeachingView({ onNavigate }) {
             value={referenceText}
             onChange={(e) => setReferenceText(e.target.value)}
             rows={4}
-            className="w-full rounded-xl border border-white/20 bg-black/30 px-3 py-2 text-sm"
+            className="input-on-dark w-full rounded-xl border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
           />
         </div>
         <div className="rounded-xl border border-white/10 bg-white/5 p-4 mb-4 space-y-2">
@@ -147,13 +147,13 @@ export default function KoreanTeachingView({ onNavigate }) {
               value={songTitle}
               onChange={(e) => setSongTitle(e.target.value)}
               placeholder="곡명"
-              className="flex-1 min-w-[100px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
+              className="input-on-dark flex-1 min-w-[100px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
             />
             <input
               value={songArtist}
               onChange={(e) => setSongArtist(e.target.value)}
               placeholder="아티스트"
-              className="flex-1 min-w-[100px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
+              className="input-on-dark flex-1 min-w-[100px] rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
             />
             <button type="button" onClick={handleLoadLyrics} className="rounded-lg px-3 py-2 bg-[#FF1F8E] text-sm font-semibold shrink-0">
               가사 불러오기
@@ -186,7 +186,7 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   if (phase === 'practice') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="practice" />
         <p className="text-xs text-white/50 mb-3 line-clamp-2">{referenceText}</p>
         <TeachingPracticePanel
@@ -203,7 +203,7 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   if (phase === 'review') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="review" />
         <TeachingReviewPanel
           file={audioFile}
@@ -221,7 +221,7 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   if (phase === 'analyzing' || phase === 'generating') {
     return (
-      <div className="min-h-full bg-[#0a0a0f]">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f]">
         <AnalysisLoadingScreen
           steps={KO_STEPS}
           currentStep={loadingStep}
@@ -234,7 +234,7 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   if (phase === 'result') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-6">
         <h2 className="text-2xl font-bold mb-4">발음 결과</h2>
         <p className="text-4xl font-black text-[#FF1F8E] mb-2">{analysis?.accuracy ?? 0}%</p>
         <p className="text-sm text-white/60 mb-4">인식: {analysis?.transcript}</p>
@@ -248,7 +248,7 @@ export default function KoreanTeachingView({ onNavigate }) {
 
   return (
     <div
-      className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
+      className="teaching-dark-shell min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
       style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex justify-between">

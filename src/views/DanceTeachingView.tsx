@@ -187,7 +187,7 @@ export default function DanceTeachingView({ onNavigate }) {
   if (phase === 'setup') {
     return (
       <div
-        className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6"
+        className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6"
         style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
       >
         <TeachingStepBar current="setup" />
@@ -210,13 +210,13 @@ export default function DanceTeachingView({ onNavigate }) {
               value={songTitle}
               onChange={(e) => setSongTitle(e.target.value)}
               placeholder="곡명"
-              className="flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
+              className="input-on-dark flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
             />
             <input
               value={songArtist}
               onChange={(e) => setSongArtist(e.target.value)}
               placeholder="아티스트"
-              className="flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm"
+              className="input-on-dark flex-1 rounded-lg border border-white/20 bg-black/30 px-3 py-2 text-sm text-white placeholder:text-white/45"
             />
             <button
               type="button"
@@ -262,7 +262,7 @@ export default function DanceTeachingView({ onNavigate }) {
         <video src={refUrl} className="w-full h-full object-cover" muted playsInline />
       ) : null;
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="practice" />
         <TeachingPracticePanel
           mode="dance"
@@ -279,7 +279,7 @@ export default function DanceTeachingView({ onNavigate }) {
 
   if (phase === 'review') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
         <TeachingStepBar current="review" />
         {(analyzeError || error) ? (
           <p className="text-rose-400 text-sm mb-4">{analyzeError || error}</p>
@@ -300,7 +300,7 @@ export default function DanceTeachingView({ onNavigate }) {
 
   if (phase === 'analyzing') {
     return (
-      <div className="min-h-full bg-[#0a0a0f]">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f]">
         <AnalysisLoadingScreen currentStep={loadingStep} />
         {analyzeError ? (
           <p className="text-center text-rose-400 text-sm px-6 -mt-4 pb-8">{analyzeError}</p>
@@ -312,7 +312,7 @@ export default function DanceTeachingView({ onNavigate }) {
   if (phase === 'result') {
     const acc = result?.overallAccuracy ?? 0;
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-6">
+      <div className="teaching-dark-shell min-h-full bg-[#0a0a0f] text-white p-6">
         <h2 className="text-2xl font-bold mb-6">세션 결과</h2>
         <div className="flex justify-center mb-8">
           <div
@@ -357,7 +357,7 @@ export default function DanceTeachingView({ onNavigate }) {
 
   return (
     <div
-      className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
+      className="teaching-dark-shell min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
       style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
     >
       <div className="flex justify-between items-center">

@@ -61,7 +61,7 @@ export function VideoUploader({
             value={youtubeUrl}
             onChange={(e) => onYoutubeUrlChange?.(e.target.value)}
             placeholder="유튜브 URL"
-            className="flex-1 rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/40"
+            className="input-on-dark flex-1 rounded-xl border border-white/20 bg-white/5 px-3 py-2 text-sm text-white placeholder:text-white/45"
           />
           <button
             type="button"
