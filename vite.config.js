@@ -23,6 +23,7 @@ function devApiPlugin() {
           { prefix: '/api/monthly/', entry: '/api/monthly' },
           { prefix: '/api/coaching/', entry: '/api/coaching' },
           { prefix: '/api/teaching/', entry: '/api/teaching' },
+          { prefix: '/api/tv/', entry: '/api/tv' },
         ];
         const [rawPath, rawQuery = ''] = req.url.split('?');
         const urlPath = rawPath.replace(/\/+$/, '') || '/';
@@ -37,7 +38,7 @@ function devApiPlugin() {
           }
         }
 
-        const resolvedPath = devUrl.split('?')[0].replace(/\/+$/, '') || '/';
+        const resolvedPath = (req.url || '').split('?')[0].replace(/\/+$/, '') || '/';
         const rel = resolvedPath.slice(1);
         const candidates = [
           path.resolve(process.cwd(), `${rel}.js`),

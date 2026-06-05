@@ -280,7 +280,10 @@ export default function VocalTeachingView({ onNavigate }) {
   }
 
   return (
-    <div className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4 pb-8">
+    <div
+      className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
+      style={{ paddingBottom: 'calc(2rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="flex justify-between">
         <h2 className="text-lg font-bold text-white">보컬 티칭</h2>
         <button type="button" onClick={() => setPhase('result')} className="text-sm text-[#FF1F8E]">결과</button>

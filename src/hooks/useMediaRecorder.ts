@@ -1,23 +1,25 @@
 // @ts-nocheck
 import { useCallback, useEffect, useRef, useState } from 'react';
-
-function pickMime(hasVideo) {
-  const types = hasVideo
-    ? ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4']
-    : ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4'];
-  if (typeof MediaRecorder === 'undefined') return '';
-  for (const t of types) {
-    if (MediaRecorder.isTypeSupported(t)) return t;
-  }
-  return '';
-}
+import { useSettingsStore } from '../store/settingsSlice';
+import {
+  applyInlineVideoAttributes,
+  buildMobileAudioConstraints,
+  buildMobileVideoConstraints,
+  mimeToRecordingExtension,
+  pickRecorderMimeType,
+} from '../utils/mobileMedia';
 
 /**
  * Camera/mic preview + session recording for teaching flows.
- * Live analysis uses the same stream (no second getUserMedia).
+ * Mobile (iPhone/Galaxy): user gesture required before startPreview().
  */
 export function useMediaRecorder({ mode = 'video' } = {}) {
   const hasVideo = mode === 'video';
+  const noiseFilter = useSettingsStore((s) => s.settings.noiseFilter);
+  const micSensitivity = useSettingsStore((s) => s.settings.micSensitivity);
+  const cameraDefault = useSettingsStore((s) => s.settings.cameraDefault);
+  const mediaSettings = { noiseFilter, micSensitivity, cameraDefault };
+
   const [isPreviewing, setIsPreviewing] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [elapsedSec, setElapsedSec] = useState(0);
@@ -33,9 +35,8 @@ export function useMediaRecorder({ mode = 'video' } = {}) {
     const video = videoRef.current;
     const stream = streamRef.current;
     if (video && stream) {
+      applyInlineVideoAttributes(video);
       video.srcObject = stream;
-      video.muted = true;
-      video.playsInline = true;
       video.play().catch(() => {});
     }
   }, []);
@@ -48,22 +49,37 @@ export function useMediaRecorder({ mode = 'video' } = {}) {
 
   const startPreview = useCallback(async () => {
     setError('');
+    if (!navigator.mediaDevices?.getUserMedia) {
+      const msg = '이 브라우저는 카메라/마이크를 지원하지 않습니다. Safari·Chrome 최신 버전을 사용해 주세요.';
+      setError(msg);
+      throw new Error(msg);
+    }
     try {
       stopTracks();
       const constraints = hasVideo
-        ? { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: true }
-        : { audio: true };
+        ? {
+            video: buildMobileVideoConstraints(mediaSettings),
+            audio: buildMobileAudioConstraints(mediaSettings),
+          }
+        : { audio: buildMobileAudioConstraints(mediaSettings) };
       const stream = await navigator.mediaDevices.getUserMedia(constraints);
       streamRef.current = stream;
       setIsPreviewing(true);
       attachPreview();
       return stream;
-    } catch {
-      const msg = hasVideo ? '카메라·마이크 권한이 필요합니다.' : '마이크 권한이 필요합니다.';
+    } catch (err) {
+      const denied = err?.name === 'NotAllowedError' || err?.name === 'PermissionDeniedError';
+      const msg = denied
+        ? hasVideo
+          ? '카메라·마이크 권한을 허용해 주세요. (설정 → Safari/Chrome → 카메라·마이크)'
+          : '마이크 권한을 허용해 주세요.'
+        : hasVideo
+        ? '카메라를 시작하지 못했습니다. 다른 앱이 카메라를 쓰고 있지 않은지 확인해 주세요.'
+        : '마이크를 시작하지 못했습니다.';
       setError(msg);
       throw new Error(msg);
     }
-  }, [attachPreview, hasVideo, stopTracks]);
+  }, [attachPreview, hasVideo, mediaSettings, stopTracks]);
 
   const stopPreview = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
@@ -88,22 +104,25 @@ export function useMediaRecorder({ mode = 'video' } = {}) {
   const startRecording = useCallback(() => {
     const stream = streamRef.current;
     if (!stream) return false;
-    const mimeType = pickMime(hasVideo);
-    if (!mimeType) {
-      setError('이 브라우저는 녹화를 지원하지 않습니다.');
+    const mimeType = pickRecorderMimeType(hasVideo);
+    chunksRef.current = [];
+    try {
+      const mr = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+      mr.ondataavailable = (e) => {
+        if (e.data?.size > 0) chunksRef.current.push(e.data);
+      };
+      recorderRef.current = mr;
+      mr.start(250);
+      setIsRecording(true);
+      setElapsedSec(0);
+      timerRef.current = setInterval(() => setElapsedSec((s) => s + 1), 1000);
+      return true;
+    } catch {
+      setError('녹화를 시작하지 못했습니다. iPhone은 Safari, 갤럭시는 Chrome을 권장합니다.');
       return false;
     }
-    chunksRef.current = [];
-    const mr = new MediaRecorder(stream, { mimeType });
-    mr.ondataavailable = (e) => {
-      if (e.data?.size > 0) chunksRef.current.push(e.data);
-    };
-    recorderRef.current = mr;
-    mr.start(250);
-    setIsRecording(true);
-    setElapsedSec(0);
-    timerRef.current = setInterval(() => setElapsedSec((s) => s + 1), 1000);
-    return true;
   }, [hasVideo]);
 
   const stopRecording = useCallback(() => {
@@ -122,8 +141,9 @@ export function useMediaRecorder({ mode = 'video' } = {}) {
           }
           setIsRecording(false);
           recorderRef.current = null;
-          const blob = new Blob(chunksRef.current, { type: mr.mimeType || (hasVideo ? 'video/webm' : 'audio/webm') });
-          const ext = hasVideo ? 'webm' : 'webm';
+          const type = mr.mimeType || pickRecorderMimeType(hasVideo) || (hasVideo ? 'video/mp4' : 'audio/mp4');
+          const blob = new Blob(chunksRef.current, { type });
+          const ext = mimeToRecordingExtension(type, hasVideo);
           const file = new File([blob], `session-${Date.now()}.${ext}`, { type: blob.type });
           resolve(file);
         },

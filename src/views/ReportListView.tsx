@@ -1,13 +1,14 @@
 // @ts-nocheck
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import ReportCard from '../components/report/ReportCard';
 import ReportDetailView from './ReportDetailView';
 import {
-  fetchMockReports,
-  formatReportDateLabel,
+  fetchRealReports,
   groupReportsByDate,
-} from '../mocks/reportMocks';
+  subscribeReportUpdates,
+} from '../services/reportDataService';
+import { formatReportDateLabel } from '../mocks/reportMocks';
 
 const PAGE_SIZE = 10;
 
@@ -16,6 +17,7 @@ export default function ReportListView({ onSwitchSubTab }) {
   const [filter, setFilter] = useState('all');
   const [page, setPage] = useState(1);
   const [openReport, setOpenReport] = useState(null);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   const FILTERS = [
     { id: 'all', label: t('report.filterAll') },
@@ -24,7 +26,14 @@ export default function ReportListView({ onSwitchSubTab }) {
     { id: 'korean', label: t('report.trackKorean') },
   ];
 
-  const data = useMemo(() => fetchMockReports({ track: filter, limit: page * PAGE_SIZE }), [filter, page]);
+  useEffect(() => {
+    return subscribeReportUpdates(() => setRefreshKey((k) => k + 1));
+  }, []);
+
+  const data = useMemo(
+    () => fetchRealReports({ track: filter, limit: page * PAGE_SIZE }),
+    [filter, page, refreshKey],
+  );
   const groups = useMemo(() => groupReportsByDate(data.items), [data.items]);
   const hasMore = data.items.length < data.total;
 
@@ -185,7 +194,12 @@ function EmptyState({ onStart }) {
       >
         📋
       </div>
-      <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111111' }}>{t('report.emptyTitle')}</p>
+      <p style={{ margin: 0, fontSize: 14, fontWeight: 500, color: '#111111' }}>
+        {t('report.emptyTitle')}
+      </p>
+      <p style={{ margin: 0, fontSize: 12, color: '#888888', textAlign: 'center' }}>
+        TV 연습실, 댄스/보컬 트레이닝을 완료하면 리포트가 자동으로 기록됩니다.
+      </p>
       <button
         type="button"
         onClick={onStart}

@@ -3,6 +3,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 
 const HOME_SECTIONS = [
+  { group: 'training', icon: '📺', labelKey: 'leftPanel.tvMode', view: 'tv-mode', accent: true },
   { group: 'myPage', icon: '👤', labelKey: 'leftPanel.profile', view: 'mypage' },
   { group: 'myPage', icon: '📊', labelKey: 'leftPanel.growth', view: 'growth' },
   { group: 'myPage', icon: '🎯', labelKey: 'leftPanel.goals', view: 'goals' },

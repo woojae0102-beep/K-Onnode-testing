@@ -901,6 +901,7 @@ function extractScoreFromPayload(domain, payload) {
   if (domain === 'dance') return Number(payload.score ?? payload.summary?.totalScore ?? 0);
   if (domain === 'vocal') return Number(payload.liveScore ?? payload.summary?.total ?? 0);
   if (domain.startsWith('korean-')) return Number(payload.metrics?.overall ?? payload.overall ?? 0);
+  if (domain === 'tv-mode') return Number(payload.overallScore ?? 0);
   return null;
 }
 
@@ -1614,6 +1615,7 @@ export default function AICoachView() {
   const [reports, setReports] = useState({
     dance: null,
     vocal: null,
+    'tv-mode': null,
     korean: {
       pronunciation: null,
       follow: null,
@@ -1624,6 +1626,7 @@ export default function AICoachView() {
   const [reportHistory, setReportHistory] = useState({
     dance: [],
     vocal: [],
+    'tv-mode': [],
     korean: [],
   });
   const [persistedSessions, setPersistedSessions] = useState(() => loadPersistedSessions());
@@ -1632,6 +1635,7 @@ export default function AICoachView() {
   const historyMetaRef = useRef({
     dance: { lastAt: 0, lastScore: null },
     vocal: { lastAt: 0, lastScore: null },
+    'tv-mode': { lastAt: 0, lastScore: null },
     korean: { lastAt: 0, lastScore: null },
   });
   const storeLanguage = useLanguageStore((s) => s.language);
@@ -1674,10 +1678,11 @@ export default function AICoachView() {
       else if (domain === 'korean-follow') next.korean = { ...next.korean, follow: payload };
       else if (domain === 'korean-correction') next.korean = { ...next.korean, correction: payload };
       else if (domain === 'korean-lyrics') next.korean = { ...next.korean, lyrics: payload };
+      else if (domain === 'tv-mode') next['tv-mode'] = { ...payload, updatedAt: Date.now() };
       return next;
     });
 
-    const rootDomain = domain.startsWith('korean-') ? 'korean' : domain;
+    const rootDomain = domain.startsWith('korean-') ? 'korean' : domain === 'tv-mode' ? 'tv-mode' : domain;
     const score = extractScoreFromPayload(domain, payload);
     if (!Number.isFinite(score)) return;
     const now = Date.now();

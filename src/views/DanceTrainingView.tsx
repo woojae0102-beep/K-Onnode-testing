@@ -158,11 +158,12 @@ export default function DanceTrainingView({ onNavigate, onReportUpdate }) {
   }, [currentPhase, t]);
 
   useEffect(() => {
-    fetch('/api/dance/set-difficulty', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ difficulty }),
-    }).catch(() => {});
+    if (typeof window === 'undefined') return;
+    try {
+      window.localStorage.setItem('onnode_dance_difficulty', String(difficulty));
+    } catch {
+      /* ignore */
+    }
   }, [difficulty]);
 
   useEffect(() => {

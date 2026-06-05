@@ -1,5 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": "npm run build",
+  "outputDirectory": "dist",
+  "framework": "vite",
   "rewrites": [
     {
       "source": "/api/audition/:path*",
@@ -18,7 +21,15 @@
       "destination": "/api/teaching?path=:path*"
     },
     {
+      "source": "/api/tv/:path*",
+      "destination": "/api/tv?path=:path*"
+    },
+    {
       "source": "/oauth/callback/kakao",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/((?!api/).*)",
       "destination": "/index.html"
     }
   ],

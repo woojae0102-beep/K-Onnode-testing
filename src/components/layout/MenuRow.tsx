@@ -2,11 +2,29 @@
 import React from 'react';
 import { ChevronRight } from 'lucide-react';
 
-export default function MenuRow({ icon, label, active = false, onClick, trailing = null, showChevron = false }) {
+export default function MenuRow({
+  icon,
+  label,
+  active = false,
+  onClick,
+  trailing = null,
+  showChevron = false,
+  highlight = false,
+}) {
   const [hover, setHover] = React.useState(false);
 
-  const background = active ? '#FFF0F7' : hover ? '#F5F5F5' : 'transparent';
-  const color = active ? '#FF1F8E' : '#111111';
+  const background = highlight
+    ? active
+      ? 'rgba(255, 31, 142, 0.14)'
+      : hover
+        ? 'rgba(255, 31, 142, 0.1)'
+        : 'rgba(255, 31, 142, 0.08)'
+    : active
+      ? '#FFF0F7'
+      : hover
+        ? '#F5F5F5'
+        : 'transparent';
+  const color = highlight || active ? '#FF1F8E' : '#111111';
 
   return (
     <button
@@ -23,7 +41,7 @@ export default function MenuRow({ icon, label, active = false, onClick, trailing
         borderRadius: 8,
         background,
         color,
-        border: 'none',
+        border: highlight ? '1px solid rgba(255, 31, 142, 0.3)' : 'none',
         cursor: 'pointer',
         textAlign: 'left',
         fontSize: 13,

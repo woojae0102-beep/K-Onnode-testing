@@ -38,6 +38,7 @@ export function useLiveAudioMeter({ stream, active = false, targetMidi = 60 } = 
 
     const ctx = new AudioContext();
     ctxRef.current = ctx;
+    ctx.resume?.().catch(() => {});
     const source = ctx.createMediaStreamSource(stream);
     const analyser = ctx.createAnalyser();
     analyser.fftSize = 2048;

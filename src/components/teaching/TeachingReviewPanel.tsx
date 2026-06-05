@@ -25,7 +25,7 @@ export function TeachingReviewPanel({ file, mode = 'dance', onAnalyze, onRetake,
         ) : (
           <div className="flex flex-col items-center justify-center h-full min-h-[200px] gap-4 p-6">
             <span className="text-4xl">🎧</span>
-            <audio src={previewUrl} controls className="w-full max-w-md" />
+            <audio src={previewUrl} controls playsInline className="w-full max-w-md" />
           </div>
         )}
       </div>

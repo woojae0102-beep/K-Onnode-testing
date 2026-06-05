@@ -30,6 +30,7 @@ import WeaknessView from '../views/WeaknessView';
 import RoutineView from '../views/RoutineView';
 import CoachingView from '../views/CoachingView';
 import AgencyAuditionView from '../views/AgencyAuditionView';
+import TVModeView from '../views/TVModeView';
 
 const TAB_TO_DEFAULT_VIEW = {
   home: 'home',
@@ -51,6 +52,7 @@ const VIEW_TO_TAB = {
   'vocal-teaching': 'home',
   'korean-teaching': 'home',
   'agency-audition': 'home',
+  'tv-mode': 'home',
   trending: 'discover',
   'popular-dance': 'discover',
   'popular-songs': 'discover',
@@ -68,6 +70,7 @@ const TRAINING_VIEWS = [
   'dance-teaching',
   'vocal-teaching',
   'korean-teaching',
+  'tv-mode',
   'aicoach',
 ];
 
@@ -135,6 +138,8 @@ export default function Layout(props) {
         return <KoreanTeachingView onNavigate={handleSelectView} />;
       case 'agency-audition':
         return <AgencyAuditionView />;
+      case 'tv-mode':
+        return <TVModeView />;
       case 'trending':
         return <TrendingView onNavigate={handleSelectView} />;
       case 'popular-dance':
@@ -159,6 +164,10 @@ export default function Layout(props) {
         return <HomeView onNavigate={handleSelectView} />;
     }
   };
+
+  if (mainView === 'tv-mode') {
+    return <TVModeView />;
+  }
 
   return (
     <div

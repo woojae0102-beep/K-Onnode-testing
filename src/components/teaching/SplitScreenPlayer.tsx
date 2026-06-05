@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React from 'react';
+import { useMobileLayout } from '../../hooks/useMobileLayout';
 
 export function SplitScreenPlayer({
   leftLabel = '내 영상',
@@ -18,20 +19,29 @@ export function SplitScreenPlayer({
   onLoopToggle,
   extraControls,
 }) {
+  const { isNarrow } = useMobileLayout();
   const pct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0;
+  const gridCols = isNarrow ? 'grid-cols-1' : 'grid-cols-2';
 
   return (
     <div className="flex flex-col h-full bg-[#0a0a0f] rounded-2xl overflow-hidden border border-white/10">
-      <div className="grid grid-cols-2 border-b border-white/10">
-        <div className="px-4 py-2 text-xs font-bold text-[#FF1F8E] border-r border-white/10">{leftLabel}</div>
+      <div className={`grid ${gridCols} border-b border-white/10`}>
+        <div className={`px-4 py-2 text-xs font-bold text-[#FF1F8E] ${isNarrow ? '' : 'border-r border-white/10'}`}>
+          {leftLabel}
+        </div>
         <div className="px-4 py-2 text-xs font-bold text-white/80">{rightLabel}</div>
       </div>
-      <div className="grid grid-cols-2 flex-1 min-h-[280px]">
-        <div className="relative border-r border-white/10 bg-black overflow-hidden">{leftContent}</div>
-        <div className="relative bg-black overflow-hidden">{rightContent}</div>
+      <div className={`grid ${gridCols} flex-1 ${isNarrow ? 'min-h-[360px]' : 'min-h-[280px]'}`}>
+        <div className={`relative bg-black overflow-hidden ${isNarrow ? 'min-h-[180px] border-b border-white/10' : 'border-r border-white/10'}`}>
+          {leftContent}
+        </div>
+        <div className="relative bg-black overflow-hidden min-h-[180px]">{rightContent}</div>
       </div>
       {footer}
-      <div className="p-4 border-t border-white/10 space-y-3">
+      <div
+        className="p-4 border-t border-white/10 space-y-3"
+        style={{ paddingBottom: 'calc(16px + env(safe-area-inset-bottom, 0px))' }}
+      >
         <input
           type="range"
           min={0}
@@ -39,11 +49,15 @@ export function SplitScreenPlayer({
           step={0.05}
           value={currentTime}
           onChange={(e) => onSeek?.(Number(e.target.value))}
-          className="w-full accent-[#FF1F8E]"
+          className="w-full accent-[#FF1F8E] touch-manipulation min-h-[32px]"
           style={{ background: `linear-gradient(to right, #FF1F8E ${pct}%, #333 ${pct}%)` }}
         />
         <div className="flex flex-wrap items-center gap-2 justify-center">
-          <button type="button" onClick={onPlayPause} className="px-4 py-2 rounded-lg bg-[#FF1F8E] text-white text-sm font-semibold">
+          <button
+            type="button"
+            onClick={onPlayPause}
+            className="min-h-[44px] px-4 py-2 rounded-lg bg-[#FF1F8E] text-white text-sm font-semibold touch-manipulation"
+          >
             {isPlaying ? '⏸ 정지' : '⏵ 재생'}
           </button>
           {[0.5, 1].map((r) => (
@@ -51,7 +65,7 @@ export function SplitScreenPlayer({
               key={r}
               type="button"
               onClick={() => onRateChange?.(r)}
-              className={`px-3 py-2 rounded-lg text-sm ${playbackRate === r ? 'bg-white text-black' : 'bg-white/10 text-white'}`}
+              className={`min-h-[44px] px-3 py-2 rounded-lg text-sm touch-manipulation ${playbackRate === r ? 'bg-white text-black' : 'bg-white/10 text-white'}`}
             >
               {r}x
             </button>
@@ -59,12 +73,12 @@ export function SplitScreenPlayer({
           <button
             type="button"
             onClick={onLoopToggle}
-            className={`px-3 py-2 rounded-lg text-sm ${loop ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/10 text-white'}`}
+            className={`min-h-[44px] px-3 py-2 rounded-lg text-sm touch-manipulation ${loop ? 'bg-emerald-500/30 text-emerald-300' : 'bg-white/10 text-white'}`}
           >
             루프
           </button>
           {extraControls}
-          <span className="text-xs text-white/50 ml-auto">
+          <span className="text-xs text-white/50 w-full text-center sm:w-auto sm:ml-auto">
             {formatTime(currentTime)} / {formatTime(duration)}
           </span>
         </div>

@@ -14,6 +14,14 @@ const HOME_MENUS_MY = [
   { icon: '📋', labelKey: 'leftPanel.feedbackHistory', view: 'feedback-history' },
 ];
 
+const TV_MODE_MENU = {
+  icon: '📺',
+  labelKey: 'leftPanel.tvMode',
+  view: 'tv-mode',
+  highlight: true,
+  badge: true,
+};
+
 const TRAINING_GROUPS = [
   {
     titleKey: 'leftPanel.danceSection',
@@ -114,6 +122,14 @@ function HomeTabContent({ mainView, onSelectView }) {
         />
       ))}
       <SectionTitle>{t('leftPanel.training')}</SectionTitle>
+      <MenuRow
+        icon={TV_MODE_MENU.icon}
+        label={t(TV_MODE_MENU.labelKey)}
+        active={mainView === TV_MODE_MENU.view}
+        onClick={() => onSelectView?.(TV_MODE_MENU.view)}
+        highlight={TV_MODE_MENU.highlight}
+        trailing={TV_MODE_MENU.badge ? <NewBadge /> : null}
+      />
       {TRAINING_GROUPS.map((group) => (
         <div key={group.titleKey}>
           <p

@@ -186,7 +186,10 @@ export default function DanceTeachingView({ onNavigate }) {
 
   if (phase === 'setup') {
     return (
-      <div className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6">
+      <div
+        className="min-h-full bg-[#0a0a0f] text-white p-4 md:p-6"
+        style={{ paddingBottom: 'calc(1.5rem + env(safe-area-inset-bottom, 0px))' }}
+      >
         <TeachingStepBar current="setup" />
         <h1 className="text-xl font-bold mb-1">{t('teaching.session.danceTitle')}</h1>
         <p className="text-sm text-white/50 mb-6">{t('teaching.session.danceSubtitle')}</p>
@@ -353,7 +356,10 @@ export default function DanceTeachingView({ onNavigate }) {
   }
 
   return (
-    <div className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4">
+    <div
+      className="min-h-full bg-[#0a0a0f] p-4 flex flex-col gap-4"
+      style={{ paddingBottom: 'calc(1rem + env(safe-area-inset-bottom, 0px))' }}
+    >
       <div className="flex justify-between items-center">
         <h2 className="text-lg font-bold text-white">댄스 티칭</h2>
         <button type="button" onClick={() => setPhase('result')} className="text-sm text-[#FF1F8E]">

@@ -1,6 +1,7 @@
 // @ts-nocheck
 import { FilesetResolver, HolisticLandmarker } from '@mediapipe/tasks-vision';
 import type { FrameData, JointPosition } from '../types/teaching';
+import { applyInlineVideoAttributes, isMobileDevice, isSessionRecordingFile } from './mobileMedia';
 
 const JOINT_MAP = [
   ['nose', 0],
@@ -30,11 +31,9 @@ function isYoutubeOrEmbedUrl(src) {
   return /youtube\.com|youtu\.be/i.test(src);
 }
 
-function isLikelyRecordedWebm(fileOrUrl) {
-  if (typeof fileOrUrl === 'string') return /\.webm/i.test(fileOrUrl);
-  const name = fileOrUrl?.name || '';
-  const type = fileOrUrl?.type || '';
-  return /webm/i.test(name) || /webm/i.test(type);
+function shouldUsePlaybackExtraction(fileOrUrl) {
+  if (isMobileDevice()) return true;
+  return isSessionRecordingFile(fileOrUrl);
 }
 
 function clampDuration(raw) {
@@ -256,10 +255,8 @@ async function loadVideoElement(fileOrUrl) {
   }
 
   const video = document.createElement('video');
-  video.muted = true;
-  video.playsInline = true;
   video.preload = 'auto';
-  video.setAttribute('playsinline', 'true');
+  applyInlineVideoAttributes(video);
 
   const blobUrl = typeof fileOrUrl !== 'string' ? URL.createObjectURL(fileOrUrl) : null;
   video.src = typeof fileOrUrl === 'string' ? fileOrUrl : blobUrl;
@@ -278,7 +275,7 @@ export async function extractSkeletonFromVideo(
   try {
     const duration = clampDuration(video.duration);
     const usePlayback =
-      preferPlayback === true || isLikelyRecordedWebm(fileOrUrl) || !Number.isFinite(video.duration);
+      preferPlayback === true || shouldUsePlaybackExtraction(fileOrUrl) || !Number.isFinite(video.duration);
 
     onProgress?.(0);
     const frames = usePlayback
