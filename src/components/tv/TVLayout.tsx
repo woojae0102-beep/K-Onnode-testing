@@ -7,6 +7,7 @@ import { useTVMicrophone } from '../../hooks/useTVMicrophone';
 import { useTVMode } from '../../hooks/useTVMode';
 import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { buildLocalCoachReview } from '../../utils/tvCoachReview';
+import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import TVReferencePanel from './TVReferencePanel';
 import UserCameraPanel from './UserCameraPanel';
 
@@ -21,10 +22,12 @@ export function TVLayout({
   agency,
   mode,
   onExit,
+  onHome,
 }: {
   agency: Agency;
   mode: TrainingMode;
   onExit: (data: any) => void;
+  onHome?: () => void;
 }) {
   const agencyColor = AGENCY_COLORS[agency];
   const [completing, setCompleting] = useState(false);
@@ -36,6 +39,7 @@ export function TVLayout({
   const lineAccRef = useRef({ sum: 0, count: 0 });
   const pitchHistRef = useRef([]);
 
+  const { layoutClass } = useTVScreenLayout();
   const dance = useMediaPipeTV(agencyColor);
   const vocal = useTVMicrophone();
   const recorder = useTVRecorder();
@@ -203,8 +207,14 @@ export function TVLayout({
     referenceVideoUrl,
   ]);
 
+  const handleGoHome = () => {
+    handleStopTracking();
+    recorder.stopRecording();
+    onHome?.();
+  };
+
   return (
-    <div className="tv-mode tv-training-screen">
+    <div className={`tv-mode tv-training-screen ${layoutClass}`}>
       <header className="tv-training-header">
         <div className="tv-training-header-left">
           <span className="tv-training-agency" style={{ color: agencyColor }}>
@@ -260,6 +270,11 @@ export function TVLayout({
         >
           {completing ? '분석 중...' : '완료'}
         </button>
+        {onHome ? (
+          <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={handleGoHome}>
+            홈으로
+          </button>
+        ) : null}
       </footer>
     </div>
   );

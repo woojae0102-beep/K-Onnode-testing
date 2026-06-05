@@ -12,6 +12,7 @@ import UserCameraPanel from './UserCameraPanel';
 import CoachReviewBlock from './CoachReviewBlock';
 import { buildLocalCoachReview } from '../../utils/tvCoachReview';
 import VocalLineCoachingLoop from '../coaching/VocalLineCoachingLoop';
+import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import { TVCompareBottomDock, TVCompareBottomSheet } from './TVCompareBottomDock';
 
 export default function TVCompareTeachingScreen({
@@ -20,12 +21,14 @@ export default function TVCompareTeachingScreen({
   mode,
   onShowResult,
   onRetrySession,
+  onHome,
 }: {
   sessionData: SessionData | null;
   agency: Agency;
   mode: TrainingMode;
   onShowResult: () => void;
   onRetrySession: () => void;
+  onHome: () => void;
 }) {
   const agencyColor = AGENCY_COLORS[agency];
   const persona = useAgencyPersona(agency);
@@ -37,17 +40,7 @@ export default function TVCompareTeachingScreen({
   const [isPlaying, setIsPlaying] = useState(false);
   const [syncTime, setSyncTime] = useState(0);
   const [sheetTab, setSheetTab] = useState(null);
-  const [isMobileUi, setIsMobileUi] = useState(
-    () => typeof window !== 'undefined' && window.matchMedia('(max-width: 767px)').matches,
-  );
-
-  useEffect(() => {
-    const mq = window.matchMedia('(max-width: 767px)');
-    const onChange = () => setIsMobileUi(mq.matches);
-    onChange();
-    mq.addEventListener('change', onChange);
-    return () => mq.removeEventListener('change', onChange);
-  }, []);
+  const { isMobile: isMobileUi, layoutClass } = useTVScreenLayout();
 
   const refPlayerRef = useRef(null);
   const myVideoRef = useRef(null);
@@ -184,6 +177,14 @@ export default function TVCompareTeachingScreen({
     setSheetTab(null);
   };
 
+  const handleGoHome = () => {
+    stopSync();
+    if (isDance && dance.isTracking) dance.stopTracking();
+    if (!isDance && vocal.isTracking) vocal.stopTracking();
+    setSheetTab(null);
+    onHome?.();
+  };
+
   const formatTime = (sec) => {
     const s = Math.max(0, Math.floor(sec || 0));
     const m = Math.floor(s / 60);
@@ -210,7 +211,7 @@ export default function TVCompareTeachingScreen({
         : '내 녹음';
 
   return (
-    <div className="tv-mode tv-compare-screen">
+    <div className={`tv-mode tv-compare-screen ${layoutClass}`}>
       <div className="tv-compare-main">
         <header className="tv-training-header tv-compare-header">
           <div className="tv-training-header-left">
@@ -296,7 +297,8 @@ export default function TVCompareTeachingScreen({
         </div>
       </div>
 
-      {/* 데스크톱: 인라인 컨트롤 */}
+      {/* 데스크톱: 인라인 컨트롤 (스마트폰 가로모드에서는 미렌더) */}
+      {!isMobileUi ? (
       <div className="tv-compare-desktop-panel">
         <div className="tv-compare-feedback-banner">
           <p className="tv-compare-feedback-title">AI 분석 피드백</p>
@@ -357,12 +359,16 @@ export default function TVCompareTeachingScreen({
           <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={onRetrySession}>
             처음부터
           </button>
+          <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={handleGoHome}>
+            홈으로
+          </button>
         </footer>
       </div>
+      ) : null}
 
       {isMobileUi && typeof document !== 'undefined'
         ? createPortal(
-            <div className="tv-compare-mobile-portal">
+            <div className={`tv-compare-mobile-portal ${layoutClass}`}>
               <TVCompareBottomDock
                 activeTab={sheetTab}
                 onTabChange={setSheetTab}
@@ -388,6 +394,7 @@ export default function TVCompareTeachingScreen({
                 onBackToRecording={handleBackToRecording}
                 onShowResult={onShowResult}
                 onRetrySession={onRetrySession}
+                onHome={handleGoHome}
               />
             </div>,
             document.body,

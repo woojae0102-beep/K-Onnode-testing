@@ -62,6 +62,7 @@ export function TVCompareBottomSheet({
   onBackToRecording,
   onShowResult,
   onRetrySession,
+  onHome,
 }: {
   open: boolean;
   tab: CompareSheetTab;
@@ -82,6 +83,7 @@ export function TVCompareBottomSheet({
   onBackToRecording: () => void;
   onShowResult: () => void;
   onRetrySession: () => void;
+  onHome: () => void;
 }) {
   if (!open || !tab) return null;
 
@@ -159,6 +161,9 @@ export function TVCompareBottomSheet({
               </button>
               <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={onRetrySession}>
                 처음부터
+              </button>
+              <button type="button" className="tv-footer-btn tv-footer-btn-secondary tv-footer-btn-home" onClick={onHome}>
+                홈으로
               </button>
             </div>
           ) : null}

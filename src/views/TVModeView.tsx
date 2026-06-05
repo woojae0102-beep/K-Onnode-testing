@@ -66,8 +66,15 @@ export default function TVModeView({ onNavigate } = {}) {
     setPhase('training');
   }, []);
 
-  const handleHome = useCallback(() => {
+  const handleHome = useCallback(async () => {
     document.body.classList.remove('tv-active', 'tv-result-open');
+    if (document.fullscreenElement) {
+      try {
+        await document.exitFullscreen();
+      } catch {
+        /* ignore */
+      }
+    }
     setPhase('entry');
     setSessionData(null);
     onNavigate?.('home');
@@ -88,7 +95,7 @@ export default function TVModeView({ onNavigate } = {}) {
 
   if (phase === 'training') {
     return (
-      <TVLayout agency={selectedAgency} mode={selectedMode} onExit={handleEnd} />
+      <TVLayout agency={selectedAgency} mode={selectedMode} onExit={handleEnd} onHome={handleHome} />
     );
   }
 
@@ -100,6 +107,7 @@ export default function TVModeView({ onNavigate } = {}) {
         mode={selectedMode}
         onShowResult={() => setPhase('result')}
         onRetrySession={handleRestartTraining}
+        onHome={handleHome}
       />
     );
   }
