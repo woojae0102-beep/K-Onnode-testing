@@ -275,7 +275,7 @@ function QuickStartSection({ onNavigate }) {
   const trainingTracks = [
     {
       view: 'tv-mode',
-      icon: '📺',
+      icon: '💪',
       accentColor: '#FF1F8E',
       title: t('leftPanel.tvMode'),
       desc: t('home.tvModeDesc'),

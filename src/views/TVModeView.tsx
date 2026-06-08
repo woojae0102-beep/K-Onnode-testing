@@ -29,7 +29,7 @@ export default function TVModeView({ onNavigate } = {}) {
     setPhase('compare');
 
     saveTeachingReport('tv-mode', {
-      title: `TV 연습실 — ${data.agency.toUpperCase()} ${data.mode === 'dance' ? '댄스' : '보컬'}`,
+      title: `트레이닝 — ${data.agency.toUpperCase()} ${data.mode === 'dance' ? '댄스' : '보컬'}`,
       overallScore: data.overallScore,
       scores: data.scores,
       sessionTime: data.sessionTime,

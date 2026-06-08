@@ -187,7 +187,7 @@ export function TVLayout({
         : {
             avgPitch,
             range: avgPitch > 250 ? '고음역' : avgPitch > 190 ? '중음역' : '저음역',
-            type: 'TV 연습 보컬',
+            type: '트레이닝 보컬',
             stability: Math.round(
               (lineScores.filter((s) => Number.isFinite(s)).reduce((a, b) => a + b, 0) || 0) /
                 Math.max(1, lineScores.filter((s) => Number.isFinite(s)).length),

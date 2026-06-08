@@ -69,7 +69,7 @@ function buildTitle(payload, domain) {
   if (domain === 'tv-mode') {
     const agency = (payload.agency || 'hybe').toUpperCase();
     const mode = payload.mode === 'vocal' ? '보컬' : '댄스';
-    return `TV 연습실 — ${agency} ${mode}`;
+    return `트레이닝 — ${agency} ${mode}`;
   }
   if (domain === 'dance') return payload.contentName || '댄스 트레이닝 세션';
   if (domain === 'vocal') return payload.songTitle || payload.contentName || '보컬 트레이닝 세션';

@@ -198,7 +198,7 @@ function EmptyState({ onStart }) {
         {t('report.emptyTitle')}
       </p>
       <p style={{ margin: 0, fontSize: 12, color: '#888888', textAlign: 'center' }}>
-        TV 연습실, 댄스/보컬 트레이닝을 완료하면 리포트가 자동으로 기록됩니다.
+        트레이닝을 완료하면 리포트가 자동으로 기록됩니다.
       </p>
       <button
         type="button"

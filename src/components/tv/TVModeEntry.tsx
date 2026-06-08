@@ -95,10 +95,10 @@ export function TVModeEntry({
             letterSpacing: '-0.02em',
           }}
         >
-          TV 연습실 모드
+          트레이닝
         </div>
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
-          실제 기획사 연습실 AI 트레이닝 시스템
+          기획사 AI 실시간 댄스·보컬 트레이닝
         </div>
         <div
           style={{
@@ -203,7 +203,7 @@ export function TVModeEntry({
             textTransform: 'uppercase',
           }}
         >
-          TV 연결 방법
+          대화면 연결 (선택)
         </div>
         <div
           className="tv-entry-mirror"

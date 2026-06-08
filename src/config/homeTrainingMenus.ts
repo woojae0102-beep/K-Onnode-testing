@@ -2,7 +2,7 @@
 /** 데스크톱 LeftPanel · 모바일 MobileSectionBar · 홈 퀵스타트 공통 */
 
 export const HOME_TRAINING_MENUS = [
-  { icon: '📺', labelKey: 'leftPanel.tvMode', view: 'tv-mode', accent: true },
+  { icon: '💪', labelKey: 'leftPanel.tvMode', view: 'tv-mode', accent: true },
   { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
   { icon: '🏆', labelKey: 'leftPanel.agencyAudition', view: 'agency-audition', accent: true },
 ];

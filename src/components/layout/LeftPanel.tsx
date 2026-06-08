@@ -14,8 +14,8 @@ const HOME_MENUS_MY = [
   { icon: '📋', labelKey: 'leftPanel.feedbackHistory', view: 'feedback-history' },
 ];
 
-const TV_MODE_MENU = {
-  icon: '📺',
+const TRAINING_MENU = {
+  icon: '💪',
   labelKey: 'leftPanel.tvMode',
   view: 'tv-mode',
   highlight: true,
@@ -103,12 +103,12 @@ function HomeTabContent({ mainView, onSelectView }) {
       ))}
       <SectionTitle>{t('leftPanel.training')}</SectionTitle>
       <MenuRow
-        icon={TV_MODE_MENU.icon}
-        label={t(TV_MODE_MENU.labelKey)}
-        active={mainView === TV_MODE_MENU.view}
-        onClick={() => onSelectView?.(TV_MODE_MENU.view)}
-        highlight={TV_MODE_MENU.highlight}
-        trailing={TV_MODE_MENU.badge ? <NewBadge /> : null}
+        icon={TRAINING_MENU.icon}
+        label={t(TRAINING_MENU.labelKey)}
+        active={mainView === TRAINING_MENU.view}
+        onClick={() => onSelectView?.(TRAINING_MENU.view)}
+        highlight={TRAINING_MENU.highlight}
+        trailing={TRAINING_MENU.badge ? <NewBadge /> : null}
       />
       {TRAINING_MENUS.map((item) => (
         <MenuRow
