@@ -1,8 +1,8 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db, appId } from '../firebase';
+import { auth } from '../firebase';
+import { initTvSession } from '../services/tvSessionApi';
 import StudioTVDisplay from './StudioTVDisplay';
 import { TV_HOST_MODE, buildStudioTvLandingUrl, generateStudioCode } from '../utils/tvConnect';
 import '../styles/studio-mode.css';
@@ -17,21 +17,13 @@ function TVLoader() {
 }
 
 async function initHostSession(code) {
-  if (!db) return;
-  await setDoc(
-    doc(db, 'artifacts', appId, 'public', 'data', 'tvSessions', code),
-    {
-      code,
-      status: 'host-waiting',
-      studioMode: true,
-      feedback: '모바일에서 코드를 입력해 연결하세요',
-      practiceStep: 1,
-      practiceStepLabel: '연결 대기',
-      createdAt: Date.now(),
-      serverTs: serverTimestamp(),
-    },
-    { merge: true },
-  );
+  await initTvSession(code, {
+    status: 'host-waiting',
+    studioMode: true,
+    feedback: '모바일 앱 → 트레이닝 → TV 연결 → 아래 코드 입력',
+    practiceStep: 1,
+    practiceStepLabel: '연결 대기',
+  });
 }
 
 export default function TVDisplayBootstrap({ code: initialCode }) {

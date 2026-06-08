@@ -1,11 +1,8 @@
 // @ts-nocheck
 import { useCallback, useEffect, useState } from 'react';
-import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
-import { db, appId } from '../firebase';
-
-function tvSessionRef(code) {
-  return doc(db, 'artifacts', appId, 'public', 'data', 'tvSessions', String(code));
-}
+import { onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase';
+import { initTvSession, patchTvSession, tvSessionDocRef } from '../services/tvSessionApi';
 
 export function useTVDisplaySync(code, { role = 'phone' } = {}) {
   const [state, setState] = useState(null);
@@ -13,8 +10,10 @@ export function useTVDisplaySync(code, { role = 'phone' } = {}) {
 
   useEffect(() => {
     if (!code || !db) return undefined;
+    const ref = tvSessionDocRef(code);
+    if (!ref) return undefined;
     const unsub = onSnapshot(
-      tvSessionRef(code),
+      ref,
       (snap) => {
         setState(snap.exists() ? snap.data() : null);
         setError('');
@@ -25,40 +24,32 @@ export function useTVDisplaySync(code, { role = 'phone' } = {}) {
   }, [code]);
 
   const publish = useCallback(
-    async (patch) => {
-      if (!code || !db || role !== 'phone') return;
+    async (patch, overrideCode) => {
+      const effectiveCode = overrideCode || code;
+      if (!effectiveCode || role !== 'phone') return false;
       try {
-        await setDoc(
-          tvSessionRef(code),
-          {
-            ...patch,
-            code: String(code),
-            updatedAt: Date.now(),
-            serverTs: serverTimestamp(),
-          },
-          { merge: true },
-        );
+        await patchTvSession(effectiveCode, patch);
+        return true;
       } catch (e) {
         setError(e?.message || 'TV 상태 전송 실패');
+        return false;
       }
     },
     [code, role],
   );
 
   const initSession = useCallback(
-    async (payload) => {
-      if (!code || !db) return;
-      await setDoc(
-        tvSessionRef(code),
-        {
-          code: String(code),
-          status: 'waiting',
-          createdAt: Date.now(),
-          serverTs: serverTimestamp(),
-          ...payload,
-        },
-        { merge: true },
-      );
+    async (payload, overrideCode) => {
+      const effectiveCode = overrideCode || code;
+      if (!effectiveCode) return false;
+      try {
+        await initTvSession(effectiveCode, payload);
+        setError('');
+        return true;
+      } catch (e) {
+        setError(e?.message || 'TV 세션 생성 실패');
+        return false;
+      }
     },
     [code],
   );

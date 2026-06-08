@@ -116,44 +116,55 @@ export function useStudioSession({
   const startStudio = useCallback(
     async (presetCode = '') => {
       const code = isValidStudioCode(presetCode) ? String(presetCode).trim() : generateStudioCode();
+      const ok = await initSession(
+        {
+          status: 'waiting',
+          mode,
+          agency,
+          referenceVideoUrl: referenceVideoUrl || '',
+          songTitle: songTitle || '연습 곡',
+          playbackRate,
+          currentTime: 0,
+          isPlaying: false,
+          isPaused: false,
+          feedback: 'TV 연습실 준비 중...',
+          practiceStep: 1,
+          practiceStepLabel: '연결 대기',
+          score: 0,
+          coachName: persona.coachName,
+          coachAvatar: persona.coachAvatar,
+          studioMode: true,
+        },
+        code,
+      );
+      if (!ok) return { ok: false, code: '', error: syncError || 'TV 세션을 만들지 못했습니다.' };
       setSessionCode(code);
       setStudioEnabled(true);
-      await initSession({
-        status: 'waiting',
-        mode,
-        agency,
-        referenceVideoUrl: referenceVideoUrl || '',
-        songTitle: songTitle || '연습 곡',
-        playbackRate,
-        currentTime: 0,
-        isPlaying: false,
-        isPaused: false,
-        feedback: 'TV 연습실 준비 중...',
-        practiceStep: 1,
-        practiceStepLabel: '연결 대기',
-        score: 0,
-        coachName: persona.coachName,
-        coachAvatar: persona.coachAvatar,
-        studioMode: true,
-      });
+      return { ok: true, code, error: '' };
     },
-    [agency, initSession, mode, playbackRate, persona, referenceVideoUrl, songTitle],
+    [agency, initSession, mode, playbackRate, persona, referenceVideoUrl, songTitle, syncError],
   );
 
   const joinStudio = useCallback(
     async (code) => {
-      if (!isValidStudioCode(code)) return false;
-      await startStudio(code);
-      return true;
+      if (!isValidStudioCode(code)) return { ok: false, error: '6자리 숫자 코드를 입력하세요.' };
+      const result = await startStudio(code);
+      return result?.ok ? { ok: true, error: '' } : { ok: false, error: result?.error || '연결 실패' };
     },
     [startStudio],
   );
 
   const stopStudio = useCallback(() => {
+    const endingCode = sessionCode;
     setStudioEnabled(false);
     setSessionCode('');
-    publish({ status: 'ended', feedback: '스튜디오 연결이 종료되었습니다.', studioMode: false });
-  }, [publish]);
+    if (endingCode) {
+      publish(
+        { status: 'ended', feedback: '스튜디오 연결이 종료되었습니다.', studioMode: false },
+        endingCode,
+      );
+    }
+  }, [publish, sessionCode]);
 
   useEffect(() => {
     publishStudioState();

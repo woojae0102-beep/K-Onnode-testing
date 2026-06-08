@@ -1,12 +1,12 @@
 // @ts-nocheck
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   buildStudioTvLandingUrl,
   buildTVDisplayUrl,
   isValidStudioCode,
 } from '../../utils/tvConnect';
-import { db } from '../../firebase';
+import { db, firebaseInitError } from '../../firebase';
 import '../../styles/studio-mode.css';
 
 async function copyText(text) {
@@ -17,18 +17,6 @@ async function copyText(text) {
     return false;
   }
 }
-
-const STEPS_DANCE = [
-  { n: '1', title: 'TV에서 주소 열기', desc: 'TV 브라우저에 onnode.ai/tv 입력 (또는 QR 스캔)' },
-  { n: '2', title: '이 폰에서 카메라 켜기', desc: '「시작」 버튼 → 전신이 보이게 서기' },
-  { n: '3', title: 'TV 큰 화면으로 연습', desc: 'TV 왼쪽=안무·코치 / 오른쪽=내 모습' },
-];
-
-const STEPS_VOCAL = [
-  { n: '1', title: 'TV에서 주소 열기', desc: 'TV 브라우저에 onnode.ai/tv 입력 (또는 QR 스캔)' },
-  { n: '2', title: '이 폰에서 마이크 켜기', desc: '「시작」 버튼 → 마이크 권한 허용' },
-  { n: '3', title: 'TV 큰 화면으로 연습', desc: 'TV에서 음정·피드백을 크게 확인' },
-];
 
 export default function StudioConnectModal({
   open = false,
@@ -45,43 +33,53 @@ export default function StudioConnectModal({
   onJoinStudio,
   onStopStudio,
 }) {
-  const [step, setStep] = useState('intro');
   const [joinCode, setJoinCode] = useState('');
-  const [joinError, setJoinError] = useState('');
-  const [showFullGuide, setShowFullGuide] = useState(false);
+  const [localError, setLocalError] = useState('');
+  const [showGuide, setShowGuide] = useState(true);
   const [copied, setCopied] = useState('');
-  const [starting, setStarting] = useState(false);
+  const [preparing, setPreparing] = useState(false);
+  const startedRef = useRef(false);
 
-  const steps = mode === 'vocal' ? STEPS_VOCAL : STEPS_DANCE;
-  const tvLandingUrl = buildStudioTvLandingUrl();
-  const qrUrl = displayUrl || (sessionCode ? buildTVDisplayUrl(sessionCode) : tvLandingUrl);
   const firebaseReady = !!db;
+  const tvLandingUrl = buildStudioTvLandingUrl();
+  const tvDirectUrl = sessionCode ? buildTVDisplayUrl(sessionCode) : '';
+  const qrUrl = tvDirectUrl || tvLandingUrl;
+  const mediaLabel = mode === 'dance' ? '카메라' : '마이크';
 
-  useEffect(() => {
-    if (!open) return;
-    setStep('intro');
-    setJoinCode('');
-    setJoinError('');
-    setCopied('');
-    setShowFullGuide(false);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    if (studioEnabled && isConnected) setStep('connected');
-    else if (studioEnabled) setStep('connect');
-  }, [open, studioEnabled, isConnected]);
-
-  const handleStart = async () => {
-    if (!firebaseReady) return;
-    setStarting(true);
-    try {
-      await onStartStudio?.();
-      setStep('connect');
-    } finally {
-      setStarting(false);
+  const runStartStudio = useCallback(async () => {
+    if (!firebaseReady) {
+      setLocalError('Firebase 설정이 없어 TV 연결을 사용할 수 없습니다.');
+      return;
     }
-  };
+    setPreparing(true);
+    setLocalError('');
+    try {
+      const result = await onStartStudio?.();
+      if (result && result.ok === false) {
+        setLocalError(result.error || '연결 코드를 만들지 못했습니다.');
+      }
+    } catch (e) {
+      setLocalError(e?.message || 'TV 연결 준비 중 오류가 발생했습니다.');
+    } finally {
+      setPreparing(false);
+    }
+  }, [firebaseReady, onStartStudio]);
+
+  useEffect(() => {
+    if (!open) {
+      startedRef.current = false;
+      return;
+    }
+    setJoinCode('');
+    setLocalError('');
+    setCopied('');
+    setShowGuide(true);
+
+    if (!startedRef.current && !studioEnabled) {
+      startedRef.current = true;
+      void runStartStudio();
+    }
+  }, [open, studioEnabled, runStartStudio]);
 
   const handleCopy = async (label, text) => {
     const ok = await copyText(text);
@@ -93,179 +91,208 @@ export default function StudioConnectModal({
 
   const handleJoin = async () => {
     if (!isValidStudioCode(joinCode)) {
-      setJoinError('TV 화면에 보이는 6자리 숫자를 입력하세요.');
+      setLocalError('TV 화면에 표시된 6자리 숫자를 입력하세요.');
       return;
     }
-    setStarting(true);
-    const ok = await onJoinStudio?.(joinCode);
-    setStarting(false);
-    if (!ok) setJoinError('코드가 맞지 않습니다. TV 화면의 숫자를 다시 확인하세요.');
-    else {
-      setJoinError('');
-      setStep('connect');
-    }
+    setPreparing(true);
+    setLocalError('');
+    const result = await onJoinStudio?.(joinCode);
+    setPreparing(false);
+    if (!result?.ok) setLocalError(result?.error || '코드 연결에 실패했습니다.');
+  };
+
+  const handleOpenTvPreview = () => {
+    if (!tvDirectUrl) return;
+    window.open(tvDirectUrl, '_blank', 'noopener,noreferrer');
   };
 
   if (!open) return null;
 
+  const statusMessage = isConnected
+    ? `TV 연결 완료! 모달을 닫고 「시작」으로 ${mediaLabel}를 켜 주세요.`
+    : preparing
+      ? '연결 코드를 만드는 중...'
+      : sessionCode
+        ? `TV에서 아래 주소를 연 다음, 이 폰에서 ${mediaLabel}를 켜 주세요.`
+        : '연결 준비 중...';
+
   return (
     <div className="studio-modal-backdrop" onClick={onClose} role="presentation">
-      <div className="studio-modal" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="TV 연결">
+      <div className="studio-modal studio-modal-wide" onClick={(e) => e.stopPropagation()} role="dialog" aria-label="TV 연결">
         <header className="studio-modal-header">
           <div>
             <span className="studio-modal-kicker">TV 연결</span>
-            <h2>TV 연습실 연결하기</h2>
-            <p>TV는 큰 화면 · 이 폰은 카메라</p>
+            <h2>TV 연습실에 연결하기</h2>
+            <p>TV = 큰 화면 · 이 폰 = {mediaLabel}</p>
           </div>
           <button type="button" className="studio-modal-close" onClick={onClose} aria-label="닫기">
             ✕
           </button>
         </header>
 
-        {!firebaseReady ? (
-          <div className="studio-modal-body studio-error-box">
-            <p><strong>연결 준비가 필요합니다</strong></p>
-            <p>Firebase 설정이 없어 TV 연결을 사용할 수 없습니다. 관리자에게 문의하거나 .env 설정을 확인하세요.</p>
-          </div>
-        ) : null}
+        <div className="studio-modal-body">
+          {!firebaseReady ? (
+            <div className="studio-error-box">
+              <p><strong>TV 연결을 사용할 수 없습니다</strong></p>
+              <p>{firebaseInitError || 'Firebase 설정(.env)이 필요합니다.'}</p>
+            </div>
+          ) : (
+            <>
+              <div className="studio-status-banner">{statusMessage}</div>
 
-        {firebaseReady && step === 'intro' ? (
-          <div className="studio-modal-body">
-            <div className="studio-simple-steps">
-              {steps.map((s) => (
-                <div key={s.n} className="studio-simple-step">
-                  <span className="studio-simple-step-n">{s.n}</span>
-                  <div>
-                    <strong>{s.title}</strong>
-                    <p>{s.desc}</p>
+              <div className="studio-connect-grid">
+                <section className="studio-connect-panel">
+                  <h3>① TV에서 열 주소</h3>
+                  <p className="studio-panel-desc">
+                    TV 리모컨 → <strong>인터넷(브라우저)</strong> 앱 → 주소창에 아래 주소 입력
+                  </p>
+                  <div className="studio-tv-url-box">
+                    <code>{tvDirectUrl || tvLandingUrl}</code>
                   </div>
+                  <div className="studio-btn-row">
+                    <button type="button" className="studio-copy-btn" onClick={() => handleCopy('url', tvDirectUrl || tvLandingUrl)}>
+                      {copied === 'url' ? '복사됨 ✓' : '주소 복사'}
+                    </button>
+                    {tvDirectUrl ? (
+                      <button type="button" className="studio-copy-btn" onClick={handleOpenTvPreview}>
+                        TV 화면 미리보기
+                      </button>
+                    ) : null}
+                  </div>
+
+                  <h3 style={{ marginTop: 16 }}>② QR 코드 (TV에서 스캔)</h3>
+                  <div className="studio-qr-wrap">
+                    <QRCodeSVG value={qrUrl} size={148} level="M" />
+                  </div>
+
+                  {sessionCode ? (
+                    <div className="studio-code-row-box">
+                      <span>연결 코드</span>
+                      <strong className="studio-code-display-inline">{sessionCode}</strong>
+                      <button type="button" className="studio-copy-btn" onClick={() => handleCopy('code', sessionCode)}>
+                        {copied === 'code' ? '복사됨 ✓' : '코드 복사'}
+                      </button>
+                    </div>
+                  ) : null}
+                </section>
+
+                <section className="studio-connect-panel">
+                  <h3>③ 이 폰에서 할 일</h3>
+                  <ol className="studio-action-list">
+                    <li>TV에 주소가 열리면 TV 화면에 <strong>「연결 대기」</strong> 또는 연습실 화면이 보입니다.</li>
+                    <li>이 모달을 닫고 트레이닝 화면에서 <strong>「시작」</strong> 또는 <strong>{mediaLabel} 켜기</strong>를 누릅니다.</li>
+                    <li>권한 창이 뜨면 <strong>허용</strong>을 선택합니다.</li>
+                    <li>상단에 <strong>STUDIO LIVE</strong>가 보이면 TV 오른쪽에 내 모습이 나타납니다.</li>
+                  </ol>
+
+                  <div className={`studio-conn-status studio-conn-${isConnected ? 'connected' : webrtcStatus}`}>
+                    {isConnected ? '✓ TV와 연결됨' : `연결 상태: ${preparing ? '준비 중' : webrtcStatus || '대기'}`}
+                  </div>
+
+                  <details className="studio-tv-code-join">
+                    <summary>TV에 다른 코드가 보이면 여기에 입력</summary>
+                    <div className="studio-join-row">
+                      <input
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                        placeholder="6자리 숫자"
+                        maxLength={6}
+                        className="studio-join-input"
+                        inputMode="numeric"
+                      />
+                      <button type="button" className="studio-join-btn" onClick={handleJoin} disabled={preparing}>
+                        연결
+                      </button>
+                    </div>
+                  </details>
+
+                  {isConnected ? (
+                    <button type="button" className="studio-primary-btn studio-primary-btn-full" onClick={onClose}>
+                      연습 시작
+                    </button>
+                  ) : null}
+                </section>
+              </div>
+
+              {(localError || syncError || webrtcError) ? (
+                <div className="studio-error-box">
+                  <strong>연결 문제</strong>
+                  <p>{localError || syncError || webrtcError}</p>
+                  <button type="button" className="studio-copy-btn" onClick={() => void runStartStudio()}>
+                    다시 시도
+                  </button>
                 </div>
-              ))}
-            </div>
-            <p className="studio-tip-box">
-              💡 TV 없이도 이 폰·노트북만으로 연습할 수 있습니다. TV 연결은 선택 사항입니다.
-            </p>
-            <button type="button" className="studio-primary-btn studio-primary-btn-full" onClick={handleStart} disabled={starting}>
-              {starting ? '준비 중...' : 'TV 연결 시작'}
-            </button>
-            <button type="button" className="studio-link-btn" onClick={() => setShowFullGuide((v) => !v)}>
-              {showFullGuide ? '설명 접기' : '📖 TV 연결 설명서 보기'}
-            </button>
-            {showFullGuide ? <StudioInlineGuide mode={mode} tvLandingUrl={tvLandingUrl} /> : null}
-          </div>
-        ) : null}
+              ) : null}
 
-        {firebaseReady && step === 'connect' ? (
-          <div className="studio-modal-body studio-qr-step">
-            <p className="studio-step-label">TV에서 아래 주소를 열어 주세요</p>
-
-            <div className="studio-tv-url-box">
-              <code>{tvLandingUrl}</code>
-              <button type="button" className="studio-copy-btn" onClick={() => handleCopy('url', tvLandingUrl)}>
-                {copied === 'url' ? '복사됨 ✓' : '주소 복사'}
+              <button type="button" className="studio-link-btn" onClick={() => setShowGuide((v) => !v)}>
+                {showGuide ? '상세 설명서 접기 ▲' : '상세 설명서 펼치기 ▼'}
               </button>
-            </div>
+              {showGuide ? <StudioConnectGuide mode={mode} tvLandingUrl={tvLandingUrl} mediaLabel={mediaLabel} /> : null}
 
-            <p className="studio-code-hint">또는 QR 코드를 TV에서 스캔하세요</p>
-            <div className="studio-qr-wrap">
-              <QRCodeSVG value={qrUrl} size={156} level="M" />
-            </div>
-
-            {sessionCode ? (
-              <div className="studio-code-row-box">
-                <span>연결 코드</span>
-                <strong className="studio-code-display-inline">{sessionCode}</strong>
-                <button type="button" className="studio-copy-btn" onClick={() => handleCopy('code', sessionCode)}>
-                  {copied === 'code' ? '복사됨 ✓' : '코드 복사'}
-                </button>
-              </div>
-            ) : null}
-
-            <div className={`studio-conn-status studio-conn-${isConnected ? 'connected' : webrtcStatus}`}>
-              {isConnected
-                ? '✓ TV 연결 완료! 아래 「시작」으로 카메라를 켜 주세요.'
-                : webrtcStatus === 'connecting'
-                  ? 'TV와 연결 중... TV에서 주소를 열었는지 확인하세요.'
-                  : `다음: TV에서 주소 연 뒤 → 이 폰에서 ${mode === 'dance' ? '카메라' : '마이크'} 켜기`}
-            </div>
-
-            {(syncError || webrtcError) ? (
-              <p className="studio-join-error">{syncError || webrtcError}</p>
-            ) : null}
-
-            <details className="studio-tv-code-join">
-              <summary>TV에 코드가 보이면 여기에 입력</summary>
-              <div className="studio-join-row">
-                <input
-                  value={joinCode}
-                  onChange={(e) => setJoinCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                  placeholder="6자리 숫자"
-                  maxLength={6}
-                  className="studio-join-input"
-                  inputMode="numeric"
-                />
-                <button type="button" className="studio-join-btn" onClick={handleJoin} disabled={starting}>
-                  연결
-                </button>
-              </div>
-              {joinError ? <p className="studio-join-error">{joinError}</p> : null}
-            </details>
-
-            <button type="button" className="studio-link-btn" onClick={() => setShowFullGuide((v) => !v)}>
-              {showFullGuide ? '설명 접기' : '문제가 있나요? 설명서 보기'}
-            </button>
-            {showFullGuide ? <StudioInlineGuide mode={mode} tvLandingUrl={tvLandingUrl} /> : null}
-
-            <button type="button" className="studio-stop-btn" onClick={onStopStudio}>
-              연결 취소
-            </button>
-          </div>
-        ) : null}
-
-        {firebaseReady && step === 'connected' ? (
-          <div className="studio-modal-body studio-connected-step">
-            <div className="studio-connected-icon">📺✓</div>
-            <h3>TV 연결 성공!</h3>
-            <p>
-              TV에서 {mode === 'dance' ? '안무와 내 모습' : '보컬 피드백'}을 크게 볼 수 있습니다.
-              <br />
-              이 폰에서는 <strong>{mode === 'dance' ? '카메라' : '마이크'}</strong>만 켜면 됩니다.
-            </p>
-            <button type="button" className="studio-primary-btn studio-primary-btn-full" onClick={onClose}>
-              연습 시작
-            </button>
-            <button type="button" className="studio-stop-btn" onClick={onStopStudio}>
-              TV 연결 해제
-            </button>
-          </div>
-        ) : null}
+              <button type="button" className="studio-stop-btn" onClick={onStopStudio}>
+                TV 연결 취소
+              </button>
+            </>
+          )}
+        </div>
       </div>
     </div>
   );
 }
 
-function StudioInlineGuide({ mode, tvLandingUrl }) {
+function StudioConnectGuide({ mode, tvLandingUrl, mediaLabel }) {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'https://your-app.com';
   return (
-    <div className="studio-inline-guide">
-      <h4>빠른 연결 (3단계)</h4>
+    <div className="studio-inline-guide studio-guide-detailed">
+      <h4>📺 TV 브라우저 여는 방법 (제조사별)</h4>
+      <table className="studio-guide-table">
+        <thead>
+          <tr><th>TV</th><th>방법</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>삼성 Smart TV</td><td>리모컨 <strong>홈</strong> → <strong>Internet</strong> 앱 → 주소창 탭</td></tr>
+          <tr><td>LG webOS</td><td>리모컨 <strong>홈</strong> → <strong>웹브라우저</strong> → 주소 입력</td></tr>
+          <tr><td>Google TV / Chromecast</td><td>앱 목록 → <strong>Chrome</strong> → 주소 입력</td></tr>
+          <tr><td>Apple TV</td><td><strong>Safari</strong> 앱 → 주소창</td></tr>
+          <tr><td>노트북 + HDMI</td><td>노트북을 TV에 연결 → 브라우저에서 <code>{origin}/tv</code> → F11 전체화면</td></tr>
+        </tbody>
+      </table>
+
+      <h4>🔗 접속 주소</h4>
+      <ul>
+        <li>TV 먼저 켜기: <code>{tvLandingUrl}</code> → TV에 코드 표시 → 이 폰에서 코드 입력</li>
+        <li>폰 먼저 연결: 이 화면의 QR/주소로 TV 접속 → 코드가 자동으로 맞춰짐</li>
+      </ul>
+
+      <h4>🕺 댄스 연습 시 TV 화면</h4>
+      <ul>
+        <li><strong>왼쪽</strong>: AI 코치 + 유튜브 안무 영상 (폰에서 영상 불러오기)</li>
+        <li><strong>오른쪽</strong>: 내 {mediaLabel} 실시간 화면 + 동작 스켈레톤</li>
+        <li><strong>아래</strong>: 「오른팔을 더 올리세요」 같은 실시간 피드백</li>
+      </ul>
+
+      {mode === 'vocal' ? (
+        <>
+          <h4>🎤 보컬 연습 시 TV 화면</h4>
+          <ul>
+            <li><strong>왼쪽</strong>: AI 코치 + 연습 곡 영상</li>
+            <li><strong>오른쪽</strong>: 음정·볼륨 시각화</li>
+            <li><strong>아래</strong>: 음정 피드백 문구</li>
+          </ul>
+        </>
+      ) : null}
+
+      <h4>❓ 연결이 안 될 때 체크리스트</h4>
       <ol>
-        <li>TV 리모컨 → <strong>인터넷(브라우저)</strong> 앱 실행 (삼성: Internet, LG: 웹브라우저)</li>
-        <li>주소창에 <strong>{tvLandingUrl}</strong> 입력 후 접속</li>
-        <li>이 폰에서 <strong>{mode === 'dance' ? '카메라 켜기' : '마이크 켜기'}</strong> → TV에 실시간 화면 표시</li>
+        <li>폰과 TV가 <strong>같은 Wi-Fi</strong>에 연결되어 있는지 확인</li>
+        <li>TV 주소에 <code>https://</code>까지 포함해 정확히 입력했는지 확인</li>
+        <li>이 폰에서 {mediaLabel} <strong>권한을 허용</strong>했는지 확인 (브라우저 설정 → 사이트 권한)</li>
+        <li>모달을 닫은 뒤 <strong>{mediaLabel} 켜기</strong>를 눌렀는지 확인 (켜야 TV에 영상 전송)</li>
+        <li>여전히 안 되면 위 <strong>「다시 시도」</strong> 버튼 클릭</li>
       </ol>
-      <h4>TV 화면에 뭐가 나오나요?</h4>
-      <ul>
-        <li><strong>왼쪽</strong>: AI 코치 + 연습 영상(유튜브 불러오기)</li>
-        <li><strong>오른쪽</strong>: 내 {mode === 'dance' ? '카메라 모습' : '보컬 분석'}</li>
-        <li><strong>아래</strong>: 실시간 코치 피드백</li>
-      </ul>
-      <h4>안 될 때</h4>
-      <ul>
-        <li>폰과 TV가 <strong>같은 Wi-Fi</strong>인지 확인</li>
-        <li>TV 브라우저에서 주소를 <strong>정확히</strong> 입력했는지 확인</li>
-        <li>이 폰에서 카메라/마이크 <strong>권한 허용</strong></li>
-        <li>자세한 내용: 프로젝트 <code>docs/tv-connection-guide.md</code></li>
-      </ul>
+
+      <h4>💡 TV 없이 연습</h4>
+      <p>TV 연결은 선택입니다. 이 모달을 닫고 그대로 연습하면 폰/노트북 한 화면에서 영상+{mediaLabel}로 연습할 수 있습니다.</p>
     </div>
   );
 }
