@@ -11,9 +11,22 @@ export function generateTVSessionCode() {
   return generateStudioCode();
 }
 
+export function isTvLandingPath() {
+  if (typeof window === 'undefined') return false;
+  const path = window.location.pathname.replace(/\/+$/, '') || '/';
+  return path === '/tv' || path.endsWith('/tv');
+}
+
 export function parseTVCodeFromUrl() {
   if (typeof window === 'undefined') return '';
   const params = new URLSearchParams(window.location.search);
+
+  if (isTvLandingPath()) {
+    const codeParam = params.get('code');
+    if (isValidStudioCode(codeParam)) return String(codeParam).trim();
+    return TV_HOST_MODE;
+  }
+
   const tv = params.get('tv');
   const studio = params.get('studio');
   if (tv === null && studio === null) return '';
@@ -22,17 +35,18 @@ export function parseTVCodeFromUrl() {
   if (!trimmed || trimmed === 'join' || trimmed === 'studio' || trimmed === 'tv') {
     return TV_HOST_MODE;
   }
-  return trimmed.toUpperCase();
+  return trimmed;
 }
 
 export function buildTVDisplayUrl(code) {
-  const base = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
-  return `${base}?tv=${encodeURIComponent(String(code || ''))}`;
+  if (typeof window === 'undefined') return '';
+  const origin = window.location.origin;
+  return `${origin}/tv?code=${encodeURIComponent(String(code || ''))}`;
 }
 
 export function buildStudioTvLandingUrl() {
-  const base = typeof window !== 'undefined' ? window.location.origin + window.location.pathname : '';
-  return `${base}?tv=join`;
+  if (typeof window === 'undefined') return '';
+  return `${window.location.origin}/tv`;
 }
 
 export function isValidStudioCode(code) {

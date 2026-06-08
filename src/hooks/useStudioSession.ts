@@ -44,7 +44,7 @@ export function useStudioSession({
     [sessionCode],
   );
 
-  const { state: tvState, publish, initSession } = useTVDisplaySync(sessionCode, { role: 'phone' });
+  const { state: tvState, publish, initSession, error: syncError } = useTVDisplaySync(sessionCode, { role: 'phone' });
 
   const webrtc = useWebRtcSession({
     db,
@@ -151,6 +151,7 @@ export function useStudioSession({
 
   const stopStudio = useCallback(() => {
     setStudioEnabled(false);
+    setSessionCode('');
     publish({ status: 'ended', feedback: '스튜디오 연결이 종료되었습니다.', studioMode: false });
   }, [publish]);
 
@@ -195,6 +196,7 @@ export function useStudioSession({
     joinStudio,
     stopStudio,
     isConnected: webrtc.status === 'connected',
+    syncError,
     publishStudioState,
   };
 }

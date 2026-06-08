@@ -4,7 +4,7 @@ import { doc, onSnapshot, setDoc, serverTimestamp } from 'firebase/firestore';
 import { db, appId } from '../firebase';
 
 function tvSessionRef(code) {
-  return doc(db, 'artifacts', appId, 'public', 'data', 'tvSessions', String(code).toUpperCase());
+  return doc(db, 'artifacts', appId, 'public', 'data', 'tvSessions', String(code));
 }
 
 export function useTVDisplaySync(code, { role = 'phone' } = {}) {
@@ -32,7 +32,7 @@ export function useTVDisplaySync(code, { role = 'phone' } = {}) {
           tvSessionRef(code),
           {
             ...patch,
-            code: String(code).toUpperCase(),
+            code: String(code),
             updatedAt: Date.now(),
             serverTs: serverTimestamp(),
           },
@@ -48,13 +48,17 @@ export function useTVDisplaySync(code, { role = 'phone' } = {}) {
   const initSession = useCallback(
     async (payload) => {
       if (!code || !db) return;
-      await setDoc(tvSessionRef(code), {
-        code: String(code).toUpperCase(),
-        status: 'waiting',
-        createdAt: Date.now(),
-        serverTs: serverTimestamp(),
-        ...payload,
-      });
+      await setDoc(
+        tvSessionRef(code),
+        {
+          code: String(code),
+          status: 'waiting',
+          createdAt: Date.now(),
+          serverTs: serverTimestamp(),
+          ...payload,
+        },
+        { merge: true },
+      );
     },
     [code],
   );

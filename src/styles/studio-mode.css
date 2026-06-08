@@ -231,6 +231,210 @@
 .studio-connected-step { text-align: center; padding: 24px 20px; }
 .studio-connected-icon { font-size: 48px; margin-bottom: 12px; }
 
+.studio-simple-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.studio-simple-step {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.studio-simple-step-n {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(255, 31, 142, 0.2);
+  color: #ff8ec8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 13px;
+  flex-shrink: 0;
+}
+
+.studio-simple-step strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+
+.studio-simple-step p {
+  margin: 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  line-height: 1.45;
+}
+
+.studio-tip-box {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(0, 255, 136, 0.06);
+  border: 1px solid rgba(0, 255, 136, 0.15);
+  margin: 0 0 14px;
+  line-height: 1.5;
+}
+
+.studio-primary-btn-full {
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.studio-link-btn {
+  width: 100%;
+  padding: 10px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.studio-tv-url-box {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  border-radius: 10px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 12px;
+}
+
+.studio-tv-url-box code {
+  flex: 1;
+  font-size: 12px;
+  color: #00ff88;
+  word-break: break-all;
+}
+
+.studio-copy-btn {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.studio-code-row-box {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.studio-code-display-inline {
+  font-size: 28px;
+  letter-spacing: 0.2em;
+  color: #00ff88;
+}
+
+.studio-inline-guide {
+  margin-top: 12px;
+  padding: 14px;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.6;
+  text-align: left;
+}
+
+.studio-inline-guide h4 {
+  margin: 12px 0 6px;
+  font-size: 12px;
+  color: #fff;
+}
+
+.studio-inline-guide h4:first-child {
+  margin-top: 0;
+}
+
+.studio-inline-guide ol,
+.studio-inline-guide ul {
+  margin: 0;
+  padding-left: 18px;
+}
+
+.studio-inline-guide code {
+  font-size: 11px;
+  color: #00ff88;
+}
+
+.studio-tv-code-join {
+  margin-top: 12px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.55);
+}
+
+.studio-tv-code-join summary {
+  cursor: pointer;
+  padding: 8px 0;
+}
+
+.studio-error-box {
+  color: #ff9aa8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.studio-tv-host-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  padding: 14px 24px;
+  background: linear-gradient(90deg, rgba(255, 31, 142, 0.25), rgba(108, 92, 231, 0.2));
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: center;
+  color: #fff;
+}
+
+.studio-tv-host-banner span {
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.studio-tv-host-banner p {
+  margin: 6px 0;
+  font-size: 14px;
+}
+
+.studio-tv-host-banner strong {
+  display: block;
+  font-size: 42px;
+  letter-spacing: 0.25em;
+  color: #00ff88;
+  margin: 8px 0;
+}
+
+.studio-tv-host-banner small {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
 /* TV Display */
 .studio-tv-root {
   min-height: 100dvh;
@@ -365,7 +569,15 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
-  opacity: 0.35;
+  opacity: 1;
+  z-index: 1;
+}
+
+.studio-tv-skeleton {
+  z-index: 2;
+  pointer-events: none;
+  mix-blend-mode: normal;
+  opacity: 0.85;
 }
 
 .studio-skeleton-canvas, .studio-tv-skeleton {
