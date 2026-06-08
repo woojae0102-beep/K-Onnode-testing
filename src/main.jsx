@@ -3,8 +3,10 @@ import ReactDOM from 'react-dom/client';
 import App from './App.jsx';
 import AuthScreen from './screens/AuthScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
+import TVDisplayBootstrap from './views/TVDisplayBootstrap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { firebaseInitError } from './firebase';
+import { parseTVCodeFromUrl } from './utils/tvConnect';
 import './index.css';
 import './i18n.ts';
 import './store/languageStore.ts';
@@ -107,6 +109,12 @@ function Root() {
   if (firebaseInitError) {
     return <FirebaseSetupErrorScreen message={firebaseInitError} />;
   }
+
+  const tvCode = parseTVCodeFromUrl();
+  if (tvCode) {
+    return <TVDisplayBootstrap code={tvCode} />;
+  }
+
   return (
     <AuthProvider>
       <AppGate />

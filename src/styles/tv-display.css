@@ -1,0 +1,363 @@
+/* TV 대화면 디스플레이 + 폰 연결 패널 */
+
+.tv-display-root {
+  min-height: 100dvh;
+  background: #030308;
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  font-family: Inter, system-ui, sans-serif;
+}
+
+.tv-display-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.tv-display-header-left {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tv-display-badge {
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.tv-display-code {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+.tv-display-mode {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.tv-display-conn {
+  font-size: 13px;
+  padding: 6px 12px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.tv-display-conn-connected {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.12);
+}
+
+.tv-display-split {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2px;
+  min-height: 0;
+  background: #111;
+}
+
+.tv-display-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: #000;
+}
+
+.tv-display-pane-label {
+  padding: 10px 16px;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.45);
+  flex-shrink: 0;
+}
+
+.tv-display-pane-body {
+  flex: 1;
+  position: relative;
+  min-height: 0;
+}
+
+.tv-display-remote-video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  background: #111;
+}
+
+.tv-display-audio-only {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tv-display-vocal-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(ellipse at center, #1a0a14 0%, #030308 70%);
+  gap: 24px;
+}
+
+.tv-display-vocal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 120px;
+}
+
+.tv-display-vocal-bar {
+  width: 10px;
+  border-radius: 4px;
+  transition: height 0.15s ease;
+}
+
+.tv-display-vocal-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.tv-display-placeholder {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 24px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 15px;
+  line-height: 1.6;
+}
+
+.tv-display-waiting-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}
+
+.tv-display-error {
+  color: #ff6b6b;
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.tv-display-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 24px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
+}
+
+.tv-display-feedback {
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  flex: 1;
+}
+
+.tv-display-score {
+  font-size: 18px;
+  font-weight: 700;
+  color: #00ff88;
+}
+
+.tv-display-loader,
+.tv-display-error-screen {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: #030308;
+  color: #fff;
+  padding: 32px;
+  text-align: center;
+}
+
+.tv-display-error-screen ol {
+  text-align: left;
+  max-width: 480px;
+  margin-top: 20px;
+  color: rgba(255, 255, 255, 0.65);
+  line-height: 1.7;
+}
+
+.tv-display-spinner {
+  width: 44px;
+  height: 44px;
+  border: 3px solid #ff1f8e;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: tv-spin 0.8s linear infinite;
+  margin-bottom: 16px;
+}
+
+@keyframes tv-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* 폰 연결 패널 */
+.tv-connect-panel {
+  width: 100%;
+  padding: 16px 18px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+}
+
+.tv-connect-panel-light {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.1);
+  color: #111;
+}
+
+.tv-connect-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 10px;
+}
+
+.tv-connect-title {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.tv-connect-action {
+  padding: 6px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 31, 142, 0.5);
+  background: rgba(255, 31, 142, 0.15);
+  color: #ff8ec8;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tv-connect-stop {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tv-connect-body {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.tv-connect-code-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.tv-connect-label {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.tv-connect-code {
+  font-size: 22px;
+  letter-spacing: 0.2em;
+  color: #00ff88;
+}
+
+.tv-connect-qr-wrap {
+  padding: 10px;
+  background: #fff;
+  border-radius: 10px;
+}
+
+.tv-connect-url {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.35);
+  word-break: break-all;
+  text-align: center;
+  max-width: 100%;
+}
+
+.tv-connect-status {
+  font-size: 12px;
+  padding: 8px 12px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  text-align: center;
+}
+
+.tv-connect-status-connected {
+  color: #00ff88;
+  background: rgba(0, 255, 136, 0.1);
+}
+
+.tv-connect-hint,
+.tv-connect-idle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.45);
+  line-height: 1.5;
+  text-align: center;
+}
+
+.tv-connect-guide-toggle {
+  margin-top: 10px;
+  width: 100%;
+  padding: 8px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  cursor: pointer;
+  text-decoration: underline;
+}
+
+.tv-connect-guide {
+  margin: 10px 0 0;
+  padding-left: 18px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.55);
+  line-height: 1.65;
+}
+
+.tv-connect-start-btn {
+  padding: 8px 14px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.tv-connect-compact .tv-connect-body {
+  gap: 8px;
+}
+
+.tv-training-tv-connect {
+  padding: 8px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+@media (max-width: 900px) {
+  .tv-display-split {
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+  }
+}

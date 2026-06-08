@@ -189,47 +189,18 @@ export function TVModeEntry({
           width: '100%',
           maxWidth: 560,
           padding: '16px 20px',
-          background: 'rgba(255,255,255,0.03)',
-          border: '1px solid rgba(255,255,255,0.06)',
+          background: 'rgba(0,255,136,0.06)',
+          border: '1px solid rgba(0,255,136,0.2)',
           borderRadius: 12,
         }}
       >
-        <div
-          style={{
-            fontSize: 11,
-            color: 'rgba(255,255,255,0.4)',
-            marginBottom: 12,
-            letterSpacing: '0.1em',
-            textTransform: 'uppercase',
-          }}
-        >
-          대화면 연결 (선택)
+        <div style={{ fontSize: 13, fontWeight: 600, color: '#00FF88', marginBottom: 8 }}>
+          ONNODE STUDIO MODE
         </div>
-        <div
-          className="tv-entry-mirror"
-          style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}
-        >
-          {[
-            { icon: '📱', label: 'iPhone', desc: 'AirPlay로\nApple TV 연결' },
-            { icon: '🤖', label: 'Android', desc: '화면 미러링으로\nChromecast 연결' },
-            { icon: '💻', label: 'PC/Mac', desc: 'HDMI 케이블로\nTV 직접 연결' },
-          ].map((item) => (
-            <div key={item.label} style={{ textAlign: 'center' }}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{item.icon}</div>
-              <div style={{ fontSize: 11, color: '#fff', marginBottom: 2 }}>{item.label}</div>
-              <div
-                style={{
-                  fontSize: 10,
-                  color: 'rgba(255,255,255,0.3)',
-                  lineHeight: 1.4,
-                  whiteSpace: 'pre-line',
-                }}
-              >
-                {item.desc}
-              </div>
-            </div>
-          ))}
-        </div>
+        <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.65, margin: 0 }}>
+          트레이닝 시작 후 우측 상단 <strong>「📺 TV 연결」</strong> — 10초 이내 TV 연습실 연결.
+          TV 없이도 스마트폰·노트북만으로 바로 연습할 수 있습니다.
+        </p>
       </div>
 
       <button

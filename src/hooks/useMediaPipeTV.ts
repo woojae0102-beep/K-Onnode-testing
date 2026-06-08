@@ -40,10 +40,11 @@ const CONNECTIONS = [
 const DETECT_INTERVAL_MS = 100;
 const STATE_UPDATE_INTERVAL_MS = 250;
 
-function buildTVVideoConstraints(settings) {
+function buildTVVideoConstraints(settings, facingMode = 'user') {
   const base = buildMobileVideoConstraints(settings);
   return {
     ...base,
+    facingMode: { ideal: facingMode },
     width: { ideal: 640, max: 1280 },
     height: { ideal: 480, max: 720 },
     frameRate: { ideal: 24, max: 30 },
@@ -92,6 +93,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   const canvasRef = useRef(null);
   const detectorRef = useRef(null);
   const streamRef = useRef(null);
+  const facingModeRef = useRef('user');
   const detectTimerRef = useRef(0);
   const resizeObserverRef = useRef(null);
   const agencyColorRef = useRef(agencyColor);
@@ -201,7 +203,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   const startTracking = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
-        video: buildTVVideoConstraints(settings),
+        video: buildTVVideoConstraints(settings, facingModeRef.current),
         audio: false,
       });
       streamRef.current = stream;
@@ -270,11 +272,19 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
 
   const getStream = useCallback(() => streamRef.current, []);
 
+  const switchCamera = useCallback(async () => {
+    facingModeRef.current = facingModeRef.current === 'user' ? 'environment' : 'user';
+    if (!isTracking) return;
+    stopTracking();
+    await startTracking();
+  }, [isTracking, startTracking, stopTracking]);
+
   return {
     poseData,
     isTracking,
     startTracking,
     stopTracking,
+    switchCamera,
     videoRef,
     canvasRef,
     getStream,
