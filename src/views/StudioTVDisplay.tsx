@@ -33,7 +33,7 @@ export default function StudioTVDisplay({ code, isHost = false }) {
   const feedback =
     syncState?.feedback ||
     (isHost && !syncState?.status
-      ? `코드 ${code} — 모바일에서 입력하거나 QR을 스캔하세요`
+      ? `코드 ${code} — 모바일 앱 → TV 연결 → 이 코드 입력`
       : '모바일에서 카메라를 켜면 실시간 분석이 시작됩니다');
   const score = Math.round(syncState?.score || 0);
   const beatAccuracy = Math.round(syncState?.beatAccuracy || syncState?.scores?.rhythm || score);

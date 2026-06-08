@@ -247,6 +247,21 @@
 
 .studio-code-hint { text-align: center; font-size: 12px; color: rgba(255,255,255,0.55); }
 .studio-qr-wrap { display: flex; justify-content: center; margin: 14px 0; padding: 12px; background: #fff; border-radius: 12px; width: fit-content; margin-inline: auto; }
+.studio-qr-wrap-secondary { opacity: 0.9; margin-top: 8px; }
+.studio-qr-explain {
+  margin: 0 0 8px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.55;
+  text-align: center;
+}
+.studio-qr-footnote {
+  margin: 8px 0 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  line-height: 1.45;
+}
 .studio-url { font-size: 10px; word-break: break-all; text-align: center; color: rgba(255,255,255,0.35); }
 .studio-conn-status { margin-top: 12px; padding: 10px; border-radius: 10px; background: rgba(255,255,255,0.05); text-align: center; font-size: 12px; }
 .studio-conn-connected { color: #00ff88; background: rgba(0,255,136,0.1); }

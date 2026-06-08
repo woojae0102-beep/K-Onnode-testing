@@ -160,10 +160,18 @@ export default function StudioConnectModal({
                     ) : null}
                   </div>
 
-                  <h3 style={{ marginTop: 16 }}>② QR 코드 (TV에서 스캔)</h3>
-                  <div className="studio-qr-wrap">
-                    <QRCodeSVG value={qrUrl} size={148} level="M" />
+                  <h3 style={{ marginTop: 16 }}>② 참고: QR 코드 (주소와 동일)</h3>
+                  <p className="studio-qr-explain">
+                    이 QR은 <strong>위 주소와 같은 내용</strong>입니다.
+                    <br />
+                    TV는 보통 QR을 찍을 수 없으므로, <strong>①번 주소를 TV에 직접 입력</strong>하세요.
+                  </p>
+                  <div className="studio-qr-wrap studio-qr-wrap-secondary">
+                    <QRCodeSVG value={qrUrl} size={120} level="M" />
                   </div>
+                  <p className="studio-qr-footnote">
+                    일부 삼성·LG TV만 브라우저 QR 스캔 지원 → 이 폰 화면의 QR을 TV 카메라로 비출 때만 사용
+                  </p>
 
                   {sessionCode ? (
                     <div className="studio-code-row-box">
@@ -261,7 +269,7 @@ function StudioConnectGuide({ mode, tvLandingUrl, mediaLabel }) {
       <h4>🔗 접속 주소</h4>
       <ul>
         <li>TV 먼저 켜기: <code>{tvLandingUrl}</code> → TV에 코드 표시 → 이 폰에서 코드 입력</li>
-        <li>폰 먼저 연결: 이 화면의 QR/주소로 TV 접속 → 코드가 자동으로 맞춰짐</li>
+        <li>폰 먼저 연결: TV 브라우저에 <strong>①번 주소를 직접 입력</strong> → 코드가 자동으로 맞춰짐</li>
       </ul>
 
       <h4>🕺 댄스 연습 시 TV 화면</h4>
