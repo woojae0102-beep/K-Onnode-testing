@@ -9,8 +9,6 @@ import { loadTeachingReports } from '../services/teachingReportStore';
 
 import HomeView from '../views/HomeView';
 import AICoachView from '../views/AICoachView';
-import DanceTrainingView from '../views/DanceTrainingView';
-import VocalTrainingView from '../views/VocalTrainingView';
 import KoreanAIView from '../views/KoreanAIView';
 import MyPageView from '../views/MyPageView';
 import NotificationsView from '../views/NotificationsView';
@@ -42,8 +40,6 @@ const VIEW_TO_TAB = {
   goals: 'home',
   'saved-videos': 'home',
   'feedback-history': 'home',
-  dance: 'home',
-  vocal: 'home',
   korean: 'home',
   'agency-audition': 'home',
   'tv-mode': 'home',
@@ -57,18 +53,12 @@ const VIEW_TO_TAB = {
   coaching: 'aicoach',
 };
 
-const TRAINING_VIEWS = [
-  'dance',
-  'vocal',
-  'korean',
-  'tv-mode',
-  'aicoach',
-];
+const TRAINING_VIEWS = ['korean', 'tv-mode', 'agency-audition', 'aicoach'];
 
 export default function Layout(props) {
   const [activeTab, setActiveTab] = useState('home');
   const [mainView, setMainView] = useState('home');
-  const [lastTrainingView, setLastTrainingView] = useState('dance');
+  const [lastTrainingView, setLastTrainingView] = useState('tv-mode');
   usePracticeReminderNotifications();
 
   useEffect(() => {
@@ -115,10 +105,6 @@ export default function Layout(props) {
         return <SavedVideosView />;
       case 'feedback-history':
         return <FeedbackHistoryView />;
-      case 'dance':
-        return <DanceTrainingView onNavigate={handleSelectView} />;
-      case 'vocal':
-        return <VocalTrainingView onNavigate={handleSelectView} />;
       case 'korean':
         return <KoreanAIView />;
       case 'agency-audition':

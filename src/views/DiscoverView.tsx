@@ -166,7 +166,7 @@ export default function DiscoverView({ onNavigate, initialCategory = 'all', hide
                 <DanceCard
                   item={item}
                   t={t}
-                  onPractice={() => onNavigate?.('dance')}
+                  onPractice={() => onNavigate?.('tv-mode')}
                 />
               )}
             />
@@ -181,7 +181,7 @@ export default function DiscoverView({ onNavigate, initialCategory = 'all', hide
             <RankedList
               items={data.songs}
               renderItem={(item) => (
-                <SongCard item={item} t={t} onSing={() => onNavigate?.('vocal')} />
+                <SongCard item={item} t={t} onSing={() => onNavigate?.('tv-mode')} />
               )}
             />
           </Section>
@@ -199,7 +199,7 @@ export default function DiscoverView({ onNavigate, initialCategory = 'all', hide
                   item={item}
                   t={t}
                   locale={i18n.language}
-                  onJoin={() => onNavigate?.('dance')}
+                  onJoin={() => onNavigate?.('tv-mode')}
                 />
               )}
             />

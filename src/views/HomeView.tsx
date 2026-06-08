@@ -13,14 +13,6 @@ const COLOR = {
 };
 
 const QUICK_TRACK_STYLES = {
-  dance: {
-    icon: '🕺',
-    accentColor: '#FF1F8E',
-  },
-  vocal: {
-    icon: '🎤',
-    accentColor: '#4A6BFF',
-  },
   korean: {
     icon: '🇰🇷',
     accentColor: '#1DB971',
@@ -288,18 +280,6 @@ function QuickStartSection({ onNavigate }) {
       title: t('leftPanel.tvMode'),
       desc: t('home.tvModeDesc'),
       isNew: true,
-    },
-    {
-      view: 'dance',
-      ...QUICK_TRACK_STYLES.dance,
-      title: t('home.danceTitle'),
-      desc: t('home.danceDesc'),
-    },
-    {
-      view: 'vocal',
-      ...QUICK_TRACK_STYLES.vocal,
-      title: t('home.vocalTitle'),
-      desc: t('home.vocalDesc'),
     },
     {
       view: 'korean',

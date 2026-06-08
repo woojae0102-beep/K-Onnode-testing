@@ -343,6 +343,107 @@ AI 코치 모드: ${coachModeLabel(body.coachMode)}
   return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
 }
 
+function buildHeuristicSectionsApi(durationSec, mode = 'dance') {
+  const span = mode === 'dance' ? 4.8 : 5;
+  const sections = [];
+  let idx = 0;
+  for (let t = 0; t < durationSec; t += span) {
+    sections.push({
+      id: `sec-${idx}`,
+      label: mode === 'dance' ? `${idx + 1}구간 (8카운트)` : `${idx + 1}소절`,
+      tStart: t,
+      tEnd: Math.min(durationSec, t + span),
+      scores: [],
+      avgScore: 0,
+      passed: false,
+      weakJoints: [],
+    });
+    idx += 1;
+  }
+  return sections;
+}
+
+function analyzeReferenceFallback(body = {}) {
+  const duration = Number(body.durationSec) || 180;
+  const mode = body.mode === 'vocal' ? 'vocal' : 'dance';
+  const lyrics = String(body.lyricsText || '')
+    .split(/\n+/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const lyricLines = lyrics.length
+    ? lyrics.map((text, i) => ({
+        tStart: (duration / lyrics.length) * i,
+        tEnd: (duration / lyrics.length) * (i + 1),
+        text,
+      }))
+    : [];
+  return {
+    duration,
+    source: 'heuristic',
+    sections: buildHeuristicSectionsApi(duration, mode),
+    lyricLines,
+    skeletonFrames: [],
+    pitchFrames: [],
+  };
+}
+
+async function handleAnalyzeReference(body) {
+  const fallback = analyzeReferenceFallback(body);
+  const mode = body.mode === 'vocal' ? 'vocal' : 'dance';
+  const prompt = `K-POP ${mode === 'dance' ? '안무' : '보컬'} 레슨 영상 분석 JSON을 생성하세요.
+videoId: ${body.videoId || ''}
+제목: ${body.title || ''}
+길이(초): ${body.durationSec || 180}
+가사(있으면): ${body.lyricsText || ''}
+필드:
+- duration (number)
+- sections: [{id,label,tStart,tEnd,scores[],avgScore,passed,weakJoints[]}] — ${mode === 'dance' ? '8카운트(약4.8초)' : '5초'} 단위
+- lyricLines: [{tStart,tEnd,text}] (보컬일 때)
+짧고 실용적인 한국어 라벨 사용.`;
+  const result = await callClaude({ prompt, maxTokens: 900 });
+  if (result.ok && result.parsed?.sections?.length) {
+    return { ...fallback, ...result.parsed, source: 'claude' };
+  }
+  return fallback;
+}
+
+function sectionCoachFallback(body = {}) {
+  const section = body.section || {};
+  const range = body.rangeLabel || '';
+  const score = section.avgScore || body.syncScore || 0;
+  const mode = body.mode === 'vocal' ? 'vocal' : 'dance';
+  const joint = body.weakJoints?.[0] || '';
+  return {
+    sectionLabel: section.label || '약한 구간',
+    tStart: section.tStart || 0,
+    tEnd: section.tEnd || 0,
+    coachLine: `${section.label || '이 구간'}(${range}) 점수 ${score}점 — 집중 연습이 필요해요.`,
+    keyCorrection:
+      mode === 'dance' && joint
+        ? `${joint} 각도와 타이밍을 레퍼런스와 맞춰보세요.`
+        : mode === 'vocal'
+          ? '첫 음 전 호흡을 채우고 음정을 천천히 맞춰보세요.'
+          : '동작/발음을 더 또렷하게 표현하세요.',
+    drillTip: mode === 'dance' ? '0.5x 배속 3회 → 1x로 연결' : '모범창 1회 듣고 2회 따라 부르기',
+    encouragement: score >= 60 ? '거의 완성 단계예요!' : '이 구간만 반복하면 확실히 올라갑니다.',
+    source: 'fallback',
+  };
+}
+
+async function handleSectionCoach(body) {
+  const fallback = sectionCoachFallback(body);
+  const prompt = `K-POP ${body.mode === 'vocal' ? '보컬' : '댄스'} 구간 코칭 JSON.
+구간: ${JSON.stringify(body.section || {})}
+범위: ${body.rangeLabel || ''}
+점수: ${body.syncScore || 0}
+약한 관절: ${JSON.stringify(body.weakJoints || [])}
+에이전시: ${body.agency || 'hybe'}
+응답 언어: ${languageLabel(body.language)}
+필드: sectionLabel,tStart,tEnd,coachLine,keyCorrection,drillTip,encouragement`;
+  const result = await callClaude({ prompt, maxTokens: 450 });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+}
+
 module.exports = async function handler(req, res) {
   if (req.method !== 'POST') {
     res.setHeader?.('Allow', 'POST');
@@ -357,5 +458,7 @@ module.exports = async function handler(req, res) {
   if (action === 'vocal-cover') return res.status(200).json(await handleVocalCover(body));
   if (action === 'korean-lyrics') return res.status(200).json(await handleKoreanLyrics(body));
   if (action === 'korean-pronunciation') return res.status(200).json(await handleKoreanPronunciation(body));
+  if (action === 'analyze-reference') return res.status(200).json(await handleAnalyzeReference(body));
+  if (action === 'section-coach') return res.status(200).json(await handleSectionCoach(body));
   return res.status(404).json({ error: 'Unknown coaching action', action });
 };

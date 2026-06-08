@@ -2,8 +2,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Send, User } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import DanceTrainingView from './DanceTrainingView';
-import VocalTrainingView from './VocalTrainingView';
 import PronunciationMode from '../components/korean/PronunciationMode';
 import FollowAlongMode from '../components/korean/FollowAlongMode';
 import CorrectionMode from '../components/korean/CorrectionMode';
@@ -16,8 +14,6 @@ import { useMonthlyData } from '../hooks/useMonthlyData';
 import { loadTeachingReports } from '../services/teachingReportStore';
 
 const QUICK_COMMANDS = [
-  { id: 'dance', label: '/댄스' },
-  { id: 'vocal', label: '/보컬' },
   { id: 'korean-pronunciation', label: '/한국어 발음연습' },
   { id: 'korean-follow', label: '/한국어 따라말하기' },
   { id: 'korean-correction', label: '/한국어 ai교정' },
@@ -33,13 +29,12 @@ const BOTTOM_TABS = [
 ];
 
 const MODE_REPLY = {
-  dance: '댄스 연습을 실행합니다. 카메라를 켜고 자세/동작 피드백을 확인해보세요.',
-  vocal: '보컬 연습을 실행합니다. 마이크를 켜고 실시간 음정 피드백을 확인해보세요.',
+  'tv-hint': '댄스·보컬 연습은 TV 모드에서 이용해주세요. 홈 화면의 TV 모드로 이동하세요.',
   'korean-pronunciation': '한국어 발음 연습 모드를 실행합니다. 문장을 말하면 실시간 발음 피드백이 나옵니다.',
   'korean-follow': '문장 따라 말하기 모드를 실행합니다. 라인별로 녹음해서 점수를 확인해보세요.',
   'korean-correction': 'AI 발음 교정 모드를 실행합니다. 말한 문장을 기준으로 교정 피드백을 제공합니다.',
   'korean-lyrics': '가사 기반 학습 모드를 실행합니다. 어휘 인식과 문장 일치 점수를 실시간으로 확인하세요.',
-  none: '채팅 모드로 복귀했습니다. "댄스", "보컬", "한국어 발음연습"처럼 입력하면 기능을 다시 열 수 있어요.',
+  none: '채팅 모드로 복귀했습니다. "한국어 발음연습"처럼 입력하면 기능을 다시 열 수 있어요. 댄스·보컬은 TV 모드를 이용해주세요.',
 };
 const MODE_REPLY_EN = {
   dance: 'Launching Dance training. Turn on your camera and check posture/movement feedback.',
@@ -826,8 +821,6 @@ function detectReportTarget(text) {
 }
 
 function tabFromFeature(feature) {
-  if (feature === 'dance') return 'dance';
-  if (feature === 'vocal') return 'vocal';
   if (String(feature || '').startsWith('korean')) return 'korean';
   return 'chat';
 }
@@ -1232,8 +1225,8 @@ function detectIntent(rawText) {
   }
 
   if (['종료', '닫기', '그만', '홈으로', '/종료', 'exit', 'close', '退出', '关闭'].some((k) => text.includes(k))) return { type: 'feature', feature: 'none' };
-  if (text.includes('/댄스') || text.includes('댄스') || text.includes('춤') || text.includes('/dance') || text.includes('dance') || text.includes('舞蹈')) return { type: 'feature', feature: 'dance' };
-  if (text.includes('/보컬') || text.includes('보컬') || text.includes('노래') || text.includes('음정') || text.includes('/vocal') || text.includes('vocal') || text.includes('sing') || text.includes('声乐') || text.includes('唱歌')) return { type: 'feature', feature: 'vocal' };
+  if (text.includes('/댄스') || text.includes('댄스') || text.includes('춤') || text.includes('/dance') || text.includes('dance') || text.includes('舞蹈')) return { type: 'feature', feature: 'tv-hint' };
+  if (text.includes('/보컬') || text.includes('보컬') || text.includes('노래') || text.includes('음정') || text.includes('/vocal') || text.includes('vocal') || text.includes('sing') || text.includes('声乐') || text.includes('唱歌')) return { type: 'feature', feature: 'tv-hint' };
   if (text.includes('가사') && text.includes('학습')) return { type: 'feature', feature: 'korean-lyrics' };
   if (text.includes('ai') && (text.includes('교정') || text.includes('발음교정'))) return { type: 'feature', feature: 'korean-correction' };
   if (text.includes('문장') && text.includes('따라')) return { type: 'feature', feature: 'korean-follow' };
@@ -1588,8 +1581,6 @@ async function requestGeminiCoachReply({ input, conversationSnapshot, context, r
 }
 
 function renderFeatureComponent(feature, onReportUpdate) {
-  if (feature === 'dance') return <DanceTrainingView onNavigate={() => {}} onReportUpdate={(payload) => onReportUpdate('dance', payload)} />;
-  if (feature === 'vocal') return <VocalTrainingView onNavigate={() => {}} onReportUpdate={(payload) => onReportUpdate('vocal', payload)} />;
   if (feature === 'korean-pronunciation') return <PronunciationMode onReportUpdate={(payload) => onReportUpdate('korean-pronunciation', payload)} />;
   if (feature === 'korean-follow') return <FollowAlongMode onReportUpdate={(payload) => onReportUpdate('korean-follow', payload)} />;
   if (feature === 'korean-correction') return <CorrectionMode onReportUpdate={(payload) => onReportUpdate('korean-correction', payload)} />;
@@ -1602,7 +1593,7 @@ export default function AICoachView() {
   const [messages, setMessages] = useState([
     createMessage(
       'assistant',
-      '안녕하세요! 이 화면은 채팅으로 모든 기능을 실행합니다.\n예) "댄스 연습 시작", "보컬 연습하고 싶어", "오늘 연습 리포트 보여줘"'
+      '안녕하세요! 이 화면은 채팅으로 기능을 실행합니다.\n예) "한국어 발음연습", "오늘 연습 리포트 보여줘"\n댄스·보컬은 TV 모드에서 연습해주세요.'
     ),
   ]);
   const [inputValue, setInputValue] = useState('');

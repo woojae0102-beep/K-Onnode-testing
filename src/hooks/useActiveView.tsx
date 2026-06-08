@@ -5,11 +5,11 @@ const ActiveViewContext = createContext(null);
 
 export function ActiveViewProvider({ children }) {
   const [activeView, setActiveView] = useState('aicoach');
-  const [lastTrainingView, setLastTrainingView] = useState('dance');
+  const [lastTrainingView, setLastTrainingView] = useState('tv-mode');
 
   const navigate = (nextView) => {
     setActiveView(nextView);
-    if (['dance', 'vocal', 'korean', 'aicoach'].includes(nextView)) {
+    if (['korean', 'tv-mode', 'agency-audition', 'aicoach'].includes(nextView)) {
       setLastTrainingView(nextView);
     }
   };

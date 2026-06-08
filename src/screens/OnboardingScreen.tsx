@@ -3,8 +3,6 @@ import React, { useState } from 'react';
 import { useAuth, AuthTrack } from '../contexts/AuthContext';
 
 const TRACKS: { id: AuthTrack; icon: string; label: string; desc: string }[] = [
-  { id: 'dance', icon: '🕺', label: '댄스', desc: 'K-POP 안무 연습' },
-  { id: 'vocal', icon: '🎤', label: '보컬', desc: '음정·발성 트레이닝' },
   { id: 'korean', icon: '🇰🇷', label: '한국어', desc: '가사로 배우는 한국어' },
 ];
 

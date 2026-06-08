@@ -16,7 +16,7 @@ export default function NotificationsView({ onNavigate }) {
       title: t('notifications.aiTitle'),
       message: t('notifications.aiMessage'),
       actionLabel: t('notifications.practiceNow'),
-      action: () => onNavigate('vocal'),
+      action: () => onNavigate('tv-mode'),
     },
     {
       id: 'n2',

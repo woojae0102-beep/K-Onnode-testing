@@ -22,25 +22,8 @@ const TV_MODE_MENU = {
   badge: true,
 };
 
-const TRAINING_GROUPS = [
-  {
-    titleKey: 'leftPanel.danceSection',
-    items: [
-      { icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
-    ],
-  },
-  {
-    titleKey: 'leftPanel.vocalSection',
-    items: [
-      { icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
-    ],
-  },
-  {
-    titleKey: 'leftPanel.koreanSection',
-    items: [
-      { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
-    ],
-  },
+const TRAINING_MENUS = [
+  { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
 ];
 
 const HOME_MENUS_EXTRA = [
@@ -127,30 +110,14 @@ function HomeTabContent({ mainView, onSelectView }) {
         highlight={TV_MODE_MENU.highlight}
         trailing={TV_MODE_MENU.badge ? <NewBadge /> : null}
       />
-      {TRAINING_GROUPS.map((group) => (
-        <div key={group.titleKey}>
-          <p
-            style={{
-              fontSize: 10,
-              color: '#BBBBBB',
-              padding: '8px 16px 2px',
-              margin: 0,
-              fontWeight: 600,
-            }}
-          >
-            {t(group.titleKey)}
-          </p>
-          {group.items.map((item) => (
-            <div key={item.view} style={{ paddingLeft: item.sub ? 8 : 0 }}>
-              <MenuRow
-                icon={item.icon}
-                label={t(item.labelKey)}
-                active={mainView === item.view}
-                onClick={() => onSelectView?.(item.view)}
-              />
-            </div>
-          ))}
-        </div>
+      {TRAINING_MENUS.map((item) => (
+        <MenuRow
+          key={item.view}
+          icon={item.icon}
+          label={t(item.labelKey)}
+          active={mainView === item.view}
+          onClick={() => onSelectView?.(item.view)}
+        />
       ))}
       {HOME_MENUS_EXTRA.map((item) => (
         <MenuRow

@@ -3,8 +3,6 @@
 
 export const HOME_TRAINING_MENUS = [
   { icon: '📺', labelKey: 'leftPanel.tvMode', view: 'tv-mode', accent: true },
-  { icon: '🕺', labelKey: 'leftPanel.danceTraining', view: 'dance' },
-  { icon: '🎤', labelKey: 'leftPanel.vocalTraining', view: 'vocal' },
   { icon: '🇰🇷', labelKey: 'leftPanel.koreanAI', view: 'korean' },
   { icon: '🏆', labelKey: 'leftPanel.agencyAudition', view: 'agency-audition', accent: true },
 ];

@@ -7,7 +7,7 @@ import GoalProgressCard from '../components/mypage/GoalProgressCard';
 import SavedVideosGrid from '../components/mypage/SavedVideosGrid';
 import { useAuth } from '../contexts/AuthContext';
 
-const tracks = ['dance', 'vocal', 'korean'];
+const tracks = ['korean'];
 const TRACK_LABELS = {
   dance: '댄스',
   vocal: '보컬',
@@ -67,7 +67,7 @@ function formatJoinedAt(date) {
 export default function MyPageView({ onNavigate, lastTrainingView }) {
   const { t } = useTranslation();
   const { userProfile, updateUserProfile } = useAuth();
-  const [trackFilter, setTrackFilter] = useState('dance');
+  const [trackFilter, setTrackFilter] = useState('korean');
   const [feedbackPage, setFeedbackPage] = useState(1);
   const [videoModal, setVideoModal] = useState(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -274,7 +274,7 @@ function ProfileEditModal({ userProfile, onClose, onSave }) {
     country: userProfile?.country || 'KR',
     language: userProfile?.language || 'ko',
     goal: userProfile?.goal || 'hobby',
-    tracks: userProfile?.tracks?.length ? [...userProfile.tracks] : ['dance'],
+    tracks: userProfile?.tracks?.length ? [...userProfile.tracks] : ['korean'],
   });
 
   const setField = (key, value) => setForm((prev) => ({ ...prev, [key]: value }));
