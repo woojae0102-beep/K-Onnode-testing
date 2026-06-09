@@ -7,12 +7,15 @@ import React, { useEffect, useState } from 'react';
 import { jypJudges, type JypJudgeMeta } from '../../../data/jypJudges';
 import type { JypFinalResult, JypJudgeSummary, JypRoutineWeek } from '../../../hooks/useJypAudition';
 import JypDebateScreen from './JypDebateScreen';
+import AuditionResultFooter from '../AuditionResultFooter';
 
 type Props = {
   result: JypFinalResult;
+  comparison?: object | null;
   onSaveCertificate?: () => void;
   onRetry?: () => void;
   onAskCoach?: () => void;
+  onHome?: () => void;
 };
 
 const VERDICT_BG: Record<string, string> = {
@@ -29,7 +32,7 @@ const VERDICT_LABEL: Record<string, string> = {
   fail: '불합격',
 };
 
-export default function JypResultScreen({ result, onSaveCertificate, onRetry, onAskCoach }: Props) {
+export default function JypResultScreen({ result, comparison, onSaveCertificate, onRetry, onAskCoach, onHome }: Props) {
   const headerColor = VERDICT_BG[result.finalVerdict] || '#FF6348';
 
   return (
@@ -236,13 +239,15 @@ export default function JypResultScreen({ result, onSaveCertificate, onRetry, on
           </section>
         )}
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginTop: 8 }}>
-          {result.finalVerdict === 'pass' && onSaveCertificate && (
-            <ActionButton onClick={onSaveCertificate} background={headerColor} label="합격증 저장" />
-          )}
-          {onRetry && <ActionButton onClick={onRetry} variant="outline" label="다시 도전하기" />}
-          {onAskCoach && <ActionButton onClick={onAskCoach} variant="outline" label="AI 코치에게 물어보기" />}
-        </div>
+        <AuditionResultFooter
+          comparison={comparison}
+          accent={headerColor}
+          onRetry={onRetry}
+          onHome={onHome}
+          onAskCoach={onAskCoach}
+          onSaveCertificate={onSaveCertificate}
+          showCertificate={result.finalVerdict === 'pass'}
+        />
       </div>
     </div>
   );

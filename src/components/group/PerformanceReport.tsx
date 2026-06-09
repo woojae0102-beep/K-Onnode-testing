@@ -3,6 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import '../../styles/group-studio.css';
+import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
+import PracticeResultActions from '../common/PracticeResultActions';
 
 function scoreColor(v) {
   if (v > 80) return '#00FF88';
@@ -10,7 +12,7 @@ function scoreColor(v) {
   return '#FF4444';
 }
 
-export function PerformanceReport({ result, songId, memberId, onRetry, onHome }) {
+export function PerformanceReport({ result, songId, memberId, comparison, onRetry, onHome }) {
   const song = getSongById(songId);
   const group = song ? GROUP_DATA[song.groupId] : null;
   const member = group?.members.find((m) => m.id === memberId);
@@ -113,6 +115,12 @@ export function PerformanceReport({ result, songId, memberId, onRetry, onHome })
           ))}
         </div>
 
+        <PracticeComparisonPanel
+          comparison={comparison}
+          accent={member?.color || song?.albumColor || '#FF1F8E'}
+          dark
+        />
+
         <div
           style={{
             padding: '20px',
@@ -130,35 +138,12 @@ export function PerformanceReport({ result, songId, memberId, onRetry, onHome })
           </p>
         </div>
 
-        <div style={{ display: 'flex', gap: 12 }}>
-          <button
-            type="button"
-            className="group-studio-start-btn"
-            style={{
-              flex: 1,
-              background: `linear-gradient(135deg, ${song?.albumColor || '#FF1F8E'}, ${song?.albumColor2 || '#6C5CE7'})`,
-            }}
-            onClick={onRetry}
-          >
-            다시 연습
-          </button>
-          <button
-            type="button"
-            onClick={onHome}
-            style={{
-              flex: 1,
-              padding: '16px',
-              background: 'rgba(255,255,255,0.06)',
-              border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: 50,
-              color: 'rgba(255,255,255,0.7)',
-              fontSize: 15,
-              cursor: 'pointer',
-            }}
-          >
-            홈으로
-          </button>
-        </div>
+        <PracticeResultActions
+          onRetry={onRetry}
+          onHome={onHome}
+          accent={song?.albumColor || '#FF1F8E'}
+          dark
+        />
       </div>
     </div>
   );

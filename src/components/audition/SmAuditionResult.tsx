@@ -3,16 +3,18 @@
 // agency.id === 'sm'일 때만 AgencyAuditionView가 이 컴포넌트로 분기시킵니다.
 
 import React, { useEffect, useRef } from 'react';
+import { useAuditionPracticeSave } from '../../hooks/useAuditionPracticeSave';
 import { useTranslation } from 'react-i18next';
 import { useSmAudition } from '../../hooks/useSmAudition';
 import SmResultScreen from './sm/SmResultScreen';
 import SmDebateScreen from './sm/SmDebateScreen';
 
-export default function SmAuditionResult({ rounds, ticketNumber, onRetry, onSelectAgency }) {
+export default function SmAuditionResult({ rounds, ticketNumber, onRetry, onSelectAgency, onHome }) {
   const { i18n } = useTranslation();
   const language = (i18n?.language || 'ko').slice(0, 2);
   const audition = useSmAudition({ language });
   const startedRef = useRef(false);
+  const comparison = useAuditionPracticeSave('sm', audition.finalResult);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -76,8 +78,10 @@ export default function SmAuditionResult({ rounds, ticketNumber, onRetry, onSele
   return (
     <SmResultScreen
       result={audition.finalResult}
+      comparison={comparison}
       onRetry={onRetry}
       onAskCoach={onSelectAgency}
+      onHome={onHome}
     />
   );
 }

@@ -19,7 +19,7 @@ function generateTicketNumber() {
   return Math.floor(1000 + Math.random() * 9000).toString();
 }
 
-function AgencyAuditionContent() {
+function AgencyAuditionContent({ onNavigate } = {}) {
   const [stage, setStage] = useState('select');
   const [agencyId, setAgencyId] = useState(null);
   const [ticketNumber, setTicketNumber] = useState(generateTicketNumber());
@@ -50,6 +50,7 @@ function AgencyAuditionContent() {
     setRounds({});
     setStage('select');
   };
+  const handleHome = () => onNavigate?.('home');
 
   return (
     <div style={{ height: '100%', overflow: 'auto', background: '#0A0A0A' }}>
@@ -83,6 +84,7 @@ function AgencyAuditionContent() {
             ticketNumber={ticketNumber}
             onRetry={handleRetry}
             onSelectAgency={handleSelectAnotherAgency}
+            onHome={handleHome}
           />
         ) : agency?.id === 'sm' ? (
           <SmAuditionResult
@@ -90,6 +92,7 @@ function AgencyAuditionContent() {
             ticketNumber={ticketNumber}
             onRetry={handleRetry}
             onSelectAgency={handleSelectAnotherAgency}
+            onHome={handleHome}
           />
         ) : agency?.id === 'jyp' ? (
           <JypAuditionResult
@@ -97,6 +100,7 @@ function AgencyAuditionContent() {
             ticketNumber={ticketNumber}
             onRetry={handleRetry}
             onSelectAgency={handleSelectAnotherAgency}
+            onHome={handleHome}
           />
         ) : agency?.id === 'yg' ? (
           <YgAuditionResult
@@ -104,6 +108,7 @@ function AgencyAuditionContent() {
             ticketNumber={ticketNumber}
             onRetry={handleRetry}
             onSelectAgency={handleSelectAnotherAgency}
+            onHome={handleHome}
           />
         ) : agency?.id === 'starship' ? (
           <StarshipAuditionResult
@@ -111,6 +116,7 @@ function AgencyAuditionContent() {
             ticketNumber={ticketNumber}
             onRetry={handleRetry}
             onSelectAgency={handleSelectAnotherAgency}
+            onHome={handleHome}
           />
         ) : (
           <AgencyResult
@@ -119,6 +125,7 @@ function AgencyAuditionContent() {
             ticketNumber={ticketNumber}
             onRetry={handleRetry}
             onSelectAgency={handleSelectAnotherAgency}
+            onHome={handleHome}
           />
         )
       )}
@@ -126,14 +133,14 @@ function AgencyAuditionContent() {
   );
 }
 
-export default function AgencyAuditionView() {
+export default function AgencyAuditionView({ onNavigate } = {}) {
   return (
     <SubscriptionGate
       requiredPlan="premium"
       featureKey="agency_audition"
       featureName="기획사 오디션"
     >
-      <AgencyAuditionContent />
+      <AgencyAuditionContent onNavigate={onNavigate} />
     </SubscriptionGate>
   );
 }

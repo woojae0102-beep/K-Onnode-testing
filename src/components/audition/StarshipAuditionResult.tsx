@@ -3,16 +3,18 @@
 // agency.id === 'starship'일 때만 AgencyAuditionView가 이 컴포넌트로 분기시킵니다.
 
 import React, { useEffect, useRef } from 'react';
+import { useAuditionPracticeSave } from '../../hooks/useAuditionPracticeSave';
 import { useTranslation } from 'react-i18next';
 import { useStarshipAudition } from '../../hooks/useStarshipAudition';
 import StarshipResultScreen from './starship/StarshipResultScreen';
 import StarshipDebateScreen from './starship/StarshipDebateScreen';
 
-export default function StarshipAuditionResult({ rounds, ticketNumber, onRetry, onSelectAgency }) {
+export default function StarshipAuditionResult({ rounds, ticketNumber, onRetry, onSelectAgency, onHome }) {
   const { i18n } = useTranslation();
   const language = (i18n?.language || 'ko').slice(0, 2);
   const audition = useStarshipAudition({ language });
   const startedRef = useRef(false);
+  const comparison = useAuditionPracticeSave('starship', audition.finalResult);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -74,8 +76,10 @@ export default function StarshipAuditionResult({ rounds, ticketNumber, onRetry, 
   return (
     <StarshipResultScreen
       result={audition.finalResult}
+      comparison={comparison}
       onRetry={onRetry}
       onAskCoach={onSelectAgency}
+      onHome={onHome}
     />
   );
 }

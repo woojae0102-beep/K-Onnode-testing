@@ -9,6 +9,7 @@ import GroupPracticeView from './GroupPracticeView';
 import TVCompareTeachingScreen from '../components/tv/TVCompareTeachingScreen';
 import TrainingResultScreen from '../components/tv/TrainingResultScreen';
 import { saveTeachingReport } from '../services/teachingReportStore';
+import { buildSessionKey, savePracticeSession } from '../services/practiceHistoryStore';
 
 type Phase = 'entry' | 'training' | 'compare' | 'result';
 
@@ -18,6 +19,7 @@ export default function TVModeView({ onNavigate } = {}) {
   const [selectedAgency, setSelectedAgency] = useState('hybe');
   const [selectedMode, setSelectedMode] = useState('dance');
   const [sessionData, setSessionData] = useState(null);
+  const [sessionComparison, setSessionComparison] = useState(null);
 
   const handleStart = useCallback((agency: Agency, mode: TrainingMode) => {
     setSelectedAgency(agency);
@@ -28,6 +30,21 @@ export default function TVModeView({ onNavigate } = {}) {
   const handleEnd = useCallback(async (data: SessionData) => {
     setSessionData(data);
     setPhase('compare');
+
+    const domain = data.mode === 'vocal' ? 'tv-vocal' : 'tv-dance';
+    const sessionKey = buildSessionKey(domain, { agency: data.agency });
+    const { comparison } = savePracticeSession(domain, sessionKey, {
+      overallScore: data.overallScore,
+      scores: data.scores,
+      sessionTime: data.sessionTime,
+      agency: data.agency,
+      mode: data.mode,
+      strengths: data.strengths,
+      weaknesses: data.weaknesses,
+      recommendations: data.recommendations,
+      completedAt: new Date().toISOString(),
+    });
+    setSessionComparison(comparison);
 
     saveTeachingReport('tv-mode', {
       title: `트레이닝 — ${data.agency.toUpperCase()} ${data.mode === 'dance' ? '댄스' : '보컬'}`,
@@ -58,8 +75,9 @@ export default function TVModeView({ onNavigate } = {}) {
   }, []);
 
   const handleRetry = useCallback(() => {
-    setPhase('entry');
     setSessionData(null);
+    setSessionComparison(null);
+    setPhase('training');
   }, []);
 
   const handleRestartTraining = useCallback(() => {
@@ -78,6 +96,7 @@ export default function TVModeView({ onNavigate } = {}) {
     }
     setPhase('entry');
     setSessionData(null);
+    setSessionComparison(null);
     onNavigate?.('home');
   }, [onNavigate]);
 
@@ -110,6 +129,7 @@ export default function TVModeView({ onNavigate } = {}) {
         sessionData={sessionData}
         agency={selectedAgency}
         mode={selectedMode}
+        comparison={sessionComparison}
         onShowResult={() => setPhase('result')}
         onRetrySession={handleRestartTraining}
         onHome={handleHome}
@@ -121,6 +141,7 @@ export default function TVModeView({ onNavigate } = {}) {
     <TrainingResultScreen
       sessionData={sessionData}
       agency={selectedAgency}
+      comparison={sessionComparison}
       onRetry={handleRetry}
       onHome={handleHome}
     />

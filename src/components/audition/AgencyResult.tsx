@@ -1,11 +1,15 @@
 // @ts-nocheck
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import AgencyCertificate from './AgencyCertificate';
+import AuditionResultFooter from './AuditionResultFooter';
+import { saveAgencyResultPractice } from '../../utils/saveAuditionPractice';
 
-export default function AgencyResult({ agency, rounds, ticketNumber, onRetry, onSelectAgency }) {
+export default function AgencyResult({ agency, rounds, ticketNumber, onRetry, onSelectAgency, onHome }) {
   const [feedbacks, setFeedbacks] = useState([]);
   const [overallScore, setOverallScore] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [comparison, setComparison] = useState(null);
+  const savedRef = useRef(false);
   const passed = overallScore >= (agency?.passingScore ?? 70);
 
   useEffect(() => {
@@ -45,6 +49,12 @@ export default function AgencyResult({ agency, rounds, ticketNumber, onRetry, on
       cancelled = true;
     };
   }, [agency, rounds]);
+
+  useEffect(() => {
+    if (loading || savedRef.current || !agency) return;
+    savedRef.current = true;
+    setComparison(saveAgencyResultPractice(agency.id, overallScore, feedbacks));
+  }, [loading, agency, overallScore, feedbacks]);
 
   if (!agency) return null;
 
@@ -132,44 +142,13 @@ export default function AgencyResult({ agency, rounds, ticketNumber, onRetry, on
           </div>
         )}
 
-        <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            onClick={onRetry}
-            style={{
-              flex: 1,
-              minWidth: 160,
-              background: agency.accentColor,
-              color: '#0A0A0A',
-              border: 'none',
-              padding: '14px 20px',
-              borderRadius: 12,
-              fontSize: 14,
-              fontWeight: 800,
-              cursor: 'pointer',
-            }}
-          >
-            다시 도전하기
-          </button>
-          <button
-            type="button"
-            onClick={onSelectAgency}
-            style={{
-              flex: 1,
-              minWidth: 160,
-              background: 'transparent',
-              color: '#FFFFFF',
-              border: '1px solid rgba(255,255,255,0.3)',
-              padding: '14px 20px',
-              borderRadius: 12,
-              fontSize: 14,
-              fontWeight: 700,
-              cursor: 'pointer',
-            }}
-          >
-            다른 기획사 선택
-          </button>
-        </div>
+        <AuditionResultFooter
+          comparison={comparison}
+          accent={agency.accentColor}
+          onRetry={onRetry}
+          onHome={onHome}
+          onAskCoach={onSelectAgency}
+        />
       </div>
     </div>
   );

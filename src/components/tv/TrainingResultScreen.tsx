@@ -4,6 +4,8 @@ import type { Agency, SessionData } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import { buildLocalCoachReview } from '../../utils/tvCoachReview';
 import CoachReviewBlock from './CoachReviewBlock';
+import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
+import PracticeResultActions from '../common/PracticeResultActions';
 
 function useCountUp(target, duration = 900) {
   const [value, setValue] = useState(0);
@@ -27,11 +29,13 @@ function useCountUp(target, duration = 900) {
 export function TrainingResultScreen({
   sessionData,
   agency,
+  comparison,
   onRetry,
   onHome,
 }: {
   sessionData: SessionData | null;
   agency: Agency;
+  comparison?: object | null;
   onRetry: () => void;
   onHome: () => void;
 }) {
@@ -83,6 +87,8 @@ export function TrainingResultScreen({
 
         <CoachReviewBlock agency={agency} reviewText={coachReview} />
 
+        <PracticeComparisonPanel comparison={comparison} accent={agencyColor} dark />
+
         {data.weaknesses?.length > 0 ? (
           <section className="tv-result-section">
             <h2 className="tv-result-section-title">보완이 필요한 부분</h2>
@@ -120,19 +126,7 @@ export function TrainingResultScreen({
           </section>
         ) : null}
 
-        <div className="tv-result-actions">
-          <button
-            type="button"
-            className="tv-result-btn tv-result-btn-primary"
-            style={{ background: agencyColor }}
-            onClick={onRetry}
-          >
-            다시 연습
-          </button>
-          <button type="button" className="tv-result-btn tv-result-btn-secondary" onClick={onHome}>
-            홈으로
-          </button>
-        </div>
+        <PracticeResultActions onRetry={onRetry} onHome={onHome} accent={agencyColor} dark />
       </div>
     </div>
   );

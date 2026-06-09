@@ -11,11 +11,14 @@ import type {
   StarshipJudgeSummary,
   StarshipVerdict,
 } from '../../../hooks/useStarshipAudition';
+import AuditionResultFooter from '../AuditionResultFooter';
 
 type Props = {
   result: StarshipFinalResult;
+  comparison?: object | null;
   onRetry?: () => void;
   onAskCoach?: () => void;
+  onHome?: () => void;
 };
 
 const VERDICT_LABEL: Record<string, string> = {
@@ -37,7 +40,7 @@ function getJudgeMeta(name: string) {
   return starshipJudges.find((j) => norm(j.name) === norm(name));
 }
 
-export default function StarshipResultScreen({ result, onRetry, onAskCoach }: Props) {
+export default function StarshipResultScreen({ result, comparison, onRetry, onAskCoach, onHome }: Props) {
   const verdict = result.finalVerdict || 'conditional';
   const verdictBg = VERDICT_BG[verdict] || VERDICT_BG.conditional;
   const verdictLabel = VERDICT_LABEL[verdict] || verdict;
@@ -354,56 +357,16 @@ export default function StarshipResultScreen({ result, onRetry, onAskCoach }: Pr
         </section>
       )}
 
-      {/* 액션 */}
-      <footer
-        style={{
-          display: 'flex',
-          flexWrap: 'wrap',
-          justifyContent: 'center',
-          gap: 12,
-          marginTop: 8,
-          paddingBottom: 20,
-        }}
-      >
-        {onRetry && (
-          <button
-            type="button"
-            onClick={onRetry}
-            style={{
-              background: '#6C5CE7',
-              color: '#FFFFFF',
-              border: 'none',
-              padding: '14px 28px',
-              borderRadius: 12,
-              fontWeight: 900,
-              fontSize: 13,
-              cursor: 'pointer',
-              letterSpacing: 1.5,
-            }}
-          >
-            🔁 다시 도전하기
-          </button>
-        )}
-        {onAskCoach && (
-          <button
-            type="button"
-            onClick={onAskCoach}
-            style={{
-              background: 'transparent',
-              color: '#A29BFE',
-              border: '2px solid #A29BFE',
-              padding: '14px 28px',
-              borderRadius: 12,
-              fontWeight: 900,
-              fontSize: 13,
-              cursor: 'pointer',
-              letterSpacing: 1.5,
-            }}
-          >
-            🏢 다른 회사 오디션 보기
-          </button>
-        )}
-      </footer>
+      <div style={{ maxWidth: 920, margin: '0 auto', width: '100%' }}>
+        <AuditionResultFooter
+          comparison={comparison}
+          accent="#6C5CE7"
+          onRetry={onRetry}
+          onHome={onHome}
+          onAskCoach={onAskCoach}
+        />
+      </div>
+
     </div>
   );
 }

@@ -3,16 +3,18 @@
 // agency.id === 'hybe'일 때만 AgencyAuditionView가 이 컴포넌트로 분기시킵니다.
 
 import React, { useEffect, useRef } from 'react';
+import { useAuditionPracticeSave } from '../../hooks/useAuditionPracticeSave';
 import { useTranslation } from 'react-i18next';
 import { useHybeAudition } from '../../hooks/useHybeAudition';
 import HybeResultScreen from './hybe/HybeResultScreen';
 import HybeDebateScreen from './hybe/HybeDebateScreen';
 
-export default function HybeAuditionResult({ rounds, ticketNumber, onRetry, onSelectAgency }) {
+export default function HybeAuditionResult({ rounds, ticketNumber, onRetry, onSelectAgency, onHome }) {
   const { i18n } = useTranslation();
   const language = (i18n?.language || 'ko').slice(0, 2);
   const audition = useHybeAudition({ language });
   const startedRef = useRef(false);
+  const comparison = useAuditionPracticeSave('hybe', audition.finalResult);
 
   useEffect(() => {
     if (startedRef.current) return;
@@ -77,8 +79,10 @@ export default function HybeAuditionResult({ rounds, ticketNumber, onRetry, onSe
   return (
     <HybeResultScreen
       result={audition.finalResult}
+      comparison={comparison}
       onRetry={onRetry}
       onAskCoach={onSelectAgency}
+      onHome={onHome}
     />
   );
 }

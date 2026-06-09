@@ -14,11 +14,13 @@ import { buildLocalCoachReview } from '../../utils/tvCoachReview';
 import VocalLineCoachingLoop from '../coaching/VocalLineCoachingLoop';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import { TVCompareBottomDock, TVCompareBottomSheet } from './TVCompareBottomDock';
+import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
 
 export default function TVCompareTeachingScreen({
   sessionData,
   agency,
   mode,
+  comparison,
   onShowResult,
   onRetrySession,
   onHome,
@@ -26,6 +28,7 @@ export default function TVCompareTeachingScreen({
   sessionData: SessionData | null;
   agency: Agency;
   mode: TrainingMode;
+  comparison?: object | null;
   onShowResult: () => void;
   onRetrySession: () => void;
   onHome: () => void;
@@ -333,6 +336,8 @@ export default function TVCompareTeachingScreen({
             처음부터
           </button>
         </div>
+
+        <PracticeComparisonPanel comparison={comparison} accent={agencyColor} dark />
 
         <div className="tv-compare-review">
           <CoachReviewBlock agency={agency} reviewText={coachReview} />

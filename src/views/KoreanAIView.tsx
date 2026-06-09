@@ -10,13 +10,15 @@ import { useSpotifyAnalysis } from '../hooks/useSpotifyAnalysis';
 import { useKoreanPersonaCoach } from '../hooks/useKoreanPersonaCoach';
 import { useKoreanLyrics } from '../hooks/useKoreanLyrics';
 import { useSettingsStore } from '../store/settingsSlice';
+import KoreanSessionResult from '../components/korean/KoreanSessionResult';
+import { buildSessionKey, savePracticeSession } from '../services/practiceHistoryStore';
 
 const modes = ['pronunciation', 'follow', 'correction', 'lyricsVocab'];
 
 const DEFAULT_TEXT =
   '안녕하세요, 오늘도 열심히 연습해 볼게요. 발음을 또렷하게 하면서 천천히 읽어 주세요.';
 
-export default function KoreanAIView() {
+export default function KoreanAIView({ onNavigate } = {}) {
   const { t } = useTranslation();
   const [mode, setMode] = useState('pronunciation');
   const [referenceText, setReferenceText] = useState(DEFAULT_TEXT);
@@ -27,7 +29,9 @@ export default function KoreanAIView() {
   const [liveMetrics, setLiveMetrics] = useState({});
   const [playbackSpeed, setPlaybackSpeed] = useState(1);
   const [koreanPhase, setKoreanPhase] = useState('idle');
+  const [sessionComparison, setSessionComparison] = useState(null);
   const lastCoachAtRef = useRef(0);
+  const savedEndRef = useRef(false);
 
   const language = useSettingsStore((s) => s.settings?.coachLanguage || 'ko');
   const coachTone = useSettingsStore((s) => s.settings?.coachTone || 'friendly');
@@ -82,6 +86,21 @@ export default function KoreanAIView() {
     setKoreanPhase('idle');
     setLiveTranscript('');
     setLiveMetrics({});
+    setSessionComparison(null);
+    savedEndRef.current = false;
+  };
+
+  const handleKoreanRetry = () => {
+    setKoreanPhase('start');
+    setSessionComparison(null);
+    savedEndRef.current = false;
+    setLiveTranscript('');
+    setLiveMetrics({});
+  };
+
+  const handleKoreanHome = () => {
+    handleReset();
+    onNavigate?.('home');
   };
 
   const handleSpeechUpdate = ({ transcript, metrics, isRecording }) => {
@@ -122,6 +141,25 @@ export default function KoreanAIView() {
       coachTone,
     });
   }, [recording]);
+
+  useEffect(() => {
+    if (koreanPhase !== 'end' || savedEndRef.current) return;
+    savedEndRef.current = true;
+    const domain = 'korean';
+    const sessionKey = buildSessionKey(domain, { mode });
+    const overall = Math.round(liveMetrics?.overall ?? liveMetrics?.accuracy ?? koreanFeedback?.score ?? 0);
+    const { comparison } = savePracticeSession(domain, sessionKey, {
+      overall,
+      overallScore: overall,
+      metrics: liveMetrics,
+      mode,
+      songTitle: songTitle || undefined,
+      strengths: koreanFeedback?.strengths || [],
+      weaknesses: koreanFeedback?.weaknesses || [],
+      completedAt: new Date().toISOString(),
+    });
+    setSessionComparison(comparison);
+  }, [koreanPhase, mode, liveMetrics, koreanFeedback, songTitle]);
 
   const phaseLabel = useMemo(() => {
     if (!koreanPhase || koreanPhase === 'idle') return undefined;
@@ -182,6 +220,18 @@ export default function KoreanAIView() {
           {mode === 'follow' ? <FollowAlongMode {...modeProps} /> : null}
           {mode === 'correction' ? <CorrectionMode {...modeProps} /> : null}
           {mode === 'lyricsVocab' ? <LyricsVocabMode {...modeProps} /> : null}
+
+          {koreanPhase === 'end' ? (
+            <KoreanSessionResult
+              mode={mode}
+              feedback={koreanFeedback}
+              metrics={liveMetrics}
+              songTitle={songTitle ? `${songTitle}${songArtist ? ` — ${songArtist}` : ''}` : ''}
+              comparison={sessionComparison}
+              onRetry={handleKoreanRetry}
+              onHome={handleKoreanHome}
+            />
+          ) : null}
         </section>
       </div>
     </div>

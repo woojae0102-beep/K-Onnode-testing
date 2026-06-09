@@ -106,9 +106,9 @@ export default function Layout(props) {
       case 'feedback-history':
         return <FeedbackHistoryView />;
       case 'korean':
-        return <KoreanAIView />;
+        return <KoreanAIView onNavigate={handleSelectView} />;
       case 'agency-audition':
-        return <AgencyAuditionView />;
+        return <AgencyAuditionView onNavigate={handleSelectView} />;
       case 'tv-mode':
         return <TVModeView onNavigate={handleSelectView} />;
       case 'trending':

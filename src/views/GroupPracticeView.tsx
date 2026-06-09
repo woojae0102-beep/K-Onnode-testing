@@ -6,6 +6,7 @@ import { getSongById } from '../data/groupStudioSongs';
 import { GROUP_DATA } from '../data/groupPracticeData';
 import { saveTeachingReport } from '../services/teachingReportStore';
 import { recordPracticeSession } from '../services/groupStudioStorage';
+import { buildSessionKey, savePracticeSession } from '../services/practiceHistoryStore';
 import GroupStudioHome from '../components/group/GroupStudioHome';
 import SongDetailScreen from '../components/group/SongDetailScreen';
 import PositionPicker from '../components/group/PositionPicker';
@@ -28,6 +29,7 @@ export default function GroupPracticeView({
     selectedMemberId,
     skeletonData,
     sessionResult,
+    sessionComparison,
     selectSong,
     startPositionSelect,
     selectPosition,
@@ -48,6 +50,22 @@ export default function GroupPracticeView({
       recordPracticeSession(result.songId || selectedSongId, {
         overall: result.overall,
         completed: true,
+      });
+
+      const sessionKey = buildSessionKey('group-practice', {
+        songId: result.songId || selectedSongId,
+        memberId: result.memberId,
+      });
+      const { comparison } = savePracticeSession('group-practice', sessionKey, {
+        overall: result.overall,
+        overallScore: result.overall,
+        syncScores: result.syncScores || result.scores,
+        scores: result.syncScores || result.scores,
+        duration: result.duration,
+        songId: result.songId || selectedSongId,
+        memberId: result.memberId,
+        songTitle: result.songTitle,
+        completedAt: new Date().toISOString(),
       });
 
       saveTeachingReport('group-practice', {
@@ -90,7 +108,7 @@ export default function GroupPracticeView({
         /* local report saved */
       }
 
-      endSession(result);
+      endSession(result, comparison);
     },
     [agency, user, endSession, selectedSongId, song, groupId],
   );
@@ -135,6 +153,7 @@ export default function GroupPracticeView({
           result={sessionResult}
           songId={selectedSongId}
           memberId={selectedMemberId}
+          comparison={sessionComparison}
           onRetry={retry}
           onHome={handleGoHome}
         />

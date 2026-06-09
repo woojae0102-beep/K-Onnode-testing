@@ -9,6 +9,7 @@ export function useGroupStudio() {
   const [selectedMemberId, setSelectedMemberId] = useState(null);
   const [skeletonData, setSkeletonData] = useState(null);
   const [sessionResult, setSessionResult] = useState(null);
+  const [sessionComparison, setSessionComparison] = useState(null);
 
   const selectSong = useCallback((songId) => {
     setSelectedSongId(songId);
@@ -29,13 +30,15 @@ export function useGroupStudio() {
     setPhase('practice');
   }, [selectedSongId]);
 
-  const endSession = useCallback((result) => {
+  const endSession = useCallback((result, comparison = null) => {
     setSessionResult(result);
+    setSessionComparison(comparison);
     setPhase('result');
   }, []);
 
   const retry = useCallback(() => {
     setSessionResult(null);
+    setSessionComparison(null);
     setPhase('practice');
   }, []);
 
@@ -45,6 +48,7 @@ export function useGroupStudio() {
     setSelectedMemberId(null);
     setSkeletonData(null);
     setSessionResult(null);
+    setSessionComparison(null);
   }, []);
 
   const goBack = useCallback(() => {
@@ -67,6 +71,7 @@ export function useGroupStudio() {
     selectedMemberId,
     skeletonData,
     sessionResult,
+    sessionComparison,
     selectSong,
     startPositionSelect,
     selectPosition,
