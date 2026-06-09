@@ -22,6 +22,7 @@ import { useTranslation } from 'react-i18next';
 import SettingsScreen from './screens/SettingsScreen';
 import { useSettingsStore } from './store/settingsSlice';
 import Layout from './components/Layout';
+import AppLanguageSync from './components/AppLanguageSync';
 
 const DEFAULT_KOREAN_SAMPLE = '안녕하세요 온노드입니다. 오늘도 정확한 발음과 리듬으로 연습해요.';
 const NOTE_NAMES = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
@@ -313,6 +314,8 @@ export default function App() {
 
   if (viewMode === 'desktop') {
     return (
+      <>
+      <AppLanguageSync />
       <Layout
         user={user}
         db={db}
@@ -324,6 +327,7 @@ export default function App() {
         setNewMessage={setNewMessage}
         sendMessage={sendMessage}
       />
+      </>
     );
   }
 

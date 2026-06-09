@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
 import PracticeResultActions from '../common/PracticeResultActions';
 
@@ -11,8 +12,11 @@ export default function AuditionResultFooter({
   onAskCoach,
   onSaveCertificate,
   showCertificate = false,
-  askCoachLabel = '다른 기획사 오디션 보기',
+  askCoachLabel,
 }) {
+  const { t } = useTranslation();
+  const resolvedAskCoachLabel = askCoachLabel || t('practiceResult.otherAgencyAudition');
+
   return (
     <>
       <PracticeComparisonPanel comparison={comparison} accent={accent} dark />
@@ -31,10 +35,10 @@ export default function AuditionResultFooter({
             cursor: 'pointer',
           }}
         >
-          합격증 저장
+          {t('practiceResult.saveCertificate')}
         </button>
       ) : null}
-      <PracticeResultActions onRetry={onRetry} onHome={onHome} retryLabel="다시 연습하기" accent={accent} dark />
+      <PracticeResultActions onRetry={onRetry} onHome={onHome} accent={accent} dark />
       {onAskCoach ? (
         <button
           type="button"
@@ -49,7 +53,7 @@ export default function AuditionResultFooter({
             textDecoration: 'underline',
           }}
         >
-          {askCoachLabel}
+          {resolvedAskCoachLabel}
         </button>
       ) : null}
     </>

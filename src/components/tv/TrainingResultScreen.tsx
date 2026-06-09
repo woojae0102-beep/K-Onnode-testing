@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Agency, SessionData } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import { buildLocalCoachReview } from '../../utils/tvCoachReview';
@@ -39,6 +40,7 @@ export function TrainingResultScreen({
   onRetry: () => void;
   onHome: () => void;
 }) {
+  const { t } = useTranslation();
   const agencyColor = AGENCY_COLORS[agency];
   const data = sessionData || {
     overallScore: 0,
@@ -66,15 +68,15 @@ export function TrainingResultScreen({
     <div className="tv-mode tv-result-screen">
       <div className="tv-result-inner">
         <header className="tv-result-header">
-          <p className="tv-result-eyebrow">연습 완료</p>
-          <h1 className="tv-result-title">코치 피드백</h1>
+          <p className="tv-result-eyebrow">{t('tv.result.eyebrow')}</p>
+          <h1 className="tv-result-title">{t('tv.result.title')}</h1>
           <p className="tv-result-meta">
             {agency.toUpperCase()} · {mins}:{secs}
           </p>
         </header>
 
         <div className="tv-result-score-card">
-          <span className="tv-result-score-label">종합 점수</span>
+          <span className="tv-result-score-label">{t('tv.result.overallScore')}</span>
           <span
             className="tv-result-score-value"
             style={{
@@ -91,7 +93,7 @@ export function TrainingResultScreen({
 
         {data.weaknesses?.length > 0 ? (
           <section className="tv-result-section">
-            <h2 className="tv-result-section-title">보완이 필요한 부분</h2>
+            <h2 className="tv-result-section-title">{t('tv.result.weaknesses')}</h2>
             {data.weaknesses.map((w, i) => (
               <div key={i} className="tv-result-item tv-result-item-warn">
                 {w}
@@ -102,7 +104,7 @@ export function TrainingResultScreen({
 
         {feedbackList.length > 0 ? (
           <section className="tv-result-section">
-            <h2 className="tv-result-section-title">연습 중 분석 기록</h2>
+            <h2 className="tv-result-section-title">{t('tv.result.feedbackLog')}</h2>
             {feedbackList.slice(0, 6).map((fb, i) => (
               <div key={i} className="tv-result-item">
                 <span className="tv-result-fb-time">{fb.timestamp}</span>
@@ -114,7 +116,7 @@ export function TrainingResultScreen({
 
         {data.recommendations?.length > 0 ? (
           <section className="tv-result-section">
-            <h2 className="tv-result-section-title">다음 연습 추천</h2>
+            <h2 className="tv-result-section-title">{t('tv.result.recommendations')}</h2>
             {data.recommendations.map((rec, i) => (
               <div key={i} className="tv-result-item">
                 <span className="tv-result-rec-num" style={{ color: agencyColor }}>

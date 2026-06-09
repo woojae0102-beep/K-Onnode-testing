@@ -15,6 +15,7 @@ import VocalLineCoachingLoop from '../coaching/VocalLineCoachingLoop';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import { TVCompareBottomDock, TVCompareBottomSheet } from './TVCompareBottomDock';
 import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
+import { useTranslation } from 'react-i18next';
 
 export default function TVCompareTeachingScreen({
   sessionData,
@@ -33,6 +34,7 @@ export default function TVCompareTeachingScreen({
   onRetrySession: () => void;
   onHome: () => void;
 }) {
+  const { t } = useTranslation();
   const agencyColor = AGENCY_COLORS[agency];
   const persona = useAgencyPersona(agency);
   const data = sessionData || {};
@@ -57,12 +59,12 @@ export default function TVCompareTeachingScreen({
 
   const tvSongAnalysis = useMemo(
     () => ({
-      trackName: `${agency.toUpperCase()} TV 보컬 연습`,
+      trackName: t('tv.vocalPractice', { agency: agency.toUpperCase() }),
       personaName: persona.coachName,
-      mood: '연습',
-      vocalAttitude: '감정을 먼저 떠올리고 노래하세요',
+      mood: t('tv.mood'),
+      vocalAttitude: t('tv.vocalAttitude'),
     }),
-    [agency, persona.coachName],
+    [agency, persona.coachName, t],
   );
 
   const vocalCoachProps = useMemo(
@@ -330,10 +332,10 @@ export default function TVCompareTeachingScreen({
             className="tv-footer-btn tv-footer-btn-secondary"
             onClick={isPlaying ? stopSync : startSync}
           >
-            {isPlaying ? '⏸ 일시정지' : '▶ 싱크 재생'}
+            {isPlaying ? t('tv.compare.pause') : t('tv.compare.play')}
           </button>
           <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={handleSeekStart}>
-            처음부터
+            {t('tv.compare.fromStart')}
           </button>
         </div>
 
@@ -346,11 +348,11 @@ export default function TVCompareTeachingScreen({
         <footer className="tv-training-footer tv-compare-footer">
           {rightMode === 'live' ? (
             <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={handleBackToRecording}>
-              {isDance ? '내 영상 보기' : '내 녹음 보기'}
+              {isDance ? t('tv.compare.myVideo') : t('tv.compare.myRecording')}
             </button>
           ) : (
             <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={handlePracticeWeak}>
-              다시 부족한 부분 연습
+              {t('tv.compare.practiceWeak')}
             </button>
           )}
           <button
@@ -359,13 +361,13 @@ export default function TVCompareTeachingScreen({
             style={{ background: agencyColor }}
             onClick={onShowResult}
           >
-            결과 상세 보기
+            {t('tv.compare.showResult')}
           </button>
           <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={onRetrySession}>
-            처음부터
+            {t('tv.compare.fromStart')}
           </button>
           <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={handleGoHome}>
-            홈으로
+            {t('tv.compare.home')}
           </button>
         </footer>
       </div>

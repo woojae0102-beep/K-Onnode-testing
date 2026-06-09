@@ -9,6 +9,7 @@ import LyricsVocabMode from '../components/korean/LyricsVocabMode';
 import ReportListView from './ReportListView';
 import MonthlyEvalView from './MonthlyEvalView';
 import { useLanguageStore } from '../store/languageStore';
+import { saveAppLanguageChoice } from '../utils/applyAppLanguage';
 import { SETTINGS_STORAGE_KEY, useSettingsStore } from '../store/settingsSlice';
 import { useMonthlyData } from '../hooks/useMonthlyData';
 import { loadTeachingReports } from '../services/teachingReportStore';
@@ -1723,25 +1724,10 @@ export default function AICoachView() {
   const featureComponent = useMemo(() => renderFeatureComponent(activeFeature, onReportUpdate), [activeFeature, onReportUpdate]);
   const handleCoachLanguageChange = useCallback(
     (value) => {
-      const nextLanguage = normalizeLanguage(value);
+      const nextLanguage = saveAppLanguageChoice(normalizeLanguage(value));
       setStoreLanguage(nextLanguage);
       updateSetting('coachLanguage', nextLanguage);
       updateSetting('preferredLanguage', nextLanguage);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('onnode.preferredLanguage', nextLanguage);
-        window.localStorage.setItem('onnode-language', nextLanguage);
-        const localRaw = window.localStorage.getItem(SETTINGS_STORAGE_KEY);
-        let localSettings = {};
-        try {
-          localSettings = localRaw ? JSON.parse(localRaw) : {};
-        } catch {
-          localSettings = {};
-        }
-        window.localStorage.setItem(
-          SETTINGS_STORAGE_KEY,
-          JSON.stringify({ ...localSettings, coachLanguage: nextLanguage, preferredLanguage: nextLanguage })
-        );
-      }
     },
     [setStoreLanguage, updateSetting]
   );

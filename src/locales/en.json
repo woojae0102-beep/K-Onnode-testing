@@ -505,7 +505,11 @@
   },
   "teaching": {
     "session": {
-      "steps": { "setup": "Setup", "practice": "Practice", "review": "Review" },
+      "steps": {
+        "setup": "Setup",
+        "practice": "Practice",
+        "review": "Review"
+      },
       "practiceFirst": "Practice now",
       "uploadInstead": "Upload a file instead (optional)",
       "poseLoading": "Loading pose detection...",
@@ -932,5 +936,101 @@
         "yg_vocal": "YG — swag & groove"
       }
     }
+  },
+  "practiceResult": {
+    "home": "Home",
+    "retry": "Practice again",
+    "compareTitle": "Compared to last session",
+    "compareBasedOn": "Based on {{date}}",
+    "overall": "Overall",
+    "sessionCount": "Session {{count}}",
+    "improved": "✓ Improved",
+    "stillWeak": "△ Still needs work",
+    "scoreDelta": "{{sign}}{{delta}} pts",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "Try another agency audition",
+    "saveCertificate": "Save certificate"
+  },
+  "metrics": {
+    "overall": "Overall",
+    "overallScore": "Overall",
+    "rhythm": "Rhythm",
+    "posture": "Posture",
+    "angle": "Angle",
+    "expression": "Expression",
+    "energy": "Energy",
+    "stability": "Stability",
+    "position": "Position",
+    "timing": "Timing",
+    "pose": "Pose",
+    "formation": "Formation",
+    "pronunciation": "Pronunciation",
+    "accuracy": "Accuracy",
+    "fluency": "Fluency",
+    "avgScore": "Average score",
+    "weakness": "Weakness",
+    "strength": "Strength"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "Practice complete",
+      "title": "Coach feedback",
+      "overallScore": "Overall score",
+      "weaknesses": "Areas to improve",
+      "feedbackLog": "Session analysis log",
+      "recommendations": "Recommended next practice"
+    },
+    "compare": {
+      "pause": "⏸ Pause",
+      "play": "▶ Sync play",
+      "fromStart": "From start",
+      "myVideo": "View my video",
+      "myRecording": "View my recording",
+      "practiceWeak": "Practice weak parts again",
+      "showResult": "View detailed results",
+      "home": "Home"
+    },
+    "entry": {
+      "dance": "🕺 Dance training",
+      "danceDesc": "Posture analysis + move correction",
+      "vocal": "🎤 Vocal training",
+      "vocalDesc": "Pitch + emotional expression analysis",
+      "group": "👥 Group mode",
+      "groupDesc": "Pick song → position → Group Studio",
+      "hot": "HOT",
+      "backHome": "← Home",
+      "title": "Training",
+      "subtitle": "Agency AI real-time dance & vocal training",
+      "mobileHint": "📱 Practice on iPhone & Android too",
+      "trainingMode": "Training mode",
+      "studioTitle": "ONNODE STUDIO MODE",
+      "studioDesc": "After starting, tap 「📺 Connect TV」 top-right to link your TV studio in 10 seconds. You can also practice on phone or laptop without TV.",
+      "startBtn": "Start training"
+    },
+    "vocalPractice": "{{agency}} TV vocal practice",
+    "vocalAttitude": "Feel the emotion first, then sing",
+    "mood": "Practice"
+  },
+  "groupStudio": {
+    "reportTag": "Performance report",
+    "overallSync": "Overall sync",
+    "coachReview": "AI coach review",
+    "generating": "Generating report...",
+    "metrics": {
+      "position": "Position accuracy",
+      "timing": "Timing accuracy",
+      "pose": "Pose accuracy",
+      "formation": "Formation accuracy",
+      "energy": "Energy match"
+    },
+    "feedback": {
+      "excellent": "{{song}} {{member}} part was perfect! Great sync with the group.",
+      "good": "{{song}} nice work! Tighten timing a bit more for stage-ready performance.",
+      "start": "{{song}} good start! Match positions at a slower tempo first."
+    }
+  },
+  "accessibility": {
+    "notifications": "Notifications",
+    "settings": "Settings"
   }
 }

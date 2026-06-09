@@ -1,8 +1,9 @@
 // @ts-nocheck
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
-import i18n from '../i18n';
+import { saveAppLanguageChoice } from '../utils/applyAppLanguage';
 import { SETTINGS_STORAGE_KEY, useSettingsStore } from '../store/settingsSlice';
+import { useLanguageStore } from '../store/languageStore';
 import {
   cancelSubscription,
   disconnectSNS,
@@ -110,17 +111,16 @@ export function useSettings({ db, appId, user, sessionData }) {
     [settings.tracks, updateSetting, persistSettings]
   );
 
+  const setStoreLanguage = useLanguageStore.getState().setLanguage;
+
   const setCoachLanguage = useCallback(
     async (lng) => {
-      i18n.changeLanguage(lng);
-      await updateSimpleSetting('coachLanguage', lng);
-      await updateSimpleSetting('preferredLanguage', lng);
-      if (typeof window !== 'undefined') {
-        window.localStorage.setItem('onnode.preferredLanguage', lng);
-        window.localStorage.setItem('onnode-language', lng);
-      }
+      const normalized = saveAppLanguageChoice(lng);
+      setStoreLanguage(normalized);
+      await updateSimpleSetting('coachLanguage', normalized);
+      await updateSimpleSetting('preferredLanguage', normalized);
     },
-    [updateSimpleSetting]
+    [updateSimpleSetting, setStoreLanguage]
   );
 
   const fetchSubscription = useCallback(async () => {
@@ -151,8 +151,6 @@ export function useSettings({ db, appId, user, sessionData }) {
     if (hydrated) {
       fetchSubscription();
       fetchSNSConnections();
-      const pref = window.localStorage.getItem('onnode.preferredLanguage');
-      if (pref) i18n.changeLanguage(pref);
     }
   }, [hydrated, fetchSubscription, fetchSNSConnections]);
 

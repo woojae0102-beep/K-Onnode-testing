@@ -801,5 +801,93 @@
         "yg_vocal": "YG — swag & groove"
       }
     }
+  },
+  "practiceResult": {
+    "home": "Trang chủ",
+    "retry": "Luyện tập lại",
+    "compareTitle": "So với buổi trước",
+    "compareBasedOn": "Dựa trên {{date}}",
+    "overall": "Tổng",
+    "sessionCount": "Buổi {{count}}",
+    "improved": "✓ Cải thiện",
+    "stillWeak": "△ Còn thiếu",
+    "scoreDelta": "{{sign}}{{delta}} điểm",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "Xem audition khác",
+    "saveCertificate": "Lưu chứng nhận"
+  },
+  "metrics": {
+    "overall": "Tổng",
+    "overallScore": "Tổng",
+    "rhythm": "Nhịp",
+    "posture": "Tư thế",
+    "angle": "Góc",
+    "expression": "Biểu cảm",
+    "energy": "Năng lượng",
+    "stability": "Ổn định",
+    "position": "Vị trí",
+    "timing": "Timing",
+    "pose": "Động tác",
+    "formation": "Đội hình",
+    "pronunciation": "Phát âm",
+    "accuracy": "Độ chính xác",
+    "fluency": "Trôi chảy",
+    "avgScore": "Điểm TB",
+    "weakness": "Điểm yếu",
+    "strength": "Điểm mạnh"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "Hoàn thành luyện tập",
+      "title": "Phản hồi huấn luyện viên",
+      "overallScore": "Điểm tổng",
+      "weaknesses": "Phần cần cải thiện",
+      "feedbackLog": "Nhật ký phân tích",
+      "recommendations": "Gợi ý buổi tiếp theo"
+    },
+    "compare": {
+      "pause": "⏸ Tạm dừng",
+      "play": "▶ Phát đồng bộ",
+      "fromStart": "Từ đầu",
+      "myVideo": "Xem video của tôi",
+      "myRecording": "Xem bản ghi của tôi",
+      "practiceWeak": "Luyện phần yếu",
+      "showResult": "Xem kết quả chi tiết",
+      "home": "Trang chủ"
+    },
+    "entry": {
+      "dance": "🕺 Luyện nhảy",
+      "danceDesc": "Phân tích tư thế + sửa động tác",
+      "vocal": "🎤 Luyện hát",
+      "vocalDesc": "Cao độ + biểu cảm",
+      "group": "👥 Chế độ nhóm",
+      "groupDesc": "Chọn bài → vị trí → Group Studio",
+      "hot": "HOT"
+    },
+    "vocalPractice": "Luyện vocal TV {{agency}}",
+    "vocalAttitude": "Cảm nhận cảm xúc trước, rồi hát",
+    "mood": "Luyện tập"
+  },
+  "groupStudio": {
+    "reportTag": "Báo cáo biểu diễn",
+    "overallSync": "Đồng bộ tổng",
+    "coachReview": "Đánh giá coach AI",
+    "generating": "Đang tạo báo cáo...",
+    "metrics": {
+      "position": "Độ chính xác vị trí",
+      "timing": "Độ chính xác timing",
+      "pose": "Độ chính xác động tác",
+      "formation": "Độ chính xác đội hình",
+      "energy": "Khớp năng lượng"
+    },
+    "feedback": {
+      "excellent": "{{song}} phần {{member}} hoàn hảo! Đồng bộ nhóm tuyệt vời.",
+      "good": "{{song}} tốt lắm! Chỉnh timing thêm chút nữa là sẵn sàng sân khấu.",
+      "start": "{{song}} khởi đầu tốt! Bắt đầu với vị trí ở tempo chậm."
+    }
+  },
+  "accessibility": {
+    "notifications": "Thông báo",
+    "settings": "Cài đặt"
   }
 }

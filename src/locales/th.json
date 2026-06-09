@@ -801,5 +801,93 @@
         "yg_vocal": "YG — สแว็กและกรูฟ"
       }
     }
+  },
+  "practiceResult": {
+    "home": "หน้าแรก",
+    "retry": "ฝึกอีกครั้ง",
+    "compareTitle": "เทียบกับครั้งก่อน",
+    "compareBasedOn": "อ้างอิง {{date}}",
+    "overall": "รวม",
+    "sessionCount": "ครั้งที่ {{count}}",
+    "improved": "✓ ดีขึ้น",
+    "stillWeak": "△ ยังต้องปรับ",
+    "scoreDelta": "{{sign}}{{delta}} คะแนน",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "ดูออดิชันอื่น",
+    "saveCertificate": "บันทึกใบรับรอง"
+  },
+  "metrics": {
+    "overall": "รวม",
+    "overallScore": "รวม",
+    "rhythm": "จังหวะ",
+    "posture": "ท่าทาง",
+    "angle": "มุม",
+    "expression": "การแสดงออก",
+    "energy": "พลังงาน",
+    "stability": "ความเสถียร",
+    "position": "ตำแหน่ง",
+    "timing": "จังหวะเวลา",
+    "pose": "ท่าเต้น",
+    "formation": "ฟอร์เมชัน",
+    "pronunciation": "การออกเสียง",
+    "accuracy": "ความแม่นยำ",
+    "fluency": "ความคล่องแคล่ว",
+    "avgScore": "คะแนนเฉลี่ย",
+    "weakness": "จุดอ่อน",
+    "strength": "จุดแข็ง"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "ฝึกเสร็จแล้ว",
+      "title": "ฟีดแบ็กโค้ช",
+      "overallScore": "คะแนนรวม",
+      "weaknesses": "ส่วนที่ต้องปรับ",
+      "feedbackLog": "บันทึกการวิเคราะห์",
+      "recommendations": "แนะนำการฝึกครั้งถัดไป"
+    },
+    "compare": {
+      "pause": "⏸ หยุดชั่วคราว",
+      "play": "▶ เล่นพร้อมกัน",
+      "fromStart": "จากจุดเริ่มต้น",
+      "myVideo": "ดูวิดีโอของฉัน",
+      "myRecording": "ดูการบันทึกของฉัน",
+      "practiceWeak": "ฝึกส่วนที่อ่อนอีกครั้ง",
+      "showResult": "ดูผลลัพธ์ละเอียด",
+      "home": "หน้าแรก"
+    },
+    "entry": {
+      "dance": "🕺 เทรนนิ่งแดนซ์",
+      "danceDesc": "วิเคราะห์ท่าทาง + แก้ท่า",
+      "vocal": "🎤 เทรนนิ่งโวคอล",
+      "vocalDesc": "ระดับเสียง + การแสดงออกทางอารมณ์",
+      "group": "👥 โหมดกลุ่ม",
+      "groupDesc": "เลือกเพลง → ตำแหน่ง → Group Studio",
+      "hot": "HOT"
+    },
+    "vocalPractice": "ฝึกโวคอล TV {{agency}}",
+    "vocalAttitude": "รู้สึกอารมณ์ก่อน แล้วค่อยร้อง",
+    "mood": "ฝึกซ้อม"
+  },
+  "groupStudio": {
+    "reportTag": "รายงานการแสดง",
+    "overallSync": "ซิงค์รวม",
+    "coachReview": "รีวิวโค้ช AI",
+    "generating": "กำลังสร้างรายงาน...",
+    "metrics": {
+      "position": "ความแม่นตำแหน่ง",
+      "timing": "ความแม่นจังหวะ",
+      "pose": "ความแม่นท่า",
+      "formation": "ความแม่นฟอร์เมชัน",
+      "energy": "ความตรงพลังงาน"
+    },
+    "feedback": {
+      "excellent": "{{song}} พาร์ท {{member}} เยี่ยมมาก! ซิงค์กับกลุ่มได้ดี",
+      "good": "{{song}} ฝึกได้ดี! ปรับจังหวะอีกนิดก็พร้อมเวที",
+      "start": "{{song}} เริ่มได้ดี! จับตำแหน่งด้วยจังหวะช้าก่อน"
+    }
+  },
+  "accessibility": {
+    "notifications": "การแจ้งเตือน",
+    "settings": "การตั้งค่า"
   }
 }

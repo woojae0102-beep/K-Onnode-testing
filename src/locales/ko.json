@@ -309,7 +309,7 @@
     },
     "language": {
       "title": "언어 설정",
-      "comingSoon": "Coming Soon"
+      "comingSoon": "준비 중"
     },
     "notifications": {
       "practiceReminder": "연습 알림"
@@ -419,15 +419,15 @@
   "nav": {
     "home": "홈",
     "chat": "채팅",
-    "aicoach": "AI코치",
+    "aicoach": "AI 코치",
     "discover": "탐색",
-    "mypage": "MY PAGE",
-    "community": "COMMUNITY",
-    "dance": "DANCE",
-    "vocal": "VOCAL",
-    "korean": "KOREAN AI",
-    "notifications": "NOTIFICATIONS",
-    "settings": "SETTINGS"
+    "mypage": "마이페이지",
+    "community": "커뮤니티",
+    "dance": "댄스",
+    "vocal": "보컬",
+    "korean": "한국어 AI",
+    "notifications": "알림",
+    "settings": "설정"
   },
   "home": {
     "heroTag": "AI K-POP COACH",
@@ -481,13 +481,13 @@
     "vocalTeaching": "AI 보컬 티칭",
     "koreanAI": "한국어 AI",
     "koreanTeaching": "AI 발음 티칭",
-    "discover": "DISCOVER",
+    "discover": "탐색",
     "trending": "트렌딩",
     "popularDance": "인기 안무",
     "popularSongs": "인기 노래",
     "koreanContent": "한국어 콘텐츠",
     "challenges": "챌린지",
-    "aiCoach": "AI COACH",
+    "aiCoach": "AI 코치",
     "todayPick": "오늘의 추천 연습",
     "weakness": "약점 분석",
     "routine": "맞춤 루틴",
@@ -631,8 +631,8 @@
     "empty": "콘텐츠를 불러오는 중입니다."
   },
   "views": {
-    "mypage": "MY PAGE",
-    "aicoach": "AI COACH"
+    "mypage": "마이페이지",
+    "aicoach": "AI 코치"
   },
   "common": {
     "more": "더보기"
@@ -936,5 +936,101 @@
         "yg_vocal": "YG — 스웩·그루브"
       }
     }
+  },
+  "practiceResult": {
+    "home": "홈으로",
+    "retry": "다시 연습하기",
+    "compareTitle": "이전 연습과 비교",
+    "compareBasedOn": "{{date}} 기준",
+    "overall": "종합",
+    "sessionCount": "{{count}}회차 연습",
+    "improved": "✓ 개선된 점",
+    "stillWeak": "△ 아직 부족한 점",
+    "scoreDelta": "{{sign}}{{delta}}점",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "다른 기획사 오디션 보기",
+    "saveCertificate": "합격증 저장"
+  },
+  "metrics": {
+    "overall": "종합",
+    "overallScore": "종합",
+    "rhythm": "리듬",
+    "posture": "자세",
+    "angle": "각도",
+    "expression": "표현",
+    "energy": "에너지",
+    "stability": "안정성",
+    "position": "포지션",
+    "timing": "타이밍",
+    "pose": "동작",
+    "formation": "대형",
+    "pronunciation": "발음",
+    "accuracy": "정확도",
+    "fluency": "유창성",
+    "avgScore": "평균 점수",
+    "weakness": "약점",
+    "strength": "강점"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "연습 완료",
+      "title": "코치 피드백",
+      "overallScore": "종합 점수",
+      "weaknesses": "보완이 필요한 부분",
+      "feedbackLog": "연습 중 분석 기록",
+      "recommendations": "다음 연습 추천"
+    },
+    "compare": {
+      "pause": "⏸ 일시정지",
+      "play": "▶ 싱크 재생",
+      "fromStart": "처음부터",
+      "myVideo": "내 영상 보기",
+      "myRecording": "내 녹음 보기",
+      "practiceWeak": "다시 부족한 부분 연습",
+      "showResult": "결과 상세 보기",
+      "home": "홈으로"
+    },
+    "entry": {
+      "backHome": "← 홈",
+      "title": "트레이닝",
+      "subtitle": "기획사 AI 실시간 댄스·보컬 트레이닝",
+      "mobileHint": "📱 iPhone · Android 스마트폰에서도 바로 연습 가능",
+      "trainingMode": "훈련 모드",
+      "dance": "🕺 댄스 트레이닝",
+      "danceDesc": "자세 분석 + 동작 교정",
+      "vocal": "🎤 보컬 트레이닝",
+      "vocalDesc": "음정 + 감정 표현 분석",
+      "group": "👥 그룹 모드",
+      "groupDesc": "곡 선택 → 포지션 → Group Studio",
+      "hot": "HOT",
+      "studioTitle": "ONNODE STUDIO MODE",
+      "studioDesc": "트레이닝 시작 후 우측 상단 「📺 TV 연결」 — 10초 이내 TV 연습실 연결. TV 없이도 스마트폰·노트북만으로 바로 연습할 수 있습니다.",
+      "startBtn": "트레이닝 시작"
+    },
+    "vocalPractice": "{{agency}} TV 보컬 연습",
+    "vocalAttitude": "감정을 먼저 떠올리고 노래하세요",
+    "mood": "연습"
+  },
+  "groupStudio": {
+    "reportTag": "퍼포먼스 리포트",
+    "overallSync": "종합 싱크",
+    "coachReview": "AI 코치 리뷰",
+    "generating": "리포트 생성 중...",
+    "metrics": {
+      "position": "포지션 정확도",
+      "timing": "타이밍 정확도",
+      "pose": "동작 정확도",
+      "formation": "대형 정확도",
+      "energy": "에너지 매칭"
+    },
+    "feedback": {
+      "excellent": "{{song}} {{member}} 파트 완벽해요! 그룹과 완벽한 싱크를 보여줬습니다.",
+      "good": "{{song}} 연습 좋아요! 타이밍을 조금 더 맞추면 무대 준비 완료입니다.",
+      "start": "{{song}} 연습 시작! 느린 템포로 포지션부터 맞춰보세요."
+    }
+  },
+  "accessibility": {
+    "notifications": "알림",
+    "settings": "설정"
   }
 }

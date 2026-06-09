@@ -1,8 +1,10 @@
 // @ts-nocheck
 import React from 'react';
 import { Bell, Settings } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export default function TopNavBar({ onOpenNotifications, onOpenSettings }) {
+  const { t } = useTranslation();
   return (
     <header
       className="fixed top-0 left-0 right-0 z-40 flex items-center justify-between bg-white"
@@ -29,10 +31,10 @@ export default function TopNavBar({ onOpenNotifications, onOpenSettings }) {
         </span>
       </div>
       <div className="flex items-center gap-1">
-        <IconButton aria-label="Notifications" onClick={onOpenNotifications}>
+        <IconButton aria-label={t('accessibility.notifications')} onClick={onOpenNotifications}>
           <Bell size={20} />
         </IconButton>
-        <IconButton aria-label="Settings" onClick={onOpenSettings}>
+        <IconButton aria-label={t('accessibility.settings')} onClick={onOpenSettings}>
           <Settings size={20} />
         </IconButton>
       </div>

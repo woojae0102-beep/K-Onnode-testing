@@ -505,7 +505,11 @@
   },
   "teaching": {
     "session": {
-      "steps": { "setup": "準備", "practice": "練習", "review": "確認" },
+      "steps": {
+        "setup": "準備",
+        "practice": "練習",
+        "review": "確認"
+      },
       "practiceFirst": "今すぐ練習",
       "uploadInstead": "ファイルでアップロード（任意）",
       "poseLoading": "ポーズ認識を準備中...",
@@ -932,5 +936,101 @@
         "yg_vocal": "YG — スワッグ&グルーヴ"
       }
     }
+  },
+  "practiceResult": {
+    "home": "ホームへ",
+    "retry": "もう一度練習",
+    "compareTitle": "前回の練習と比較",
+    "compareBasedOn": "{{date}} 基準",
+    "overall": "総合",
+    "sessionCount": "{{count}}回目の練習",
+    "improved": "✓ 改善した点",
+    "stillWeak": "△ まだ不足している点",
+    "scoreDelta": "{{sign}}{{delta}}点",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "他の事務所オーディションを見る",
+    "saveCertificate": "合格証を保存"
+  },
+  "metrics": {
+    "overall": "総合",
+    "overallScore": "総合",
+    "rhythm": "リズム",
+    "posture": "姿勢",
+    "angle": "角度",
+    "expression": "表現",
+    "energy": "エネルギー",
+    "stability": "安定性",
+    "position": "ポジション",
+    "timing": "タイミング",
+    "pose": "動作",
+    "formation": "フォーメーション",
+    "pronunciation": "発音",
+    "accuracy": "正確度",
+    "fluency": "流暢さ",
+    "avgScore": "平均スコア",
+    "weakness": "弱点",
+    "strength": "強み"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "練習完了",
+      "title": "コーチフィードバック",
+      "overallScore": "総合スコア",
+      "weaknesses": "改善が必要な部分",
+      "feedbackLog": "練習中の分析記録",
+      "recommendations": "次の練習おすすめ"
+    },
+    "compare": {
+      "pause": "⏸ 一時停止",
+      "play": "▶ 同期再生",
+      "fromStart": "最初から",
+      "myVideo": "自分の動画を見る",
+      "myRecording": "自分の録音を見る",
+      "practiceWeak": "不足部分を再練習",
+      "showResult": "詳細結果を見る",
+      "home": "ホームへ"
+    },
+    "entry": {
+      "dance": "🕺 ダンストレーニング",
+      "danceDesc": "姿勢分析 + 動作矯正",
+      "vocal": "🎤 ボーカルトレーニング",
+      "vocalDesc": "音程 + 感情表現分析",
+      "group": "👥 グループモード",
+      "groupDesc": "曲選択 → ポジション → Group Studio",
+      "hot": "HOT",
+      "backHome": "← ホーム",
+      "title": "トレーニング",
+      "subtitle": "事務所AIリアルタイムダンス・ボーカルトレーニング",
+      "mobileHint": "📱 iPhone・Androidでもすぐ練習可能",
+      "trainingMode": "トレーニングモード",
+      "studioTitle": "ONNODE STUDIO MODE",
+      "studioDesc": "開始後、右上の「📺 TV接続」で10秒以内にTV練習室と接続。TVがなくてもスマホ・ノートPCだけで練習できます。",
+      "startBtn": "トレーニング開始"
+    },
+    "vocalPractice": "{{agency}} TVボーカル練習",
+    "vocalAttitude": "まず感情を思い浮かべてから歌いましょう",
+    "mood": "練習"
+  },
+  "groupStudio": {
+    "reportTag": "パフォーマンスレポート",
+    "overallSync": "総合シンク",
+    "coachReview": "AIコーチレビュー",
+    "generating": "レポート生成中...",
+    "metrics": {
+      "position": "ポジション正確度",
+      "timing": "タイミング正確度",
+      "pose": "動作正確度",
+      "formation": "フォーメーション正確度",
+      "energy": "エネルギーマッチ"
+    },
+    "feedback": {
+      "excellent": "{{song}} {{member}}パート完璧！グループと完璧なシンクでした。",
+      "good": "{{song}} いい練習！タイミングをもう少し合わせればステージ準備完了です。",
+      "start": "{{song}} 練習開始！ゆっくりしたテンポでポジションから合わせましょう。"
+    }
+  },
+  "accessibility": {
+    "notifications": "通知",
+    "settings": "設定"
   }
 }

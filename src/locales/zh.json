@@ -801,5 +801,93 @@
         "yg_vocal": "YG — Swag 律动"
       }
     }
+  },
+  "practiceResult": {
+    "home": "首页",
+    "retry": "再次练习",
+    "compareTitle": "与上次练习对比",
+    "compareBasedOn": "基于 {{date}}",
+    "overall": "综合",
+    "sessionCount": "第 {{count}} 次练习",
+    "improved": "✓ 进步之处",
+    "stillWeak": "△ 仍需加强",
+    "scoreDelta": "{{sign}}{{delta}}分",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "查看其他公司选秀",
+    "saveCertificate": "保存合格证"
+  },
+  "metrics": {
+    "overall": "综合",
+    "overallScore": "综合",
+    "rhythm": "节奏",
+    "posture": "姿态",
+    "angle": "角度",
+    "expression": "表现力",
+    "energy": "能量",
+    "stability": "稳定性",
+    "position": "站位",
+    "timing": "时机",
+    "pose": "动作",
+    "formation": "队形",
+    "pronunciation": "发音",
+    "accuracy": "准确度",
+    "fluency": "流畅度",
+    "avgScore": "平均分",
+    "weakness": "弱点",
+    "strength": "优点"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "练习完成",
+      "title": "教练反馈",
+      "overallScore": "综合分数",
+      "weaknesses": "需要改进的部分",
+      "feedbackLog": "练习分析记录",
+      "recommendations": "推荐下次练习"
+    },
+    "compare": {
+      "pause": "⏸ 暂停",
+      "play": "▶ 同步播放",
+      "fromStart": "从头开始",
+      "myVideo": "查看我的视频",
+      "myRecording": "查看我的录音",
+      "practiceWeak": "再练薄弱部分",
+      "showResult": "查看详细结果",
+      "home": "回首页"
+    },
+    "entry": {
+      "dance": "🕺 舞蹈训练",
+      "danceDesc": "姿态分析 + 动作纠正",
+      "vocal": "🎤 声乐训练",
+      "vocalDesc": "音准 + 情感表达分析",
+      "group": "👥 团体模式",
+      "groupDesc": "选曲 → 站位 → Group Studio",
+      "hot": "HOT"
+    },
+    "vocalPractice": "{{agency}} TV声乐练习",
+    "vocalAttitude": "先感受情绪再演唱",
+    "mood": "练习"
+  },
+  "groupStudio": {
+    "reportTag": "表演报告",
+    "overallSync": "综合同步",
+    "coachReview": "AI教练点评",
+    "generating": "生成报告中...",
+    "metrics": {
+      "position": "站位准确度",
+      "timing": "时机准确度",
+      "pose": "动作准确度",
+      "formation": "队形准确度",
+      "energy": "能量匹配"
+    },
+    "feedback": {
+      "excellent": "{{song}} {{member}}部分完美！与团体同步出色。",
+      "good": "{{song}} 练得不错！再对齐一点时机就舞台就绪。",
+      "start": "{{song}} 开始练习！先用慢速对齐站位。"
+    }
+  },
+  "accessibility": {
+    "notifications": "通知",
+    "settings": "设置"
   }
 }

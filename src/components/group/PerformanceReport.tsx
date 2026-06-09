@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import '../../styles/group-studio.css';
@@ -13,6 +14,7 @@ function scoreColor(v) {
 }
 
 export function PerformanceReport({ result, songId, memberId, comparison, onRetry, onHome }) {
+  const { t } = useTranslation();
   const song = getSongById(songId);
   const group = song ? GROUP_DATA[song.groupId] : null;
   const member = group?.members.find((m) => m.id === memberId);
@@ -25,13 +27,7 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
   const mins = Math.floor(duration / 60);
   const secs = Math.floor(duration % 60);
 
-  const metrics = [
-    { key: 'position', label: 'Position Accuracy' },
-    { key: 'timing', label: 'Timing Accuracy' },
-    { key: 'pose', label: 'Pose Accuracy' },
-    { key: 'formation', label: 'Formation Accuracy' },
-    { key: 'energy', label: 'Energy Match' },
-  ];
+  const metrics = ['position', 'timing', 'pose', 'formation', 'energy'];
 
   useEffect(() => {
     let cancelled = false;
@@ -63,10 +59,10 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
           (prev) =>
             prev ||
             (overall >= 80
-              ? `${song?.title} ${member?.nameKr} 파트 완벽해요! 그룹과 완벽한 싱크를 보여줬습니다.`
+              ? t('groupStudio.feedback.excellent', { song: song?.title, member: member?.nameKr })
               : overall >= 60
-                ? `${song?.title} 연습 좋아요! 타이밍을 조금 더 맞추면 무대 준비 완료입니다.`
-                : `${song?.title} 연습 시작! 느린 템포로 포지션부터 맞춰보세요.`),
+                ? t('groupStudio.feedback.good', { song: song?.title })
+                : t('groupStudio.feedback.start', { song: song?.title })),
         );
         setLoading(false);
       }
@@ -80,7 +76,7 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
       <div className="group-studio-inner">
         <header style={{ textAlign: 'center', marginBottom: 32 }}>
           <p style={{ fontSize: 11, letterSpacing: '0.2em', color: 'rgba(255,255,255,0.4)', margin: '0 0 12px' }}>
-            PERFORMANCE REPORT
+            {t('groupStudio.reportTag')}
           </p>
           <h1 style={{ fontSize: 24, fontWeight: 800, margin: '0 0 6px' }}>{song?.title}</h1>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', margin: 0 }}>
@@ -99,7 +95,7 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
           }}
         >
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)', margin: '0 0 8px', letterSpacing: '0.1em' }}>
-            OVERALL SYNC
+            {t('groupStudio.overallSync')}
           </p>
           <div style={{ fontSize: 72, fontWeight: 900, color: scoreColor(overall), lineHeight: 1 }}>
             {overall}
@@ -107,9 +103,9 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
         </div>
 
         <div className="group-studio-sync-grid">
-          {metrics.map(({ key, label }) => (
+          {metrics.map((key) => (
             <div key={key} className="group-studio-sync-item">
-              <span>{label}</span>
+              <span>{t(`groupStudio.metrics.${key}`)}</span>
               <strong style={{ color: scoreColor(sync[key] || 0) }}>{sync[key] || 0}</strong>
             </div>
           ))}
@@ -131,10 +127,10 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
           }}
         >
           <div style={{ fontSize: 13, fontWeight: 600, color: member?.color, marginBottom: 10 }}>
-            AI 코치 리뷰
+            {t('groupStudio.coachReview')}
           </div>
           <p style={{ fontSize: 14, color: 'rgba(255,255,255,0.75)', lineHeight: 1.7, margin: 0 }}>
-            {loading ? '리포트 생성 중...' : coachReview}
+            {loading ? t('groupStudio.generating') : coachReview}
           </p>
         </div>
 

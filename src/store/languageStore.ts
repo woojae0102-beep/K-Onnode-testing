@@ -1,38 +1,31 @@
 // @ts-nocheck
 import { create } from 'zustand';
-import i18n from '../i18n';
+import { applyAppLanguage, saveAppLanguageChoice } from '../utils/applyAppLanguage';
+import {
+  DEFAULT_APP_LANGUAGE,
+  normalizeAppLanguage,
+  resolveAppLanguage,
+  SUPPORTED_APP_LANGUAGES,
+} from '../utils/appLanguage';
 
-const STORAGE_KEY = 'onnode-language';
-const SUPPORTED = ['ko', 'en', 'ja', 'th', 'vi', 'es', 'fr', 'zh'];
-
-function detectInitialLanguage() {
-  if (typeof window === 'undefined') return 'ko';
-  try {
-    const saved = window.localStorage?.getItem(STORAGE_KEY);
-    if (saved && SUPPORTED.includes(saved)) return saved;
-  } catch {
-    // localStorage 접근 실패 시 기본값(ko)으로 폴백
-  }
-  return 'ko';
-}
-
-const initialLanguage = detectInitialLanguage();
-if (i18n?.language !== initialLanguage) {
-  i18n?.changeLanguage?.(initialLanguage);
-}
+const initialLanguage = resolveAppLanguage();
+applyAppLanguage(initialLanguage);
 
 export const useLanguageStore = create((set) => ({
   language: initialLanguage,
+  /** 설정에서 언어 변경 시 호출 — 저장 + 적용 */
   setLanguage: (lang) => {
-    const normalized = SUPPORTED.includes(lang) ? lang : 'en';
-    try {
-      window.localStorage?.setItem(STORAGE_KEY, normalized);
-    } catch {
-      // localStorage 접근 실패는 무시
-    }
-    i18n?.changeLanguage?.(normalized);
+    const normalized = saveAppLanguageChoice(lang);
     set({ language: normalized });
+    return normalized;
+  },
+  /** 저장 없이 현재 설정값만 UI에 반영 */
+  syncLanguage: (lang) => {
+    const normalized = normalizeAppLanguage(lang || DEFAULT_APP_LANGUAGE);
+    applyAppLanguage(normalized);
+    set({ language: normalized });
+    return normalized;
   },
 }));
 
-export const SUPPORTED_LANGUAGES = SUPPORTED;
+export const SUPPORTED_LANGUAGES = [...SUPPORTED_APP_LANGUAGES];

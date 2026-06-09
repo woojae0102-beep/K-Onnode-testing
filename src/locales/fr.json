@@ -801,5 +801,93 @@
         "yg_vocal": "YG — swag & groove"
       }
     }
+  },
+  "practiceResult": {
+    "home": "Accueil",
+    "retry": "Recommencer",
+    "compareTitle": "Comparé à la dernière session",
+    "compareBasedOn": "Basé sur {{date}}",
+    "overall": "Global",
+    "sessionCount": "Session {{count}}",
+    "improved": "✓ Amélioré",
+    "stillWeak": "△ Encore à travailler",
+    "scoreDelta": "{{sign}}{{delta}} pts",
+    "scoreChange": "{{label}}: {{previous}} → {{current}}{{delta}}",
+    "otherAgencyAudition": "Voir une autre audition",
+    "saveCertificate": "Enregistrer le certificat"
+  },
+  "metrics": {
+    "overall": "Global",
+    "overallScore": "Global",
+    "rhythm": "Rythme",
+    "posture": "Posture",
+    "angle": "Angle",
+    "expression": "Expression",
+    "energy": "Énergie",
+    "stability": "Stabilité",
+    "position": "Position",
+    "timing": "Timing",
+    "pose": "Mouvement",
+    "formation": "Formation",
+    "pronunciation": "Prononciation",
+    "accuracy": "Précision",
+    "fluency": "Fluidité",
+    "avgScore": "Score moyen",
+    "weakness": "Faiblesse",
+    "strength": "Force"
+  },
+  "tv": {
+    "result": {
+      "eyebrow": "Pratique terminée",
+      "title": "Retour du coach",
+      "overallScore": "Score global",
+      "weaknesses": "Points à améliorer",
+      "feedbackLog": "Journal d'analyse",
+      "recommendations": "Prochaine pratique recommandée"
+    },
+    "compare": {
+      "pause": "⏸ Pause",
+      "play": "▶ Lecture synchronisée",
+      "fromStart": "Depuis le début",
+      "myVideo": "Voir ma vidéo",
+      "myRecording": "Voir mon enregistrement",
+      "practiceWeak": "Repratiquer les points faibles",
+      "showResult": "Voir les résultats détaillés",
+      "home": "Accueil"
+    },
+    "entry": {
+      "dance": "🕺 Entraînement danse",
+      "danceDesc": "Analyse posture + correction",
+      "vocal": "🎤 Entraînement vocal",
+      "vocalDesc": "Justesse + expression émotionnelle",
+      "group": "👥 Mode groupe",
+      "groupDesc": "Choisir chanson → position → Group Studio",
+      "hot": "HOT"
+    },
+    "vocalPractice": "Pratique vocale TV {{agency}}",
+    "vocalAttitude": "Ressentez l'émotion d'abord, puis chantez",
+    "mood": "Pratique"
+  },
+  "groupStudio": {
+    "reportTag": "Rapport de performance",
+    "overallSync": "Sync globale",
+    "coachReview": "Avis du coach IA",
+    "generating": "Génération du rapport...",
+    "metrics": {
+      "position": "Précision position",
+      "timing": "Précision timing",
+      "pose": "Précision mouvement",
+      "formation": "Précision formation",
+      "energy": "Correspondance énergie"
+    },
+    "feedback": {
+      "excellent": "{{song}} partie {{member}} parfaite ! Excellente sync.",
+      "good": "{{song}} bon travail ! Serrez un peu plus le timing.",
+      "start": "{{song}} bon début ! Alignez les positions en tempo lent."
+    }
+  },
+  "accessibility": {
+    "notifications": "Notifications",
+    "settings": "Paramètres"
   }
 }

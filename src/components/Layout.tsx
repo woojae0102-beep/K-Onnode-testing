@@ -26,6 +26,7 @@ import RoutineView from '../views/RoutineView';
 import CoachingView from '../views/CoachingView';
 import AgencyAuditionView from '../views/AgencyAuditionView';
 import TVModeView from '../views/TVModeView';
+import AppLanguageSync from './AppLanguageSync';
 
 const TAB_TO_DEFAULT_VIEW = {
   home: 'home',
@@ -145,6 +146,7 @@ export default function Layout(props) {
       className="app-shell w-screen flex flex-col"
       style={{ background: '#F5F5F7' }}
     >
+      <AppLanguageSync />
       <TopNavBar
         onOpenNotifications={handleOpenNotifications}
         onOpenSettings={handleOpenSettings}

@@ -1,5 +1,6 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import type { Agency, TrainingMode } from '../../types/tv';
 import { getAgencyInfo } from '../../hooks/useAgencyPersona';
 import AgencyPersonaSelector from './AgencyPersonaSelector';
@@ -11,10 +12,19 @@ export function TVModeEntry({
   onStart: (agency: Agency, mode: TrainingMode) => void;
   onBack?: () => void;
 }) {
+  const { t } = useTranslation();
   const [selectedAgency, setSelectedAgency] = useState('hybe');
   const [selectedMode, setSelectedMode] = useState('dance');
 
   const agencyInfo = getAgencyInfo(selectedAgency);
+  const modes = useMemo(
+    () => [
+      { id: 'dance', label: t('tv.entry.dance'), desc: t('tv.entry.danceDesc') },
+      { id: 'vocal', label: t('tv.entry.vocal'), desc: t('tv.entry.vocalDesc') },
+      { id: 'group', label: t('tv.entry.group'), desc: t('tv.entry.groupDesc'), badge: t('tv.entry.hot') },
+    ],
+    [t],
+  );
 
   const handleStart = async () => {
     try {
@@ -61,7 +71,7 @@ export function TVModeEntry({
             cursor: 'pointer',
           }}
         >
-          ← 홈
+          {t('tv.entry.backHome')}
         </button>
       ) : null}
       <div
@@ -95,10 +105,10 @@ export function TVModeEntry({
             letterSpacing: '-0.02em',
           }}
         >
-          트레이닝
+          {t('tv.entry.title')}
         </div>
         <div style={{ fontSize: 14, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
-          기획사 AI 실시간 댄스·보컬 트레이닝
+          {t('tv.entry.subtitle')}
         </div>
         <div
           style={{
@@ -111,7 +121,7 @@ export function TVModeEntry({
             display: 'inline-block',
           }}
         >
-          📱 iPhone · Android 스마트폰에서도 바로 연습 가능
+          {t('tv.entry.mobileHint')}
         </div>
       </div>
 
@@ -147,17 +157,13 @@ export function TVModeEntry({
             textAlign: 'center',
           }}
         >
-          훈련 모드
+          {t('tv.entry.trainingMode')}
         </div>
         <div
           className="tv-entry-modes"
           style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}
         >
-          {[
-            { id: 'dance', label: '🕺 댄스 트레이닝', desc: '자세 분석 + 동작 교정' },
-            { id: 'vocal', label: '🎤 보컬 트레이닝', desc: '음정 + 감정 표현 분석' },
-            { id: 'group', label: '👥 그룹 모드', desc: '곡 선택 → 포지션 → Group Studio', badge: 'HOT' },
-          ].map((mode) => (
+          {modes.map((mode) => (
             <button
               key={mode.id}
               type="button"
@@ -201,11 +207,10 @@ export function TVModeEntry({
         }}
       >
         <div style={{ fontSize: 13, fontWeight: 600, color: '#00FF88', marginBottom: 8 }}>
-          ONNODE STUDIO MODE
+          {t('tv.entry.studioTitle')}
         </div>
         <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.65)', lineHeight: 1.65, margin: 0 }}>
-          트레이닝 시작 후 우측 상단 <strong>「📺 TV 연결」</strong> — 10초 이내 TV 연습실 연결.
-          TV 없이도 스마트폰·노트북만으로 바로 연습할 수 있습니다.
+          {t('tv.entry.studioDesc')}
         </p>
       </div>
 
@@ -226,7 +231,7 @@ export function TVModeEntry({
           transition: 'all 0.2s',
         }}
       >
-        트레이닝 시작
+        {t('tv.entry.startBtn')}
       </button>
     </div>
   );
