@@ -21,6 +21,10 @@
       "destination": "/api/tv?path=:path*"
     },
     {
+      "source": "/api/group/:path*",
+      "destination": "/api/group?path=:path*"
+    },
+    {
       "source": "/oauth/callback/kakao",
       "destination": "/index.html"
     },

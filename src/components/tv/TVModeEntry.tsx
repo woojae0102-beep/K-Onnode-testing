@@ -151,11 +151,12 @@ export function TVModeEntry({
         </div>
         <div
           className="tv-entry-modes"
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}
+          style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 10 }}
         >
           {[
             { id: 'dance', label: '🕺 댄스 트레이닝', desc: '자세 분석 + 동작 교정' },
             { id: 'vocal', label: '🎤 보컬 트레이닝', desc: '음정 + 감정 표현 분석' },
+            { id: 'group', label: '👥 그룹 모드', desc: 'AI 아바타와 함께 그룹 연습', badge: 'HOT' },
           ].map((mode) => (
             <button
               key={mode.id}
@@ -176,7 +177,12 @@ export function TVModeEntry({
                   selectedMode === mode.id ? '0 0 20px rgba(255,31,142,0.3)' : 'none',
               }}
             >
-              <div style={{ fontSize: 16, color: '#fff', marginBottom: 4 }}>{mode.label}</div>
+              <div style={{ fontSize: 16, color: '#fff', marginBottom: 4 }}>
+                {mode.label}
+                {mode.badge ? (
+                  <span style={{ marginLeft: 6, fontSize: 9, color: '#FF1F8E', fontWeight: 700 }}>{mode.badge}</span>
+                ) : null}
+              </div>
               <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{mode.desc}</div>
             </button>
           ))}

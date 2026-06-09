@@ -1,6 +1,6 @@
 // @ts-nocheck
 export type Agency = 'hybe' | 'jyp' | 'sm' | 'yg';
-export type TrainingMode = 'dance' | 'vocal';
+export type TrainingMode = 'dance' | 'vocal' | 'group';
 
 export interface JointData {
   x: number;

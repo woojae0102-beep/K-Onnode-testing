@@ -44,7 +44,7 @@ export default function StudioConnectModal({
   const tvLandingUrl = buildStudioTvLandingUrl();
   const tvDirectUrl = sessionCode ? buildTVDisplayUrl(sessionCode) : '';
   const qrUrl = tvDirectUrl || tvLandingUrl;
-  const mediaLabel = mode === 'dance' ? '카메라' : '마이크';
+  const mediaLabel = mode === 'vocal' ? '마이크' : '카메라';
 
   const runStartStudio = useCallback(async () => {
     if (!firebaseReady) {

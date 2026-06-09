@@ -5,6 +5,7 @@ import type { Agency, SessionData, TrainingMode } from '../types/tv';
 import { useAuth } from '../contexts/AuthContext';
 import TVModeEntry from '../components/tv/TVModeEntry';
 import TVLayout from '../components/tv/TVLayout';
+import GroupPracticeView from './GroupPracticeView';
 import TVCompareTeachingScreen from '../components/tv/TVCompareTeachingScreen';
 import TrainingResultScreen from '../components/tv/TrainingResultScreen';
 import { saveTeachingReport } from '../services/teachingReportStore';
@@ -91,6 +92,10 @@ export default function TVModeView({ onNavigate } = {}) {
 
   if (phase === 'entry') {
     return <TVModeEntry onStart={handleStart} onBack={() => onNavigate?.('home')} />;
+  }
+
+  if (phase === 'training' && selectedMode === 'group') {
+    return <GroupPracticeView agency={selectedAgency} onHome={handleHome} />;
   }
 
   if (phase === 'training') {

@@ -4,6 +4,7 @@ import useWebRtcSession from '../hooks/useWebRtcSession';
 import { useTVDisplaySync } from '../hooks/useTVDisplaySync';
 import YouTubeTVPlayer from '../components/tv/YouTubeTVPlayer';
 import StudioSkeletonCanvas from '../components/studio/StudioSkeletonCanvas';
+import GroupTVStageCanvas from '../components/group/GroupTVStageCanvas';
 import { db, appId } from '../firebase';
 import { AGENCY_COLORS } from '../types/tv';
 import '../styles/studio-mode.css';
@@ -27,7 +28,10 @@ export default function StudioTVDisplay({ code, isHost = false }) {
   const mode = syncState?.mode || 'dance';
   const agencyColor = AGENCY_COLORS[agency] || '#FF1F8E';
   const isDance = mode === 'dance';
+  const isGroup = mode === 'group';
+  const isCameraMode = isDance || isGroup;
   const isConnected = webrtc.status === 'connected';
+  const groupStage = syncState?.groupStage;
   const isPaused = syncState?.isPaused;
 
   const feedback =
@@ -40,14 +44,14 @@ export default function StudioTVDisplay({ code, isHost = false }) {
   const latestTip = syncState?.feedbackItems?.[syncState.feedbackItems.length - 1]?.message;
 
   useEffect(() => {
-    if (!remoteVideoRef.current || !isDance) return;
+    if (!remoteVideoRef.current || !isCameraMode) return;
     if (webrtc.remoteStream) {
       remoteVideoRef.current.srcObject = webrtc.remoteStream;
       remoteVideoRef.current.play?.().catch(() => {});
     } else {
       remoteVideoRef.current.srcObject = null;
     }
-  }, [webrtc.remoteStream, isDance]);
+  }, [webrtc.remoteStream, isCameraMode]);
 
   useEffect(() => {
     const t = syncState?.currentTime;
@@ -78,8 +82,8 @@ export default function StudioTVDisplay({ code, isHost = false }) {
           <strong style={{ color: agencyColor }}>{agency.toUpperCase()}</strong>
         </div>
         <div className="studio-tv-song">
-          <span className="studio-tv-song-label">NOW PLAYING</span>
-          <strong>{syncState?.songTitle || '연습 곡'}</strong>
+          <span className="studio-tv-song-label">{isGroup ? 'GROUP PRACTICE' : 'NOW PLAYING'}</span>
+          <strong>{syncState?.songTitle || (isGroup ? '그룹 연습' : '연습 곡')}</strong>
         </div>
         <div className="studio-tv-step">
           STEP {syncState?.practiceStep || 1} · {syncState?.practiceStepLabel || '워밍업'}
@@ -100,9 +104,15 @@ export default function StudioTVDisplay({ code, isHost = false }) {
           </div>
 
           <div className="studio-tv-ref">
-            <div className="studio-tv-ref-label">안무 시범</div>
+            <div className="studio-tv-ref-label">{isGroup ? '그룹 스테이지' : '안무 시범'}</div>
             <div className="studio-tv-ref-body">
-              {syncState?.referenceVideoUrl ? (
+              {isGroup ? (
+                <GroupTVStageCanvas
+                  groupStage={groupStage}
+                  poseSnapshot={syncState?.poseSnapshot}
+                  className="studio-tv-group-stage"
+                />
+              ) : syncState?.referenceVideoUrl ? (
                 <YouTubeTVPlayer
                   ref={playerRef}
                   embedUrl={syncState.referenceVideoUrl}
@@ -121,10 +131,10 @@ export default function StudioTVDisplay({ code, isHost = false }) {
               <strong style={{ color: agencyColor }}>{score}</strong>
             </div>
             <div className="studio-tv-score-sub">
-              <span>박자 정확도</span>
+              <span>{isGroup ? '싱크 정확도' : '박자 정확도'}</span>
               <strong>{beatAccuracy}%</strong>
             </div>
-            {!isDance ? (
+            {!isDance && !isGroup ? (
               <div className="studio-tv-score-sub">
                 <span>음정</span>
                 <strong>{vocal.pitchScore || 0}</strong>
@@ -134,9 +144,11 @@ export default function StudioTVDisplay({ code, isHost = false }) {
         </section>
 
         <section className="studio-tv-user-pane">
-          <div className="studio-tv-user-label">{isDance ? '내 동작 · 스켈레톤' : '보컬 분석'}</div>
+          <div className="studio-tv-user-label">
+            {isGroup ? '내 카메라 · 그룹 포지션' : isDance ? '내 동작 · 스켈레톤' : '보컬 분석'}
+          </div>
           <div className="studio-tv-user-body">
-            {isDance ? (
+            {isCameraMode ? (
               <>
                 <video ref={remoteVideoRef} className="studio-tv-remote-video" autoPlay playsInline muted />
                 <StudioSkeletonCanvas poseSnapshot={syncState?.poseSnapshot} accent={agencyColor} className="studio-tv-skeleton" />

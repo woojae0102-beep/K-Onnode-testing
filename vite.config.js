@@ -23,6 +23,7 @@ function devApiPlugin() {
           { prefix: '/api/monthly/', entry: '/api/monthly' },
           { prefix: '/api/coaching/', entry: '/api/coaching' },
           { prefix: '/api/tv/', entry: '/api/tv' },
+          { prefix: '/api/group/', entry: '/api/group' },
         ];
         const [rawPath, rawQuery = ''] = req.url.split('?');
         const urlPath = rawPath.replace(/\/+$/, '') || '/';
