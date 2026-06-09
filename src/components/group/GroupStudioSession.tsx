@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
@@ -32,6 +33,7 @@ export function GroupStudioSession({
   onEnd,
   onHome,
 }) {
+  const { t } = useTranslation();
   const song = getSongById(songId);
   const group = GROUP_DATA[groupId];
   const myMember = group?.members.find((m) => m.id === myMemberId);
@@ -65,8 +67,13 @@ export function GroupStudioSession({
     playbackRate: 1,
     getCurrentTime: () => avatarSync.getElapsed(),
     feedbackText: scores.overall
-      ? `Sync ${scores.overall} — ${scores.overall > 80 ? 'Great!' : 'Keep going!'}`
-      : '포지션에 들어가세요',
+      ? t('groupStudio.session.syncFeedback', {
+          score: scores.overall,
+          msg: scores.overall > 80
+            ? t('groupStudio.session.syncGreat')
+            : t('groupStudio.session.syncKeepGoing'),
+        })
+      : t('groupStudio.session.ghostSlot', { member: myMember?.nameKr || '' }),
     score: scores.overall || 0,
     scores: {
       rhythm: scores.timing || 0,
@@ -78,7 +85,7 @@ export function GroupStudioSession({
     },
     poseData: dance.poseData,
     practiceStep: 3,
-    practiceStepLabel: 'Group Studio',
+    practiceStepLabel: t('groupStudio.session.practiceStep'),
     isPaused,
     isPlaying: isPracticing && !isPaused,
   });
@@ -335,7 +342,7 @@ export function GroupStudioSession({
           onClick={() => setStudioModalOpen(true)}
           style={{ fontSize: 11, padding: '6px 12px' }}
         >
-          📺 TV 연결
+          {t('groupStudio.session.tvConnect')}
         </button>
       </header>
 
@@ -367,7 +374,7 @@ export function GroupStudioSession({
         }}
       >
         <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>내 카메라</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.myCamera')}</span>
           <span style={{ fontSize: 11, fontWeight: 600, color: myMember.color }}>{myMember.nameKr}</span>
         </div>
         <div style={{ flex: 1, position: 'relative', minHeight: 160 }}>
@@ -378,13 +385,13 @@ export function GroupStudioSession({
           <div style={{ fontSize: 32, fontWeight: 800, color: scores.overall > 80 ? '#00FF88' : scores.overall > 60 ? '#FFD700' : isPracticing ? '#FF4444' : 'rgba(255,255,255,0.2)' }}>
             {isPracticing ? scores.overall || 0 : '—'}
           </div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>SYNC SCORE</div>
+          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>{t('groupStudio.session.syncScore')}</div>
         </div>
       </div>
 
       <div style={{ background: '#0a0a14', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, position: 'relative', overflow: 'hidden', flex: isMobile ? 1 : undefined }}>
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.5)', zIndex: 10, display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>GROUP STUDIO</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.stageLabel')}</span>
           <div style={{ display: 'flex', gap: 4 }}>
             {group.members.map((m) => (
               <div key={m.id} style={{ width: 18, height: 18, borderRadius: '50%', background: m.id === myMemberId ? m.color : `${m.color}44`, border: `1px solid ${m.color}66`, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -398,19 +405,19 @@ export function GroupStudioSession({
 
         {sessionPhase === 'lobby' ? (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 20 }}>
-            <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: '0 0 8px' }}>Group Studio Session</p>
+            <p style={{ fontSize: 20, fontWeight: 700, color: '#fff', margin: '0 0 8px' }}>{t('groupStudio.session.title')}</p>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 8 }}>
               {otherMembers.map((m) => `${m.nameKr} AI`).join(' · ')}
             </p>
             <p style={{ fontSize: 12, color: myMember.color, marginBottom: 28 }}>
-              {myMember.nameKr} 자리만 비어 있습니다 👻
+              {t('groupStudio.session.emptySlot', { member: myMember.nameKr })}
             </p>
             <button
               type="button"
               onClick={enterStudio}
               style={{ padding: '14px 48px', background: myMember.color, border: 'none', borderRadius: 50, color: '#fff', fontSize: 15, fontWeight: 600, cursor: 'pointer', boxShadow: `0 0 30px ${myMember.color}60` }}
             >
-              스테이지 입장
+              {t('groupStudio.session.enterStage')}
             </button>
           </div>
         ) : null}
@@ -418,14 +425,14 @@ export function GroupStudioSession({
         {sessionPhase === 'waiting_slot' ? (
           <div style={{ position: 'absolute', bottom: 16, left: 16, right: 16, padding: '12px 16px', background: 'rgba(0,0,0,0.7)', borderRadius: 12, textAlign: 'center', zIndex: 15 }}>
             <p style={{ margin: 0, fontSize: 13, color: 'rgba(255,255,255,0.7)' }}>
-              👻 Ghost Slot — {myMember.nameKr} 자리에 들어가세요
+              {t('groupStudio.session.ghostSlot', { member: myMember.nameKr })}
             </p>
             <button
               type="button"
               onClick={runCountdown}
               style={{ marginTop: 8, background: 'none', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: 'rgba(255,255,255,0.5)', fontSize: 11, padding: '4px 12px', cursor: 'pointer' }}
             >
-              수동 시작
+              {t('groupStudio.session.manualStart')}
             </button>
           </div>
         ) : null}
@@ -435,20 +442,20 @@ export function GroupStudioSession({
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
           {isPracticing
             ? `${Math.floor(currentTime / 60).toString().padStart(2, '0')}:${Math.floor(currentTime % 60).toString().padStart(2, '0')}`
-            : sessionPhase === 'waiting_slot' ? '포지션 대기' : '준비'}
+            : sessionPhase === 'waiting_slot' ? t('groupStudio.session.waitingPosition') : t('groupStudio.session.ready')}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
           {isPracticing ? (
             <button type="button" onClick={isPaused ? handleResume : handlePause} style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontSize: 12, cursor: 'pointer' }}>
-              {isPaused ? '재개' : '일시정지'}
+              {isPaused ? t('groupStudio.session.resume') : t('groupStudio.session.pause')}
             </button>
           ) : null}
           <button type="button" onClick={handleEnd} style={{ padding: '6px 16px', background: 'rgba(255,68,68,0.15)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 8, color: '#FF4444', fontSize: 12, cursor: 'pointer' }}>
-            종료
+            {t('groupStudio.session.end')}
           </button>
           {onHome ? (
             <button type="button" onClick={onHome} style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontSize: 12, cursor: 'pointer' }}>
-              홈
+              {t('groupStudio.session.home')}
             </button>
           ) : null}
         </div>

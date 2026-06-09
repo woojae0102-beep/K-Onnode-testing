@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import {
@@ -10,9 +11,8 @@ import {
 } from '../../services/groupStudioStorage';
 import '../../styles/group-studio.css';
 
-const DIFFICULTY_LABELS = ['', 'Easy', 'Normal', 'Medium', 'Hard', 'Expert'];
-
 export function SongDetailScreen({ songId, onStart, onBack }) {
+  const { t } = useTranslation();
   const song = getSongById(songId);
   const group = song ? GROUP_DATA[song.groupId] : null;
   const [fav, setFav] = useState(false);
@@ -32,12 +32,16 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
     setFav(isSongFavorite(songId));
   };
 
+  const difficultyLabel = t(`groupStudio.songDetail.difficultyLevel.${song.difficulty}`, {
+    defaultValue: String(song.difficulty),
+  });
+
   return (
     <div className="group-studio">
       <div className="group-studio-ambient" />
       <div className="group-studio-inner">
         <button type="button" className="group-studio-back" onClick={onBack}>
-          ← 뒤로
+          {t('groupStudio.home.back')}
         </button>
 
         <div className="group-studio-detail-hero">
@@ -62,22 +66,23 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
 
         <div className="group-studio-stats">
           <div className="group-studio-stat">
-            BPM<strong>{song.bpm}</strong>
+            {t('groupStudio.songDetail.bpm')}<strong>{song.bpm}</strong>
           </div>
           <div className="group-studio-stat">
-            난이도<strong>{DIFFICULTY_LABELS[song.difficulty]}</strong>
+            {t('groupStudio.songDetail.difficulty')}<strong>{difficultyLabel}</strong>
           </div>
           <div className="group-studio-stat">
-            연습 횟수<strong>{practiceCount}회</strong>
+            {t('groupStudio.songDetail.practiceCount')}
+            <strong>{t('groupStudio.songDetail.practiceCountUnit', { count: practiceCount })}</strong>
           </div>
           <div className="group-studio-stat">
-            멤버<strong>{group.memberCount}인조</strong>
+            {t('groupStudio.songDetail.members')}
+            <strong>{t('groupStudio.songDetail.membersUnit', { count: group.memberCount })}</strong>
           </div>
         </div>
 
         <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.7, marginBottom: 28 }}>
-          나머지 {group.memberCount - 1}명의 멤버가 AI 페르소나로 함께 연습합니다.
-          내 포지션을 선택하고 그룹 스테이지에 합류하세요.
+          {t('groupStudio.songDetail.description', { count: group.memberCount - 1 })}
         </p>
 
         <button
@@ -89,7 +94,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
           }}
           onClick={onStart}
         >
-          Start Group Practice
+          {t('groupStudio.songDetail.startBtn')}
         </button>
       </div>
     </div>

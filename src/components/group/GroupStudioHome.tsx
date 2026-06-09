@@ -1,5 +1,6 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { STUDIO_SONGS } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import {
@@ -12,6 +13,7 @@ import SongSearchBar from './SongSearchBar';
 import '../../styles/group-studio.css';
 
 export function GroupStudioHome({ onSelectSong, onBack }) {
+  const { t } = useTranslation();
   const [data, setData] = useState(getStudioData);
   const { query, setQuery, results, hasQuery } = useGroupStudioSearch();
 
@@ -36,22 +38,26 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
       <div className="group-studio-inner">
         {onBack ? (
           <button type="button" className="group-studio-back" onClick={onBack}>
-            ← 뒤로
+            {t('groupStudio.home.back')}
           </button>
         ) : null}
 
         <header className="group-studio-header">
-          <h1 className="group-studio-title">GROUP STUDIO</h1>
-          <p className="group-studio-subtitle">Train Like an Idol</p>
+          <h1 className="group-studio-title">{t('groupStudio.home.title')}</h1>
+          <p className="group-studio-subtitle">{t('groupStudio.home.subtitle')}</p>
         </header>
 
-        <SongSearchBar value={query} onChange={setQuery} />
+        <SongSearchBar
+          value={query}
+          onChange={setQuery}
+          placeholder={t('groupStudio.home.searchPlaceholder')}
+        />
 
         {hasQuery ? (
           <section className="group-studio-section">
-            <h2 className="group-studio-section-title">🔍 Search Results</h2>
+            <h2 className="group-studio-section-title">{t('groupStudio.home.searchResults')}</h2>
             {results.length === 0 ? (
-              <p className="group-studio-empty">검색 결과가 없습니다</p>
+              <p className="group-studio-empty">{t('groupStudio.home.noSearchResults')}</p>
             ) : (
               <div className="group-studio-search-results">
                 {results.map((song) => {
@@ -84,7 +90,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
         ) : (
           <>
             <section className="group-studio-section">
-              <h2 className="group-studio-section-title">🔥 Trending</h2>
+              <h2 className="group-studio-section-title">{t('groupStudio.home.trending')}</h2>
               <div className="group-studio-scroll">
                 {trendingSongs.map((song) => (
                   <SongCard key={song.id} song={song} onClick={onSelectSong} />
@@ -93,9 +99,9 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
             </section>
 
             <section className="group-studio-section">
-              <h2 className="group-studio-section-title">⭐ Favorites</h2>
+              <h2 className="group-studio-section-title">{t('groupStudio.home.favorites')}</h2>
               {favoriteSongs.length === 0 ? (
-                <p className="group-studio-empty">즐겨찾기한 곡이 없습니다</p>
+                <p className="group-studio-empty">{t('groupStudio.home.noFavorites')}</p>
               ) : (
                 <div className="group-studio-scroll">
                   {favoriteSongs.map((song) => (
@@ -106,9 +112,9 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
             </section>
 
             <section className="group-studio-section">
-              <h2 className="group-studio-section-title">🕒 Recently Practiced</h2>
+              <h2 className="group-studio-section-title">{t('groupStudio.home.recent')}</h2>
               {recentSongs.length === 0 ? (
-                <p className="group-studio-empty">최근 연습한 곡이 없습니다</p>
+                <p className="group-studio-empty">{t('groupStudio.home.noRecent')}</p>
               ) : (
                 <div className="group-studio-scroll">
                   {recentSongs.map((song) => (

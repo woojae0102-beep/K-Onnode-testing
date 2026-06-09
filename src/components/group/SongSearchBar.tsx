@@ -1,7 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 
-export function SongSearchBar({ value, onChange, placeholder = 'Search songs, artists, members' }) {
+export function SongSearchBar({ value, onChange, placeholder = '곡, 아티스트, 멤버 검색' }) {
   return (
     <div className="group-studio-search">
       <span style={{ fontSize: 16, opacity: 0.5 }}>🔍</span>

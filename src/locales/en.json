@@ -1012,6 +1012,65 @@
     "mood": "Practice"
   },
   "groupStudio": {
+    "home": {
+      "title": "Group Studio",
+      "subtitle": "Train Like an Idol",
+      "back": "← Back",
+      "searchPlaceholder": "Search songs, artists, members",
+      "searchResults": "🔍 Search Results",
+      "noSearchResults": "No results found",
+      "trending": "🔥 Trending",
+      "favorites": "⭐ Favorites",
+      "noFavorites": "No favorite songs yet",
+      "recent": "🕒 Recently Practiced",
+      "noRecent": "No recent practice yet"
+    },
+    "songDetail": {
+      "bpm": "BPM",
+      "difficulty": "Difficulty",
+      "practiceCount": "Practice count",
+      "practiceCountUnit": "{{count}}x",
+      "members": "Members",
+      "membersUnit": "{{count}} members",
+      "description": "{{count}} other members practice with you as AI personas. Pick your position and join the group stage.",
+      "startBtn": "Start Group Practice",
+      "difficultyLevel": {
+        "1": "Easy",
+        "2": "Normal",
+        "3": "Medium",
+        "4": "Hard",
+        "5": "Expert"
+      }
+    },
+    "position": {
+      "title": "Choose your position",
+      "subtitle": "{{group}} · {{count}} others are AI avatars",
+      "practiceAs": "Practice as {{member}}",
+      "favMember": "☆ Favorite member",
+      "unfavMember": "★ Remove favorite"
+    },
+    "session": {
+      "title": "Group Studio Session",
+      "emptySlot": "Only {{member}}'s spot is empty 👻",
+      "enterStage": "Enter stage",
+      "ghostSlot": "👻 Ghost Slot — step into {{member}}'s spot",
+      "manualStart": "Start manually",
+      "myCamera": "My camera",
+      "syncScore": "Sync score",
+      "stageLabel": "Group Studio",
+      "practiceStep": "Group Studio",
+      "tvConnect": "📺 Connect TV",
+      "waitingPosition": "Waiting for position",
+      "ready": "Ready",
+      "resume": "Resume",
+      "pause": "Pause",
+      "end": "End",
+      "home": "Home",
+      "countdownStart": "START!",
+      "syncGreat": "Great!",
+      "syncKeepGoing": "Keep going!",
+      "syncFeedback": "Sync {{score}} — {{msg}}"
+    },
     "reportTag": "Performance report",
     "overallSync": "Overall sync",
     "coachReview": "AI coach review",

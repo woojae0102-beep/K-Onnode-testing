@@ -1,11 +1,13 @@
 // @ts-nocheck
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { isMemberFavorite, toggleMemberFavorite } from '../../services/groupStudioStorage';
 import '../../styles/group-studio.css';
 
 export function PositionPicker({ songId, onSelect, onBack }) {
+  const { t } = useTranslation();
   const song = getSongById(songId);
   const group = song ? GROUP_DATA[song.groupId] : null;
   const [hoveredMember, setHoveredMember] = useState(null);
@@ -29,7 +31,7 @@ export function PositionPicker({ songId, onSelect, onBack }) {
       <div className="group-studio-ambient" />
       <div className="group-studio-inner">
         <button type="button" className="group-studio-back" onClick={onBack}>
-          ← 뒤로
+          {t('groupStudio.home.back')}
         </button>
 
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
@@ -37,10 +39,10 @@ export function PositionPicker({ songId, onSelect, onBack }) {
             {song.title}
           </p>
           <h2 style={{ fontSize: 22, fontWeight: 700, margin: '0 0 8px' }}>
-            내 포지션 선택
+            {t('groupStudio.position.title')}
           </h2>
           <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.45)', margin: 0 }}>
-            {group.nameKr} · 나머지 {group.memberCount - 1}명은 AI 아바타
+            {t('groupStudio.position.subtitle', { group: group.nameKr, count: group.memberCount - 1 })}
           </p>
         </div>
 
@@ -111,7 +113,7 @@ export function PositionPicker({ songId, onSelect, onBack }) {
             }}
           >
             <div style={{ color: '#fff', fontSize: 16, fontWeight: 600 }}>
-              {hovered.nameKr} 파트로 연습하기
+              {t('groupStudio.position.practiceAs', { member: hovered.nameKr })}
             </div>
             <button
               type="button"
@@ -126,8 +128,8 @@ export function PositionPicker({ songId, onSelect, onBack }) {
               }}
             >
               {(favMembers[hovered.id] ?? isMemberFavorite(song.groupId, hovered.id))
-                ? '★ 즐겨찾기 해제'
-                : '☆ 멤버 즐겨찾기'}
+                ? t('groupStudio.position.unfavMember')
+                : t('groupStudio.position.favMember')}
             </button>
           </div>
         ) : null}
