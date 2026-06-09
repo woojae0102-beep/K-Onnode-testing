@@ -21,6 +21,34 @@ export function drawStageBackground(ctx, width, height) {
   }
 }
 
+export function drawGhostSlot(ctx, pos, color, label = 'YOUR SLOT') {
+  ctx.save();
+  ctx.setLineDash([8, 6]);
+  ctx.strokeStyle = `${color}99`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, 48, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 70);
+  gradient.addColorStop(0, `${color}30`);
+  gradient.addColorStop(1, 'transparent');
+  ctx.fillStyle = gradient;
+  ctx.beginPath();
+  ctx.arc(pos.x, pos.y, 70, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.fillStyle = color;
+  ctx.font = 'bold 13px Inter, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, pos.x, pos.y - 56);
+  ctx.fillStyle = `${color}88`;
+  ctx.font = 'bold 11px Inter, sans-serif';
+  ctx.fillText('👻', pos.x, pos.y + 6);
+  ctx.restore();
+}
+
 export function drawMySpot(ctx, pos, color) {
   ctx.setLineDash([5, 5]);
   ctx.strokeStyle = `${color}66`;

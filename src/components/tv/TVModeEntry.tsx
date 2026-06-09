@@ -156,7 +156,7 @@ export function TVModeEntry({
           {[
             { id: 'dance', label: '🕺 댄스 트레이닝', desc: '자세 분석 + 동작 교정' },
             { id: 'vocal', label: '🎤 보컬 트레이닝', desc: '음정 + 감정 표현 분석' },
-            { id: 'group', label: '👥 그룹 모드', desc: 'AI 아바타와 함께 그룹 연습', badge: 'HOT' },
+            { id: 'group', label: '👥 그룹 모드', desc: '곡 선택 → 포지션 → Group Studio', badge: 'HOT' },
           ].map((mode) => (
             <button
               key={mode.id}

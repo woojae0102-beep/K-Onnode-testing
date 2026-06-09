@@ -113,4 +113,33 @@ export const GROUP_DATA: Record<string, GroupData> = {
       { id: 'ningning', name: 'Ningning', nameKr: '닝닝', color: '#FF9800', defaultX: 0.5, defaultY: 0.75, avatar: '🌟', position: { default: { x: 0.5, y: 0.75 } } },
     ],
   },
+
+  ive: {
+    name: 'IVE',
+    nameKr: '아이브',
+    memberCount: 6,
+    defaultFormation: 'line',
+    members: [
+      { id: 'wonyoung', name: 'Wonyoung', nameKr: '장원영', color: '#FF6B9D', defaultX: 0.5, defaultY: 0.3, avatar: '🦢', position: { default: { x: 0.5, y: 0.3 } } },
+      { id: 'yujin', name: 'Yujin', nameKr: '안유진', color: '#FFD700', defaultX: 0.2, defaultY: 0.45, avatar: '⭐', position: { default: { x: 0.2, y: 0.45 } } },
+      { id: 'rei', name: 'Rei', nameKr: '레이', color: '#A78BFA', defaultX: 0.8, defaultY: 0.45, avatar: '💜', position: { default: { x: 0.8, y: 0.45 } } },
+      { id: 'gaeul', name: 'Gaeul', nameKr: '가을', color: '#6EE7B7', defaultX: 0.35, defaultY: 0.6, avatar: '🍂', position: { default: { x: 0.35, y: 0.6 } } },
+      { id: 'liz', name: 'Liz', nameKr: '리즈', color: '#93C5FD', defaultX: 0.65, defaultY: 0.6, avatar: '💎', position: { default: { x: 0.65, y: 0.6 } } },
+      { id: 'leeseo', name: 'Leeseo', nameKr: '이서', color: '#FCD34D', defaultX: 0.5, defaultY: 0.75, avatar: '🌸', position: { default: { x: 0.5, y: 0.75 } } },
+    ],
+  },
+
+  newjeans: {
+    name: 'NewJeans',
+    nameKr: '뉴진스',
+    memberCount: 5,
+    defaultFormation: 'scattered',
+    members: [
+      { id: 'minji', name: 'Minji', nameKr: '민지', color: '#FF6348', defaultX: 0.2, defaultY: 0.4, avatar: '🐰', position: { default: { x: 0.2, y: 0.4 } } },
+      { id: 'hanni', name: 'Hanni', nameKr: '하니', color: '#FF1F8E', defaultX: 0.4, defaultY: 0.35, avatar: '💖', position: { default: { x: 0.4, y: 0.35 } } },
+      { id: 'danielle', name: 'Danielle', nameKr: '다니엘', color: '#FFD700', defaultX: 0.6, defaultY: 0.35, avatar: '☀️', position: { default: { x: 0.6, y: 0.35 } } },
+      { id: 'haerin', name: 'Haerin', nameKr: '해린', color: '#A78BFA', defaultX: 0.8, defaultY: 0.4, avatar: '🐱', position: { default: { x: 0.8, y: 0.4 } } },
+      { id: 'hyein', name: 'Hyein', nameKr: '혜인', color: '#6EE7B7', defaultX: 0.5, defaultY: 0.65, avatar: '🌿', position: { default: { x: 0.5, y: 0.65 } } },
+    ],
+  },
 };

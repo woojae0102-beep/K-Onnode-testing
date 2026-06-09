@@ -1,14 +1,18 @@
 // @ts-nocheck
 import React, { useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { useGroupPractice } from '../hooks/useGroupPractice';
+import { useGroupStudio } from '../hooks/useGroupStudio';
+import { getSongById } from '../data/groupStudioSongs';
+import { GROUP_DATA } from '../data/groupPracticeData';
 import { saveTeachingReport } from '../services/teachingReportStore';
-import GroupSelector from '../components/group/GroupSelector';
-import MemberPositionPicker from '../components/group/MemberPositionPicker';
-import VideoUploadStep from '../components/group/VideoUploadStep';
-import GroupStageView from '../components/group/GroupStageView';
-import GroupResultScreen from '../components/group/GroupResultScreen';
+import { recordPracticeSession } from '../services/groupStudioStorage';
+import GroupStudioHome from '../components/group/GroupStudioHome';
+import SongDetailScreen from '../components/group/SongDetailScreen';
+import PositionPicker from '../components/group/PositionPicker';
+import GroupStudioSession from '../components/group/GroupStudioSession';
+import PerformanceReport from '../components/group/PerformanceReport';
 import type { Agency } from '../types/tv';
+import '../styles/group-studio.css';
 
 export default function GroupPracticeView({
   agency = 'hybe',
@@ -20,41 +24,40 @@ export default function GroupPracticeView({
   const { user } = useAuth();
   const {
     phase,
-    selectedGroup,
+    selectedSongId,
     selectedMemberId,
     skeletonData,
     sessionResult,
-    selectGroup,
-    selectMember,
-    setExtractedData,
+    selectSong,
+    startPositionSelect,
+    selectPosition,
     endSession,
     retry,
     goHome,
     goBack,
-  } = useGroupPractice();
+  } = useGroupStudio();
+
+  const song = selectedSongId ? getSongById(selectedSongId) : null;
+  const groupId = song?.groupId;
 
   const handleEnd = useCallback(
     async (result) => {
-      const enriched = {
-        ...result,
-        strengths:
-          result.overall >= 80
-            ? ['그룹 대형 유지가 안정적이에요', '멤버들과 타이밍이 잘 맞아요']
-            : ['연습 의지가 좋아요'],
-        weaknesses:
-          result.overall < 70
-            ? ['포지션 이동 타이밍을 더 맞춰보세요']
-            : ['세부 동작 정확도를 높여보세요'],
-        recommendations: ['느린 템포로 포지션 연습을 반복하세요'],
-      };
+      const group = groupId ? GROUP_DATA[groupId] : null;
+      const member = group?.members.find((m) => m.id === result.memberId);
+
+      recordPracticeSession(result.songId || selectedSongId, {
+        overall: result.overall,
+        completed: true,
+      });
 
       saveTeachingReport('group-practice', {
-        title: `그룹 연습 — ${result.groupName} ${result.memberName}`,
+        title: `${result.songTitle || song?.title} — ${member?.nameKr}`,
         overallScore: result.overall,
-        scores: result.scores,
+        scores: result.syncScores || result.scores,
         sessionTime: result.duration,
         agency,
         mode: 'group',
+        songId: result.songId || selectedSongId,
         groupId: result.groupId,
         memberId: result.memberId,
         completedAt: new Date().toISOString(),
@@ -70,17 +73,15 @@ export default function GroupPracticeView({
             mode: 'group',
             sessionTime: result.duration,
             scores: {
-              rhythm: result.scores?.overall || result.overall,
-              posture: result.scores?.position || 0,
-              angle: result.scores?.formation || 0,
-              expression: 0,
-              energy: 0,
-              stability: 0,
+              rhythm: result.syncScores?.timing || 0,
+              posture: result.syncScores?.position || 0,
+              angle: result.syncScores?.pose || 0,
+              expression: result.syncScores?.formation || 0,
+              energy: result.syncScores?.energy || 0,
+              stability: result.overall,
             },
-            strengths: enriched.strengths,
-            weaknesses: enriched.weaknesses,
-            recommendations: enriched.recommendations,
             userId: user?.uid || null,
+            songId: result.songId || selectedSongId,
             groupId: result.groupId,
             memberId: result.memberId,
           }),
@@ -89,9 +90,9 @@ export default function GroupPracticeView({
         /* local report saved */
       }
 
-      endSession(enriched);
+      endSession(result);
     },
-    [agency, user, endSession],
+    [agency, user, endSession, selectedSongId, song, groupId],
   );
 
   const handleGoHome = useCallback(async () => {
@@ -108,24 +109,20 @@ export default function GroupPracticeView({
   }, [goHome, onHome]);
 
   return (
-    <div style={{ minHeight: '100dvh', background: '#030308', fontFamily: 'Inter, sans-serif' }}>
-      {phase === 'group_select' && (
-        <GroupSelector onSelect={selectGroup} onBack={onHome ? handleGoHome : undefined} />
+    <div className="group-studio">
+      {phase === 'home' && (
+        <GroupStudioHome onSelectSong={selectSong} onBack={onHome ? handleGoHome : undefined} />
       )}
-      {phase === 'member_select' && selectedGroup && (
-        <MemberPositionPicker groupId={selectedGroup} onSelect={selectMember} onBack={goBack} />
+      {phase === 'song_detail' && selectedSongId && (
+        <SongDetailScreen songId={selectedSongId} onStart={startPositionSelect} onBack={goBack} />
       )}
-      {phase === 'video_upload' && selectedGroup && selectedMemberId && (
-        <VideoUploadStep
-          groupId={selectedGroup}
-          memberId={selectedMemberId}
-          onExtracted={setExtractedData}
-          onBack={goBack}
-        />
+      {phase === 'position_select' && selectedSongId && (
+        <PositionPicker songId={selectedSongId} onSelect={selectPosition} onBack={goBack} />
       )}
-      {phase === 'ready' && selectedGroup && selectedMemberId && skeletonData && (
-        <GroupStageView
-          groupId={selectedGroup}
+      {phase === 'practice' && selectedSongId && groupId && selectedMemberId && skeletonData && (
+        <GroupStudioSession
+          songId={selectedSongId}
+          groupId={groupId}
           myMemberId={selectedMemberId}
           skeletonData={skeletonData}
           agency={agency}
@@ -133,10 +130,10 @@ export default function GroupPracticeView({
           onHome={handleGoHome}
         />
       )}
-      {phase === 'result' && sessionResult && selectedGroup && selectedMemberId && (
-        <GroupResultScreen
+      {phase === 'result' && sessionResult && selectedSongId && selectedMemberId && (
+        <PerformanceReport
           result={sessionResult}
-          groupId={selectedGroup}
+          songId={selectedSongId}
           memberId={selectedMemberId}
           onRetry={retry}
           onHome={handleGoHome}

@@ -43,13 +43,17 @@ export interface GroupData {
 }
 
 export type GroupPracticePhase =
+  | 'home'
+  | 'song_detail'
+  | 'position_select'
+  | 'practice'
+  | 'result'
   | 'group_select'
   | 'member_select'
   | 'video_upload'
   | 'extracting'
   | 'ready'
-  | 'practicing'
-  | 'result';
+  | 'practicing';
 
 export interface GroupSessionResult {
   scores: Record<string, number>;
