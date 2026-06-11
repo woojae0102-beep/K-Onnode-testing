@@ -11,6 +11,7 @@ import GroupStudioHome from '../components/group/GroupStudioHome';
 import SongDetailScreen from '../components/group/SongDetailScreen';
 import PositionPicker from '../components/group/PositionPicker';
 import GroupStudioSession from '../components/group/GroupStudioSession';
+import ChoreoExtractScreen from '../components/group/ChoreoExtractScreen';
 import PerformanceReport from '../components/group/PerformanceReport';
 import type { Agency } from '../types/tv';
 import '../styles/group-studio.css';
@@ -33,6 +34,9 @@ export default function GroupPracticeView({
     selectSong,
     startPositionSelect,
     selectPosition,
+    completeChoreoExtract,
+    practiceVideo,
+    practiceDuration,
     endSession,
     retry,
     goHome,
@@ -137,12 +141,22 @@ export default function GroupPracticeView({
       {phase === 'position_select' && selectedSongId && (
         <PositionPicker songId={selectedSongId} onSelect={selectPosition} onBack={goBack} />
       )}
+      {phase === 'choreo_extract' && selectedSongId && selectedMemberId && (
+        <ChoreoExtractScreen
+          songId={selectedSongId}
+          memberId={selectedMemberId}
+          onComplete={completeChoreoExtract}
+          onBack={goBack}
+        />
+      )}
       {phase === 'practice' && selectedSongId && groupId && selectedMemberId && skeletonData && (
         <GroupStudioSession
           songId={selectedSongId}
           groupId={groupId}
           myMemberId={selectedMemberId}
           skeletonData={skeletonData}
+          referenceYoutubeUrl={practiceVideo?.youtubeUrl}
+          practiceDuration={practiceDuration}
           agency={agency}
           onEnd={handleEnd}
           onHome={handleGoHome}

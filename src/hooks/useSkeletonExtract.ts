@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from 'react';
 import type { SkeletonFrameData } from '../types/groupPractice';
 import { JOINT_MAP } from '../types/groupPractice';
 import { GROUP_DATA } from '../data/groupPracticeData';
+import { postProcessFrame } from '../utils/memberPoseMatching';
 
 function extractJoints(landmarks) {
   const joints = {};
@@ -38,7 +39,7 @@ export function useSkeletonExtract() {
     setIsExtracting(false);
   }, []);
 
-  const extractFromFile = useCallback(async (file, groupId) => {
+  const extractFromFile = useCallback(async (file, groupId, focusMemberId = null) => {
     const group = GROUP_DATA[groupId];
     if (!group || !file) return null;
 
@@ -88,11 +89,11 @@ export function useSkeletonExtract() {
       video.src = url;
       await waitForVideoEvent(video, 'loadeddata');
 
-      const duration = video.duration || 30;
+      const duration = Math.min(video.duration || 180, 360);
       const sampleFps = 10;
       const sampleInterval = 1 / sampleFps;
       const allFrames = [];
-      const sortedMembers = group.members.slice().sort((a, b) => a.defaultX - b.defaultX);
+      let previousFrame = null;
 
       for (let t = 0; t < duration; t += sampleInterval) {
         if (abortRef.current) break;
@@ -103,7 +104,7 @@ export function useSkeletonExtract() {
         const results = detector.detectForVideo(video, t * 1000);
 
         if (results.landmarks?.length > 0) {
-          const frameData = {
+          const rawFrame = {
             timestamp: t,
             members: results.landmarks.map((landmarks, personIdx) => ({
               personIndex: personIdx,
@@ -111,16 +112,15 @@ export function useSkeletonExtract() {
               estimatedMemberId: null,
             })),
           };
-
-          frameData.members.sort(
-            (a, b) => (a.joints.nose?.x || 0) - (b.joints.nose?.x || 0),
+          const frameData = postProcessFrame(
+            rawFrame,
+            groupId,
+            previousFrame,
+            focusMemberId,
+            results.landmarks.length,
           );
-
-          frameData.members.forEach((m, i) => {
-            if (sortedMembers[i]) m.estimatedMemberId = sortedMembers[i].id;
-          });
-
           allFrames.push(frameData);
+          previousFrame = frameData;
         }
 
         setProgress(Math.round(40 + (t / duration) * 50));

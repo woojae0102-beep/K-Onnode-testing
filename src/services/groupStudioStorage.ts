@@ -2,12 +2,14 @@
 const STORAGE_KEY = 'onnode_group_studio_v1';
 
 function load() {
-  if (typeof window === 'undefined') return { favorites: [], favoriteMembers: [], recent: [], stats: {} };
+  if (typeof window === 'undefined') {
+    return { favorites: [], favoriteMembers: [], recent: [], stats: {}, videoUrls: {} };
+  }
   try {
     const raw = window.localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : { favorites: [], favoriteMembers: [], recent: [], stats: {} };
+    return raw ? JSON.parse(raw) : { favorites: [], favoriteMembers: [], recent: [], stats: {}, videoUrls: {} };
   } catch {
-    return { favorites: [], favoriteMembers: [], recent: [], stats: {} };
+    return { favorites: [], favoriteMembers: [], recent: [], stats: {}, videoUrls: {} };
   }
 }
 
@@ -28,7 +30,24 @@ export function getStudioData() {
     favoriteMembers: d.favoriteMembers || [],
     recent: d.recent || [],
     stats: d.stats || {},
+    videoUrls: d.videoUrls || {},
   };
+}
+
+export function getSongVideo(songId) {
+  return load().videoUrls?.[songId] || null;
+}
+
+export function saveSongVideo(songId, video) {
+  const d = load();
+  if (!d.videoUrls) d.videoUrls = {};
+  d.videoUrls[songId] = {
+    ...d.videoUrls[songId],
+    ...video,
+    savedAt: Date.now(),
+  };
+  save(d);
+  return d.videoUrls[songId];
 }
 
 export function toggleSongFavorite(songId) {

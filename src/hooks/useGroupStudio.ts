@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { useCallback, useState } from 'react';
 import { getSongById } from '../data/groupStudioSongs';
-import { generateDemoSkeleton } from '../utils/generateDemoSkeleton';
+import { getSongVideo } from '../services/groupStudioStorage';
 
 export function useGroupStudio() {
   const [phase, setPhase] = useState('home');
@@ -10,6 +10,8 @@ export function useGroupStudio() {
   const [skeletonData, setSkeletonData] = useState(null);
   const [sessionResult, setSessionResult] = useState(null);
   const [sessionComparison, setSessionComparison] = useState(null);
+  const [practiceVideo, setPracticeVideo] = useState(null);
+  const [practiceDuration, setPracticeDuration] = useState(null);
 
   const selectSong = useCallback((songId) => {
     setSelectedSongId(songId);
@@ -22,11 +24,21 @@ export function useGroupStudio() {
 
   const selectPosition = useCallback((memberId) => {
     setSelectedMemberId(memberId);
+    setPhase('choreo_extract');
+  }, []);
+
+  const completeChoreoExtract = useCallback((frames, meta = {}) => {
+    setSkeletonData(frames);
     const song = getSongById(selectedSongId);
-    if (song) {
-      const demo = generateDemoSkeleton(song.groupId, song.duration, 10, song.bpm);
-      setSkeletonData(demo);
-    }
+    const saved = getSongVideo(selectedSongId);
+    setPracticeVideo({
+      videoId: meta.videoId || saved?.videoId || null,
+      youtubeUrl: meta.videoId
+        ? `https://www.youtube.com/watch?v=${meta.videoId}`
+        : saved?.youtubeUrl || song?.youtubeUrl || null,
+      fromCache: !!meta.fromCache,
+    });
+    setPracticeDuration(meta.durationSec || song?.duration || frames?.[frames.length - 1]?.timestamp || 180);
     setPhase('practice');
   }, [selectedSongId]);
 
@@ -49,6 +61,8 @@ export function useGroupStudio() {
     setSkeletonData(null);
     setSessionResult(null);
     setSessionComparison(null);
+    setPracticeVideo(null);
+    setPracticeDuration(null);
   }, []);
 
   const goBack = useCallback(() => {
@@ -58,9 +72,11 @@ export function useGroupStudio() {
     } else if (phase === 'position_select') {
       setPhase('song_detail');
       setSelectedMemberId(null);
-    } else if (phase === 'practice') {
+    } else if (phase === 'choreo_extract') {
       setPhase('position_select');
       setSelectedMemberId(null);
+    } else if (phase === 'practice') {
+      setPhase('choreo_extract');
       setSkeletonData(null);
     }
   }, [phase]);
@@ -72,9 +88,12 @@ export function useGroupStudio() {
     skeletonData,
     sessionResult,
     sessionComparison,
+    practiceVideo,
+    practiceDuration,
     selectSong,
     startPositionSelect,
     selectPosition,
+    completeChoreoExtract,
     endSession,
     retry,
     goHome,

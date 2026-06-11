@@ -1,36 +1,60 @@
 // @ts-nocheck
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STUDIO_SONGS } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
-import {
-  getStudioData,
-  getTrendingSongIds,
-} from '../../services/groupStudioStorage';
+import { getStudioData } from '../../services/groupStudioStorage';
+import { fetchWeeklyTrending } from '../../services/groupStudioTrending';
 import { useGroupStudioSearch } from '../../hooks/useGroupStudioSearch';
-import SongCard from './SongCard';
+import SongCard, { TrendingSongCard } from './SongCard';
+import SongAlbumArt from './SongAlbumArt';
 import SongSearchBar from './SongSearchBar';
+import { toggleSongFavorite } from '../../services/groupStudioStorage';
 import '../../styles/group-studio.css';
 
 export function GroupStudioHome({ onSelectSong, onBack }) {
   const { t } = useTranslation();
   const [data, setData] = useState(getStudioData);
-  const { query, setQuery, results, hasQuery } = useGroupStudioSearch();
+  const [weeklyTrending, setWeeklyTrending] = useState([]);
+  const [trendingLoading, setTrendingLoading] = useState(true);
+  const [trendingWeek, setTrendingWeek] = useState('');
+  const { query, setQuery, results, youtubeResults, youtubeLoading, hasQuery } = useGroupStudioSearch();
+
+  const refreshData = useCallback(() => setData(getStudioData()), []);
 
   useEffect(() => {
-    const refresh = () => setData(getStudioData());
-    refresh();
-    window.addEventListener('onnode-group-studio-update', refresh);
-    return () => window.removeEventListener('onnode-group-studio-update', refresh);
+    refreshData();
+    window.addEventListener('onnode-group-studio-update', refreshData);
+    return () => window.removeEventListener('onnode-group-studio-update', refreshData);
+  }, [refreshData]);
+
+  useEffect(() => {
+    let cancelled = false;
+    setTrendingLoading(true);
+    fetchWeeklyTrending(5)
+      .then((res) => {
+        if (cancelled) return;
+        setWeeklyTrending(res.items || []);
+        setTrendingWeek(res.weekKey || '');
+      })
+      .finally(() => {
+        if (!cancelled) setTrendingLoading(false);
+      });
+    return () => { cancelled = true; };
   }, []);
 
   const songMap = useMemo(() => Object.fromEntries(STUDIO_SONGS.map((s) => [s.id, s])), []);
+  const favoriteIds = data.favorites || [];
 
-  const trendingIds = useMemo(() => getTrendingSongIds(STUDIO_SONGS, 6), [data]);
-  const trendingSongs = trendingIds.map((id) => songMap[id]).filter(Boolean);
-
-  const favoriteSongs = (data.favorites || []).map((id) => songMap[id]).filter(Boolean);
+  const favoriteSongs = favoriteIds.map((id) => songMap[id]).filter(Boolean);
   const recentSongs = (data.recent || []).map((id) => songMap[id]).filter(Boolean);
+
+  const handleSearchFav = useCallback((e, songId) => {
+    e.preventDefault();
+    e.stopPropagation();
+    toggleSongFavorite(songId);
+    refreshData();
+  }, [refreshData]);
 
   return (
     <div className="group-studio">
@@ -56,12 +80,13 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
         {hasQuery ? (
           <section className="group-studio-section">
             <h2 className="group-studio-section-title">{t('groupStudio.home.searchResults')}</h2>
-            {results.length === 0 ? (
+            {results.length === 0 && youtubeResults.length === 0 && !youtubeLoading ? (
               <p className="group-studio-empty">{t('groupStudio.home.noSearchResults')}</p>
             ) : (
               <div className="group-studio-search-results">
                 {results.map((song) => {
                   const group = GROUP_DATA[song.groupId];
+                  const isFav = favoriteIds.includes(song.id);
                   return (
                     <button
                       key={song.id}
@@ -69,33 +94,84 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                       className="group-studio-search-row"
                       onClick={() => onSelectSong(song.id)}
                     >
-                      <div
-                        className="group-studio-search-thumb"
-                        style={{
-                          background: `linear-gradient(135deg, ${song.albumColor}, ${song.albumColor2})`,
-                        }}
-                      />
-                      <div>
+                      <SongAlbumArt song={song} size={48} className="group-studio-search-thumb" showGroupLabel={false} />
+                      <div style={{ flex: 1, minWidth: 0 }}>
                         <div style={{ fontSize: 14, fontWeight: 600 }}>{song.title}</div>
                         <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
                           {group?.nameKr}
                         </div>
                       </div>
+                      <button
+                        type="button"
+                        className={`group-studio-inline-fav ${isFav ? 'is-active' : ''}`}
+                        onClick={(e) => handleSearchFav(e, song.id)}
+                      >
+                        {isFav ? '★' : '☆'}
+                      </button>
                     </button>
                   );
                 })}
+                {youtubeLoading ? (
+                  <p className="group-studio-empty">{t('groupStudio.home.youtubeLoading')}</p>
+                ) : null}
+                {youtubeResults.length > 0 ? (
+                  <>
+                    <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)', margin: '12px 0 6px', letterSpacing: '0.05em' }}>
+                      {t('groupStudio.home.youtubeResults')}
+                    </p>
+                    {youtubeResults.map((item) => (
+                      <a
+                        key={item.videoId}
+                        href={item.youtubeUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="group-studio-search-row"
+                        style={{ textDecoration: 'none', color: 'inherit' }}
+                      >
+                        {item.thumbnail ? (
+                          <img src={item.thumbnail} alt="" style={{ width: 56, height: 32, objectFit: 'cover', borderRadius: 6 }} />
+                        ) : (
+                          <div className="group-studio-search-thumb" style={{ width: 56, height: 32 }} />
+                        )}
+                        <div>
+                          <div style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</div>
+                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{item.channel}</div>
+                        </div>
+                      </a>
+                    ))}
+                  </>
+                ) : null}
               </div>
             )}
           </section>
         ) : (
           <>
             <section className="group-studio-section">
-              <h2 className="group-studio-section-title">{t('groupStudio.home.trending')}</h2>
-              <div className="group-studio-scroll">
-                {trendingSongs.map((song) => (
-                  <SongCard key={song.id} song={song} onClick={onSelectSong} />
-                ))}
+              <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 12 }}>
+                <h2 className="group-studio-section-title" style={{ margin: 0 }}>
+                  {t('groupStudio.home.trending')}
+                </h2>
+                {trendingWeek ? (
+                  <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+                    {t('groupStudio.home.trendingWeek', { week: trendingWeek })}
+                  </span>
+                ) : null}
               </div>
+              {trendingLoading ? (
+                <p className="group-studio-empty">{t('groupStudio.home.trendingLoading')}</p>
+              ) : (
+                <div className="group-studio-scroll">
+                  {weeklyTrending.map((item) => (
+                    <TrendingSongCard
+                      key={`${item.rank}-${item.songId || item.title}`}
+                      item={item}
+                      onClick={onSelectSong}
+                      favoriteIds={favoriteIds}
+                      onFavoriteChange={refreshData}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
 
             <section className="group-studio-section">
@@ -105,7 +181,13 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               ) : (
                 <div className="group-studio-scroll">
                   {favoriteSongs.map((song) => (
-                    <SongCard key={song.id} song={song} onClick={onSelectSong} />
+                    <SongCard
+                      key={song.id}
+                      song={song}
+                      onClick={onSelectSong}
+                      favoriteIds={favoriteIds}
+                      onFavoriteChange={refreshData}
+                    />
                   ))}
                 </div>
               )}
@@ -118,7 +200,13 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               ) : (
                 <div className="group-studio-scroll">
                   {recentSongs.map((song) => (
-                    <SongCard key={song.id} song={song} onClick={onSelectSong} />
+                    <SongCard
+                      key={song.id}
+                      song={song}
+                      onClick={onSelectSong}
+                      favoriteIds={favoriteIds}
+                      onFavoriteChange={refreshData}
+                    />
                   ))}
                 </div>
               )}

@@ -1018,8 +1018,14 @@
       "back": "← Back",
       "searchPlaceholder": "Search songs, artists, members",
       "searchResults": "🔍 Search Results",
+      "youtubeResults": "YouTube dance videos",
+      "youtubeLoading": "Searching YouTube...",
       "noSearchResults": "No results found",
-      "trending": "🔥 Trending",
+      "trending": "🔥 Weekly K-POP TOP 5",
+      "trendingWeek": "Week of {{week}}",
+      "trendingLoading": "Loading this week's hits...",
+      "favorite": "Add to favorites",
+      "unfavorite": "Remove from favorites",
       "favorites": "⭐ Favorites",
       "noFavorites": "No favorite songs yet",
       "recent": "🕒 Recently Practiced",
@@ -1028,6 +1034,11 @@
     "songDetail": {
       "bpm": "BPM",
       "difficulty": "Difficulty",
+      "duration": "Duration",
+      "durationUnit": "{{min}}:{{sec}}",
+      "referenceVideo": "Reference dance video",
+      "loadingVideos": "Searching dance videos...",
+      "noVideo": "Select a video",
       "practiceCount": "Practice count",
       "practiceCountUnit": "{{count}}x",
       "members": "Members",
@@ -1041,6 +1052,17 @@
         "4": "Hard",
         "5": "Expert"
       }
+    },
+    "choreoExtract": {
+      "title": "Extract choreography",
+      "subtitle": "{{song}} · {{member}} part",
+      "noVideo": "Select a dance video on the song detail screen first",
+      "useCache": "Practice with cached choreography",
+      "extractYoutube": "Extract from YouTube video",
+      "uploadFile": "Upload video file to extract",
+      "cancel": "Cancel",
+      "cacheLoaded": "Loaded choreography from cache",
+      "privacyNote": "Original videos are not stored; only skeleton data is cached on your device."
     },
     "position": {
       "title": "Choose your position",
@@ -1056,6 +1078,7 @@
       "ghostSlot": "👻 Ghost Slot — step into {{member}}'s spot",
       "manualStart": "Start manually",
       "myCamera": "My camera",
+      "referenceVideo": "Reference video",
       "syncScore": "Sync score",
       "stageLabel": "Group Studio",
       "practiceStep": "Group Studio",

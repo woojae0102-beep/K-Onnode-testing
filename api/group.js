@@ -6,6 +6,9 @@ const path = require('path');
 const HANDLERS = {
   'extract-skeleton': () => require(path.join(__dirname, '../lib/api-handlers/group/extract-skeleton')),
   'group-feedback': () => require(path.join(__dirname, '../lib/api-handlers/group/group-feedback')),
+  'youtube-search': () => require(path.join(__dirname, '../lib/api-handlers/group/youtube-search')),
+  'video-metadata': () => require(path.join(__dirname, '../lib/api-handlers/group/video-metadata')),
+  'proxy-video': () => require(path.join(__dirname, '../lib/api-handlers/group/proxy-video')),
 };
 
 function getRouteParts(req) {

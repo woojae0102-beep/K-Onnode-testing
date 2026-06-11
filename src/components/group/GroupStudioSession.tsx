@@ -17,6 +17,7 @@ import {
 } from '../../utils/groupSkeletonDraw';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
+import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import type { Agency } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import '../../styles/group-studio.css';
@@ -29,6 +30,8 @@ export function GroupStudioSession({
   groupId,
   myMemberId,
   skeletonData,
+  referenceYoutubeUrl = '',
+  practiceDuration = null,
   agency = 'hybe',
   onEnd,
   onHome,
@@ -41,7 +44,9 @@ export function GroupStudioSession({
   const agencyColor = AGENCY_COLORS[agency as Agency] || '#FF1F8E';
 
   const stageCanvasRef = useRef(null);
+  const ytPlayerRef = useRef(null);
   const [currentTime, setCurrentTime] = useState(0);
+  const maxDuration = practiceDuration || skeletonData?.[skeletonData.length - 1]?.timestamp || 180;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
@@ -50,6 +55,7 @@ export function GroupStudioSession({
   const animFrameRef = useRef(0);
   const groupStageRef = useRef(null);
   const slotEnteredRef = useRef(false);
+  const endPracticeRef = useRef(null);
 
   const { layoutClass, isMobile } = useTVScreenLayout();
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
@@ -153,13 +159,32 @@ export function GroupStudioSession({
     return dx < SLOT_THRESHOLD && dy < SLOT_THRESHOLD;
   }, [dance.poseData, myDefault]);
 
+  const getPracticeElapsed = useCallback(() => {
+    const ytTime = ytPlayerRef.current?.getCurrentTime?.();
+    if (referenceYoutubeUrl && typeof ytTime === 'number' && ytTime > 0) return ytTime;
+    return avatarSync.getElapsed();
+  }, [referenceYoutubeUrl, avatarSync]);
+
+  const getPracticeFrame = useCallback(() => {
+    const elapsed = getPracticeElapsed();
+    if (!skeletonData?.length) return null;
+    return skeletonData.reduce((nearest, frame) =>
+      Math.abs(frame.timestamp - elapsed) < Math.abs(nearest.timestamp - elapsed) ? frame : nearest,
+    );
+  }, [getPracticeElapsed, skeletonData]);
+
   const practiceLoop = useCallback(() => {
     if (isPaused || sessionPhase !== 'practicing') return;
-    const elapsed = avatarSync.getElapsed();
+    const elapsed = getPracticeElapsed();
     setCurrentTime(elapsed);
-    const frame = avatarSync.getCurrentFrame();
+    const frame = getPracticeFrame();
     if (frame) renderGroupStage(frame);
     if (dance.poseData && frame) calculateSync(dance.poseData, frame, elapsed);
+
+    if (elapsed >= maxDuration) {
+      endPracticeRef.current?.();
+      return;
+    }
 
     groupStageRef.current = {
       groupId,
@@ -185,7 +210,8 @@ export function GroupStudioSession({
   }, [
     isPaused,
     sessionPhase,
-    avatarSync,
+    getPracticeElapsed,
+    getPracticeFrame,
     renderGroupStage,
     dance.poseData,
     calculateSync,
@@ -195,15 +221,20 @@ export function GroupStudioSession({
     myMemberId,
     myMember,
     scores.overall,
+    maxDuration,
   ]);
 
   const startPracticeAfterCountdown = useCallback(() => {
     setSessionPhase('practicing');
     resetSync();
     avatarSync.start();
+    if (referenceYoutubeUrl) {
+      ytPlayerRef.current?.seekTo?.(0);
+      ytPlayerRef.current?.play?.();
+    }
     cancelAnimationFrame(animFrameRef.current);
     animFrameRef.current = requestAnimationFrame(practiceLoop);
-  }, [avatarSync, resetSync, practiceLoop]);
+  }, [avatarSync, resetSync, practiceLoop, referenceYoutubeUrl]);
 
   const runCountdown = useCallback(() => {
     slotEnteredRef.current = true;
@@ -259,17 +290,20 @@ export function GroupStudioSession({
   const handlePause = useCallback(() => {
     setIsPaused(true);
     avatarSync.pause();
+    ytPlayerRef.current?.pause?.();
     cancelAnimationFrame(animFrameRef.current);
   }, [avatarSync]);
 
   const handleResume = useCallback(() => {
     setIsPaused(false);
     avatarSync.resume();
+    ytPlayerRef.current?.play?.();
     animFrameRef.current = requestAnimationFrame(practiceLoop);
   }, [avatarSync, practiceLoop]);
 
   const handleEnd = useCallback(() => {
     cancelAnimationFrame(animFrameRef.current);
+    ytPlayerRef.current?.pause?.();
     dance.stopTracking();
     studio.stopStudio();
     onEnd({
@@ -286,6 +320,10 @@ export function GroupStudioSession({
       completed: true,
     });
   }, [dance, studio, onEnd, scores, currentTime, groupId, myMemberId, songId, group, myMember, song]);
+
+  useEffect(() => {
+    endPracticeRef.current = handleEnd;
+  }, [handleEnd]);
 
   useEffect(() => () => {
     cancelAnimationFrame(animFrameRef.current);
@@ -361,6 +399,28 @@ export function GroupStudioSession({
         onJoinStudio={studio.joinStudio}
         onStopStudio={() => { studio.stopStudio(); setStudioModalOpen(false); }}
       />
+
+      {referenceYoutubeUrl ? (
+        <div
+          style={{
+            background: '#0a0a14',
+            border: '1px solid rgba(255,255,255,0.08)',
+            borderRadius: 16,
+            overflow: 'hidden',
+            display: 'flex',
+            flexDirection: 'column',
+            minHeight: isMobile ? 160 : undefined,
+            position: 'relative',
+          }}
+        >
+          <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.referenceVideo')}</span>
+          </div>
+          <div style={{ flex: 1, position: 'relative', minHeight: 120 }}>
+            <YouTubeTVPlayer ref={ytPlayerRef} embedUrl={referenceYoutubeUrl} autoplay={false} />
+          </div>
+        </div>
+      ) : null}
 
       <div
         style={{

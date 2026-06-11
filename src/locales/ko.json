@@ -1018,8 +1018,14 @@
       "back": "← 뒤로",
       "searchPlaceholder": "곡, 아티스트, 멤버 검색",
       "searchResults": "🔍 검색 결과",
+      "youtubeResults": "YouTube 안무 영상",
+      "youtubeLoading": "YouTube 검색 중...",
       "noSearchResults": "검색 결과가 없습니다",
-      "trending": "🔥 트렌딩",
+      "trending": "🔥 주간 K-POP TOP 5",
+      "trendingWeek": "{{week}} 주차",
+      "trendingLoading": "이번 주 인기 곡 불러오는 중...",
+      "favorite": "즐겨찾기 추가",
+      "unfavorite": "즐겨찾기 해제",
       "favorites": "⭐ 즐겨찾기",
       "noFavorites": "즐겨찾기한 곡이 없습니다",
       "recent": "🕒 최근 연습",
@@ -1028,6 +1034,11 @@
     "songDetail": {
       "bpm": "BPM",
       "difficulty": "난이도",
+      "duration": "곡 길이",
+      "durationUnit": "{{min}}:{{sec}}",
+      "referenceVideo": "레퍼런스 안무 영상",
+      "loadingVideos": "안무 영상 검색 중...",
+      "noVideo": "영상을 선택해 주세요",
       "practiceCount": "연습 횟수",
       "practiceCountUnit": "{{count}}회",
       "members": "멤버",
@@ -1041,6 +1052,17 @@
         "4": "어려움",
         "5": "전문가"
       }
+    },
+    "choreoExtract": {
+      "title": "안무 데이터 추출",
+      "subtitle": "{{song}} · {{member}} 파트",
+      "noVideo": "곡 상세에서 안무 영상을 먼저 선택해 주세요",
+      "useCache": "저장된 안무 데이터로 바로 연습",
+      "extractYoutube": "YouTube 영상에서 안무 추출",
+      "uploadFile": "영상 파일 업로드로 추출",
+      "cancel": "취소",
+      "cacheLoaded": "캐시에서 안무를 불러왔습니다",
+      "privacyNote": "원본 영상은 저장되지 않으며, 스켈레톤 데이터만 기기에 캐시됩니다."
     },
     "position": {
       "title": "내 포지션 선택",
@@ -1056,6 +1078,7 @@
       "ghostSlot": "👻 고스트 슬롯 — {{member}} 자리에 들어가세요",
       "manualStart": "수동 시작",
       "myCamera": "내 카메라",
+      "referenceVideo": "레퍼런스 영상",
       "syncScore": "싱크 점수",
       "stageLabel": "그룹 스튜디오",
       "practiceStep": "그룹 스튜디오",
