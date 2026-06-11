@@ -31,7 +31,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
   useEffect(() => {
     let cancelled = false;
     setTrendingLoading(true);
-    fetchWeeklyTrending(5)
+    fetchWeeklyTrending(10)
       .then((res) => {
         if (cancelled) return;
         setWeeklyTrending(res.items || []);
@@ -160,16 +160,21 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {trendingLoading ? (
                 <p className="group-studio-empty">{t('groupStudio.home.trendingLoading')}</p>
               ) : (
-                <div className="group-studio-scroll">
-                  {weeklyTrending.map((item) => (
-                    <TrendingSongCard
-                      key={`${item.rank}-${item.songId || item.title}`}
-                      item={item}
-                      onClick={onSelectSong}
-                      favoriteIds={favoriteIds}
-                      onFavoriteChange={refreshData}
-                    />
-                  ))}
+                <div className="group-studio-scroll-wrap">
+                  <div className="group-studio-scroll group-studio-scroll-snap">
+                    {weeklyTrending.map((item) => (
+                      <TrendingSongCard
+                        key={`${item.rank}-${item.songId || item.title}`}
+                        item={item}
+                        onClick={onSelectSong}
+                        favoriteIds={favoriteIds}
+                        onFavoriteChange={refreshData}
+                      />
+                    ))}
+                  </div>
+                  {weeklyTrending.length > 4 ? (
+                    <p className="group-studio-scroll-hint">{t('groupStudio.home.scrollHint')}</p>
+                  ) : null}
                 </div>
               )}
             </section>

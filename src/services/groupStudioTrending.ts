@@ -3,7 +3,8 @@ import { STUDIO_SONGS } from '../data/groupStudioSongs';
 import { GROUP_DATA } from '../data/groupPracticeData';
 import { matchStudioSong } from '../utils/matchStudioSong';
 
-const CACHE_KEY = 'onnode_group_weekly_trending_v1';
+const CACHE_KEY = 'onnode_group_weekly_trending_v2';
+const DEFAULT_LIMIT = 10;
 
 function getWeekKey() {
   const d = new Date();
@@ -33,7 +34,7 @@ function saveCache(entry) {
   }
 }
 
-function fallbackTrending(limit = 5) {
+function fallbackTrending(limit = DEFAULT_LIMIT) {
   return STUDIO_SONGS
     .slice()
     .sort((a, b) => (b.baseTrending || 0) - (a.baseTrending || 0))
@@ -49,11 +50,11 @@ function fallbackTrending(limit = 5) {
     }));
 }
 
-export async function fetchWeeklyTrending(limit = 5) {
+export async function fetchWeeklyTrending(limit = DEFAULT_LIMIT) {
   const weekKey = getWeekKey();
   const cached = loadCache();
-  if (cached?.weekKey === weekKey && cached?.items?.length) {
-    return { items: cached.items, weekKey, lastUpdated: cached.lastUpdated, source: 'cache' };
+  if (cached?.weekKey === weekKey && cached?.items?.length >= limit) {
+    return { items: cached.items.slice(0, limit), weekKey, lastUpdated: cached.lastUpdated, source: 'cache' };
   }
 
   try {
