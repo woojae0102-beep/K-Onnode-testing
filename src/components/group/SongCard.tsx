@@ -65,7 +65,24 @@ export function TrendingSongCard({ item, onClick, showFavorite = true, favoriteI
     return id ? getSongById(id) : null;
   }, [item]);
 
-  if (!song) return null;
+  if (!song) {
+    return (
+      <div className="group-studio-song-card group-studio-song-card--external" role="presentation">
+        <div className="group-studio-song-art-wrap" style={{ position: 'relative', width: 140 }}>
+          <span className="group-studio-rank-badge">{item.rank}</span>
+          <div className="group-studio-song-art" style={{ width: 140, height: 140, background: '#0a0a14', overflow: 'hidden' }}>
+            {item.thumbnail ? (
+              <img src={item.thumbnail} alt={item.title} loading="lazy" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <span className="group-studio-song-art-label">K-POP</span>
+            )}
+          </div>
+        </div>
+        <p className="group-studio-song-title">{item.title}</p>
+        <p className="group-studio-song-artist">{item.artist}</p>
+      </div>
+    );
+  }
 
   return (
     <SongCard

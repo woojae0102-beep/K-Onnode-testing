@@ -36,7 +36,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
     fetchWeeklyTrending(10)
       .then((res) => {
         if (cancelled) return;
-        setWeeklyTrending((res.items || []).filter((item) => item.songId && item.song));
+        setWeeklyTrending(res.items || []);
         setTrendingWeek(res.weekKey || '');
       })
       .finally(() => {
