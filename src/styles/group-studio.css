@@ -77,50 +77,63 @@
   gap: 8px;
 }
 
-.group-studio-scroll-wrap {
-  position: relative;
+.group-studio-carousel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
 }
 
-.group-studio-scroll-wrap.has-arrows {
-  padding: 0 36px;
+.group-studio-carousel .group-studio-scroll {
+  flex: 1;
+  min-width: 0;
 }
 
-.group-studio-scroll-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  z-index: 6;
-  width: 32px;
-  height: 32px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+.group-studio-carousel-arrow {
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 50%;
-  background: rgba(8, 8, 16, 0.92);
+  background: rgba(12, 12, 22, 0.95);
   color: #fff;
-  font-size: 22px;
+  font-size: 20px;
+  font-weight: 700;
   line-height: 1;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
-  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.4);
+  transition: background 0.2s, border-color 0.2s, opacity 0.2s, transform 0.15s;
 }
 
-.group-studio-scroll-arrow:hover {
-  background: rgba(255, 31, 142, 0.25);
-  border-color: rgba(255, 31, 142, 0.45);
+.group-studio-carousel-arrow:hover:not(:disabled) {
+  background: rgba(255, 31, 142, 0.3);
+  border-color: rgba(255, 31, 142, 0.55);
 }
 
-.group-studio-scroll-arrow--left {
-  left: 0;
+.group-studio-carousel-arrow--right:hover:not(:disabled) {
+  transform: translateX(2px);
 }
 
-.group-studio-scroll-arrow--right {
-  right: 0;
+.group-studio-carousel-arrow--left:hover:not(:disabled) {
+  transform: translateX(-2px);
 }
 
-.group-studio-scroll-arrow--right:hover {
-  transform: translateY(-50%) translateX(2px);
+.group-studio-carousel-arrow:disabled {
+  opacity: 0.28;
+  cursor: default;
+}
+
+.group-studio-scroll-draggable {
+  cursor: grab;
+  user-select: none;
+  touch-action: pan-x;
+}
+
+.group-studio-scroll-draggable:active {
+  cursor: grabbing;
 }
 
 .group-studio-scroll {

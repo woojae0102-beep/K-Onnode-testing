@@ -135,7 +135,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {trendingLoading ? (
                 <p className="group-studio-empty">{t('groupStudio.home.trendingLoading')}</p>
               ) : (
-                <HorizontalSongScroll>
+                <HorizontalSongScroll itemCount={weeklyTrending.length}>
                   {weeklyTrending.map((item) => (
                     <TrendingSongCard
                       key={`${item.rank}-${item.songId || item.title}`}
@@ -154,7 +154,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {favoriteSongs.length === 0 ? (
                 <p className="group-studio-empty">{t('groupStudio.home.noFavorites')}</p>
               ) : (
-                <HorizontalSongScroll>
+                <HorizontalSongScroll itemCount={favoriteSongs.length}>
                   {favoriteSongs.map((song) => (
                     <SongCard
                       key={song.id}
@@ -173,7 +173,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {recentSongs.length === 0 ? (
                 <p className="group-studio-empty">{t('groupStudio.home.noRecent')}</p>
               ) : (
-                <HorizontalSongScroll>
+                <HorizontalSongScroll itemCount={recentSongs.length}>
                   {recentSongs.map((song) => (
                     <SongCard
                       key={song.id}
