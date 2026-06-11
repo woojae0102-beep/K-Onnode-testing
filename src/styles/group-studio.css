@@ -81,24 +81,46 @@
   position: relative;
 }
 
-.group-studio-scroll-wrap::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 48px;
-  height: calc(100% - 24px);
-  pointer-events: none;
-  background: linear-gradient(to left, rgba(8, 8, 16, 0.95), transparent);
-  border-radius: 0 12px 12px 0;
+.group-studio-scroll-wrap.has-arrows {
+  padding: 0 36px;
 }
 
-.group-studio-scroll-hint {
-  margin: 10px 0 0;
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.35);
-  text-align: center;
-  letter-spacing: 0.02em;
+.group-studio-scroll-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 6;
+  width: 32px;
+  height: 32px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 50%;
+  background: rgba(8, 8, 16, 0.92);
+  color: #fff;
+  font-size: 22px;
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  transition: background 0.2s, border-color 0.2s, transform 0.15s;
+}
+
+.group-studio-scroll-arrow:hover {
+  background: rgba(255, 31, 142, 0.25);
+  border-color: rgba(255, 31, 142, 0.45);
+}
+
+.group-studio-scroll-arrow--left {
+  left: 0;
+}
+
+.group-studio-scroll-arrow--right {
+  right: 0;
+}
+
+.group-studio-scroll-arrow--right:hover {
+  transform: translateY(-50%) translateX(2px);
 }
 
 .group-studio-scroll {

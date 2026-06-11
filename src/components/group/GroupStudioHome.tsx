@@ -7,6 +7,7 @@ import { fetchWeeklyTrending } from '../../services/groupStudioTrending';
 import { prefetchAllSongCovers } from '../../services/songCoverResolver';
 import { useGroupStudioSearch } from '../../hooks/useGroupStudioSearch';
 import SongCard, { TrendingSongCard, SongSearchRow } from './SongCard';
+import HorizontalSongScroll from './HorizontalSongScroll';
 import SongSearchBar from './SongSearchBar';
 import '../../styles/group-studio.css';
 
@@ -134,22 +135,17 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {trendingLoading ? (
                 <p className="group-studio-empty">{t('groupStudio.home.trendingLoading')}</p>
               ) : (
-                <div className="group-studio-scroll-wrap">
-                  <div className="group-studio-scroll group-studio-scroll-snap">
-                    {weeklyTrending.map((item) => (
-                      <TrendingSongCard
-                        key={`${item.rank}-${item.songId || item.title}`}
-                        item={item}
-                        onClick={onSelectSong}
-                        favoriteIds={favoriteIds}
-                        onFavoriteChange={refreshData}
-                      />
-                    ))}
-                  </div>
-                  {weeklyTrending.length > 4 ? (
-                    <p className="group-studio-scroll-hint">{t('groupStudio.home.scrollHint')}</p>
-                  ) : null}
-                </div>
+                <HorizontalSongScroll>
+                  {weeklyTrending.map((item) => (
+                    <TrendingSongCard
+                      key={`${item.rank}-${item.songId || item.title}`}
+                      item={item}
+                      onClick={onSelectSong}
+                      favoriteIds={favoriteIds}
+                      onFavoriteChange={refreshData}
+                    />
+                  ))}
+                </HorizontalSongScroll>
               )}
             </section>
 
@@ -158,7 +154,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {favoriteSongs.length === 0 ? (
                 <p className="group-studio-empty">{t('groupStudio.home.noFavorites')}</p>
               ) : (
-                <div className="group-studio-scroll">
+                <HorizontalSongScroll>
                   {favoriteSongs.map((song) => (
                     <SongCard
                       key={song.id}
@@ -168,7 +164,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                       onFavoriteChange={refreshData}
                     />
                   ))}
-                </div>
+                </HorizontalSongScroll>
               )}
             </section>
 
@@ -177,7 +173,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               {recentSongs.length === 0 ? (
                 <p className="group-studio-empty">{t('groupStudio.home.noRecent')}</p>
               ) : (
-                <div className="group-studio-scroll">
+                <HorizontalSongScroll>
                   {recentSongs.map((song) => (
                     <SongCard
                       key={song.id}
@@ -187,7 +183,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                       onFavoriteChange={refreshData}
                     />
                   ))}
-                </div>
+                </HorizontalSongScroll>
               )}
             </section>
           </>
