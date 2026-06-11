@@ -69,7 +69,7 @@ export async function fetchWeeklyTrending(limit = DEFAULT_LIMIT) {
         return {
           rank: row.rank || i + 1,
           songId: matched?.id || null,
-          song: matched,
+          song: matched || null,
           title: matched?.title || row.title,
           artist: matched
             ? (GROUP_DATA[matched.groupId]?.nameKr || row.artist)

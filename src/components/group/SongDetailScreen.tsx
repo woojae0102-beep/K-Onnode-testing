@@ -1,12 +1,11 @@
 // @ts-nocheck
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import {
   getSongPracticeCount,
   isSongFavorite,
-  toggleSongFavorite,
   addRecentSong,
   getSongVideo,
   saveSongVideo,
@@ -14,13 +13,14 @@ import {
 import { searchYoutubeDance } from '../../services/groupStudioApi';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import SongAlbumArt from './SongAlbumArt';
+import SongFavoriteStar from './SongFavoriteStar';
 import '../../styles/group-studio.css';
 
 export function SongDetailScreen({ songId, onStart, onBack }) {
   const { t } = useTranslation();
   const song = getSongById(songId);
   const group = song ? GROUP_DATA[song.groupId] : null;
-  const [fav, setFav] = useState(false);
+  const [favTick, setFavTick] = useState(0);
   const [practiceCount, setPracticeCount] = useState(0);
   const [videoId, setVideoId] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
@@ -29,7 +29,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
 
   useEffect(() => {
     if (!songId) return;
-    setFav(isSongFavorite(songId));
+    setFavTick((t) => t + 1);
     setPracticeCount(getSongPracticeCount(songId));
     addRecentSong(songId);
     const saved = getSongVideo(songId);
@@ -95,10 +95,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
   const durationMin = Math.floor(song.duration / 60);
   const durationSec = song.duration % 60;
 
-  const handleFav = useCallback(() => {
-    toggleSongFavorite(songId);
-    setFav(isSongFavorite(songId));
-  }, [songId]);
+  const favoriteIds = useMemo(() => (isSongFavorite(songId) ? [songId] : []), [songId, favTick]);
 
   return (
     <div className="group-studio">
@@ -118,14 +115,13 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
                 <h1>{song.title}</h1>
                 <p>{group.nameKr} · {group.name}</p>
               </div>
-              <button
-                type="button"
-                className={`group-studio-fav-btn ${fav ? 'is-active' : ''}`}
-                onClick={handleFav}
-                aria-label={fav ? t('groupStudio.home.unfavorite') : t('groupStudio.home.favorite')}
-              >
-                {fav ? '★' : '☆'}
-              </button>
+              <SongFavoriteStar
+                songId={songId}
+                favoriteIds={favoriteIds}
+                onFavoriteChange={() => setFavTick((n) => n + 1)}
+                className="group-studio-fav-btn"
+                size="inline"
+              />
             </div>
           </div>
         </div>

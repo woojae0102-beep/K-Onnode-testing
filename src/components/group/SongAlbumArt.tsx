@@ -1,12 +1,39 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
+import { getSongCoverCandidates, resolveSongCover } from '../../services/songCoverResolver';
 
 export function SongAlbumArt({ song, size = 140, className = '', showGroupLabel = true }) {
   const group = song?.groupId ? GROUP_DATA[song.groupId] : null;
-  const [imgError, setImgError] = useState(false);
-  const cover = song?.albumCover;
-  const useImage = cover && !imgError;
+  const candidates = useMemo(() => getSongCoverCandidates(song), [song]);
+  const [candidateIndex, setCandidateIndex] = useState(0);
+  const [resolvedUrl, setResolvedUrl] = useState(null);
+
+  useEffect(() => {
+    setCandidateIndex(0);
+    setResolvedUrl(null);
+    if (!song?.id) return undefined;
+    let cancelled = false;
+    resolveSongCover(song).then((url) => {
+      if (!cancelled && url) setResolvedUrl(url);
+    });
+    return () => { cancelled = true; };
+  }, [song?.id]);
+
+  const srcList = useMemo(() => {
+    const list = resolvedUrl
+      ? [resolvedUrl, ...candidates.filter((c) => c !== resolvedUrl)]
+      : candidates;
+    return [...new Set(list.filter(Boolean))];
+  }, [resolvedUrl, candidates]);
+
+  const src = srcList[candidateIndex] || null;
+  const showImage = !!src && candidateIndex < srcList.length;
+  const allFailed = candidateIndex >= srcList.length;
+
+  const handleError = () => {
+    setCandidateIndex((i) => i + 1);
+  };
 
   return (
     <div
@@ -14,23 +41,26 @@ export function SongAlbumArt({ song, size = 140, className = '', showGroupLabel 
       style={{
         width: size,
         height: size,
-        background: useImage
+        background: showImage && !allFailed
           ? '#0a0a14'
           : `linear-gradient(135deg, ${song?.albumColor || '#333'}, ${song?.albumColor2 || '#555'})`,
         position: 'relative',
         overflow: 'hidden',
       }}
     >
-      {useImage ? (
+      {showImage && !allFailed ? (
         <img
-          src={cover}
+          key={src}
+          src={src}
           alt={song?.title || ''}
           loading="lazy"
-          onError={() => setImgError(true)}
+          onError={handleError}
           style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }}
         />
       ) : null}
-      {showGroupLabel && !useImage ? <span>{group?.nameKr || ''}</span> : null}
+      {(allFailed || !showImage) && showGroupLabel ? (
+        <span className="group-studio-song-art-label">{group?.nameKr || song?.title || ''}</span>
+      ) : null}
     </div>
   );
 }

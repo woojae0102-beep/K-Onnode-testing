@@ -135,6 +135,17 @@
   padding: 0;
   text-align: left;
   transition: transform 0.2s;
+  outline: none;
+}
+
+.group-studio-song-card:focus-visible {
+  outline: 2px solid rgba(255, 31, 142, 0.6);
+  outline-offset: 3px;
+  border-radius: 12px;
+}
+
+.group-studio-song-card--external {
+  cursor: default;
 }
 
 .group-studio-song-card:hover {
@@ -189,7 +200,7 @@
   position: absolute;
   top: 8px;
   right: 8px;
-  z-index: 2;
+  z-index: 5;
   width: 30px;
   height: 30px;
   border-radius: 50%;
@@ -219,11 +230,19 @@
   color: #ffd700;
 }
 
+.group-studio-song-art-label,
 .group-studio-song-art span {
   font-size: 10px;
   font-weight: 700;
   letter-spacing: 0.05em;
   opacity: 0.9;
+}
+
+.group-studio-song-art-label {
+  position: absolute;
+  left: 10px;
+  bottom: 10px;
+  z-index: 1;
 }
 
 .group-studio-song-title {
@@ -265,6 +284,12 @@
   cursor: pointer;
   text-align: left;
   transition: background 0.2s;
+  outline: none;
+}
+
+.group-studio-search-row:focus-visible {
+  outline: 2px solid rgba(255, 31, 142, 0.5);
+  outline-offset: 2px;
 }
 
 .group-studio-search-row:hover {

@@ -11,6 +11,7 @@ export interface StudioSong {
   albumColor: string;
   albumColor2: string;
   albumCover: string;
+  coverFallbacks?: string[];
   baseTrending: number;
   searchTags: string[];
   youtubeQuery?: string;
@@ -55,7 +56,8 @@ function song(
     duration,
     albumColor,
     albumColor2,
-    albumCover,
+    albumCover: `/album-covers/${id}.jpg`,
+    coverFallbacks: [albumCover].filter(Boolean),
     baseTrending,
     searchTags: tags(groupId, title, extraTags),
     youtubeQuery: `${group?.name || groupId} ${title} dance practice`,

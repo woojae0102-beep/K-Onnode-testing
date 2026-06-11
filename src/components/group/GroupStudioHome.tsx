@@ -2,14 +2,12 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { STUDIO_SONGS } from '../../data/groupStudioSongs';
-import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getStudioData } from '../../services/groupStudioStorage';
 import { fetchWeeklyTrending } from '../../services/groupStudioTrending';
+import { prefetchAllSongCovers } from '../../services/songCoverResolver';
 import { useGroupStudioSearch } from '../../hooks/useGroupStudioSearch';
-import SongCard, { TrendingSongCard } from './SongCard';
-import SongAlbumArt from './SongAlbumArt';
+import SongCard, { TrendingSongCard, SongSearchRow } from './SongCard';
 import SongSearchBar from './SongSearchBar';
-import { toggleSongFavorite } from '../../services/groupStudioStorage';
 import '../../styles/group-studio.css';
 
 export function GroupStudioHome({ onSelectSong, onBack }) {
@@ -24,6 +22,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
 
   useEffect(() => {
     refreshData();
+    prefetchAllSongCovers(STUDIO_SONGS);
     window.addEventListener('onnode-group-studio-update', refreshData);
     return () => window.removeEventListener('onnode-group-studio-update', refreshData);
   }, [refreshData]);
@@ -48,13 +47,6 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
 
   const favoriteSongs = favoriteIds.map((id) => songMap[id]).filter(Boolean);
   const recentSongs = (data.recent || []).map((id) => songMap[id]).filter(Boolean);
-
-  const handleSearchFav = useCallback((e, songId) => {
-    e.preventDefault();
-    e.stopPropagation();
-    toggleSongFavorite(songId);
-    refreshData();
-  }, [refreshData]);
 
   return (
     <div className="group-studio">
@@ -84,33 +76,15 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
               <p className="group-studio-empty">{t('groupStudio.home.noSearchResults')}</p>
             ) : (
               <div className="group-studio-search-results">
-                {results.map((song) => {
-                  const group = GROUP_DATA[song.groupId];
-                  const isFav = favoriteIds.includes(song.id);
-                  return (
-                    <button
-                      key={song.id}
-                      type="button"
-                      className="group-studio-search-row"
-                      onClick={() => onSelectSong(song.id)}
-                    >
-                      <SongAlbumArt song={song} size={48} className="group-studio-search-thumb" showGroupLabel={false} />
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: 14, fontWeight: 600 }}>{song.title}</div>
-                        <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)' }}>
-                          {group?.nameKr}
-                        </div>
-                      </div>
-                      <button
-                        type="button"
-                        className={`group-studio-inline-fav ${isFav ? 'is-active' : ''}`}
-                        onClick={(e) => handleSearchFav(e, song.id)}
-                      >
-                        {isFav ? '★' : '☆'}
-                      </button>
-                    </button>
-                  );
-                })}
+                {results.map((song) => (
+                  <SongSearchRow
+                    key={song.id}
+                    song={song}
+                    onClick={onSelectSong}
+                    favoriteIds={favoriteIds}
+                    onFavoriteChange={refreshData}
+                  />
+                ))}
                 {youtubeLoading ? (
                   <p className="group-studio-empty">{t('groupStudio.home.youtubeLoading')}</p>
                 ) : null}

@@ -37,7 +37,7 @@ export function matchStudioSong(trendItem) {
     }
   }
 
-  return bestScore >= 8 ? best : null;
+  return bestScore >= 6 ? best : null;
 }
 
 export default matchStudioSong;
