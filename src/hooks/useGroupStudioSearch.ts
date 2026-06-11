@@ -1,25 +1,35 @@
 // @ts-nocheck
 import { useEffect, useMemo, useState } from 'react';
-import { STUDIO_SONGS } from '../data/groupStudioSongs';
+import { getAllStudioSongs } from '../data/groupStudioSongs';
 import { searchYoutubeDance } from '../services/groupStudioApi';
 
 function normalize(q) {
   return (q || '').trim().toLowerCase();
 }
 
-export function useGroupStudioSearch(songs = STUDIO_SONGS) {
+export function useGroupStudioSearch() {
   const [query, setQuery] = useState('');
   const [youtubeResults, setYoutubeResults] = useState([]);
   const [youtubeLoading, setYoutubeLoading] = useState(false);
   const [youtubeError, setYoutubeError] = useState('');
+  const [dynamicTick, setDynamicTick] = useState(0);
 
-  const localResults = useMemo(() => {
+  useEffect(() => {
+    const onUpdate = () => setDynamicTick((t) => t + 1);
+    window.addEventListener('onnode-dynamic-songs-update', onUpdate);
+    return () => window.removeEventListener('onnode-dynamic-songs-update', onUpdate);
+  }, []);
+
+  const allSongs = useMemo(() => getAllStudioSongs(), [dynamicTick]);
+
+  const results = useMemo(() => {
     const q = normalize(query);
     if (!q) return [];
-    return songs.filter((song) =>
-      song.searchTags.some((tag) => normalize(tag).includes(q)),
+    return allSongs.filter((song) =>
+      song.searchTags?.some((tag) => normalize(tag).includes(q))
+      || normalize(song.title).includes(q),
     );
-  }, [query, songs]);
+  }, [query, allSongs]);
 
   useEffect(() => {
     const q = normalize(query);
@@ -55,7 +65,7 @@ export function useGroupStudioSearch(songs = STUDIO_SONGS) {
   return {
     query,
     setQuery,
-    results: localResults,
+    results,
     youtubeResults,
     youtubeLoading,
     youtubeError,

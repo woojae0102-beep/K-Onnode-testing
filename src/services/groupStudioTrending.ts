@@ -2,8 +2,10 @@
 import { STUDIO_SONGS } from '../data/groupStudioSongs';
 import { GROUP_DATA } from '../data/groupPracticeData';
 import { matchStudioSong } from '../utils/matchStudioSong';
+import { ensurePracticeSong } from '../utils/ensurePracticeSong';
+import { getSongById } from '../data/groupStudioSongs';
 
-const CACHE_KEY = 'onnode_group_weekly_trending_v2';
+const CACHE_KEY = 'onnode_group_weekly_trending_v3';
 const DEFAULT_LIMIT = 10;
 
 function getWeekKey() {
@@ -34,27 +36,44 @@ function saveCache(entry) {
   }
 }
 
+function enrichTrendingItem(raw, rank) {
+  const matched = matchStudioSong(raw);
+  const songId = ensurePracticeSong({
+    ...raw,
+    song: matched,
+    rank,
+    artist: raw.artist || raw.channel,
+    thumbnail: raw.thumbnail || raw.albumArt,
+    youtubeUrl: raw.youtubeUrl,
+    videoId: raw.videoId || raw.id,
+  });
+  const song = songId ? getSongById(songId) : null;
+  return {
+    rank: raw.rank || rank,
+    songId,
+    song,
+    title: song?.title || raw.title,
+    artist: song ? (GROUP_DATA[song.groupId]?.nameKr || raw.artist) : (raw.artist || raw.channel),
+    thumbnail: song?.albumCover || raw.thumbnail || raw.albumArt || null,
+    youtubeUrl: raw.youtubeUrl,
+    source: raw.source || 'youtube',
+  };
+}
+
 function fallbackTrending(limit = DEFAULT_LIMIT) {
   return STUDIO_SONGS
     .slice()
     .sort((a, b) => (b.baseTrending || 0) - (a.baseTrending || 0))
     .slice(0, limit)
-    .map((song, i) => ({
-      rank: i + 1,
-      songId: song.id,
-      song,
-      title: song.title,
-      artist: GROUP_DATA[song.groupId]?.nameKr || song.groupId,
-      thumbnail: song.albumCover || null,
-      source: 'fallback',
-    }));
+    .map((song, i) => enrichTrendingItem({ ...song, song, source: 'fallback' }, i + 1));
 }
 
 export async function fetchWeeklyTrending(limit = DEFAULT_LIMIT) {
   const weekKey = getWeekKey();
   const cached = loadCache();
   if (cached?.weekKey === weekKey && cached?.items?.length >= limit) {
-    return { items: cached.items.slice(0, limit), weekKey, lastUpdated: cached.lastUpdated, source: 'cache' };
+    const items = cached.items.slice(0, limit).map((item, i) => enrichTrendingItem(item, item.rank || i + 1));
+    return { items, weekKey, lastUpdated: cached.lastUpdated, source: 'cache' };
   }
 
   try {
@@ -64,22 +83,10 @@ export async function fetchWeeklyTrending(limit = DEFAULT_LIMIT) {
     const rows = json.data?.songs || [];
 
     if (rows.length) {
-      const items = rows.slice(0, limit).map((row, i) => {
-        const matched = matchStudioSong(row);
-        return {
-          rank: row.rank || i + 1,
-          songId: matched?.id || null,
-          song: matched || null,
-          title: matched?.title || row.title,
-          artist: matched
-            ? (GROUP_DATA[matched.groupId]?.nameKr || row.artist)
-            : (row.artist || row.channel),
-          thumbnail: matched?.albumCover || row.thumbnail || row.albumArt || null,
-          youtubeUrl: row.youtubeUrl,
-          source: 'youtube',
-        };
-      });
-
+      const items = rows
+        .slice(0, limit)
+        .map((row, i) => enrichTrendingItem(row, row.rank || i + 1))
+        .filter((item) => item.songId && item.song);
       const entry = { weekKey, items, lastUpdated: json.lastUpdated || new Date().toISOString() };
       saveCache(entry);
       return { ...entry, source: 'youtube' };

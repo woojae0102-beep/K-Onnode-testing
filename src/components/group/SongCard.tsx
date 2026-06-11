@@ -1,10 +1,10 @@
 // @ts-nocheck
-import React, { useCallback } from 'react';
+import React, { useCallback, useMemo } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
+import { getSongById } from '../../data/groupStudioSongs';
+import { ensurePracticeSong } from '../../utils/ensurePracticeSong';
 import SongAlbumArt from './SongAlbumArt';
 import SongFavoriteStar from './SongFavoriteStar';
-import { getSongById } from '../../data/groupStudioSongs';
-import { matchStudioSong } from '../../utils/matchStudioSong';
 import '../../styles/group-studio.css';
 
 export function SongCard({
@@ -56,47 +56,24 @@ export function SongCard({
 }
 
 export function TrendingSongCard({ item, onClick, showFavorite = true, favoriteIds, onFavoriteChange }) {
-  const resolvedSong = item.song
-    || (item.songId ? getSongById(item.songId) : null)
-    || matchStudioSong({ title: item.title, artist: item.artist, channel: item.artist });
+  const song = useMemo(() => {
+    if (item.song?.id) return item.song;
+    if (item.songId) return getSongById(item.songId);
+    const id = ensurePracticeSong(item);
+    return id ? getSongById(id) : null;
+  }, [item]);
 
-  if (resolvedSong) {
-    return (
-      <SongCard
-        song={resolvedSong}
-        onClick={onClick}
-        rank={item.rank}
-        showFavorite={showFavorite}
-        favoriteIds={favoriteIds}
-        onFavoriteChange={onFavoriteChange}
-      />
-    );
-  }
+  if (!song) return null;
 
-  const size = 140;
   return (
-    <div className="group-studio-song-card group-studio-song-card--external" role="presentation">
-      <div className="group-studio-song-art-wrap" style={{ position: 'relative', width: size }}>
-        <span className="group-studio-rank-badge">{item.rank}</span>
-        <div
-          className="group-studio-song-art"
-          style={{ width: size, height: size, background: '#0a0a14', overflow: 'hidden' }}
-        >
-          {item.thumbnail ? (
-            <img
-              src={item.thumbnail}
-              alt={item.title}
-              loading="lazy"
-              style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-            />
-          ) : (
-            <span className="group-studio-song-art-label">K-POP</span>
-          )}
-        </div>
-      </div>
-      <p className="group-studio-song-title">{item.title}</p>
-      <p className="group-studio-song-artist">{item.artist}</p>
-    </div>
+    <SongCard
+      song={song}
+      onClick={onClick}
+      rank={item.rank}
+      showFavorite={showFavorite}
+      favoriteIds={favoriteIds}
+      onFavoriteChange={onFavoriteChange}
+    />
   );
 }
 
@@ -128,6 +105,31 @@ export function SongSearchRow({ song, onClick, favoriteIds, onFavoriteChange }) 
         size="inline"
       />
     </div>
+  );
+}
+
+export function YoutubeSearchRow({ item, onClick, favoriteIds, onFavoriteChange }) {
+  const song = useMemo(() => {
+    const id = ensurePracticeSong({
+      title: item.title,
+      artist: item.channel,
+      channel: item.channel,
+      thumbnail: item.thumbnail,
+      youtubeUrl: item.youtubeUrl,
+      videoId: item.videoId,
+    });
+    return id ? getSongById(id) : null;
+  }, [item]);
+
+  if (!song) return null;
+
+  return (
+    <SongSearchRow
+      song={song}
+      onClick={onClick}
+      favoriteIds={favoriteIds}
+      onFavoriteChange={onFavoriteChange}
+    />
   );
 }
 

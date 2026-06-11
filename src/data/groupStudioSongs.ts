@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { GROUP_DATA } from './groupPracticeData';
+import { getAllDynamicSongs, getDynamicSong } from '../services/dynamicStudioSongs';
 
 export interface StudioSong {
   id: string;
@@ -83,7 +84,14 @@ export const STUDIO_SONGS: StudioSong[] = [
 export const SONG_MAP = Object.fromEntries(STUDIO_SONGS.map((s) => [s.id, s]));
 
 export function getSongById(id) {
-  return SONG_MAP[id] || null;
+  if (!id) return null;
+  return SONG_MAP[id] || getDynamicSong(id) || null;
+}
+
+export function getAllStudioSongs() {
+  const byId = { ...SONG_MAP };
+  getAllDynamicSongs().forEach((s) => { byId[s.id] = s; });
+  return Object.values(byId);
 }
 
 export function getGroupForSong(songId) {

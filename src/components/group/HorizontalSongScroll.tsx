@@ -59,16 +59,19 @@ export function HorizontalSongScroll({
     el.scrollBy({ left: direction * step * Math.min(visible, 2), behavior: 'smooth' });
   }, []);
 
+  const isInteractiveTarget = (target) => target?.closest?.(
+    '.group-studio-song-card, .group-studio-card-fav, .group-studio-inline-fav, button, a',
+  );
+
   const onPointerDown = useCallback((e) => {
     const el = scrollRef.current;
-    if (!el || e.button > 0) return;
+    if (!el || e.button > 0 || isInteractiveTarget(e.target)) return;
     dragRef.current = {
       active: true,
       startX: e.clientX,
       scrollLeft: el.scrollLeft,
       moved: false,
     };
-    el.setPointerCapture?.(e.pointerId);
   }, []);
 
   const onPointerMove = useCallback((e) => {
@@ -76,26 +79,18 @@ export function HorizontalSongScroll({
     const drag = dragRef.current;
     if (!el || !drag.active) return;
     const dx = e.clientX - drag.startX;
-    if (Math.abs(dx) > 4) drag.moved = true;
+    if (Math.abs(dx) < 8) return;
+    drag.moved = true;
     el.scrollLeft = drag.scrollLeft - dx;
   }, []);
 
-  const onPointerUp = useCallback((e) => {
-    const el = scrollRef.current;
-    if (el?.releasePointerCapture) {
-      try { el.releasePointerCapture(e.pointerId); } catch { /* ignore */ }
-    }
+  const onPointerUp = useCallback(() => {
     dragRef.current.active = false;
+    window.setTimeout(() => {
+      dragRef.current.moved = false;
+    }, 0);
     updateEdges();
   }, [updateEdges]);
-
-  const onCardClickCapture = useCallback((e) => {
-    if (dragRef.current.moved) {
-      e.preventDefault();
-      e.stopPropagation();
-      dragRef.current.moved = false;
-    }
-  }, []);
 
   return (
     <div className="group-studio-carousel">
@@ -119,7 +114,6 @@ export function HorizontalSongScroll({
         onPointerMove={onPointerMove}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onClickCapture={onCardClickCapture}
       >
         {children}
       </div>

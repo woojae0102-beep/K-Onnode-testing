@@ -6,7 +6,9 @@ import { getStudioData } from '../../services/groupStudioStorage';
 import { fetchWeeklyTrending } from '../../services/groupStudioTrending';
 import { prefetchAllSongCovers } from '../../services/songCoverResolver';
 import { useGroupStudioSearch } from '../../hooks/useGroupStudioSearch';
-import SongCard, { TrendingSongCard, SongSearchRow } from './SongCard';
+import SongCard, { TrendingSongCard, SongSearchRow, YoutubeSearchRow } from './SongCard';
+import { ensurePracticeSong } from '../../utils/ensurePracticeSong';
+import { getSongById } from '../../data/groupStudioSongs';
 import HorizontalSongScroll from './HorizontalSongScroll';
 import SongSearchBar from './SongSearchBar';
 import '../../styles/group-studio.css';
@@ -34,7 +36,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
     fetchWeeklyTrending(10)
       .then((res) => {
         if (cancelled) return;
-        setWeeklyTrending(res.items || []);
+        setWeeklyTrending((res.items || []).filter((item) => item.songId && item.song));
         setTrendingWeek(res.weekKey || '');
       })
       .finally(() => {
@@ -46,8 +48,13 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
   const songMap = useMemo(() => Object.fromEntries(STUDIO_SONGS.map((s) => [s.id, s])), []);
   const favoriteIds = data.favorites || [];
 
-  const favoriteSongs = favoriteIds.map((id) => songMap[id]).filter(Boolean);
-  const recentSongs = (data.recent || []).map((id) => songMap[id]).filter(Boolean);
+  const handleSelectSong = useCallback((songId) => {
+    const id = ensurePracticeSong(songId) || songId;
+    if (id && getSongById(id)) onSelectSong(id);
+  }, [onSelectSong]);
+
+  const favoriteSongs = favoriteIds.map((id) => getSongById(id) || songMap[id]).filter(Boolean);
+  const recentSongs = (data.recent || []).map((id) => getSongById(id) || songMap[id]).filter(Boolean);
 
   return (
     <div className="group-studio">
@@ -81,7 +88,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                   <SongSearchRow
                     key={song.id}
                     song={song}
-                    onClick={onSelectSong}
+                    onClick={handleSelectSong}
                     favoriteIds={favoriteIds}
                     onFavoriteChange={refreshData}
                   />
@@ -95,24 +102,13 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                       {t('groupStudio.home.youtubeResults')}
                     </p>
                     {youtubeResults.map((item) => (
-                      <a
+                      <YoutubeSearchRow
                         key={item.videoId}
-                        href={item.youtubeUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="group-studio-search-row"
-                        style={{ textDecoration: 'none', color: 'inherit' }}
-                      >
-                        {item.thumbnail ? (
-                          <img src={item.thumbnail} alt="" style={{ width: 56, height: 32, objectFit: 'cover', borderRadius: 6 }} />
-                        ) : (
-                          <div className="group-studio-search-thumb" style={{ width: 56, height: 32 }} />
-                        )}
-                        <div>
-                          <div style={{ fontSize: 13, fontWeight: 600 }}>{item.title}</div>
-                          <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>{item.channel}</div>
-                        </div>
-                      </a>
+                        item={item}
+                        onClick={handleSelectSong}
+                        favoriteIds={favoriteIds}
+                        onFavoriteChange={refreshData}
+                      />
                     ))}
                   </>
                 ) : null}
@@ -140,7 +136,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                     <TrendingSongCard
                       key={`${item.rank}-${item.songId || item.title}`}
                       item={item}
-                      onClick={onSelectSong}
+                      onClick={handleSelectSong}
                       favoriteIds={favoriteIds}
                       onFavoriteChange={refreshData}
                     />
@@ -159,7 +155,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                     <SongCard
                       key={song.id}
                       song={song}
-                      onClick={onSelectSong}
+                      onClick={handleSelectSong}
                       favoriteIds={favoriteIds}
                       onFavoriteChange={refreshData}
                     />
@@ -178,7 +174,7 @@ export function GroupStudioHome({ onSelectSong, onBack }) {
                     <SongCard
                       key={song.id}
                       song={song}
-                      onClick={onSelectSong}
+                      onClick={handleSelectSong}
                       favoriteIds={favoriteIds}
                       onFavoriteChange={refreshData}
                     />
