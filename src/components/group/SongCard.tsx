@@ -3,6 +3,8 @@ import React, { useCallback, useMemo } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { ensurePracticeSong } from '../../utils/ensurePracticeSong';
+import { isDancePracticeTitle } from '../../utils/dancePracticeVideo';
+import { saveSongVideo } from '../../services/groupStudioStorage';
 import SongAlbumArt from './SongAlbumArt';
 import SongFavoriteStar from './SongFavoriteStar';
 import '../../styles/group-studio.css';
@@ -110,15 +112,26 @@ export function SongSearchRow({ song, onClick, favoriteIds, onFavoriteChange }) 
 
 export function YoutubeSearchRow({ item, onClick, favoriteIds, onFavoriteChange }) {
   const song = useMemo(() => {
+    if (!isDancePracticeTitle(item.title)) return null;
     const id = ensurePracticeSong({
       title: item.title,
       artist: item.channel,
       channel: item.channel,
       thumbnail: item.thumbnail,
-      youtubeUrl: item.youtubeUrl,
       videoId: item.videoId,
+      videoType: 'dance_practice',
     });
-    return id ? getSongById(id) : null;
+    const resolved = id ? getSongById(id) : null;
+    if (resolved && item.videoId) {
+      saveSongVideo(resolved.id, {
+        videoId: item.videoId,
+        youtubeUrl: item.youtubeUrl,
+        title: item.title,
+        durationSec: item.durationSec,
+        videoType: 'dance_practice',
+      });
+    }
+    return resolved;
   }, [item]);
 
   if (!song) return null;

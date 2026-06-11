@@ -61,7 +61,7 @@ function song(
     coverFallbacks: [albumCover].filter(Boolean),
     baseTrending,
     searchTags: tags(groupId, title, extraTags),
-    youtubeQuery: `${group?.name || groupId} ${title} dance practice`,
+    youtubeQuery: `${group?.name || groupId} ${group?.nameKr || ''} ${title} 안무 연습 dance practice`,
     youtubeUrl,
   };
 }

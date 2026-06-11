@@ -5,7 +5,7 @@ import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useGroupChoreoExtract } from '../../hooks/useGroupChoreoExtract';
 import { getSongVideo, saveSongVideo } from '../../services/groupStudioStorage';
-import { fetchVideoMetadata } from '../../services/groupStudioApi';
+import { resolveSongDanceVideo } from '../../services/resolveSongDanceVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import '../../styles/group-studio.css';
 
@@ -40,15 +40,14 @@ export function ChoreoExtractScreen({
   } = useGroupChoreoExtract();
 
   useEffect(() => {
-    if (!songId) return;
-    const saved = getSongVideo(songId);
-    if (saved?.videoId) {
-      setVideoId(saved.videoId);
-      setVideoTitle(saved.title || '');
-    } else if (song?.youtubeUrl) {
-      const match = song.youtubeUrl.match(/(?:v=|youtu\.be\/)([\w-]{11})/);
-      if (match) setVideoId(match[1]);
-    }
+    if (!songId || !song) return undefined;
+    let cancelled = false;
+    resolveSongDanceVideo(song, { force: false }).then((resolved) => {
+      if (cancelled || !resolved?.videoId) return;
+      setVideoId(resolved.videoId);
+      setVideoTitle(resolved.title || '');
+    });
+    return () => { cancelled = true; };
   }, [songId, song]);
 
   useEffect(() => {
@@ -77,6 +76,7 @@ export function ChoreoExtractScreen({
           videoId,
           youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
           title: videoTitle,
+          videoType: 'dance_practice',
         });
       }
       onComplete(frames, { videoId, durationSec: frames[frames.length - 1]?.timestamp || song.duration });
@@ -100,16 +100,9 @@ export function ChoreoExtractScreen({
     runExtract(null);
   }, [videoId, runExtract]);
 
-  useEffect(() => {
-    if (!videoId || videoTitle) return;
-    fetchVideoMetadata(videoId)
-      .then((meta) => setVideoTitle(meta.title || ''))
-      .catch(() => {});
-  }, [videoId, videoTitle]);
-
   if (!song || !group || !member) return null;
 
-  const youtubeUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : song.youtubeUrl;
+  const youtubeUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : '';
 
   return (
     <div className="group-studio">

@@ -11,6 +11,8 @@ import {
   saveSongVideo,
 } from '../../services/groupStudioStorage';
 import { searchYoutubeDance } from '../../services/groupStudioApi';
+import { resolveSongDanceVideo } from '../../services/resolveSongDanceVideo';
+import { buildDancePracticeQuery, isDancePracticeTitle, pickBestDancePracticeVideo } from '../../utils/dancePracticeVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import SongAlbumArt from './SongAlbumArt';
 import SongFavoriteStar from './SongFavoriteStar';
@@ -32,35 +34,41 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
     setFavTick((t) => t + 1);
     setPracticeCount(getSongPracticeCount(songId));
     addRecentSong(songId);
-    const saved = getSongVideo(songId);
-    if (saved?.videoId) {
-      setVideoId(saved.videoId);
-      setVideoTitle(saved.title || '');
-    }
   }, [songId]);
 
   useEffect(() => {
-    if (!song?.youtubeQuery) return;
+    if (!song) return undefined;
     let cancelled = false;
     setLoadingVideos(true);
-    searchYoutubeDance(song.youtubeQuery, 5)
-      .then((items) => {
+
+    const loadVideos = async () => {
+      try {
+        const query = buildDancePracticeQuery(song);
+        const [resolved, searchItems] = await Promise.all([
+          resolveSongDanceVideo(song),
+          searchYoutubeDance(query, 10).catch(() => []),
+        ]);
         if (cancelled) return;
-        setCandidates(items);
-        const saved = getSongVideo(songId);
-        if (!saved?.videoId && items[0]?.videoId) {
-          setVideoId(items[0].videoId);
-          setVideoTitle(items[0].title || '');
+
+        const practiceItems = searchItems.filter((it) => isDancePracticeTitle(it.title));
+        setCandidates(practiceItems);
+
+        const best = resolved || pickBestDancePracticeVideo(practiceItems);
+        if (best?.videoId) {
+          setVideoId(best.videoId);
+          setVideoTitle(best.title || '');
         }
-      })
-      .catch(() => {})
-      .finally(() => {
+      } finally {
         if (!cancelled) setLoadingVideos(false);
-      });
+      }
+    };
+
+    loadVideos();
     return () => { cancelled = true; };
-  }, [song?.youtubeQuery, songId]);
+  }, [song?.id, song?.title, song?.groupId]);
 
   const handleSelectVideo = useCallback((item) => {
+    if (!isDancePracticeTitle(item.title)) return;
     setVideoId(item.videoId);
     setVideoTitle(item.title || '');
     saveSongVideo(songId, {
@@ -68,25 +76,27 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
       youtubeUrl: item.youtubeUrl,
       title: item.title,
       durationSec: item.durationSec,
+      videoType: 'dance_practice',
     });
   }, [songId]);
 
-  const handleStart = useCallback(() => {
-    if (videoId) {
-      saveSongVideo(songId, {
-        videoId,
-        youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-        title: videoTitle,
-      });
+  const handleStart = useCallback(async () => {
+    if (song) {
+      const resolved = await resolveSongDanceVideo(song);
+      if (resolved?.videoId) {
+        setVideoId(resolved.videoId);
+        setVideoTitle(resolved.title || '');
+      }
     }
-    onStart();
-  }, [videoId, videoTitle, songId, onStart]);
+    const latest = getSongVideo(songId);
+    if (latest?.videoId) {
+      onStart();
+    }
+  }, [song, songId, onStart]);
 
   if (!song || !group) return null;
 
-  const youtubeUrl = videoId
-    ? `https://www.youtube.com/watch?v=${videoId}`
-    : song.youtubeUrl || '';
+  const youtubeUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : '';
 
   const difficultyLabel = t(`groupStudio.songDetail.difficultyLevel.${song.difficulty}`, {
     defaultValue: String(song.difficulty),
@@ -94,7 +104,6 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
 
   const durationMin = Math.floor(song.duration / 60);
   const durationSec = song.duration % 60;
-
   const favoriteIds = useMemo(() => (isSongFavorite(songId) ? [songId] : []), [songId, favTick]);
 
   return (
@@ -148,7 +157,10 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
         </div>
 
         <section style={{ marginBottom: 24 }}>
-          <h2 className="group-studio-section-title">{t('groupStudio.songDetail.referenceVideo')}</h2>
+          <h2 className="group-studio-section-title">{t('groupStudio.songDetail.dancePracticeVideo')}</h2>
+          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', margin: '0 0 12px' }}>
+            {t('groupStudio.songDetail.dancePracticeHint')}
+          </p>
           <div
             style={{
               position: 'relative',
@@ -164,7 +176,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
               <YouTubeTVPlayer embedUrl={youtubeUrl} autoplay={false} />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
-                {loadingVideos ? t('groupStudio.songDetail.loadingVideos') : t('groupStudio.songDetail.noVideo')}
+                {loadingVideos ? t('groupStudio.songDetail.loadingDanceVideos') : t('groupStudio.songDetail.noDanceVideo')}
               </div>
             )}
           </div>
@@ -215,6 +227,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
             boxShadow: `0 0 32px ${song.albumColor}50`,
           }}
           onClick={handleStart}
+          disabled={loadingVideos && !videoId}
         >
           {t('groupStudio.songDetail.startBtn')}
         </button>

@@ -59,8 +59,8 @@ export function registerDynamicSong(input) {
     coverFallbacks: input.coverFallbacks || [],
     baseTrending: input.baseTrending || 50,
     searchTags: input.searchTags || [title, groupId, input.artist].filter(Boolean),
-    youtubeQuery: input.youtubeQuery || `${groupId} ${title} dance practice`,
-    youtubeUrl: input.youtubeUrl || '',
+    youtubeQuery: input.youtubeQuery || `${groupId} ${title} 안무 연습 dance practice`,
+    youtubeUrl: '',
     isDynamic: true,
     sourceVideoId: input.videoId || null,
   };

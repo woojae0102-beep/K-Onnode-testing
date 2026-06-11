@@ -4,6 +4,7 @@ import { registerDynamicSong } from '../services/dynamicStudioSongs';
 import { saveSongVideo } from '../services/groupStudioStorage';
 import { matchStudioSong } from './matchStudioSong';
 import { inferGroupId } from './inferGroupId';
+import { isMusicVideoTitle, isDancePracticeTitle } from './dancePracticeVideo';
 
 function cleanTitle(raw) {
   const t = String(raw || '').trim();
@@ -44,11 +45,16 @@ export function ensurePracticeSong(source) {
   const matched = source.song || matchStudioSong(source);
   if (matched?.id) {
     const videoId = source.videoId || extractVideoId(source.youtubeUrl);
-    if (videoId) {
+    const title = source.title || '';
+    const canSaveVideo = videoId
+      && !isMusicVideoTitle(title)
+      && (isDancePracticeTitle(title) || source.videoType === 'dance_practice');
+    if (canSaveVideo) {
       saveSongVideo(matched.id, {
         videoId,
         youtubeUrl: source.youtubeUrl || `https://www.youtube.com/watch?v=${videoId}`,
-        title: source.title || matched.title,
+        title,
+        videoType: 'dance_practice',
       });
     }
     return matched.id;
@@ -58,25 +64,15 @@ export function ensurePracticeSong(source) {
   if (!groupId) return null;
 
   const title = cleanTitle(source.title);
-  const videoId = source.videoId || extractVideoId(source.youtubeUrl);
   const song = registerDynamicSong({
     title,
     groupId,
     artist: source.artist || source.channel,
     albumCover: source.thumbnail || source.albumArt || source.albumCover,
     thumbnail: source.thumbnail,
-    youtubeUrl: source.youtubeUrl || (videoId ? `https://www.youtube.com/watch?v=${videoId}` : ''),
-    videoId,
+    youtubeUrl: '',
     searchTags: [title, source.artist, source.channel, groupId].filter(Boolean),
   });
-
-  if (videoId) {
-    saveSongVideo(song.id, {
-      videoId,
-      youtubeUrl: song.youtubeUrl,
-      title: source.title || title,
-    });
-  }
 
   return song.id;
 }

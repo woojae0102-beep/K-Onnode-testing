@@ -39,13 +39,11 @@ function saveCache(entry) {
 function enrichTrendingItem(raw, rank) {
   const matched = matchStudioSong(raw);
   const songId = ensurePracticeSong({
-    ...raw,
     song: matched,
     rank,
+    title: matched?.title || raw.title,
     artist: raw.artist || raw.channel,
     thumbnail: raw.thumbnail || raw.albumArt,
-    youtubeUrl: raw.youtubeUrl,
-    videoId: raw.videoId || raw.id,
   });
   const song = songId ? getSongById(songId) : null;
   return {
