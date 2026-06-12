@@ -1,5 +1,9 @@
 .group-studio {
+  height: 100dvh;
   min-height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
   background: #030308;
   color: #fff;
   font-family: Inter, -apple-system, sans-serif;

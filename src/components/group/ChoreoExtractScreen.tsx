@@ -48,7 +48,7 @@ export function ChoreoExtractScreen({
     setUrlInput('');
     setUrlError('');
     const saved = getSongVideo(songId);
-    if (saved?.videoId) {
+    if (saved?.videoId && saved.videoType === 'user_youtube') {
       setVideoId(saved.videoId);
       setVideoTitle(saved.title || '');
     }

@@ -46,7 +46,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
     setUrlError('');
 
     const saved = getSongVideo(songId);
-    if (saved?.videoId) {
+    if (saved?.videoId && saved.videoType === 'user_youtube') {
       setVideoId(saved.videoId);
       setVideoTitle(saved.title || '');
     }
@@ -171,9 +171,6 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
 
         <section style={{ marginBottom: 24 }}>
           <h2 className="group-studio-section-title">{t('groupStudio.songDetail.dancePracticeVideo')}</h2>
-          <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.45)', margin: '0 0 12px' }}>
-            {t('groupStudio.songDetail.dancePracticeHint')}
-          </p>
           <div
             style={{
               position: 'relative',
@@ -201,14 +198,14 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
             )}
           </div>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
+          <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
             <input
               type="url"
               value={urlInput}
               onChange={(e) => { setUrlInput(e.target.value); setUrlError(''); }}
               placeholder={t('groupStudio.songDetail.youtubeUrlPlaceholder')}
               style={{
-                flex: 1,
+                flex: '1 1 260px',
                 padding: '10px 12px',
                 borderRadius: 10,
                 border: '1px solid rgba(255,255,255,0.12)',

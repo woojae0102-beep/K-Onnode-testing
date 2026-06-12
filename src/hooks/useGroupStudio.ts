@@ -31,11 +31,12 @@ export function useGroupStudio() {
     setSkeletonData(frames);
     const song = getSongById(selectedSongId);
     const saved = getSongVideo(selectedSongId);
+    const userVideo = saved?.videoType === 'user_youtube' ? saved : null;
     setPracticeVideo({
-      videoId: meta.videoId || saved?.videoId || null,
+      videoId: meta.videoId || userVideo?.videoId || null,
       youtubeUrl: meta.videoId
         ? `https://www.youtube.com/watch?v=${meta.videoId}`
-        : saved?.youtubeUrl || song?.youtubeUrl || null,
+        : userVideo?.youtubeUrl || null,
       fromCache: !!meta.fromCache,
     });
     setPracticeDuration(meta.durationSec || song?.duration || frames?.[frames.length - 1]?.timestamp || 180);
