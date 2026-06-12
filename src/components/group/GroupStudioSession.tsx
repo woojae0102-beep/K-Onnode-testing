@@ -52,6 +52,8 @@ export function GroupStudioSession({
   const [showGhost, setShowGhost] = useState(true);
   const [isPaused, setIsPaused] = useState(false);
   const [studioModalOpen, setStudioModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const screenRef = useRef(null);
   const animFrameRef = useRef(0);
   const groupStageRef = useRef(null);
   const slotEnteredRef = useRef(false);
@@ -64,6 +66,35 @@ export function GroupStudioSession({
   const { scores, calculate: calculateSync, reset: resetSync } = useSyncScore(myMemberId, myDefault);
 
   const isPracticing = sessionPhase === 'practicing';
+
+  useEffect(() => {
+    const updateFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
+    };
+    updateFullscreen();
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    document.addEventListener('webkitfullscreenchange', updateFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', updateFullscreen);
+      document.removeEventListener('webkitfullscreenchange', updateFullscreen);
+    };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (fullscreenElement) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else await document.webkitExitFullscreen?.();
+      } else {
+        const target = screenRef.current || document.documentElement;
+        if (target.requestFullscreen) await target.requestFullscreen();
+        else await target.webkitRequestFullscreen?.();
+      }
+    } catch {
+      /* fullscreen can be blocked by browser/device settings */
+    }
+  }, []);
 
   const studio = useStudioSession({
     localStream: dance.getStream(),
@@ -356,7 +387,7 @@ export function GroupStudioSession({
       };
 
   return (
-    <div className={`tv-mode group-studio-session ${layoutClass}`} style={gridStyle}>
+    <div ref={screenRef} className={`tv-mode group-studio-session ${layoutClass}`} style={gridStyle}>
       <header
         style={{
           gridColumn: isMobile ? undefined : '1 / -1',
@@ -374,14 +405,24 @@ export function GroupStudioSession({
             {group.nameKr} · {myMember.nameKr}
           </span>
         </div>
-        <button
-          type="button"
-          className={`studio-tv-btn ${studio.isConnected ? 'is-live' : ''}`}
-          onClick={() => setStudioModalOpen(true)}
-          style={{ fontSize: 11, padding: '6px 12px' }}
-        >
-          {t('groupStudio.session.tvConnect')}
-        </button>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            className={`studio-tv-btn ${studio.isConnected ? 'is-live' : ''}`}
+            onClick={() => setStudioModalOpen(true)}
+            style={{ fontSize: 11, padding: '6px 12px' }}
+          >
+            {t('groupStudio.session.tvConnect')}
+          </button>
+          <button
+            type="button"
+            className={`studio-tv-btn studio-fullscreen-btn ${isFullscreen ? 'is-live' : ''}`}
+            onClick={handleToggleFullscreen}
+            style={{ fontSize: 11, padding: '6px 12px' }}
+          >
+            {isFullscreen ? '전체 화면 해제' : '전체 화면'}
+          </button>
+        </div>
       </header>
 
       <StudioConnectModal

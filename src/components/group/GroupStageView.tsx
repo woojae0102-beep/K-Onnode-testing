@@ -37,6 +37,8 @@ export function GroupStageView({
   const [isPaused, setIsPaused] = useState(false);
   const [scores, setScores] = useState({});
   const [studioModalOpen, setStudioModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const screenRef = useRef(null);
   const animFrameRef = useRef(0);
   const groupStageRef = useRef(null);
 
@@ -44,6 +46,35 @@ export function GroupStageView({
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
   const avatarSync = useAvatarSync(skeletonData);
   const formation = useFormationTracker(groupId, myMemberId);
+
+  useEffect(() => {
+    const updateFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
+    };
+    updateFullscreen();
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    document.addEventListener('webkitfullscreenchange', updateFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', updateFullscreen);
+      document.removeEventListener('webkitfullscreenchange', updateFullscreen);
+    };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (fullscreenElement) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else await document.webkitExitFullscreen?.();
+      } else {
+        const target = screenRef.current || document.documentElement;
+        if (target.requestFullscreen) await target.requestFullscreen();
+        else await target.webkitRequestFullscreen?.();
+      }
+    } catch {
+      /* fullscreen can be blocked by browser/device settings */
+    }
+  }, []);
 
   const studio = useStudioSession({
     localStream: dance.getStream(),
@@ -255,7 +286,7 @@ export function GroupStageView({
       };
 
   return (
-    <div className={`tv-mode group-stage-screen ${layoutClass}`} style={gridStyle}>
+    <div ref={screenRef} className={`tv-mode group-stage-screen ${layoutClass}`} style={gridStyle}>
       <header
         style={{
           gridColumn: isMobile ? undefined : '1 / -1',
@@ -285,6 +316,14 @@ export function GroupStageView({
             style={{ fontSize: 11, padding: '6px 12px' }}
           >
             📺 TV 연결
+          </button>
+          <button
+            type="button"
+            className={`studio-tv-btn studio-fullscreen-btn ${isFullscreen ? 'is-live' : ''}`}
+            onClick={handleToggleFullscreen}
+            style={{ fontSize: 11, padding: '6px 12px' }}
+          >
+            {isFullscreen ? '전체 화면 해제' : '전체 화면'}
           </button>
           <FormationGuide groupId={groupId} myMemberId={myMemberId} />
         </div>

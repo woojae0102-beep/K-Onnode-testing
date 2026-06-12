@@ -84,6 +84,10 @@ export function TVLayout({
 
   const [isPaused, setIsPaused] = useState(false);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const screenRef = useRef(null);
+
   const refPlayerRef = useRef(null);
 
   const [lineScores, setLineScores] = useState(() => TV_VOCAL_LINES.map(() => null));
@@ -251,6 +255,60 @@ export function TVLayout({
   const practiceStep = Math.min(PRACTICE_STEPS.length, Math.floor(sessionTime / 45) + 1);
 
   const practiceStepLabel = PRACTICE_STEPS[practiceStep - 1] || '연습';
+
+  useEffect(() => {
+
+    const updateFullscreen = () => {
+
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
+
+    };
+
+    updateFullscreen();
+
+    document.addEventListener('fullscreenchange', updateFullscreen);
+
+    document.addEventListener('webkitfullscreenchange', updateFullscreen);
+
+    return () => {
+
+      document.removeEventListener('fullscreenchange', updateFullscreen);
+
+      document.removeEventListener('webkitfullscreenchange', updateFullscreen);
+
+    };
+
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+
+    try {
+
+      if (fullscreenElement) {
+
+        if (document.exitFullscreen) await document.exitFullscreen();
+
+        else await document.webkitExitFullscreen?.();
+
+      } else {
+
+        const target = screenRef.current || document.documentElement;
+
+        if (target.requestFullscreen) await target.requestFullscreen();
+
+        else await target.webkitRequestFullscreen?.();
+
+      }
+
+    } catch {
+
+      /* fullscreen can be blocked by browser/device settings */
+
+    }
+
+  }, []);
 
 
 
@@ -570,7 +628,7 @@ export function TVLayout({
 
   return (
 
-    <div className={`tv-mode tv-training-screen ${layoutClass} ${studioControllerMode ? 'tv-studio-controller' : ''}`}>
+    <div ref={screenRef} className={`tv-mode tv-training-screen ${layoutClass} ${studioControllerMode ? 'tv-studio-controller' : ''}`}>
 
       <header className="tv-training-header">
 
@@ -619,6 +677,20 @@ export function TVLayout({
           >
 
             📺 TV 연결
+
+          </button>
+
+          <button
+
+            type="button"
+
+            className={`studio-tv-btn studio-fullscreen-btn ${isFullscreen ? 'is-live' : ''}`}
+
+            onClick={handleToggleFullscreen}
+
+          >
+
+            {isFullscreen ? '전체 화면 해제' : '전체 화면'}
 
           </button>
 

@@ -26,12 +26,7 @@ export function TVModeEntry({
     [t],
   );
 
-  const handleStart = async () => {
-    try {
-      await document.documentElement.requestFullscreen();
-    } catch {
-      /* fullscreen not available on some mobile browsers */
-    }
+  const handleStart = () => {
     document.body.classList.add('tv-active');
     onStart(selectedAgency, selectedMode);
   };
