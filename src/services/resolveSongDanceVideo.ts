@@ -17,7 +17,12 @@ export async function resolveSongDanceVideo(song, { force = false } = {}) {
   }
 
   const query = buildDancePracticeQuery(song);
-  const items = await searchYoutubeDance(query, 10);
+  let items = [];
+  try {
+    items = await searchYoutubeDance(query, 10);
+  } catch {
+    return saved?.videoId && !isMusicVideoTitle(saved.title) ? saved : null;
+  }
   const best = pickBestDancePracticeVideo(items);
 
   if (!best?.videoId) {

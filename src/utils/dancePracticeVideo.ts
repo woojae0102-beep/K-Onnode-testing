@@ -38,9 +38,26 @@ export function buildDancePracticeQuery(song) {
   return `${groupName} ${groupKr} ${title} 안무 연습 dance practice`.trim();
 }
 
+export function extractYoutubeVideoId(url) {
+  if (!url) return '';
+  const m = String(url).match(/(?:v=|youtu\.be\/|\/embed\/|\/shorts\/)([\w-]{11})/);
+  return m?.[1] || '';
+}
+
+export function isLikelyDancePracticeItem(item) {
+  if (!item) return false;
+  if (typeof item.danceScore === 'number' && item.danceScore > 0) return true;
+  return isDancePracticeTitle(item.title);
+}
+
 export function pickBestDancePracticeVideo(items = []) {
   return items
-    .map((item) => ({ item, score: scoreDancePracticeTitle(item.title) }))
+    .map((item) => ({
+      item,
+      score: typeof item.danceScore === 'number' && item.danceScore > 0
+        ? item.danceScore
+        : scoreDancePracticeTitle(item.title),
+    }))
     .filter((row) => row.score > 0)
     .sort((a, b) => b.score - a.score)[0]?.item || null;
 }

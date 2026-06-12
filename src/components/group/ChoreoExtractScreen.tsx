@@ -6,6 +6,7 @@ import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useGroupChoreoExtract } from '../../hooks/useGroupChoreoExtract';
 import { getSongVideo, saveSongVideo } from '../../services/groupStudioStorage';
 import { resolveSongDanceVideo } from '../../services/resolveSongDanceVideo';
+import { extractYoutubeVideoId } from '../../utils/dancePracticeVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import '../../styles/group-studio.css';
 
@@ -27,6 +28,9 @@ export function ChoreoExtractScreen({
   const [videoId, setVideoId] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
   const [cacheReady, setCacheReady] = useState(false);
+  const [urlInput, setUrlInput] = useState('');
+  const [urlError, setUrlError] = useState('');
+  const [resolvingVideo, setResolvingVideo] = useState(false);
 
   const {
     isExtracting,
@@ -41,12 +45,24 @@ export function ChoreoExtractScreen({
 
   useEffect(() => {
     if (!songId || !song) return undefined;
+    const saved = getSongVideo(songId);
+    if (saved?.videoId) {
+      setVideoId(saved.videoId);
+      setVideoTitle(saved.title || '');
+      return undefined;
+    }
+
     let cancelled = false;
-    resolveSongDanceVideo(song, { force: false }).then((resolved) => {
-      if (cancelled || !resolved?.videoId) return;
-      setVideoId(resolved.videoId);
-      setVideoTitle(resolved.title || '');
-    });
+    setResolvingVideo(true);
+    resolveSongDanceVideo(song, { force: false })
+      .then((resolved) => {
+        if (cancelled || !resolved?.videoId) return;
+        setVideoId(resolved.videoId);
+        setVideoTitle(resolved.title || '');
+      })
+      .finally(() => {
+        if (!cancelled) setResolvingVideo(false);
+      });
     return () => { cancelled = true; };
   }, [songId, song]);
 
@@ -100,6 +116,23 @@ export function ChoreoExtractScreen({
     runExtract(null);
   }, [videoId, runExtract]);
 
+  const handleApplyUrl = useCallback(() => {
+    const id = extractYoutubeVideoId(urlInput.trim());
+    if (!id) {
+      setUrlError(t('groupStudio.choreoExtract.invalidYoutubeUrl'));
+      return;
+    }
+    setUrlError('');
+    setVideoId(id);
+    setVideoTitle('');
+    saveSongVideo(songId, {
+      videoId: id,
+      youtubeUrl: `https://www.youtube.com/watch?v=${id}`,
+      title: '',
+      videoType: 'dance_practice',
+    });
+  }, [urlInput, songId, t]);
+
   if (!song || !group || !member) return null;
 
   const youtubeUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : '';
@@ -135,11 +168,49 @@ export function ChoreoExtractScreen({
           {youtubeUrl ? (
             <YouTubeTVPlayer ref={ytRef} embedUrl={youtubeUrl} autoplay={false} />
           ) : (
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13 }}>
-              {t('groupStudio.choreoExtract.noVideo')}
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13, padding: '0 16px', textAlign: 'center' }}>
+              {resolvingVideo ? t('groupStudio.choreoExtract.resolvingVideo') : t('groupStudio.choreoExtract.noVideo')}
             </div>
           )}
         </div>
+
+        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+          <input
+            type="url"
+            value={urlInput}
+            onChange={(e) => { setUrlInput(e.target.value); setUrlError(''); }}
+            placeholder={t('groupStudio.choreoExtract.youtubeUrlPlaceholder')}
+            style={{
+              flex: 1,
+              padding: '10px 12px',
+              borderRadius: 10,
+              border: '1px solid rgba(255,255,255,0.12)',
+              background: 'rgba(255,255,255,0.04)',
+              color: '#fff',
+              fontSize: 13,
+            }}
+          />
+          <button
+            type="button"
+            onClick={handleApplyUrl}
+            style={{
+              padding: '10px 16px',
+              borderRadius: 10,
+              border: 'none',
+              background: `linear-gradient(135deg, ${song.albumColor}, ${song.albumColor2})`,
+              color: '#fff',
+              fontSize: 13,
+              fontWeight: 600,
+              cursor: 'pointer',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            {t('groupStudio.choreoExtract.applyYoutubeUrl')}
+          </button>
+        </div>
+        {urlError ? (
+          <p style={{ fontSize: 12, color: '#FF6B6B', margin: '0 0 12px' }}>{urlError}</p>
+        ) : null}
 
         {videoTitle ? (
           <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginBottom: 16 }}>

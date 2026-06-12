@@ -1,7 +1,19 @@
 // @ts-nocheck
 
+const SEARCH_TIMEOUT_MS = 18000;
+
+async function fetchWithTimeout(url, options = {}, timeoutMs = SEARCH_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...options, signal: controller.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function searchYoutubeDance(query, limit = 8) {
-  const res = await fetch('/api/group?path=youtube-search', {
+  const res = await fetchWithTimeout('/api/group?path=youtube-search', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ query, limit }),
