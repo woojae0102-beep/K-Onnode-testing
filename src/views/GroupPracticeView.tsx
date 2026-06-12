@@ -1,7 +1,8 @@
 // @ts-nocheck
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroupStudio } from '../hooks/useGroupStudio';
+import { useStudioSession } from '../hooks/useStudioSession';
 import { getSongById } from '../data/groupStudioSongs';
 import { GROUP_DATA } from '../data/groupPracticeData';
 import { saveTeachingReport } from '../services/teachingReportStore';
@@ -13,8 +14,10 @@ import PositionPicker from '../components/group/PositionPicker';
 import GroupStudioSession from '../components/group/GroupStudioSession';
 import ChoreoExtractScreen from '../components/group/ChoreoExtractScreen';
 import PerformanceReport from '../components/group/PerformanceReport';
+import StudioConnectModal from '../components/studio/StudioConnectModal';
 import type { Agency } from '../types/tv';
 import '../styles/group-studio.css';
+import '../styles/studio-mode.css';
 
 export default function GroupPracticeView({
   agency = 'hybe',
@@ -24,6 +27,9 @@ export default function GroupPracticeView({
   onHome?: () => void;
 }) {
   const { user } = useAuth();
+  const screenRef = useRef(null);
+  const [studioModalOpen, setStudioModalOpen] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const {
     phase,
     selectedSongId,
@@ -45,6 +51,44 @@ export default function GroupPracticeView({
 
   const song = selectedSongId ? getSongById(selectedSongId) : null;
   const groupId = song?.groupId;
+  const studio = useStudioSession({
+    localStream: null,
+    mode: 'group',
+    agency,
+    songTitle: song ? `${song.title} · 그룹 스튜디오` : '그룹 스튜디오',
+    practiceStep: 1,
+    practiceStepLabel: '그룹 스튜디오',
+    isPlaying: false,
+  });
+
+  useEffect(() => {
+    const updateFullscreen = () => {
+      setIsFullscreen(Boolean(document.fullscreenElement || document.webkitFullscreenElement));
+    };
+    updateFullscreen();
+    document.addEventListener('fullscreenchange', updateFullscreen);
+    document.addEventListener('webkitfullscreenchange', updateFullscreen);
+    return () => {
+      document.removeEventListener('fullscreenchange', updateFullscreen);
+      document.removeEventListener('webkitfullscreenchange', updateFullscreen);
+    };
+  }, []);
+
+  const handleToggleFullscreen = useCallback(async () => {
+    const fullscreenElement = document.fullscreenElement || document.webkitFullscreenElement;
+    try {
+      if (fullscreenElement) {
+        if (document.exitFullscreen) await document.exitFullscreen();
+        else await document.webkitExitFullscreen?.();
+      } else {
+        const target = screenRef.current || document.documentElement;
+        if (target.requestFullscreen) await target.requestFullscreen();
+        else await target.webkitRequestFullscreen?.();
+      }
+    } catch {
+      /* fullscreen can be blocked by browser/device settings */
+    }
+  }, []);
 
   const handleEnd = useCallback(
     async (result) => {
@@ -131,7 +175,45 @@ export default function GroupPracticeView({
   }, [goHome, onHome]);
 
   return (
-    <div className="group-studio">
+    <div ref={screenRef} className="group-studio">
+      {phase !== 'practice' ? (
+        <>
+          <div className="group-studio-top-controls">
+            <button
+              type="button"
+              className={`studio-tv-btn ${studio.isConnected ? 'is-live' : ''}`}
+              onClick={() => setStudioModalOpen(true)}
+            >
+              📺 TV 연결
+            </button>
+            <button
+              type="button"
+              className={`studio-tv-btn studio-fullscreen-btn ${isFullscreen ? 'is-live' : ''}`}
+              onClick={handleToggleFullscreen}
+            >
+              {isFullscreen ? '전체 화면 해제' : '전체 화면'}
+            </button>
+          </div>
+          <StudioConnectModal
+            open={studioModalOpen}
+            onClose={() => setStudioModalOpen(false)}
+            mode="group"
+            sessionCode={studio.sessionCode}
+            displayUrl={studio.displayUrl}
+            studioEnabled={studio.studioEnabled}
+            isConnected={studio.isConnected}
+            webrtcStatus={studio.webrtcStatus}
+            syncError={studio.syncError}
+            webrtcError={studio.webrtcError}
+            onStartStudio={studio.startStudio}
+            onJoinStudio={studio.joinStudio}
+            onStopStudio={() => {
+              studio.stopStudio();
+              setStudioModalOpen(false);
+            }}
+          />
+        </>
+      ) : null}
       {phase === 'home' && (
         <GroupStudioHome onSelectSong={selectSong} onBack={onHome ? handleGoHome : undefined} />
       )}

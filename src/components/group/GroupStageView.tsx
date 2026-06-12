@@ -308,7 +308,19 @@ export function GroupStageView({
             </span>
           ) : null}
         </div>
-        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+        <div
+          style={{
+            position: 'fixed',
+            top: 'calc(12px + env(safe-area-inset-top, 0px))',
+            right: 12,
+            zIndex: 60,
+            display: 'flex',
+            gap: 8,
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            justifyContent: 'flex-end',
+          }}
+        >
           <button
             type="button"
             className={`studio-tv-btn ${studio.isConnected ? 'is-live' : ''}`}

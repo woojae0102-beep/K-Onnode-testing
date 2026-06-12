@@ -99,6 +99,10 @@ body.tv-active.tv-result-open {
 }
 
 .tv-training-header-right {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  right: 12px;
+  z-index: 60;
   display: flex;
   align-items: center;
   gap: 10px;
