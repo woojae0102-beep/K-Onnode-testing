@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { forwardRef, useEffect, useImperativeHandle, useRef, useState } from 'react';
 import YouTubeTVPlayer from './YouTubeTVPlayer';
 
 function toEmbed(url) {
@@ -19,6 +19,34 @@ function toEmbed(url) {
   return listId ? `${base}?list=${listId}` : base;
 }
 
+const LocalVideoPlayer = forwardRef(function LocalVideoPlayer({ src, className = '' }, ref) {
+  const videoRef = useRef(null);
+
+  useImperativeHandle(ref, () => ({
+    play: () => videoRef.current?.play?.(),
+    pause: () => videoRef.current?.pause?.(),
+    seekTo: (sec) => {
+      if (videoRef.current) videoRef.current.currentTime = Math.max(0, sec);
+    },
+    getCurrentTime: () => videoRef.current?.currentTime || 0,
+    getDuration: () => videoRef.current?.duration || 0,
+    setPlaybackRate: (rate) => {
+      if (videoRef.current) videoRef.current.playbackRate = rate;
+    },
+    isReady: () => Boolean(videoRef.current?.readyState >= 1),
+  }));
+
+  return (
+    <video
+      ref={videoRef}
+      src={src}
+      controls
+      playsInline
+      className={`tv-reference-local-video ${className}`}
+    />
+  );
+});
+
 export default function TVReferencePanel({
   mode,
   embedUrl,
@@ -28,6 +56,12 @@ export default function TVReferencePanel({
 }) {
   const [inputUrl, setInputUrl] = useState('');
   const [error, setError] = useState('');
+  const [sourceType, setSourceType] = useState('');
+  const fileObjectUrlRef = useRef('');
+
+  useEffect(() => () => {
+    if (fileObjectUrlRef.current) URL.revokeObjectURL(fileObjectUrlRef.current);
+  }, []);
 
   const handleLoad = () => {
     const embed = toEmbed(inputUrl);
@@ -36,10 +70,39 @@ export default function TVReferencePanel({
       return;
     }
     setError('');
-    onEmbedUrlChange?.(embed);
+    setSourceType('youtube');
+    onEmbedUrlChange?.(embed, { source: 'youtube' });
+  };
+
+  const handleUpload = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type?.startsWith('video/')) {
+      setError('영상 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    if (fileObjectUrlRef.current) URL.revokeObjectURL(fileObjectUrlRef.current);
+    const objectUrl = URL.createObjectURL(file);
+    fileObjectUrlRef.current = objectUrl;
+    setError('');
+    setInputUrl('');
+    setSourceType('upload');
+    onEmbedUrlChange?.(objectUrl, { source: 'upload', title: file.name });
+  };
+
+  const handleReset = () => {
+    if (fileObjectUrlRef.current) {
+      URL.revokeObjectURL(fileObjectUrlRef.current);
+      fileObjectUrlRef.current = '';
+    }
+    setInputUrl('');
+    setError('');
+    setSourceType('');
+    onEmbedUrlChange?.('', { source: '' });
   };
 
   const label = mode === 'vocal' ? '연습 곡 / MR 영상' : '연습 안무 영상';
+  const isLocalVideo = sourceType === 'upload' || embedUrl?.startsWith('blob:') || embedUrl?.startsWith('data:');
 
   return (
     <div className="tv-simple-panel tv-reference-panel">
@@ -60,16 +123,32 @@ export default function TVReferencePanel({
                 불러오기
               </button>
             </div>
+            <label className="tv-reference-upload-btn">
+              영상 파일 업로드
+              <input type="file" accept="video/*" onChange={handleUpload} />
+            </label>
             {error ? <p className="tv-reference-error">{error}</p> : null}
           </div>
+        ) : isLocalVideo ? (
+          <>
+            <LocalVideoPlayer ref={playerRef} src={embedUrl} className="tv-reference-player" />
+            <button type="button" className="tv-reference-change-btn" onClick={handleReset}>
+              영상 변경
+            </button>
+          </>
         ) : (
-          <YouTubeTVPlayer
-            ref={playerRef}
-            embedUrl={embedUrl}
-            playbackRate={playbackRate}
-            autoplay={false}
-            className="tv-reference-player"
-          />
+          <>
+            <YouTubeTVPlayer
+              ref={playerRef}
+              embedUrl={embedUrl}
+              playbackRate={playbackRate}
+              autoplay={false}
+              className="tv-reference-player"
+            />
+            <button type="button" className="tv-reference-change-btn" onClick={handleReset}>
+              영상 변경
+            </button>
+          </>
         )}
       </div>
     </div>

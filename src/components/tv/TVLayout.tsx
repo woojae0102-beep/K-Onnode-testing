@@ -530,11 +530,19 @@ export function TVLayout({
 
 
 
-  const handleReferenceChange = (url) => {
+  const handleReferenceChange = (url, meta = {}) => {
 
     setReferenceVideoUrl(url);
 
     if (url) {
+
+      if (meta.title) {
+
+        setSongTitle(meta.title);
+
+        return;
+
+      }
 
       try {
 
@@ -549,6 +557,10 @@ export function TVLayout({
         setSongTitle('K-POP 연습');
 
       }
+
+    } else {
+
+      setSongTitle('');
 
     }
 

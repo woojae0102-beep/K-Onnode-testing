@@ -5,7 +5,6 @@ import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useGroupChoreoExtract } from '../../hooks/useGroupChoreoExtract';
 import { getSongVideo, saveSongVideo } from '../../services/groupStudioStorage';
-import { resolveSongDanceVideo } from '../../services/resolveSongDanceVideo';
 import { extractYoutubeVideoId } from '../../utils/dancePracticeVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import '../../styles/group-studio.css';
@@ -30,7 +29,6 @@ export function ChoreoExtractScreen({
   const [cacheReady, setCacheReady] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
-  const [resolvingVideo, setResolvingVideo] = useState(false);
 
   const {
     isExtracting,
@@ -45,25 +43,15 @@ export function ChoreoExtractScreen({
 
   useEffect(() => {
     if (!songId || !song) return undefined;
+    setVideoId('');
+    setVideoTitle('');
+    setUrlInput('');
+    setUrlError('');
     const saved = getSongVideo(songId);
     if (saved?.videoId) {
       setVideoId(saved.videoId);
       setVideoTitle(saved.title || '');
-      return undefined;
     }
-
-    let cancelled = false;
-    setResolvingVideo(true);
-    resolveSongDanceVideo(song, { force: false })
-      .then((resolved) => {
-        if (cancelled || !resolved?.videoId) return;
-        setVideoId(resolved.videoId);
-        setVideoTitle(resolved.title || '');
-      })
-      .finally(() => {
-        if (!cancelled) setResolvingVideo(false);
-      });
-    return () => { cancelled = true; };
   }, [songId, song]);
 
   useEffect(() => {
@@ -92,7 +80,7 @@ export function ChoreoExtractScreen({
           videoId,
           youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
           title: videoTitle,
-          videoType: 'dance_practice',
+          videoType: 'user_youtube',
         });
       }
       onComplete(frames, { videoId, durationSec: frames[frames.length - 1]?.timestamp || song.duration });
@@ -129,7 +117,7 @@ export function ChoreoExtractScreen({
       videoId: id,
       youtubeUrl: `https://www.youtube.com/watch?v=${id}`,
       title: '',
-      videoType: 'dance_practice',
+      videoType: 'user_youtube',
     });
   }, [urlInput, songId, t]);
 
@@ -169,7 +157,7 @@ export function ChoreoExtractScreen({
             <YouTubeTVPlayer ref={ytRef} embedUrl={youtubeUrl} autoplay={false} />
           ) : (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13, padding: '0 16px', textAlign: 'center' }}>
-              {resolvingVideo ? t('groupStudio.choreoExtract.resolvingVideo') : t('groupStudio.choreoExtract.noVideo')}
+              {t('groupStudio.choreoExtract.noVideo')}
             </div>
           )}
         </div>

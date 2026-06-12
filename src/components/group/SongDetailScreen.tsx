@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
@@ -10,13 +10,7 @@ import {
   getSongVideo,
   saveSongVideo,
 } from '../../services/groupStudioStorage';
-import { searchYoutubeDance } from '../../services/groupStudioApi';
-import {
-  buildDancePracticeQuery,
-  extractYoutubeVideoId,
-  isLikelyDancePracticeItem,
-  pickBestDancePracticeVideo,
-} from '../../utils/dancePracticeVideo';
+import { extractYoutubeVideoId } from '../../utils/dancePracticeVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import SongAlbumArt from './SongAlbumArt';
 import SongFavoriteStar from './SongFavoriteStar';
@@ -30,17 +24,26 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
   const [practiceCount, setPracticeCount] = useState(0);
   const [videoId, setVideoId] = useState('');
   const [videoTitle, setVideoTitle] = useState('');
-  const [candidates, setCandidates] = useState([]);
-  const [loadingVideos, setLoadingVideos] = useState(false);
-  const [searchFailed, setSearchFailed] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [uploadedVideoUrl, setUploadedVideoUrl] = useState('');
+  const fileInputRef = useRef(null);
+  const uploadedVideoUrlRef = useRef('');
 
   useEffect(() => {
     if (!songId) return;
     setFavTick((n) => n + 1);
     setPracticeCount(getSongPracticeCount(songId));
     addRecentSong(songId);
+    if (uploadedVideoUrlRef.current) {
+      URL.revokeObjectURL(uploadedVideoUrlRef.current);
+      uploadedVideoUrlRef.current = '';
+    }
+    setUploadedVideoUrl('');
+    setVideoId('');
+    setVideoTitle('');
+    setUrlInput('');
+    setUrlError('');
 
     const saved = getSongVideo(songId);
     if (saved?.videoId) {
@@ -49,67 +52,9 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
     }
   }, [songId]);
 
-  useEffect(() => {
-    if (!song) return undefined;
-    let cancelled = false;
-    setLoadingVideos(true);
-    setSearchFailed(false);
-
-    const loadVideos = async () => {
-      try {
-        const saved = getSongVideo(song.id);
-        if (saved?.videoId) {
-          if (!cancelled) {
-            setVideoId(saved.videoId);
-            setVideoTitle(saved.title || '');
-          }
-          return;
-        }
-
-        const query = buildDancePracticeQuery(song);
-        const searchItems = await searchYoutubeDance(query, 10);
-        if (cancelled) return;
-
-        const practiceItems = searchItems.filter((it) => isLikelyDancePracticeItem(it));
-        setCandidates(practiceItems);
-
-        const best = pickBestDancePracticeVideo(practiceItems.length ? practiceItems : searchItems);
-        if (best?.videoId) {
-          setVideoId(best.videoId);
-          setVideoTitle(best.title || '');
-          saveSongVideo(song.id, {
-            videoId: best.videoId,
-            youtubeUrl: best.youtubeUrl,
-            title: best.title,
-            durationSec: best.durationSec,
-            videoType: 'dance_practice',
-          });
-        } else {
-          setSearchFailed(true);
-        }
-      } catch {
-        if (!cancelled) setSearchFailed(true);
-      } finally {
-        if (!cancelled) setLoadingVideos(false);
-      }
-    };
-
-    loadVideos();
-    return () => { cancelled = true; };
-  }, [song?.id, song?.title, song?.groupId]);
-
-  const handleSelectVideo = useCallback((item) => {
-    if (!isLikelyDancePracticeItem(item)) return;
-    setVideoId(item.videoId);
-    setVideoTitle(item.title || '');
-    saveSongVideo(songId, {
-      videoId: item.videoId,
-      youtubeUrl: item.youtubeUrl,
-      title: item.title,
-      durationSec: item.durationSec,
-      videoType: 'dance_practice',
-    });
-  }, [songId]);
+  useEffect(() => () => {
+    if (uploadedVideoUrlRef.current) URL.revokeObjectURL(uploadedVideoUrlRef.current);
+  }, []);
 
   const handleApplyUrl = useCallback(() => {
     const id = extractYoutubeVideoId(urlInput.trim());
@@ -118,15 +63,37 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
       return;
     }
     setUrlError('');
+    if (uploadedVideoUrlRef.current) {
+      URL.revokeObjectURL(uploadedVideoUrlRef.current);
+      uploadedVideoUrlRef.current = '';
+    }
+    setUploadedVideoUrl('');
     setVideoId(id);
     setVideoTitle('');
     saveSongVideo(songId, {
       videoId: id,
       youtubeUrl: `https://www.youtube.com/watch?v=${id}`,
       title: '',
-      videoType: 'dance_practice',
+      videoType: 'user_youtube',
     });
   }, [urlInput, songId, t]);
+
+  const handleUploadVideo = useCallback((e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type?.startsWith('video/')) {
+      setUrlError('영상 파일만 업로드할 수 있습니다.');
+      return;
+    }
+    if (uploadedVideoUrlRef.current) URL.revokeObjectURL(uploadedVideoUrlRef.current);
+    const objectUrl = URL.createObjectURL(file);
+    uploadedVideoUrlRef.current = objectUrl;
+    setUploadedVideoUrl(objectUrl);
+    setVideoId('');
+    setVideoTitle(file.name);
+    setUrlInput('');
+    setUrlError('');
+  }, []);
 
   const handleStart = useCallback(() => {
     if (videoId) {
@@ -134,7 +101,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
         videoId,
         youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
         title: videoTitle,
-        videoType: 'dance_practice',
+        videoType: 'user_youtube',
       });
     }
     onStart();
@@ -218,22 +185,21 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
               marginBottom: 12,
             }}
           >
-            {youtubeUrl ? (
+            {uploadedVideoUrl ? (
+              <video
+                src={uploadedVideoUrl}
+                controls
+                playsInline
+                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
+              />
+            ) : youtubeUrl ? (
               <YouTubeTVPlayer embedUrl={youtubeUrl} autoplay={false} />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13, padding: '0 16px', textAlign: 'center' }}>
-                {loadingVideos
-                  ? t('groupStudio.songDetail.loadingDanceVideos')
-                  : t('groupStudio.songDetail.noDanceVideo')}
+                {t('groupStudio.songDetail.noDanceVideo')}
               </div>
             )}
           </div>
-
-          {searchFailed && !videoId ? (
-            <p style={{ fontSize: 12, color: '#FFB347', margin: '0 0 12px', lineHeight: 1.6 }}>
-              {t('groupStudio.songDetail.searchFailedHint')}
-            </p>
-          ) : null}
 
           <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
             <input
@@ -268,42 +234,27 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
             >
               {t('groupStudio.songDetail.applyYoutubeUrl')}
             </button>
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              style={{
+                padding: '10px 16px',
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+                fontSize: 13,
+                fontWeight: 600,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              영상 업로드
+            </button>
+            <input ref={fileInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleUploadVideo} />
           </div>
           {urlError ? (
             <p style={{ fontSize: 12, color: '#FF6B6B', margin: '0 0 12px' }}>{urlError}</p>
-          ) : null}
-
-          {candidates.length > 0 ? (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-              {candidates.map((item) => (
-                <button
-                  key={item.videoId}
-                  type="button"
-                  className="group-studio-search-row"
-                  onClick={() => handleSelectVideo(item)}
-                  style={{
-                    border: videoId === item.videoId ? `1px solid ${song.albumColor}` : undefined,
-                    background: videoId === item.videoId ? `${song.albumColor}22` : undefined,
-                  }}
-                >
-                  {item.thumbnail ? (
-                    <img
-                      src={item.thumbnail}
-                      alt=""
-                      style={{ width: 72, height: 40, objectFit: 'cover', borderRadius: 6 }}
-                    />
-                  ) : (
-                    <div className="group-studio-search-thumb" style={{ width: 72, height: 40 }} />
-                  )}
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: 12, fontWeight: 600 }}>{item.title}</div>
-                    <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.4)' }}>
-                      {item.channel} · {Math.floor((item.durationSec || 0) / 60)}:{String((item.durationSec || 0) % 60).padStart(2, '0')}
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
           ) : null}
         </section>
 
