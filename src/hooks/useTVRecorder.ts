@@ -11,6 +11,7 @@ export function useTVRecorder() {
   const recorderRef = useRef(null);
   const chunksRef = useRef([]);
   const [recordedUrl, setRecordedUrl] = useState(null);
+  const [recordedBlob, setRecordedBlob] = useState(null);
   const [isRecording, setIsRecording] = useState(false);
 
   const revokeUrl = useCallback(() => {
@@ -18,6 +19,7 @@ export function useTVRecorder() {
       URL.revokeObjectURL(recordedUrl);
       setRecordedUrl(null);
     }
+    setRecordedBlob(null);
   }, [recordedUrl]);
 
   const startRecording = useCallback((stream) => {
@@ -44,25 +46,26 @@ export function useTVRecorder() {
       const recorder = recorderRef.current;
       if (!recorder || recorder.state === 'inactive') {
         setIsRecording(false);
-        resolve(recordedUrl || null);
+        resolve({ url: recordedUrl || null, blob: recordedBlob || null });
         return;
       }
       recorder.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType || 'video/webm' });
         const url = URL.createObjectURL(blob);
+        setRecordedBlob(blob);
         setRecordedUrl(url);
         setIsRecording(false);
         recorderRef.current = null;
-        resolve(url);
+        resolve({ url, blob });
       };
       try {
         recorder.stop();
       } catch {
         setIsRecording(false);
-        resolve(null);
+        resolve({ url: null, blob: null });
       }
     });
-  }, [recordedUrl]);
+  }, [recordedBlob, recordedUrl]);
 
   const clearRecording = useCallback(() => {
     if (recorderRef.current && recorderRef.current.state !== 'inactive') {
@@ -80,6 +83,7 @@ export function useTVRecorder() {
 
   return {
     recordedUrl,
+    recordedBlob,
     isRecording,
     startRecording,
     stopRecording,

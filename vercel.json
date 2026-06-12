@@ -25,6 +25,10 @@
       "destination": "/api/group?path=:path*"
     },
     {
+      "source": "/api/auth/social/:path*",
+      "destination": "/api/auth/social?path=:path*"
+    },
+    {
       "source": "/oauth/callback/kakao",
       "destination": "/index.html"
     },

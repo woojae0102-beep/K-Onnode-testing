@@ -5,6 +5,7 @@ import AuthScreen from './screens/AuthScreen';
 import OnboardingScreen from './screens/OnboardingScreen';
 import TVDisplayBootstrap from './views/TVDisplayBootstrap';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { SocialAuthProvider } from './contexts/SocialAuthContext';
 import { firebaseInitError } from './firebase';
 import { parseTVCodeFromUrl } from './utils/tvConnect';
 import './index.css';
@@ -117,7 +118,9 @@ function Root() {
 
   return (
     <AuthProvider>
-      <AppGate />
+      <SocialAuthProvider>
+        <AppGate />
+      </SocialAuthProvider>
     </AuthProvider>
   );
 }

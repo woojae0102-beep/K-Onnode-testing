@@ -7,6 +7,7 @@ import { buildLocalCoachReview } from '../../utils/tvCoachReview';
 import CoachReviewBlock from './CoachReviewBlock';
 import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
 import PracticeResultActions from '../common/PracticeResultActions';
+import ShortsCreatorView from '../../views/ShortsCreatorView';
 
 function useCountUp(target, duration = 900) {
   const [value, setValue] = useState(0);
@@ -41,6 +42,7 @@ export function TrainingResultScreen({
   onHome: () => void;
 }) {
   const { t } = useTranslation();
+  const [showShorts, setShowShorts] = useState(false);
   const agencyColor = AGENCY_COLORS[agency];
   const data = sessionData || {
     overallScore: 0,
@@ -128,8 +130,17 @@ export function TrainingResultScreen({
           </section>
         ) : null}
 
-        <PracticeResultActions onRetry={onRetry} onHome={onHome} accent={agencyColor} dark />
+        <PracticeResultActions onRetry={onRetry} onHome={onHome} onShorts={() => setShowShorts(true)} accent={agencyColor} dark />
       </div>
+      {showShorts ? (
+        <ShortsCreatorView
+          videoBlob={data.recordedBlob}
+          scoreData={data.scoreTimeline}
+          trackType={data.mode || 'dance'}
+          overallScore={data.overallScore}
+          onClose={() => setShowShorts(false)}
+        />
+      ) : null}
     </div>
   );
 }

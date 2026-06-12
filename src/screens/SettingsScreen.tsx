@@ -21,6 +21,7 @@ import SettingsSection from '../components/settings/SettingsSection';
 import SettingsItem from '../components/settings/SettingsItem';
 import SubscriptionCard from '../components/settings/SubscriptionCard';
 import LanguageSelector from '../components/settings/LanguageSelector';
+import SocialAccountSettings from '../components/settings/SocialAccountSettings';
 import { useSettings } from '../hooks/useSettings';
 import { useAuth } from '../contexts/AuthContext';
 import { buildAudioConstraints, cameraDefaultToFacingMode } from '../utils/mediaSettings';
@@ -584,6 +585,8 @@ export default function SettingsScreen({ user, db, appId, sessionData }) {
           onRequestCancel={() => setShowCancelModal(true)}
         />
       </SettingsSection>
+
+      <SocialAccountSettings />
 
       <SettingsSection title={t('settings.sections.notifications')}>
         <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 space-y-4">

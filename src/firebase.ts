@@ -5,6 +5,7 @@
 import { initializeApp, FirebaseApp } from 'firebase/app';
 import { getAuth, Auth } from 'firebase/auth';
 import { getFirestore, Firestore } from 'firebase/firestore';
+import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -65,6 +66,7 @@ function readFirebaseConfig(): Record<string, string> | null {
 let _app: FirebaseApp | null = null;
 let _auth: Auth | null = null;
 let _db: Firestore | null = null;
+let _storage: FirebaseStorage | null = null;
 let _initError = '';
 
 try {
@@ -77,6 +79,7 @@ try {
   _app = initializeApp(cfg);
   _auth = getAuth(_app);
   _db = getFirestore(_app);
+  _storage = getStorage(_app);
 } catch (err) {
   _initError = err instanceof Error ? err.message : 'Firebase 초기화 실패';
 }
@@ -84,6 +87,7 @@ try {
 export const app = _app;
 export const auth = _auth as Auth;
 export const db = _db as Firestore;
+export const storage = _storage as FirebaseStorage;
 export const firebaseInitError = _initError;
 
 export const appId =

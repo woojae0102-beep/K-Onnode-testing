@@ -50,6 +50,8 @@ export interface SessionData {
   coachReview?: string;
   referenceVideoUrl?: string;
   recordedMediaUrl?: string;
+  recordedBlob?: Blob;
+  scoreTimeline?: Array<{ time: number; score: number }>;
   lineScores?: number[];
   lyrics?: string[];
   pitchHistory?: number[];

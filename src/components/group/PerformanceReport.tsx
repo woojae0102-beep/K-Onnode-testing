@@ -6,6 +6,7 @@ import { GROUP_DATA } from '../../data/groupPracticeData';
 import '../../styles/group-studio.css';
 import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
 import PracticeResultActions from '../common/PracticeResultActions';
+import ShortsCreatorView from '../../views/ShortsCreatorView';
 
 function scoreColor(v) {
   if (v > 80) return '#00FF88';
@@ -20,6 +21,7 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
   const member = group?.members.find((m) => m.id === memberId);
   const [coachReview, setCoachReview] = useState('');
   const [loading, setLoading] = useState(true);
+  const [showShorts, setShowShorts] = useState(false);
 
   const sync = result?.syncScores || result?.scores || {};
   const overall = result?.overall || sync.overall || 0;
@@ -137,10 +139,22 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
         <PracticeResultActions
           onRetry={onRetry}
           onHome={onHome}
+          onShorts={() => setShowShorts(true)}
           accent={song?.albumColor || '#FF1F8E'}
           dark
         />
       </div>
+      {showShorts ? (
+        <ShortsCreatorView
+          videoBlob={result?.recordedBlob}
+          scoreData={result?.scoreTimeline}
+          trackType="group"
+          groupId={song?.groupId}
+          memberId={memberId}
+          overallScore={overall}
+          onClose={() => setShowShorts(false)}
+        />
+      ) : null}
     </div>
   );
 }

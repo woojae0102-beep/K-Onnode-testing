@@ -16,6 +16,7 @@ import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import { TVCompareBottomDock, TVCompareBottomSheet } from './TVCompareBottomDock';
 import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
 import { useTranslation } from 'react-i18next';
+import ShortsCreatorView from '../../views/ShortsCreatorView';
 
 export default function TVCompareTeachingScreen({
   sessionData,
@@ -45,6 +46,7 @@ export default function TVCompareTeachingScreen({
   const [isPlaying, setIsPlaying] = useState(false);
   const [syncTime, setSyncTime] = useState(0);
   const [sheetTab, setSheetTab] = useState(null);
+  const [showShorts, setShowShorts] = useState(false);
   const { isMobile: isMobileUi, layoutClass } = useTVScreenLayout();
 
   const refPlayerRef = useRef(null);
@@ -363,6 +365,13 @@ export default function TVCompareTeachingScreen({
           >
             {t('tv.compare.showResult')}
           </button>
+          <button
+            type="button"
+            className="tv-footer-btn tv-footer-btn-secondary"
+            onClick={() => setShowShorts(true)}
+          >
+            쇼츠로 받아보기
+          </button>
           <button type="button" className="tv-footer-btn tv-footer-btn-secondary" onClick={onRetrySession}>
             {t('tv.compare.fromStart')}
           </button>
@@ -407,6 +416,15 @@ export default function TVCompareTeachingScreen({
             document.body,
           )
         : null}
+      {showShorts ? (
+        <ShortsCreatorView
+          videoBlob={data.recordedBlob}
+          scoreData={data.scoreTimeline}
+          trackType={data.mode || mode}
+          overallScore={data.overallScore}
+          onClose={() => setShowShorts(false)}
+        />
+      ) : null}
     </div>
   );
 }

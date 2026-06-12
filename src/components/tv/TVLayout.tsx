@@ -436,7 +436,7 @@ export function TVLayout({
 
     studio.stopStudio();
 
-    const recordedMediaUrl = await recorder.stopRecording();
+    const recording = await recorder.stopRecording();
 
 
 
@@ -512,7 +512,19 @@ export function TVLayout({
 
       referenceVideoUrl,
 
-      recordedMediaUrl: recordedMediaUrl || recorder.recordedUrl,
+      recordedMediaUrl: recording?.url || recorder.recordedUrl,
+
+      recordedBlob: recording?.blob || recorder.recordedBlob,
+
+      scoreTimeline: [
+
+        { time: 0, score: Math.max(0, overallScore - 8) },
+
+        { time: Math.max(1, Math.floor(sessionTime / 2)), score: overallScore },
+
+        { time: Math.max(2, sessionTime), score: overallScore },
+
+      ],
 
       lineScores: isDance ? undefined : lineScores,
 
@@ -569,6 +581,10 @@ export function TVLayout({
     studio,
 
     lineScores,
+
+    overallScore,
+
+    sessionTime,
 
   ]);
 

@@ -7,6 +7,7 @@ import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
 import { useAvatarSync } from '../../hooks/useAvatarSync';
 import { useSyncScore } from '../../hooks/useSyncScore';
 import { useStudioSession } from '../../hooks/useStudioSession';
+import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import {
   drawStageBackground,
@@ -61,6 +62,7 @@ export function GroupStudioSession({
 
   const { layoutClass, isMobile } = useTVScreenLayout();
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
+  const recorder = useTVRecorder();
   const avatarSync = useAvatarSync(skeletonData);
   const myDefault = { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5 };
   const { scores, calculate: calculateSync, reset: resetSync } = useSyncScore(myMemberId, myDefault);
@@ -303,10 +305,12 @@ export function GroupStudioSession({
 
   const enterStudio = useCallback(async () => {
     await dance.startTracking();
+    const stream = dance.getStream();
+    if (stream) recorder.startRecording(stream);
     setSessionPhase('waiting_slot');
     cancelAnimationFrame(animFrameRef.current);
     animFrameRef.current = requestAnimationFrame(waitingLoop);
-  }, [dance, waitingLoop]);
+  }, [dance, recorder, waitingLoop]);
 
   useEffect(() => {
     if (!studio.studioEnabled) return undefined;
@@ -332,16 +336,24 @@ export function GroupStudioSession({
     animFrameRef.current = requestAnimationFrame(practiceLoop);
   }, [avatarSync, practiceLoop]);
 
-  const handleEnd = useCallback(() => {
+  const handleEnd = useCallback(async () => {
     cancelAnimationFrame(animFrameRef.current);
     ytPlayerRef.current?.pause?.();
     dance.stopTracking();
     studio.stopStudio();
+    const recording = await recorder.stopRecording();
     onEnd({
       syncScores: scores,
       scores,
       duration: currentTime,
       overall: scores.overall || 0,
+      recordedMediaUrl: recording?.url || recorder.recordedUrl,
+      recordedBlob: recording?.blob || recorder.recordedBlob,
+      scoreTimeline: [
+        { time: 0, score: Math.max(0, (scores.overall || 0) - 10) },
+        { time: Math.max(1, Math.floor(currentTime / 2)), score: scores.overall || 0 },
+        { time: Math.max(2, currentTime), score: scores.overall || 0 },
+      ],
       groupId,
       memberId: myMemberId,
       songId,
@@ -350,7 +362,7 @@ export function GroupStudioSession({
       songTitle: song?.title,
       completed: true,
     });
-  }, [dance, studio, onEnd, scores, currentTime, groupId, myMemberId, songId, group, myMember, song]);
+  }, [dance, studio, recorder, onEnd, scores, currentTime, groupId, myMemberId, songId, group, myMember, song]);
 
   useEffect(() => {
     endPracticeRef.current = handleEnd;

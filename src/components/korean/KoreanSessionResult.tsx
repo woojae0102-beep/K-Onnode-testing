@@ -1,7 +1,8 @@
 // @ts-nocheck
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import PracticeComparisonPanel from '../common/PracticeComparisonPanel';
 import PracticeResultActions from '../common/PracticeResultActions';
+import ShortsCreatorView from '../../views/ShortsCreatorView';
 
 export default function KoreanSessionResult({
   mode,
@@ -12,6 +13,7 @@ export default function KoreanSessionResult({
   onRetry,
   onHome,
 }) {
+  const [showShorts, setShowShorts] = useState(false);
   const overall = Math.round(metrics?.overall ?? metrics?.accuracy ?? feedback?.score ?? 0);
   const modeLabel = {
     pronunciation: '발음 연습',
@@ -70,9 +72,22 @@ export default function KoreanSessionResult({
       <PracticeResultActions
         onRetry={onRetry}
         onHome={onHome}
+        onShorts={() => setShowShorts(true)}
         dark={false}
         accent="#FF1F8E"
       />
+      {showShorts ? (
+        <ShortsCreatorView
+          scoreData={[
+            { time: 0, score: Math.max(0, overall - 8) },
+            { time: 3, score: overall },
+            { time: 6, score: overall },
+          ]}
+          trackType="korean"
+          overallScore={overall}
+          onClose={() => setShowShorts(false)}
+        />
+      ) : null}
     </div>
   );
 }

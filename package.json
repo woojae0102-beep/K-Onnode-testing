@@ -10,6 +10,8 @@
     "generate-pwa-assets": "pwa-assets-generator --preset minimal2023 public/icons/source.svg"
   },
   "dependencies": {
+    "@ffmpeg/ffmpeg": "^0.12.15",
+    "@ffmpeg/util": "^0.12.2",
     "@mediapipe/tasks-vision": "^0.10.34",
     "firebase": "^11.10.0",
     "firebase-admin": "^12.7.0",
