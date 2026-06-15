@@ -7,6 +7,9 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
+    "scheduler:social": "node scripts/social-token-scheduler.cjs",
+    "refresh:instagram": "node -e \"require('./scripts/social-token-scheduler.cjs').refreshInstagramTokens().catch((e)=>{console.error(e);process.exit(1)})\"",
+    "refresh:tiktok": "node -e \"require('./scripts/social-token-scheduler.cjs').refreshTikTokTokens().catch((e)=>{console.error(e);process.exit(1)})\"",
     "generate-pwa-assets": "pwa-assets-generator --preset minimal2023 public/icons/source.svg"
   },
   "dependencies": {
@@ -20,6 +23,7 @@
     "i18next": "^26.0.4",
     "lamejs": "^1.2.1",
     "lucide-react": "^0.468.0",
+    "node-cron": "^4.2.1",
     "qrcode.react": "^4.2.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
