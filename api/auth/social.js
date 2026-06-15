@@ -129,6 +129,14 @@ async function exchangeTikTokCode({ code, redirectUri, codeVerifier }) {
 async function saveAccount(admin, uid, platform, token, account) {
   const db = admin.firestore();
   const ref = db.collection('users').doc(uid).collection(PLATFORM_COLLECTION).doc(platform);
+  const expiresIn = Number(token.expires_in || 0) || null;
+  const expiresAt = expiresIn
+    ? admin.firestore.Timestamp.fromMillis(Date.now() + expiresIn * 1000)
+    : null;
+  const refreshExpiresIn = Number(token.refresh_expires_in || 0) || null;
+  const refreshExpiresAt = refreshExpiresIn
+    ? admin.firestore.Timestamp.fromMillis(Date.now() + refreshExpiresIn * 1000)
+    : null;
   await ref.set({
     platform,
     connected: true,
@@ -137,10 +145,15 @@ async function saveAccount(admin, uid, platform, token, account) {
     pageId: account.pageId || '',
     accessToken: token.access_token || token.accessToken || '',
     refreshToken: token.refresh_token || token.refreshToken || '',
+    refreshExpiresIn,
+    refreshExpiresAt,
     pageAccessToken: account.pageAccessToken || '',
-    expiresIn: token.expires_in || null,
+    expiresIn,
+    expiresAt,
     scope: token.scope || '',
     tokenType: token.token_type || 'Bearer',
+    tokenIssuedAt: admin.firestore.FieldValue.serverTimestamp(),
+    lastTokenRefreshAt: admin.firestore.FieldValue.serverTimestamp(),
     updatedAt: admin.firestore.FieldValue.serverTimestamp(),
   }, { merge: true });
   return {
@@ -177,6 +190,10 @@ async function handleStatus(req, res) {
       accountName: data.accountName || doc.id,
       accountId: data.accountId || '',
       platform: doc.id,
+      expiresAt: data.expiresAt || null,
+      tokenRefreshStatus: data.tokenRefreshStatus || '',
+      tokenRefreshError: data.tokenRefreshError || '',
+      lastTokenRefreshAt: data.lastTokenRefreshAt || null,
       updatedAt: data.updatedAt || null,
     };
   });

@@ -41,6 +41,14 @@
     {
       "path": "/api/cron/update-trending",
       "schedule": "0 0 * * 1"
+    },
+    {
+      "path": "/api/cron/refresh-instagram-tokens",
+      "schedule": "0 3 1 * *"
+    },
+    {
+      "path": "/api/cron/refresh-tiktok-tokens",
+      "schedule": "0 */12 * * *"
     }
   ]
 }
