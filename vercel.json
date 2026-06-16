@@ -29,8 +29,16 @@
       "destination": "/api/knowledge?path=:path*"
     },
     {
-      "source": "/api/auth/social/:path*",
-      "destination": "/api/auth/social?path=:path*"
+      "source": "/api/auth/:path*",
+      "destination": "/api/auth?path=:path*"
+    },
+    {
+      "source": "/api/spotify/:path*",
+      "destination": "/api/spotify?path=:path*"
+    },
+    {
+      "source": "/api/cron/:path*",
+      "destination": "/api/cron?path=:path*"
     },
     {
       "source": "/oauth/callback/kakao",

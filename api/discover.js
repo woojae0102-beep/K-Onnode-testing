@@ -1,4 +1,4 @@
-const { collectTrending, getCache, setCache } = require('./_lib/trending');
+const { collectTrending, getCache, setCache } = require('../lib/api-lib/trending.js');
 
 // Soft TTL — refresh after 6 hours (cron handles the weekly hard refresh).
 const CACHE_TTL_MS = 6 * 60 * 60 * 1000;

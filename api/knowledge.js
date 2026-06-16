@@ -90,6 +90,52 @@ async function handleCollectDaily(body) {
   };
 }
 
+async function handleFetchYouTubeCaptions(body) {
+  const queries = body.queries || [
+    'K-POP 댄스 트레이닝 팁',
+    'K-POP 보컬 레슨 발성법',
+    'K-POP dance tutorial technique',
+    'K-POP vocal training method',
+    '아이돌 댄스 교정 방법',
+    '보컬 트레이닝 호흡법',
+    'K-POP choreography tips',
+    '연습생 댄스 훈련법',
+  ];
+  const results = await collectAndIndexTrainingKnowledge({
+    queries,
+    maxResults: body.maxResults || Number(process.env.TRAINER_KNOWLEDGE_DAILY_MAX_RESULTS || 3),
+    transcriptByVideoId: body.transcriptByVideoId || {},
+  });
+  return {
+    ok: true,
+    message: `${results.reduce((sum, row) => sum + (row.knowledgeCount || 0), 0)}개 지식 추가 완료`,
+    totalSources: results.length,
+    totalKnowledge: results.reduce((sum, row) => sum + (row.knowledgeCount || 0), 0),
+    results,
+  };
+}
+
+async function handleBuildKnowledge(body) {
+  const text = body.transcript || body.text || body.content || '';
+  if (!text) throw new Error('text 또는 transcript가 필요합니다.');
+  const knowledge = await extractTrainingKnowledge({
+    transcript: text,
+    metadata: { source: body.source || 'manual_trainer_knowledge', title: body.title || '전문 트레이너 지식', ...(body.metadata || {}) },
+    domain: body.topic || body.domain || '',
+  });
+  const rows = knowledge.map((row, idx) => ({
+    ...row,
+    id: body.idPrefix ? `${body.idPrefix}_${idx}` : row.id,
+    topic: row.domain,
+    tags: [row.skill, ...(row.mistakes || [])].filter(Boolean).slice(0, 8),
+    content: row.trainerCue || row.howToFix || row.drill || row.why,
+    source: body.source || 'manual_trainer_knowledge',
+    isActive: true,
+  }));
+  const upsert = await upsertKnowledge(rows);
+  return { ok: true, knowledge: rows, upsert };
+}
+
 async function handleCoachContext(body) {
   const context = await buildTrainerRagContext({
     query: body.query || JSON.stringify(body.practiceResult || body.session || {}),
@@ -109,6 +155,9 @@ module.exports = async function handler(req, res) {
     if (action === 'process-transcript') return json(res, 200, await handleProcessTranscript(body));
     if (action === 'search') return json(res, 200, await handleSearch(body));
     if (action === 'collect-daily') return json(res, 200, await handleCollectDaily(body));
+    if (action === 'fetch-youtube-captions') return json(res, 200, await handleFetchYouTubeCaptions(body));
+    if (action === 'build-knowledge') return json(res, 200, await handleBuildKnowledge(body));
+    if (action === 'update-knowledge') return json(res, 200, await handleFetchYouTubeCaptions(body));
     if (action === 'coach-context') return json(res, 200, await handleCoachContext(body));
     return json(res, 404, { error: 'Unknown knowledge action', action });
   } catch (err) {

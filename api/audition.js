@@ -2,8 +2,8 @@
 // Old URLs are rewritten here by vercel.json, preserving frontend calls while
 // keeping Vercel Hobby function count below the limit.
 
-const { createFlowHandler } = require('./_lib/agencyFlowHandler');
-const { getJudge, getAgency, pickFallbackReaction } = require('./_lib/agencyJudges');
+const { createFlowHandler } = require('../lib/api-lib/agencyFlowHandler.js');
+const { getJudge, getAgency, pickFallbackReaction } = require('../lib/api-lib/agencyJudges.js');
 const { buildTrainerRagContext, buildTrainerSystemPrompt } = require('../lib/trainer-knowledge/engine');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';

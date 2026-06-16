@@ -81,7 +81,7 @@ export function SocialAuthProvider({ children }) {
       return {};
     }
     const idToken = await getIdToken();
-    const res = await fetch('/api/auth/social?path=status', {
+    const res = await fetch('/api/auth/social/status', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken }),
@@ -169,7 +169,7 @@ export function SocialAuthProvider({ children }) {
         if (!code) throw new Error('OAuth code가 없습니다.');
         const idToken = await getIdToken();
         const codeVerifier = platform === 'tiktok' ? sessionStorage.getItem('onnode_tiktok_code_verifier') : '';
-        const res = await fetch('/api/auth/social?path=callback', {
+        const res = await fetch('/api/auth/social/callback', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -212,7 +212,7 @@ export function SocialAuthProvider({ children }) {
 
   const disconnect = useCallback(async (platform) => {
     const idToken = await getIdToken();
-    await fetch('/api/auth/social?path=disconnect', {
+    await fetch('/api/auth/social/disconnect', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ idToken, platform }),

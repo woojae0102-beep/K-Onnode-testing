@@ -25,7 +25,9 @@ function devApiPlugin() {
           { prefix: '/api/tv/', entry: '/api/tv' },
           { prefix: '/api/group/', entry: '/api/group' },
           { prefix: '/api/knowledge/', entry: '/api/knowledge' },
-          { prefix: '/api/auth/social/', entry: '/api/auth/social' },
+          { prefix: '/api/auth/', entry: '/api/auth' },
+          { prefix: '/api/spotify/', entry: '/api/spotify' },
+          { prefix: '/api/cron/', entry: '/api/cron' },
         ];
         const [rawPath, rawQuery = ''] = req.url.split('?');
         const urlPath = rawPath.replace(/\/+$/, '') || '/';
@@ -66,8 +68,9 @@ function devApiPlugin() {
           // to nested helper modules (e.g. _lib/trending.js) are picked up.
           const apiDir = path.resolve(process.cwd(), 'api');
           const libHandlers = path.resolve(process.cwd(), 'lib', 'api-handlers');
+          const libApi = path.resolve(process.cwd(), 'lib', 'api-lib');
           for (const k of Object.keys(__require.cache)) {
-            if (k.startsWith(apiDir) || k.startsWith(libHandlers)) delete __require.cache[k];
+            if (k.startsWith(apiDir) || k.startsWith(libHandlers) || k.startsWith(libApi)) delete __require.cache[k];
           }
           const mod = __require(handlerPath);
           const fn = typeof mod === 'function' ? mod : (mod.default || mod.handler);
