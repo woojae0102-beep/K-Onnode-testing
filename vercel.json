@@ -25,6 +25,10 @@
       "destination": "/api/group?path=:path*"
     },
     {
+      "source": "/api/knowledge/:path*",
+      "destination": "/api/knowledge?path=:path*"
+    },
+    {
       "source": "/api/auth/social/:path*",
       "destination": "/api/auth/social?path=:path*"
     },
@@ -49,6 +53,10 @@
     {
       "path": "/api/cron/refresh-tiktok-tokens",
       "schedule": "50 23 * * *"
+    },
+    {
+      "path": "/api/cron/knowledge-updater",
+      "schedule": "0 3 * * *"
     }
   ]
 }

@@ -24,6 +24,7 @@ function devApiPlugin() {
           { prefix: '/api/coaching/', entry: '/api/coaching' },
           { prefix: '/api/tv/', entry: '/api/tv' },
           { prefix: '/api/group/', entry: '/api/group' },
+          { prefix: '/api/knowledge/', entry: '/api/knowledge' },
           { prefix: '/api/auth/social/', entry: '/api/auth/social' },
         ];
         const [rawPath, rawQuery = ''] = req.url.split('?');

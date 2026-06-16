@@ -3,6 +3,7 @@
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022';
+const { buildTrainerRagContext, buildTrainerSystemPrompt } = require('../lib/trainer-knowledge/engine');
 
 async function readJsonBody(req) {
   if (req.body && typeof req.body === 'object') return req.body;
@@ -176,6 +177,12 @@ function danceFallback(args = {}) {
 
 async function handleDancePersona(body) {
   const fallback = danceFallback(body);
+  const rag = await buildTrainerRagContext({
+    query: `dance persona coaching phase:${body.sessionPhase || 'realtime'} pose:${JSON.stringify(body.poseData || {})} song:${JSON.stringify(body.songAnalysis || {})}`,
+    domain: 'dance',
+    personaId: body.personaId || body.trainerPersona || 'liaKim',
+    topK: 5,
+  });
   const prompt = `댄스 페르소나 코칭 JSON을 생성하세요.
 곡 페르소나: ${JSON.stringify(body.songAnalysis || {})}
 자세 데이터: ${JSON.stringify(body.poseData || {})}
@@ -184,9 +191,14 @@ async function handleDancePersona(body) {
 코치 톤: ${toneLabel(body.coachTone)}
 피드백 민감도: ${sensitivityLabel(body.feedbackSensitivity)}
 AI 코치 모드: ${coachModeLabel(body.coachMode)}
+반드시 왜 틀렸는지, 어떻게 고칠지, 오늘 무엇을 연습할지 레슨처럼 설명하세요.
 필드: coachLine, personaActivated, personaComment, keyCorrection, encouragement, nextFocus, emotionalScore, technicalScore`;
-  const result = await callClaude({ prompt, maxTokens: 500 });
-  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+  const result = await callClaude({
+    system: buildTrainerSystemPrompt({ persona: rag.persona, domain: rag.domain, contextText: rag.contextText }),
+    prompt,
+    maxTokens: 650,
+  });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: rag.results?.length ? 'trainer_knowledge_rag' : 'claude' } : fallback;
 }
 
 function vocalFallback(args = {}) {
@@ -315,6 +327,12 @@ function koreanPronunciationFallback(body = {}) {
 
 async function handleKoreanPronunciation(body) {
   const fallback = koreanPronunciationFallback(body);
+  const rag = await buildTrainerRagContext({
+    query: `korean pronunciation reference:${body.referenceText || ''} transcript:${body.transcript || ''} metrics:${JSON.stringify(body.metrics || {})}`,
+    domain: 'korean',
+    personaId: body.personaId || body.trainerPersona || 'starship',
+    topK: 5,
+  });
   const prompt = `한국어 발음 코칭 JSON을 생성하세요.
 기준 문장: ${body.referenceText || ''}
 사용자 발화: ${body.transcript || ''}
@@ -322,13 +340,24 @@ async function handleKoreanPronunciation(body) {
 곡 페르소나: ${JSON.stringify(body.songAnalysis || {})}
 단계: ${body.sessionPhase || 'realtime'}
 응답 언어: ${languageLabel(body.language)}
+받침, 억양, 속도 중 왜 문제가 생겼는지와 오늘 반복할 문장 드릴을 포함하세요.
 필드: coachLine, accuracy, syllableTips(array), correctedReading, encouragement, personaComment`;
-  const result = await callClaude({ prompt, maxTokens: 500 });
-  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+  const result = await callClaude({
+    system: buildTrainerSystemPrompt({ persona: rag.persona, domain: rag.domain, contextText: rag.contextText }),
+    prompt,
+    maxTokens: 650,
+  });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: rag.results?.length ? 'trainer_knowledge_rag' : 'claude' } : fallback;
 }
 
 async function handleVocalSoul(body) {
   const fallback = vocalFallback(body);
+  const rag = await buildTrainerRagContext({
+    query: `vocal coaching pitch:${JSON.stringify(body.pitchData || {})} voice:${JSON.stringify(body.userVocalCharacteristics || {})} song:${JSON.stringify(body.songAnalysis || {})}`,
+    domain: 'vocal',
+    personaId: body.personaId || body.trainerPersona || 'kpopVocalMaster',
+    topK: 5,
+  });
   const prompt = `보컬 소울 코칭 JSON을 생성하세요.
 곡 페르소나: ${JSON.stringify(body.songAnalysis || {})}
 피치 데이터: ${JSON.stringify(body.pitchData || {})}
@@ -338,9 +367,14 @@ async function handleVocalSoul(body) {
 코치 톤: ${toneLabel(body.coachTone)}
 피드백 민감도: ${sensitivityLabel(body.feedbackSensitivity)}
 AI 코치 모드: ${coachModeLabel(body.coachMode)}
+피치가 흔들린 원인, 호흡/공명 교정법, 오늘 반복할 소절 연습을 포함하세요.
 필드: coachLine, emotionImage, soulDirection, technicalAsEmotion, breathingTip, visualizationExercise, encouragement, soulScore, pitchScore`;
-  const result = await callClaude({ prompt, maxTokens: 500 });
-  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+  const result = await callClaude({
+    system: buildTrainerSystemPrompt({ persona: rag.persona, domain: rag.domain, contextText: rag.contextText }),
+    prompt,
+    maxTokens: 650,
+  });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: rag.results?.length ? 'trainer_knowledge_rag' : 'claude' } : fallback;
 }
 
 function buildHeuristicSectionsApi(durationSec, mode = 'dance') {
@@ -432,6 +466,13 @@ function sectionCoachFallback(body = {}) {
 
 async function handleSectionCoach(body) {
   const fallback = sectionCoachFallback(body);
+  const domain = body.mode === 'vocal' ? 'vocal' : 'dance';
+  const rag = await buildTrainerRagContext({
+    query: `section coaching mode:${domain} score:${body.syncScore || 0} weak:${JSON.stringify(body.weakJoints || [])} section:${JSON.stringify(body.section || {})}`,
+    domain,
+    personaId: body.personaId || body.trainerPersona || (domain === 'vocal' ? 'kpopVocalMaster' : 'liaKim'),
+    topK: 4,
+  });
   const prompt = `K-POP ${body.mode === 'vocal' ? '보컬' : '댄스'} 구간 코칭 JSON.
 구간: ${JSON.stringify(body.section || {})}
 범위: ${body.rangeLabel || ''}
@@ -439,9 +480,14 @@ async function handleSectionCoach(body) {
 약한 관절: ${JSON.stringify(body.weakJoints || [])}
 에이전시: ${body.agency || 'hybe'}
 응답 언어: ${languageLabel(body.language)}
+왜 이 구간이 약한지, 바로 적용할 카운트/소절별 드릴을 포함하세요.
 필드: sectionLabel,tStart,tEnd,coachLine,keyCorrection,drillTip,encouragement`;
-  const result = await callClaude({ prompt, maxTokens: 450 });
-  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : fallback;
+  const result = await callClaude({
+    system: buildTrainerSystemPrompt({ persona: rag.persona, domain: rag.domain, contextText: rag.contextText }),
+    prompt,
+    maxTokens: 600,
+  });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: rag.results?.length ? 'trainer_knowledge_rag' : 'claude' } : fallback;
 }
 
 module.exports = async function handler(req, res) {

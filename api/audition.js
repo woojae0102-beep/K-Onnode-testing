@@ -4,6 +4,7 @@
 
 const { createFlowHandler } = require('./_lib/agencyFlowHandler');
 const { getJudge, getAgency, pickFallbackReaction } = require('./_lib/agencyJudges');
+const { buildTrainerRagContext, buildTrainerSystemPrompt } = require('../lib/trainer-knowledge/engine');
 
 const ANTHROPIC_API_KEY = process.env.ANTHROPIC_API_KEY || '';
 const ANTHROPIC_MODEL = process.env.ANTHROPIC_MODEL || 'claude-3-5-haiku-20241022';
@@ -117,15 +118,23 @@ async function handleJudge({ req, body, agencyId, slug }) {
   const judge = getJudge(judgeId);
   const agency = getAgency(agencyId);
   const fallback = genericJudgeFallback({ agencyId, judgeId, phase });
+  const rag = await buildTrainerRagContext({
+    query: `audition judge agency:${agencyId} phase:${phase} data:${JSON.stringify(body)}`,
+    domain: 'audition',
+    personaId: agencyId === 'yg' ? 'yg' : agencyId === 'starship' ? 'starship' : 'jyp',
+    topK: 5,
+  });
   const prompt = `K-POP 기획사 심사위원 평가 JSON을 생성하세요.
 기획사: ${agency?.name || agencyId}
 심사위원: ${judge?.name || judgeId} / ${judge?.title || ''}
 심사위원 스타일: ${judge?.style || ''}
 요청 단계: ${phase}
 입력 데이터: ${JSON.stringify(body)}
+Trainer Knowledge Base를 근거로 왜 부족한지, 어떻게 고칠지, 다음 미션을 실제 심사위원처럼 말하세요.
 필드: speaking, instinct, scores, verdict, vetoTriggered, vetoReason, strongPoints, improvements, closing, debatePosition`;
-  const result = await callClaudeJson({ system: judge?.systemPrompt, prompt, maxTokens: 900 });
-  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: 'claude' } : genericJudgeFallback({ agencyId, judgeId, phase }, result.reason);
+  const system = `${judge?.systemPrompt || ''}\n\n${buildTrainerSystemPrompt({ persona: rag.persona, domain: rag.domain, contextText: rag.contextText })}`;
+  const result = await callClaudeJson({ system, prompt, maxTokens: 1000 });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, source: rag.results?.length ? 'trainer_knowledge_rag' : 'claude' } : genericJudgeFallback({ agencyId, judgeId, phase }, result.reason);
 }
 
 function debateFallback(agencyId = 'hybe', reason) {
@@ -178,11 +187,22 @@ function finalVerdictFallback(agencyId = 'hybe', rounds = {}, reason) {
 
 async function handleFinalVerdict(body, agencyId) {
   const fallback = finalVerdictFallback(agencyId, body.rounds || body.scores);
+  const rag = await buildTrainerRagContext({
+    query: `audition final verdict agency:${agencyId} rounds:${JSON.stringify(body.rounds || body.scores || {})}`,
+    domain: 'audition',
+    personaId: agencyId === 'yg' ? 'yg' : agencyId === 'starship' ? 'starship' : 'jyp',
+    topK: 5,
+  });
   const prompt = `${agencyId} 오디션 최종 판정 JSON을 생성하세요.
 입력 데이터: ${JSON.stringify(body)}
+Trainer Knowledge Base를 근거로 최종 판정뿐 아니라 오늘부터 해야 할 훈련 미션을 구체화하세요.
 필드: result, verdict, finalScore, overallScore, passProbability, strengths, weaknesses, nextMission, judgeSummary`;
-  const result = await callClaudeJson({ prompt, maxTokens: 800 });
-  return result.ok && result.parsed ? { ...fallback, ...result.parsed, agencyId, source: 'claude' } : finalVerdictFallback(agencyId, body.rounds || body.scores, result.reason);
+  const result = await callClaudeJson({
+    system: buildTrainerSystemPrompt({ persona: rag.persona, domain: rag.domain, contextText: rag.contextText }),
+    prompt,
+    maxTokens: 900,
+  });
+  return result.ok && result.parsed ? { ...fallback, ...result.parsed, agencyId, source: rag.results?.length ? 'trainer_knowledge_rag' : 'claude' } : finalVerdictFallback(agencyId, body.rounds || body.scores, result.reason);
 }
 
 function questionFallback() {
