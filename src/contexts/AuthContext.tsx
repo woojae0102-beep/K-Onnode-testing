@@ -174,6 +174,28 @@ function getPendingRememberLogin() {
   }
 }
 
+async function kakaoTokenErrorMessage(res: Response) {
+  const fallback = `카카오 토큰 발급 실패: HTTP ${res.status}`;
+  try {
+    const data = await res.json();
+    const detail = data?.detail || data?.error || data?.kakaoDetail?.error_description;
+    if (!detail) return fallback;
+    if (data?.error === 'firebase_admin_unavailable') {
+      return `카카오 로그인 서버 설정 오류: Firebase Admin 환경변수를 확인해주세요. (${detail})`;
+    }
+    if (data?.error === 'kakao_rest_api_key_missing') {
+      return '카카오 로그인 서버 설정 오류: KAKAO_REST_API_KEY가 비어 있습니다.';
+    }
+    if (data?.error === 'kakao_token_exchange_failed') {
+      return `카카오 인증 코드 교환 실패: ${detail}. Kakao Developers의 Redirect URI와 REST API 키를 확인해주세요.`;
+    }
+    return `카카오 로그인 실패: ${detail}`;
+  } catch {
+    const text = await res.text().catch(() => '');
+    return text ? `카카오 토큰 발급 실패: ${text}` : fallback;
+  }
+}
+
 async function applyAuthPersistence(rememberLogin = false) {
   if (!auth) return;
   await setPersistence(
@@ -460,8 +482,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           body: JSON.stringify({ code, redirectUri }),
         });
         if (!res.ok) {
-          const text = await res.text().catch(() => '');
-          throw new Error(`카카오 토큰 발급 실패: ${text || res.status}`);
+          throw new Error(await kakaoTokenErrorMessage(res));
         }
         const { customToken, kakaoUser } = await res.json();
         if (!customToken) throw new Error('카카오 customToken 응답이 비어 있습니다.');
@@ -584,6 +605,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       window.Kakao.Auth.authorize({
         redirectUri,
+        scope: 'profile_nickname,profile_image,account_email',
       });
       return;
     }
@@ -626,8 +648,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }),
     });
     if (!res.ok) {
-      const text = await res.text().catch(() => '');
-      throw new Error(`카카오 토큰 발급 실패: ${text || res.status}`);
+      throw new Error(await kakaoTokenErrorMessage(res));
     }
     const { customToken } = await res.json();
     if (!customToken) throw new Error('카카오 customToken 응답이 비어 있습니다.');

@@ -15,7 +15,7 @@ function describeError(code: string | undefined): string {
     case 'auth/user-not-found':
     case 'auth/wrong-password':
     case 'auth/invalid-credential':
-      return '이메일 또는 비밀번호가 올바르지 않습니다.';
+      return '이메일 또는 비밀번호가 올바르지 않습니다. 카카오로 가입한 계정이라면 뒤로 가서 “카카오로 계속하기”를 눌러주세요.';
     case 'auth/too-many-requests':
       return '시도 횟수가 너무 많습니다. 잠시 후 다시 시도해주세요.';
     case 'auth/user-disabled':
@@ -121,6 +121,18 @@ export default function LoginScreen({
           autoComplete="current-password"
           required
         />
+
+        <div
+          style={{
+            color: '#777',
+            fontSize: 12,
+            lineHeight: 1.5,
+            marginTop: -6,
+          }}
+        >
+          이 화면은 ONNODE 이메일 회원가입 계정 전용입니다. 카카오 계정은 이전 화면의
+          “카카오로 계속하기” 버튼으로 로그인해주세요.
+        </div>
 
         {error && (
           <div
