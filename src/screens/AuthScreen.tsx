@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import SocialLoginButton from '../components/auth/SocialLoginButton';
 import LoginScreen from './LoginScreen';
 import SignUpScreen from './SignUpScreen';
@@ -14,6 +14,19 @@ const ENABLE_KAKAO = env.VITE_ENABLE_KAKAO_LOGIN !== 'false';
 export default function AuthScreen() {
   const [mode, setMode] = useState<Mode>('landing');
   const [rememberLogin, setRememberLogin] = useState(false);
+  const [authNotice, setAuthNotice] = useState('');
+
+  useEffect(() => {
+    try {
+      const message = window.localStorage.getItem('onnode.auth.kakaoError') || '';
+      if (message) {
+        setAuthNotice(message);
+        window.localStorage.removeItem('onnode.auth.kakaoError');
+      }
+    } catch {
+      /* noop */
+    }
+  }, []);
 
   if (mode === 'login') {
     return (
@@ -127,6 +140,22 @@ export default function AuthScreen() {
             gap: 12,
           }}
         >
+          {authNotice ? (
+            <div
+              style={{
+                padding: '10px 12px',
+                borderRadius: 12,
+                background: '#2A1216',
+                border: '1px solid #5A2630',
+                color: '#FFC4CC',
+                fontSize: 12,
+                lineHeight: 1.5,
+              }}
+            >
+              {authNotice}
+            </div>
+          ) : null}
+
           <label
             style={{
               display: 'flex',

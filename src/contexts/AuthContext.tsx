@@ -116,6 +116,7 @@ function isStandalonePWA(): boolean {
 const PENDING_PROVIDER_KEY = 'onnode.auth.pendingProvider';
 const PENDING_KAKAO_REDIRECT_URI_KEY = 'onnode.auth.kakaoRedirectUri';
 const PENDING_REMEMBER_LOGIN_KEY = 'onnode.auth.rememberLogin';
+const KAKAO_AUTH_ERROR_KEY = 'onnode.auth.kakaoError';
 
 type LoginOptions = {
   rememberLogin?: boolean;
@@ -132,10 +133,18 @@ const KAKAO_REDIRECT_URI_PROD =
   'https://k-onnode.vercel.app/oauth/callback/kakao';
 const KAKAO_CALLBACK_PATH = '/oauth/callback/kakao';
 
+function currentOriginKakaoRedirectUri() {
+  if (typeof window === 'undefined') return KAKAO_REDIRECT_URI_PROD;
+  return `${window.location.origin}${KAKAO_CALLBACK_PATH}`;
+}
+
 function getKakaoRedirectUri() {
   // Vite production build(Vercel 포함)는 배포 콜백을 사용합니다.
   // 개발 서버에서는 Kakao Developers에 등록한 localhost 콜백을 사용합니다.
-  if (env.PROD) return KAKAO_REDIRECT_URI_PROD;
+  if (env.PROD) {
+    const isDefaultProdUri = KAKAO_REDIRECT_URI_PROD === 'https://k-onnode.vercel.app/oauth/callback/kakao';
+    return isDefaultProdUri ? currentOriginKakaoRedirectUri() : KAKAO_REDIRECT_URI_PROD;
+  }
   return KAKAO_REDIRECT_URI_DEV;
 }
 
@@ -427,10 +436,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const error = params.get('error');
 
     if (error) {
+      const message = params.get('error_description') || error;
       console.error('[Kakao] authorize failed:', {
         error,
-        description: params.get('error_description'),
+        description: message,
       });
+      try {
+        window.localStorage.setItem(KAKAO_AUTH_ERROR_KEY, `카카오 인증 실패: ${message}`);
+      } catch {
+        /* noop */
+      }
       window.history.replaceState({}, '', '/');
       return;
     }
@@ -462,6 +477,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (err) {
         console.error('[Kakao] callback processing failed:', err);
+        try {
+          window.localStorage.setItem(
+            KAKAO_AUTH_ERROR_KEY,
+            err?.message || '카카오 로그인 처리 중 오류가 발생했습니다.',
+          );
+        } catch {
+          /* noop */
+        }
       } finally {
         try {
           window.localStorage.removeItem(PENDING_PROVIDER_KEY);

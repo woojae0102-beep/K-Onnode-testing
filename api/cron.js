@@ -1,4 +1,4 @@
-const { collectTrending, setCache } = require('../lib/api-lib/trending.js');
+const { collectTrending, setCache } = require('../lib/api-lib/trending.cjs');
 const { collectAndIndexTrainingKnowledge } = require('../lib/trainer-knowledge/engine');
 const refreshInstagramTokens = require('../lib/api-handlers/cron/refresh-instagram-tokens');
 const refreshTikTokTokens = require('../lib/api-handlers/cron/refresh-tiktok-tokens');
@@ -77,3 +77,4 @@ module.exports = async function handler(req, res) {
   if (action === 'collect-trainer-knowledge') return collectTrainerKnowledge(req, res);
   return res.status(404).json({ error: 'Unknown cron action', action });
 };
+

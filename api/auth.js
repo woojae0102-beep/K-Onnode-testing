@@ -1,4 +1,4 @@
-const { getAdmin } = require('../lib/api-lib/firebaseAdmin.js');
+const { getAdmin } = require('../lib/api-lib/firebaseAdmin.cjs');
 const socialHandler = require('../lib/api-handlers/auth/social');
 
 function actionFromReq(req) {
@@ -17,6 +17,7 @@ async function exchangeKakaoCode({ code, redirectUri }) {
   const clientId = process.env.KAKAO_REST_API_KEY || '';
   const clientSecret = process.env.KAKAO_CLIENT_SECRET || '';
   if (!clientId) throw Object.assign(new Error('KAKAO_REST_API_KEY is required'), { statusCode: 500, code: 'kakao_rest_api_key_missing' });
+  if (!redirectUri) throw Object.assign(new Error('redirectUri required'), { statusCode: 400, code: 'redirect_uri_required' });
   const params = new URLSearchParams({ grant_type: 'authorization_code', client_id: clientId, redirect_uri: redirectUri || '', code });
   if (clientSecret) params.set('client_secret', clientSecret);
   const tokenRes = await fetch('https://kauth.kakao.com/oauth/token', {
@@ -25,10 +26,10 @@ async function exchangeKakaoCode({ code, redirectUri }) {
     body: params.toString(),
   });
   const token = await tokenRes.json().catch(() => ({}));
-  if (!tokenRes.ok || !token.access_token) throw Object.assign(new Error(token.error_description || token.error || 'Kakao token exchange failed'), { statusCode: 502, code: 'kakao_token_exchange_failed' });
+  if (!tokenRes.ok || !token.access_token) throw Object.assign(new Error(token.error_description || token.error || 'Kakao token exchange failed'), { statusCode: 502, code: 'kakao_token_exchange_failed', detail: token });
   const userRes = await fetch('https://kapi.kakao.com/v2/user/me', { headers: { Authorization: `Bearer ${token.access_token}` } });
   const kakaoUser = await userRes.json().catch(() => ({}));
-  if (!userRes.ok || !kakaoUser.id) throw Object.assign(new Error(kakaoUser.msg || kakaoUser.error || 'Kakao user fetch failed'), { statusCode: 502, code: 'kakao_user_fetch_failed' });
+  if (!userRes.ok || !kakaoUser.id) throw Object.assign(new Error(kakaoUser.msg || kakaoUser.error || 'Kakao user fetch failed'), { statusCode: 502, code: 'kakao_user_fetch_failed', detail: kakaoUser });
   return kakaoUser;
 }
 
@@ -62,7 +63,11 @@ async function kakaoToken(req, res) {
     const customToken = await admin.auth().createCustomToken(uid, { provider: 'kakao', kakaoId: String(kakaoId), email: email || null, nickname: nickname || null });
     return res.status(200).json({ customToken, kakaoUser });
   } catch (err) {
-    return res.status(err.statusCode || 500).json({ error: err.code || 'token_creation_failed', detail: err.message || String(err) });
+    return res.status(err.statusCode || 500).json({
+      error: err.code || 'token_creation_failed',
+      detail: err.message || String(err),
+      kakaoDetail: err.detail || undefined,
+    });
   }
 }
 
@@ -121,3 +126,4 @@ module.exports = async function handler(req, res) {
   }
   return res.status(404).json({ error: 'Unknown auth action', action });
 };
+

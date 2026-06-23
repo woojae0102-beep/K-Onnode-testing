@@ -165,8 +165,8 @@ FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY----
 | `src/contexts/AuthContext.tsx` | Google/Kakao 로그인, persistence, Kakao 콜백 처리 |
 | `src/screens/AuthScreen.tsx` | 로그인 화면, 소셜 버튼, 자동 로그인 체크 |
 | `src/components/auth/SocialLoginButton.tsx` | Google/Kakao 버튼 UI |
-| `api/auth/kakao-token.js` | 카카오 code → Firebase Custom Token |
-| `api/_lib/firebaseAdmin.js` | Firebase Admin SDK 초기화 |
+| `api/auth.js` | `/api/auth/kakao-token` 등 인증 API 통합 라우터 |
+| `lib/api-lib/firebaseAdmin.js` | Firebase Admin SDK 초기화 |
 | `index.html` | Kakao SDK 2.7.2 스크립트 |
 | `src/main.jsx` | `AuthProvider` + 미로그인 시 `AuthScreen` |
 
