@@ -69,5 +69,3 @@ export interface DanceDatabase {
   formationHole: FormationHole;
   savedAt: string;
 }
-
-export default DanceDatabase;

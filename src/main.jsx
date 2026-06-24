@@ -226,3 +226,5 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <Root />
   </React.StrictMode>,
 );
+
+window.__ONNODE_MOUNTED__ = true;

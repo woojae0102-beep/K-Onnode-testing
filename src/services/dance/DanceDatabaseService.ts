@@ -220,5 +220,3 @@ export async function loadDanceDatabase(groupId: string, songId: string, videoId
 
   return null;
 }
-
-export default DanceDatabaseService;

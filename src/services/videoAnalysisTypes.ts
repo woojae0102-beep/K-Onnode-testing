@@ -6,5 +6,3 @@ export interface AnalysisResult {
   frames: DetectionFrame[];
   trackIdToInitialPosition: Map<number, { x: number; y: number }>;
 }
-
-export default AnalysisResult;
