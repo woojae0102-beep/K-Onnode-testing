@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { GROUP_DATA } from './groupPracticeData';
+import { GROUP_DATA, getGroupData } from './groupPracticeData';
 import { getAllDynamicSongs, getDynamicSong } from '../services/dynamicStudioSongs';
 
 export interface StudioSong {
@@ -79,6 +79,10 @@ export const STUDIO_SONGS: StudioSong[] = [
   song('fancy', 'FANCY', 'twice', 120, 3, 214, '#FF6348', '#FF1F8E', 'https://upload.wikimedia.org/wikipedia/en/4/4f/Twice_-_Fancy_You.png', 75, []),
   song('dynamite', 'Dynamite', 'bts', 114, 2, 199, '#FFD700', '#FF6348', 'https://upload.wikimedia.org/wikipedia/en/4/4b/BTS_-_Dynamite.png', 78, ['다이나마이트']),
   song('wannabe', 'WANNABE', 'itzy', 128, 4, 194, '#FF1F8E', '#FF6348', 'https://upload.wikimedia.org/wikipedia/en/8/8e/Itzy_-_It%27z_Me.png', 72, ['wannabe', '워너비']),
+  song('what-you-want', 'What You Want', 'cortis', 118, 3, 192, '#1DB971', '#60A5FA', '', 94, ['what you want', '왓 유 원']),
+  song('go-cortis', 'GO!', 'cortis', 125, 4, 186, '#F87171', '#34D399', '', 96, ['go', '고']),
+  song('redred', 'REDRED', 'cortis', 122, 3, 178, '#F87171', '#FFD700', '', 93, ['red red', '레드레드', 'redred']),
+  song('fashion-cortis', 'FaSHioN', 'cortis', 120, 3, 181, '#A78BFA', '#FCD34D', '', 88, ['fashion', '패션']),
 ];
 
 export const SONG_MAP = Object.fromEntries(STUDIO_SONGS.map((s) => [s.id, s]));
@@ -96,5 +100,5 @@ export function getAllStudioSongs() {
 
 export function getGroupForSong(songId) {
   const song = getSongById(songId);
-  return song ? GROUP_DATA[song.groupId] : null;
+  return song ? getGroupData(song.groupId) : null;
 }

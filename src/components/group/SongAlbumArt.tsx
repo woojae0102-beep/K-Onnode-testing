@@ -1,10 +1,10 @@
 // @ts-nocheck
 import React, { useEffect, useMemo, useState } from 'react';
-import { GROUP_DATA } from '../../data/groupPracticeData';
+import { getGroupData } from '../../data/groupPracticeData';
 import { getSongCoverCandidates, resolveSongCover } from '../../services/songCoverResolver';
 
 export function SongAlbumArt({ song, size = 140, className = '', showGroupLabel = true }) {
-  const group = song?.groupId ? GROUP_DATA[song.groupId] : null;
+  const group = song?.groupId ? getGroupData(song.groupId) : null;
   const candidates = useMemo(() => getSongCoverCandidates(song), [song]);
   const [candidateIndex, setCandidateIndex] = useState(0);
   const [resolvedUrl, setResolvedUrl] = useState(null);

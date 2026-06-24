@@ -1,5 +1,5 @@
 // @ts-nocheck
-const STORAGE_KEY = 'onnode_dynamic_studio_songs_v1';
+const STORAGE_KEY = 'onnode_dynamic_studio_songs_v3';
 
 const memory = {};
 

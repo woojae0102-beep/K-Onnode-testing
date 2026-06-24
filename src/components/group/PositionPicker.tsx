@@ -2,14 +2,14 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
-import { GROUP_DATA } from '../../data/groupPracticeData';
+import { getGroupData } from '../../data/groupPracticeData';
 import { isMemberFavorite, toggleMemberFavorite } from '../../services/groupStudioStorage';
 import '../../styles/group-studio.css';
 
 export function PositionPicker({ songId, onSelect, onBack }) {
   const { t } = useTranslation();
   const song = getSongById(songId);
-  const group = song ? GROUP_DATA[song.groupId] : null;
+  const group = song ? getGroupData(song.groupId) : null;
   const [hoveredMember, setHoveredMember] = useState(null);
   const [favMembers, setFavMembers] = useState({});
 

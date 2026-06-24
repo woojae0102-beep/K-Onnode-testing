@@ -1,10 +1,11 @@
 // @ts-nocheck
 import { STUDIO_SONGS, getSongById } from '../data/groupStudioSongs';
-import { GROUP_DATA } from '../data/groupPracticeData';
+import { getGroupData } from '../data/groupPracticeData';
 import { matchStudioSong } from '../utils/matchStudioSong';
+import { resolveGroupFromTrendItem, assertSongGroupMatch } from '../services/groupRegistryService';
 import { ensurePracticeSong } from '../utils/ensurePracticeSong';
 
-const CACHE_KEY = 'onnode_group_weekly_trending_v4';
+const CACHE_KEY = 'onnode_group_weekly_trending_v6';
 const DEFAULT_LIMIT = 10;
 
 function getWeekKey() {
@@ -36,22 +37,27 @@ function saveCache(entry) {
 }
 
 function enrichTrendingItem(raw, rank) {
-  const matched = raw.song || matchStudioSong(raw);
+  const resolved = resolveGroupFromTrendItem(raw);
+  const groupId = resolved.groupId;
+  const matched = raw.song || (groupId ? matchStudioSong(raw, { groupId }) : null);
 
-  if (matched?.id) {
+  if (matched?.id && assertSongGroupMatch(matched, raw)) {
     ensurePracticeSong({
       song: matched,
-      title: matched.title,
+      title: raw.title || matched.title,
       artist: raw.artist || raw.channel,
+      channel: raw.channel,
       thumbnail: raw.thumbnail || raw.albumArt,
+      youtubeUrl: raw.youtubeUrl,
     });
+    const group = getGroupData(matched.groupId);
     return {
       rank,
       songId: matched.id,
       song: matched,
       title: matched.title,
-      artist: GROUP_DATA[matched.groupId]?.nameKr || raw.artist || raw.channel,
-      thumbnail: matched.albumCover || raw.thumbnail || raw.albumArt || null,
+      artist: group?.nameKr || group?.name || raw.artist || raw.channel,
+      thumbnail: raw.thumbnail || raw.albumArt || matched.albumCover || null,
       youtubeUrl: raw.youtubeUrl || null,
       source: raw.source || 'catalog',
     };
@@ -62,17 +68,19 @@ function enrichTrendingItem(raw, rank) {
     artist: raw.artist || raw.channel,
     channel: raw.channel,
     thumbnail: raw.thumbnail || raw.albumArt,
+    youtubeUrl: raw.youtubeUrl,
   });
   const song = songId ? getSongById(songId) : null;
 
   if (song) {
+    const group = getGroupData(song.groupId);
     return {
       rank,
       songId: song.id,
       song,
       title: song.title,
-      artist: GROUP_DATA[song.groupId]?.nameKr || raw.artist || raw.channel,
-      thumbnail: song.albumCover || raw.thumbnail || raw.albumArt || null,
+      artist: group?.nameKr || group?.name || raw.artist || raw.channel,
+      thumbnail: raw.thumbnail || raw.albumArt || song.albumCover || null,
       youtubeUrl: raw.youtubeUrl || null,
       source: raw.source || 'dynamic',
     };
@@ -114,7 +122,7 @@ function fillTrendingToLimit(items, limit = DEFAULT_LIMIT) {
       songId: song.id,
       song,
       title: song.title,
-      artist: GROUP_DATA[song.groupId]?.nameKr || song.groupId,
+      artist: getGroupData(song.groupId)?.nameKr || song.groupId,
       thumbnail: song.albumCover || null,
       youtubeUrl: null,
       source: 'fallback',

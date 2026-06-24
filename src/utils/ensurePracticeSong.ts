@@ -1,9 +1,13 @@
 // @ts-nocheck
-import { getSongById, STUDIO_SONGS } from '../data/groupStudioSongs';
+import { getSongById } from '../data/groupStudioSongs';
 import { registerDynamicSong } from '../services/dynamicStudioSongs';
 import { saveSongVideo } from '../services/groupStudioStorage';
 import { matchStudioSong } from './matchStudioSong';
-import { inferGroupId } from './inferGroupId';
+import {
+  ensureGroupForTrendItem,
+  assertSongGroupMatch,
+  extractTitleArtist,
+} from '../services/groupRegistryService';
 import { isMusicVideoTitle, isDancePracticeTitle } from './dancePracticeVideo';
 
 function cleanTitle(raw) {
@@ -30,6 +34,22 @@ function extractVideoId(url) {
   return m?.[1] || '';
 }
 
+function attachPracticeVideo(songId, source) {
+  const videoId = source.videoId || extractVideoId(source.youtubeUrl);
+  const title = source.title || '';
+  const canSaveVideo = videoId
+    && !isMusicVideoTitle(title)
+    && (isDancePracticeTitle(title) || source.videoType === 'dance_practice');
+  if (canSaveVideo) {
+    saveSongVideo(songId, {
+      videoId,
+      youtubeUrl: source.youtubeUrl || `https://www.youtube.com/watch?v=${videoId}`,
+      title,
+      videoType: 'dance_practice',
+    });
+  }
+}
+
 export function ensurePracticeSong(source) {
   if (!source) return null;
 
@@ -42,38 +62,30 @@ export function ensurePracticeSong(source) {
     return source.id;
   }
 
-  const matched = source.song || matchStudioSong(source);
-  if (matched?.id) {
-    const videoId = source.videoId || extractVideoId(source.youtubeUrl);
-    const title = source.title || '';
-    const canSaveVideo = videoId
-      && !isMusicVideoTitle(title)
-      && (isDancePracticeTitle(title) || source.videoType === 'dance_practice');
-    if (canSaveVideo) {
-      saveSongVideo(matched.id, {
-        videoId,
-        youtubeUrl: source.youtubeUrl || `https://www.youtube.com/watch?v=${videoId}`,
-        title,
-        videoType: 'dance_practice',
-      });
-    }
+  const groupId = ensureGroupForTrendItem(source);
+  if (!groupId) return null;
+
+  const matched = source.song || matchStudioSong(source, { groupId });
+
+  if (matched?.id && assertSongGroupMatch(matched, source)) {
+    attachPracticeVideo(matched.id, source);
     return matched.id;
   }
 
-  const groupId = inferGroupId(source.artist, source.channel, source.title);
-  if (!groupId) return null;
-
   const title = cleanTitle(source.title);
+  const artistLabel = extractTitleArtist(source.title) || source.artist || source.channel || groupId;
   const song = registerDynamicSong({
     title,
     groupId,
-    artist: source.artist || source.channel,
+    artist: artistLabel,
     albumCover: source.thumbnail || source.albumArt || source.albumCover,
     thumbnail: source.thumbnail,
-    youtubeUrl: '',
-    searchTags: [title, source.artist, source.channel, groupId].filter(Boolean),
+    youtubeUrl: source.youtubeUrl || '',
+    searchTags: [title, artistLabel, source.channel, groupId].filter(Boolean),
+    videoId: source.videoId || extractVideoId(source.youtubeUrl),
   });
 
+  attachPracticeVideo(song.id, source);
   return song.id;
 }
 

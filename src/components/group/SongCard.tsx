@@ -1,6 +1,6 @@
 // @ts-nocheck
 import React, { useCallback, useMemo } from 'react';
-import { GROUP_DATA } from '../../data/groupPracticeData';
+import { GROUP_DATA, getGroupData } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { ensurePracticeSong } from '../../utils/ensurePracticeSong';
 import { isDancePracticeTitle } from '../../utils/dancePracticeVideo';
@@ -18,7 +18,7 @@ export function SongCard({
   favoriteIds = null,
   onFavoriteChange,
 }) {
-  const group = GROUP_DATA[song.groupId];
+  const group = getGroupData(song.groupId);
   const size = compact ? 120 : 140;
 
   const handleOpen = useCallback(() => {
@@ -97,7 +97,7 @@ export function TrendingSongCard({ item, onClick, showFavorite = true, favoriteI
 }
 
 export function SongSearchRow({ song, onClick, favoriteIds, onFavoriteChange }) {
-  const group = GROUP_DATA[song.groupId];
+  const group = getGroupData(song.groupId);
 
   return (
     <div

@@ -142,4 +142,31 @@ export const GROUP_DATA: Record<string, GroupData> = {
       { id: 'hyein', name: 'Hyein', nameKr: '혜인', color: '#6EE7B7', defaultX: 0.5, defaultY: 0.65, avatar: '🌿', position: { default: { x: 0.5, y: 0.65 } } },
     ],
   },
+
+  cortis: {
+    name: 'CORTIS',
+    nameKr: '코르티스',
+    memberCount: 5,
+    defaultFormation: 'line',
+    members: [
+      { id: 'martin', name: 'Martin', nameKr: '마틴', color: '#F87171', defaultX: 0.1, defaultY: 0.4, avatar: '🦒', position: { default: { x: 0.1, y: 0.4 } } },
+      { id: 'james', name: 'James', nameKr: '제임스', color: '#34D399', defaultX: 0.3, defaultY: 0.35, avatar: '🦅', position: { default: { x: 0.3, y: 0.35 } } },
+      { id: 'juhoon', name: 'Juhoon', nameKr: '주훈', color: '#60A5FA', defaultX: 0.5, defaultY: 0.3, avatar: '🐢', position: { default: { x: 0.5, y: 0.3 } } },
+      { id: 'seonghyeon', name: 'Seonghyeon', nameKr: '성현', color: '#A78BFA', defaultX: 0.7, defaultY: 0.35, avatar: '🦊', position: { default: { x: 0.7, y: 0.35 } } },
+      { id: 'keonho', name: 'Keonho', nameKr: '건호', color: '#FCD34D', defaultX: 0.9, defaultY: 0.4, avatar: '🐶', position: { default: { x: 0.9, y: 0.4 } } },
+    ],
+  },
 };
+
+import { KPOP_EXTENDED_GROUPS } from './kpopGroupRegistry';
+
+Object.assign(GROUP_DATA, KPOP_EXTENDED_GROUPS);
+
+export {
+  getGroupData,
+  getFullGroupCatalog,
+  resolveGroupFromTrendItem,
+  ensureGroupForTrendItem,
+  ensureGroupForArtist,
+  assertSongGroupMatch,
+} from '../services/groupRegistryService';
