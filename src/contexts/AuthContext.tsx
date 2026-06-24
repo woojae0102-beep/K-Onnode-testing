@@ -72,6 +72,8 @@ interface AuthContextType {
   user: User | null;
   userProfile: UserProfile | null;
   isLoading: boolean;
+  authBootstrapError: string;
+  clearAuthBootstrapError: () => void;
   isAuthenticated: boolean;
   loginWithGoogle: (options?: LoginOptions) => Promise<void>;
   loginWithKakao: (options?: LoginOptions) => Promise<void>;
@@ -132,6 +134,8 @@ const KAKAO_REDIRECT_URI_PROD =
   env.VITE_KAKAO_REDIRECT_URI_PROD ||
   'https://k-onnode.vercel.app/oauth/callback/kakao';
 const KAKAO_CALLBACK_PATH = '/oauth/callback/kakao';
+const KAKAO_LOGIN_SCOPE =
+  env.VITE_KAKAO_LOGIN_SCOPE || 'profile_nickname,profile_image,account_email';
 
 function currentOriginKakaoRedirectUri() {
   if (typeof window === 'undefined') return KAKAO_REDIRECT_URI_PROD;
@@ -320,6 +324,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [authBootstrapError, setAuthBootstrapError] = useState('');
+  const [kakaoCallbackProcessing, setKakaoCallbackProcessing] = useState(
+    () => typeof window !== 'undefined' && isKakaoCallbackPage() && !!new URLSearchParams(window.location.search).get('code'),
+  );
 
   // 페이지 로드 직후 SDK를 미리 초기화해 로그인 버튼 클릭 시점의 실패 가능성을 줄입니다.
   useEffect(() => {
@@ -327,6 +335,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (!ready) return;
       console.info('[Kakao] SDK initialized.');
     });
+  }, []);
+
+  useEffect(() => {
+    if (!isLoading && !kakaoCallbackProcessing) return undefined;
+    const timer = window.setTimeout(() => {
+      setIsLoading(false);
+      setKakaoCallbackProcessing(false);
+      setAuthBootstrapError(
+        '앱 초기화 시간이 초과되었습니다. 네트워크·캐시를 확인한 뒤 다시 시도해주세요.',
+      );
+    }, 15000);
+    return () => window.clearTimeout(timer);
+  }, [isLoading, kakaoCallbackProcessing]);
+
+  const clearAuthBootstrapError = useCallback(() => {
+    setAuthBootstrapError('');
   }, []);
 
   const loadUserProfile = useCallback(async (uid: string) => {
@@ -443,7 +467,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
       } catch (err) {
         console.error('[Auth] state change failed:', err);
+        setAuthBootstrapError('로그인 상태를 확인하지 못했습니다. 다시 시도해주세요.');
       } finally {
+        setAuthBootstrapError((prev) => (prev.includes('초기화 시간') ? prev : ''));
         setIsLoading(false);
       }
     });
@@ -471,16 +497,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       window.history.replaceState({}, '', '/');
       return;
     }
-    if (!code) return;
+    if (!code) {
+      window.history.replaceState({}, '', '/');
+      return;
+    }
 
+    setKakaoCallbackProcessing(true);
     (async () => {
       try {
         const redirectUri = getPendingKakaoRedirectUri();
+        const controller = new AbortController();
+        const timeoutId = window.setTimeout(() => controller.abort(), 20000);
         const res = await fetch('/api/auth/kakao-token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ code, redirectUri }),
+          signal: controller.signal,
         });
+        window.clearTimeout(timeoutId);
         if (!res.ok) {
           throw new Error(await kakaoTokenErrorMessage(res));
         }
@@ -498,11 +532,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         });
       } catch (err) {
         console.error('[Kakao] callback processing failed:', err);
+        const message =
+          err?.name === 'AbortError'
+            ? '카카오 로그인 서버 응답 시간이 초과되었습니다. 잠시 후 다시 시도해주세요.'
+            : err?.message || '카카오 로그인 처리 중 오류가 발생했습니다.';
         try {
-          window.localStorage.setItem(
-            KAKAO_AUTH_ERROR_KEY,
-            err?.message || '카카오 로그인 처리 중 오류가 발생했습니다.',
-          );
+          window.localStorage.setItem(KAKAO_AUTH_ERROR_KEY, message);
         } catch {
           /* noop */
         }
@@ -514,6 +549,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         } catch {
           /* noop */
         }
+        setKakaoCallbackProcessing(false);
         window.history.replaceState({}, '', '/');
       }
     })();
@@ -603,10 +639,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       } catch {
         /* noop */
       }
-      window.Kakao.Auth.authorize({
-        redirectUri,
-        scope: 'profile_nickname,profile_image,account_email',
-      });
+      const authorizePayload: { redirectUri: string; scope?: string } = { redirectUri };
+      if (KAKAO_LOGIN_SCOPE.trim()) {
+        authorizePayload.scope = KAKAO_LOGIN_SCOPE.trim();
+      }
+      window.Kakao.Auth.authorize(authorizePayload);
       return;
     }
 
@@ -726,7 +763,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     () => ({
       user,
       userProfile,
-      isLoading,
+      isLoading: isLoading || kakaoCallbackProcessing,
+      authBootstrapError,
+      clearAuthBootstrapError,
       isAuthenticated: !!user,
       loginWithGoogle,
       loginWithKakao,
@@ -740,6 +779,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       userProfile,
       isLoading,
+      authBootstrapError,
+      clearAuthBootstrapError,
+      kakaoCallbackProcessing,
       loginWithGoogle,
       loginWithKakao,
       loginWithEmail,

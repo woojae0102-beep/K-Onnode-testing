@@ -12,16 +12,21 @@ import './index.css';
 import './i18n.ts';
 import './store/languageStore.ts';
 
-function FullScreenLoader() {
+function FullScreenLoader({ message = '' }) {
   return (
     <div
       style={{
         height: '100vh',
         width: '100vw',
         display: 'flex',
+        flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
+        gap: 16,
         background: '#0a0a0a',
+        color: 'rgba(255,255,255,0.55)',
+        padding: 24,
+        textAlign: 'center',
       }}
     >
       <div
@@ -34,6 +39,7 @@ function FullScreenLoader() {
           animation: 'spin 0.8s linear infinite',
         }}
       />
+      {message ? <p style={{ margin: 0, fontSize: 13, lineHeight: 1.6 }}>{message}</p> : null}
     </div>
   );
 }
@@ -95,10 +101,98 @@ function FirebaseSetupErrorScreen({ message }) {
   );
 }
 
-function AppGate() {
-  const { isLoading, isAuthenticated, userProfile } = useAuth();
+function BootstrapErrorScreen({ message, onRetry }) {
+  return (
+    <div
+      style={{
+        minHeight: '100vh',
+        background: '#0a0a0a',
+        color: '#fff',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: 20,
+      }}
+    >
+      <div
+        style={{
+          maxWidth: 420,
+          width: '100%',
+          background: '#141414',
+          border: '1px solid rgba(255,255,255,0.12)',
+          borderRadius: 16,
+          padding: 28,
+          textAlign: 'center',
+        }}
+      >
+        <h1 style={{ fontSize: 20, fontWeight: 700, marginBottom: 12 }}>앱을 불러오지 못했습니다</h1>
+        <p style={{ color: '#bbb', fontSize: 13, lineHeight: 1.7, marginBottom: 20 }}>{message}</p>
+        <button
+          type="button"
+          onClick={onRetry}
+          style={{
+            border: 'none',
+            borderRadius: 999,
+            background: '#FF1F8E',
+            color: '#fff',
+            padding: '12px 20px',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          다시 시도
+        </button>
+      </div>
+    </div>
+  );
+}
 
-  if (isLoading) return <FullScreenLoader />;
+class AppErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { error: null };
+  }
+
+  static getDerivedStateFromError(error) {
+    return { error };
+  }
+
+  componentDidCatch(error) {
+    console.error('[App] render crash:', error);
+  }
+
+  render() {
+    if (this.state.error) {
+      return (
+        <BootstrapErrorScreen
+          message={this.state.error?.message || '앱 화면을 그리는 중 오류가 발생했습니다.'}
+          onRetry={() => window.location.reload()}
+        />
+      );
+    }
+    return this.props.children;
+  }
+}
+
+function AppGate() {
+  const { isLoading, isAuthenticated, userProfile, authBootstrapError, clearAuthBootstrapError } = useAuth();
+
+  if (isLoading) {
+    return <FullScreenLoader message="앱을 준비하는 중..." />;
+  }
+
+  if (authBootstrapError) {
+    return (
+      <BootstrapErrorScreen
+        message={authBootstrapError}
+        onRetry={() => {
+          clearAuthBootstrapError();
+          window.location.href = '/';
+        }}
+      />
+    );
+  }
+
   if (!isAuthenticated) return <AuthScreen />;
   if (userProfile && !userProfile.onboardingCompleted) {
     return <OnboardingScreen />;
@@ -117,11 +211,13 @@ function Root() {
   }
 
   return (
-    <AuthProvider>
-      <SocialAuthProvider>
-        <AppGate />
-      </SocialAuthProvider>
-    </AuthProvider>
+    <AppErrorBoundary>
+      <AuthProvider>
+        <SocialAuthProvider>
+          <AppGate />
+        </SocialAuthProvider>
+      </AuthProvider>
+    </AppErrorBoundary>
   );
 }
 

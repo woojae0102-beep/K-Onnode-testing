@@ -32,6 +32,67 @@ async function exchangeKakaoCode({ code, redirectUri }) {
   return kakaoUser;
 }
 
+async function resolveKakaoFirebaseUid(admin, { kakaoId, email, nickname, profileImage }) {
+  const kakaoUid = `kakao:${kakaoId}`;
+  let uid = kakaoUid;
+  const profilePatch = {
+    ...(nickname ? { displayName: nickname } : {}),
+    ...(profileImage ? { photoURL: profileImage } : {}),
+  };
+
+  const linkExistingEmailUser = async () => {
+    if (!email) return false;
+    try {
+      const existingEmailUser = await admin.auth().getUserByEmail(email);
+      uid = existingEmailUser.uid;
+      await admin.auth().updateUser(uid, {
+        emailVerified: existingEmailUser.emailVerified || true,
+        ...(nickname && !existingEmailUser.displayName ? { displayName: nickname } : {}),
+        ...(profileImage && !existingEmailUser.photoURL ? { photoURL: profileImage } : {}),
+      });
+      return true;
+    } catch (emailErr) {
+      if (emailErr?.code === 'auth/user-not-found') return false;
+      throw emailErr;
+    }
+  };
+
+  try {
+    await admin.auth().getUser(uid);
+    if (!nickname && !profileImage && !email) return { uid, kakaoUid };
+    try {
+      await admin.auth().updateUser(uid, {
+        ...profilePatch,
+        ...(email ? { email, emailVerified: true } : {}),
+      });
+    } catch (updateErr) {
+      if (updateErr?.code === 'auth/email-already-exists') {
+        const linked = await linkExistingEmailUser();
+        if (!linked) throw updateErr;
+      } else {
+        throw updateErr;
+      }
+    }
+    return { uid, kakaoUid };
+  } catch (err) {
+    if (err?.code !== 'auth/user-not-found') throw err;
+    if (email) {
+      const linked = await linkExistingEmailUser();
+      if (!linked) {
+        await admin.auth().createUser({
+          uid,
+          email,
+          emailVerified: true,
+          ...profilePatch,
+        });
+      }
+    } else {
+      await admin.auth().createUser({ uid, ...profilePatch });
+    }
+    return { uid, kakaoUid };
+  }
+}
+
 async function kakaoToken(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
   const { admin, error } = getAdmin();
@@ -48,33 +109,12 @@ async function kakaoToken(req, res) {
       profileImage = kakaoUser.kakao_account?.profile?.profile_image_url || '';
     }
     if (!kakaoId) return res.status(400).json({ error: 'kakao_id_required' });
-    const kakaoUid = `kakao:${kakaoId}`;
-    let uid = kakaoUid;
-    try {
-      await admin.auth().getUser(uid);
-      if (nickname || profileImage || email) {
-        await admin.auth().updateUser(uid, { ...(email ? { email, emailVerified: true } : {}), ...(nickname ? { displayName: nickname } : {}), ...(profileImage ? { photoURL: profileImage } : {}) });
-      }
-    } catch (err) {
-      if (err?.code === 'auth/user-not-found') {
-        if (email) {
-          try {
-            const existingEmailUser = await admin.auth().getUserByEmail(email);
-            uid = existingEmailUser.uid;
-            await admin.auth().updateUser(uid, {
-              emailVerified: existingEmailUser.emailVerified || true,
-              ...(nickname && !existingEmailUser.displayName ? { displayName: nickname } : {}),
-              ...(profileImage && !existingEmailUser.photoURL ? { photoURL: profileImage } : {}),
-            });
-          } catch (emailErr) {
-            if (emailErr?.code !== 'auth/user-not-found') throw emailErr;
-            await admin.auth().createUser({ uid, email, emailVerified: true, ...(nickname ? { displayName: nickname } : {}), ...(profileImage ? { photoURL: profileImage } : {}) });
-          }
-        } else {
-          await admin.auth().createUser({ uid, ...(nickname ? { displayName: nickname } : {}), ...(profileImage ? { photoURL: profileImage } : {}) });
-        }
-      } else throw err;
-    }
+    const { uid, kakaoUid } = await resolveKakaoFirebaseUid(admin, {
+      kakaoId,
+      email,
+      nickname,
+      profileImage,
+    });
     const customToken = await admin.auth().createCustomToken(uid, { provider: 'kakao', kakaoId: String(kakaoId), kakaoUid, email: email || null, nickname: nickname || null });
     return res.status(200).json({ customToken, kakaoUser, linkedExistingEmailUser: uid !== kakaoUid });
   } catch (err) {
