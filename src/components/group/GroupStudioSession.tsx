@@ -1,28 +1,32 @@
 // @ts-nocheck
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
-import { useAvatarSync } from '../../hooks/useAvatarSync';
-import { useSyncScore } from '../../hooks/useSyncScore';
+import { useIndependentTimeline } from '../../hooks/useIndependentTimeline';
+import { useGroupSync } from '../../hooks/useGroupSync';
+import { useGroupDanceEngine } from '../../hooks/useGroupDanceEngine';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVRecorder } from '../../hooks/useTVRecorder';
-import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
+import { useGroupAvatarAssets } from '../../hooks/useGroupAvatarAssets';
 import {
   drawStageBackground,
   drawGhostSlot,
-  drawMySpot,
   drawAIAvatar,
   drawUserSkeleton,
 } from '../../utils/groupSkeletonDraw';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
+import TempoLockIndicator from './TempoLockIndicator';
+import MissedBeatAlert from './MissedBeatAlert';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import type { Agency } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import '../../styles/group-studio.css';
 import '../../styles/studio-mode.css';
+
+const GroupDanceStage3D = lazy(() => import('./three/GroupDanceStage3D'));
 
 const SLOT_THRESHOLD = 0.15;
 
@@ -33,6 +37,7 @@ export function GroupStudioSession({
   skeletonData,
   referenceYoutubeUrl = '',
   practiceDuration = null,
+  danceDatabase = null,
   agency = 'hybe',
   onEnd,
   onHome,
@@ -46,28 +51,63 @@ export function GroupStudioSession({
 
   const stageCanvasRef = useRef(null);
   const ytPlayerRef = useRef(null);
-  const [currentTime, setCurrentTime] = useState(0);
   const maxDuration = practiceDuration || skeletonData?.[skeletonData.length - 1]?.timestamp || 180;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
-  const [isPaused, setIsPaused] = useState(false);
+  const [showMissedAlert, setShowMissedAlert] = useState(false);
   const [studioModalOpen, setStudioModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [stageViewMode, setStageViewMode] = useState('3d');
   const screenRef = useRef(null);
   const animFrameRef = useRef(0);
   const groupStageRef = useRef(null);
   const slotEnteredRef = useRef(false);
-  const endPracticeRef = useRef(null);
+  const endedRef = useRef(false);
+  const prevSmoothScoreRef = useRef(100);
 
   const { layoutClass, isMobile } = useTVScreenLayout();
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
   const recorder = useTVRecorder();
-  const avatarSync = useAvatarSync(skeletonData);
+  const {
+    currentTime,
+    isRunning,
+    isFinished,
+    startTimeline,
+    forceStop,
+    getCurrentFrame,
+  } = useIndependentTimeline(skeletonData || [], maxDuration);
+  const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
+    myMemberId,
+    group?.members || [],
+  );
+  const roundedScore = Math.round(syncScore);
+  const danceEngine = useGroupDanceEngine({
+    groupId,
+    songId,
+    userMemberId: myMemberId,
+    skeletonFrames: skeletonData,
+    practiceDuration: maxDuration,
+  });
   const myDefault = { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5 };
-  const { scores, calculate: calculateSync, reset: resetSync } = useSyncScore(myMemberId, myDefault);
 
-  const isPracticing = sessionPhase === 'practicing';
+  const formationHole = danceDatabase?.formationHole || {
+    memberId: myMemberId,
+    anchor: { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5, z: 0 },
+    label: myMember?.nameKr || 'YOU',
+    color: myMember?.color || '#FF1F8E',
+  };
+  const aiMemberIds = danceDatabase?.positionMap?.aiMemberIds || otherMembers.map((m) => m.id);
+  const { assets: avatarAssets } = useGroupAvatarAssets(groupId, aiMemberIds);
+  const use3DStage = stageViewMode === '3d' && !danceEngine.error;
+  const show3DRenderer = use3DStage && !danceEngine.loading;
+
+  useEffect(() => {
+    if (!show3DRenderer || !skeletonData?.length) return;
+    if (sessionPhase === 'lobby' || sessionPhase === 'countdown' || sessionPhase === 'waiting_slot') {
+      danceEngine.tick(0, null);
+    }
+  }, [show3DRenderer, skeletonData, sessionPhase, danceEngine]);
 
   useEffect(() => {
     const updateFullscreen = () => {
@@ -98,35 +138,38 @@ export function GroupStudioSession({
     }
   }, []);
 
+  const isPracticing = sessionPhase === 'practicing';
+
   const studio = useStudioSession({
     localStream: dance.getStream(),
     mode: 'group',
     agency,
+    referenceVideoUrl: referenceYoutubeUrl,
     songTitle: song ? `${song.title} · ${myMember?.nameKr}` : `${group?.nameKr} · ${myMember?.nameKr}`,
     playbackRate: 1,
-    getCurrentTime: () => avatarSync.getElapsed(),
-    feedbackText: scores.overall
+    getCurrentTime: () => currentTime,
+    feedbackText: isPracticing && roundedScore
       ? t('groupStudio.session.syncFeedback', {
-          score: scores.overall,
-          msg: scores.overall > 80
+          score: roundedScore,
+          msg: roundedScore > 80
             ? t('groupStudio.session.syncGreat')
             : t('groupStudio.session.syncKeepGoing'),
         })
       : t('groupStudio.session.ghostSlot', { member: myMember?.nameKr || '' }),
-    score: scores.overall || 0,
+    score: isPracticing ? roundedScore : 0,
     scores: {
-      rhythm: scores.timing || 0,
-      posture: scores.position || 0,
-      angle: scores.pose || 0,
-      expression: scores.formation || 0,
-      energy: scores.energy || 0,
-      stability: scores.overall || 0,
+      rhythm: isPracticing ? roundedScore : 0,
+      posture: isPracticing ? roundedScore : 0,
+      angle: isPracticing ? roundedScore : 0,
+      expression: 0,
+      energy: 0,
+      stability: isPracticing ? roundedScore : 0,
     },
     poseData: dance.poseData,
     practiceStep: 3,
     practiceStepLabel: t('groupStudio.session.practiceStep'),
-    isPaused,
-    isPlaying: isPracticing && !isPaused,
+    isPaused: false,
+    isPlaying: isPracticing && isRunning,
   });
 
   const resizeStageCanvas = useCallback(() => {
@@ -143,8 +186,21 @@ export function GroupStudioSession({
     return () => window.removeEventListener('resize', resizeStageCanvas);
   }, [resizeStageCanvas, isMobile]);
 
+  const syncDanceStage = useCallback(
+    (elapsedSec) => {
+      if (!show3DRenderer) return null;
+      const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
+      return danceEngine.tick(
+        elapsedSec,
+        showUserPose ? dance.poseData?.joints || null : null,
+      );
+    },
+    [show3DRenderer, danceEngine, isPracticing, sessionPhase, dance.poseData],
+  );
+
   const renderGroupStage = useCallback(
     (frame) => {
+      if (show3DRenderer) return;
       const canvas = stageCanvasRef.current;
       if (!canvas || !myMember) return;
       const ctx = canvas.getContext('2d');
@@ -152,15 +208,15 @@ export function GroupStudioSession({
 
       drawStageBackground(ctx, canvas.width, canvas.height);
 
-      const myPos = {
-        x: myMember.defaultX * canvas.width,
-        y: myMember.defaultY * canvas.height,
+      const holePos = {
+        x: (formationHole?.anchor?.x ?? myMember.defaultX) * canvas.width,
+        y: (formationHole?.anchor?.y ?? myMember.defaultY) * canvas.height,
       };
 
       if (showGhost && sessionPhase !== 'practicing') {
-        drawGhostSlot(ctx, myPos, myMember.color);
+        drawGhostSlot(ctx, holePos, formationHole?.color || myMember.color, formationHole?.label || 'YOUR SLOT');
       } else if (isPracticing) {
-        drawMySpot(ctx, myPos, myMember.color);
+        drawGhostSlot(ctx, holePos, formationHole?.color || myMember.color, formationHole?.label || 'YOU');
       }
 
       frame?.members?.forEach((memberData) => {
@@ -181,7 +237,7 @@ export function GroupStudioSession({
         );
       }
     },
-    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing],
+    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole],
   );
 
   const checkSlotEntry = useCallback(() => {
@@ -192,31 +248,70 @@ export function GroupStudioSession({
     return dx < SLOT_THRESHOLD && dy < SLOT_THRESHOLD;
   }, [dance.poseData, myDefault]);
 
-  const getPracticeElapsed = useCallback(() => {
-    const ytTime = ytPlayerRef.current?.getCurrentTime?.();
-    if (referenceYoutubeUrl && typeof ytTime === 'number' && ytTime > 0) return ytTime;
-    return avatarSync.getElapsed();
-  }, [referenceYoutubeUrl, avatarSync]);
+  const getPracticeFrame = useCallback(() => getCurrentFrame(), [getCurrentFrame]);
 
-  const getPracticeFrame = useCallback(() => {
-    const elapsed = getPracticeElapsed();
-    if (!skeletonData?.length) return null;
-    return skeletonData.reduce((nearest, frame) =>
-      Math.abs(frame.timestamp - elapsed) < Math.abs(nearest.timestamp - elapsed) ? frame : nearest,
-    );
-  }, [getPracticeElapsed, skeletonData]);
+  const finishSession = useCallback(
+    async (stats) => {
+      if (endedRef.current) return;
+      endedRef.current = true;
+      cancelAnimationFrame(animFrameRef.current);
+      ytPlayerRef.current?.pause?.();
+      dance.stopTracking();
+      studio.stopStudio();
+      const recording = await recorder.stopRecording();
 
-  const practiceLoop = useCallback(() => {
-    if (isPaused || sessionPhase !== 'practicing') return;
-    const elapsed = getPracticeElapsed();
-    setCurrentTime(elapsed);
+      const syncScores = {
+        overall: stats.avgScore,
+        pose: stats.avgScore,
+        timing: stats.avgScore,
+        formation: stats.avgScore,
+        position: stats.avgScore,
+        energy: stats.avgScore,
+      };
+
+      onEnd({
+        syncScores,
+        scores: syncScores,
+        duration: currentTime,
+        overall: stats.avgScore,
+        avgScore: stats.avgScore,
+        missedBeats: stats.missedBeats,
+        worstMoments: stats.worstMoments,
+        bestMoments: stats.bestMoments,
+        scoreHistory: stats.scoreHistory,
+        recordedMediaUrl: recording?.url || recorder.recordedUrl,
+        recordedBlob: recording?.blob || recorder.recordedBlob,
+        scoreTimeline: stats.scoreHistory.map((entry) => ({
+          time: entry.time,
+          score: Math.round(entry.score),
+        })),
+        groupId,
+        memberId: myMemberId,
+        songId,
+        groupName: group?.nameKr,
+        memberName: myMember?.nameKr,
+        songTitle: song?.title,
+        completed: true,
+      });
+    },
+    [dance, studio, recorder, onEnd, currentTime, groupId, myMemberId, songId, group, myMember, song],
+  );
+
+  useEffect(() => {
+    if (!isPracticing || (!isRunning && !isFinished)) return;
+
     const frame = getPracticeFrame();
+    syncDanceStage(currentTime);
     if (frame) renderGroupStage(frame);
-    if (dance.poseData && frame) calculateSync(dance.poseData, frame, elapsed);
 
-    if (elapsed >= maxDuration) {
-      endPracticeRef.current?.();
-      return;
+    if (dance.poseData && frame) {
+      const accuracy = updateSyncScore(dance.poseData, frame, currentTime);
+      if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
+        setShowMissedAlert(true);
+      }
+      if (accuracy != null) {
+        prevSmoothScoreRef.current = prevSmoothScoreRef.current * 0.7 + accuracy * 0.3;
+      }
     }
 
     groupStageRef.current = {
@@ -227,7 +322,15 @@ export function GroupStudioSession({
       myMemberName: myMember?.nameKr,
       myMemberColor: myMember?.color,
       currentFrame: frame,
-      score: scores.overall || 0,
+      danceSnapshot: danceEngine.snapshot,
+      score: roundedScore,
+      formationHole,
+      referenceVideoUrl: referenceYoutubeUrl,
+      beatProgress: maxDuration > 0 ? currentTime / maxDuration : 0,
+      currentTime,
+      maxDuration,
+      bpm: danceDatabase?.bpm?.bpm,
+      isPlaying: isRunning,
       members: group?.members.map((m) => ({
         id: m.id,
         nameKr: m.nameKr,
@@ -238,36 +341,44 @@ export function GroupStudioSession({
         isUser: m.id === myMemberId,
       })),
     };
-
-    animFrameRef.current = requestAnimationFrame(practiceLoop);
   }, [
-    isPaused,
-    sessionPhase,
-    getPracticeElapsed,
+    isPracticing,
+    isRunning,
+    isFinished,
+    currentTime,
     getPracticeFrame,
+    syncDanceStage,
     renderGroupStage,
     dance.poseData,
-    calculateSync,
+    updateSyncScore,
     groupId,
     group,
     song,
     myMemberId,
     myMember,
-    scores.overall,
+    roundedScore,
+    danceEngine.snapshot,
+    formationHole,
+    referenceYoutubeUrl,
     maxDuration,
+    danceDatabase,
   ]);
+
+  useEffect(() => {
+    if (isFinished && isPracticing) {
+      finishSession(getFinalStats());
+    }
+  }, [isFinished, isPracticing, finishSession, getFinalStats]);
 
   const startPracticeAfterCountdown = useCallback(() => {
     setSessionPhase('practicing');
-    resetSync();
-    avatarSync.start();
+    prevSmoothScoreRef.current = 100;
+    startTimeline();
     if (referenceYoutubeUrl) {
       ytPlayerRef.current?.seekTo?.(0);
       ytPlayerRef.current?.play?.();
     }
-    cancelAnimationFrame(animFrameRef.current);
-    animFrameRef.current = requestAnimationFrame(practiceLoop);
-  }, [avatarSync, resetSync, practiceLoop, referenceYoutubeUrl]);
+  }, [startTimeline, referenceYoutubeUrl]);
 
   const runCountdown = useCallback(() => {
     slotEnteredRef.current = true;
@@ -290,7 +401,8 @@ export function GroupStudioSession({
   }, [startPracticeAfterCountdown]);
 
   const waitingLoop = useCallback(() => {
-    const frame = skeletonData?.[0] || avatarSync.getCurrentFrame();
+    const frame = skeletonData?.[0];
+    syncDanceStage(0);
     if (frame) renderGroupStage(frame);
 
     if (sessionPhase === 'waiting_slot' && checkSlotEntry()) {
@@ -301,7 +413,7 @@ export function GroupStudioSession({
     if (sessionPhase === 'waiting_slot' || sessionPhase === 'lobby') {
       animFrameRef.current = requestAnimationFrame(waitingLoop);
     }
-  }, [skeletonData, avatarSync, renderGroupStage, sessionPhase, checkSlotEntry, runCountdown]);
+  }, [skeletonData, renderGroupStage, sessionPhase, checkSlotEntry, runCountdown, syncDanceStage]);
 
   const enterStudio = useCallback(async () => {
     await dance.startTracking();
@@ -322,51 +434,10 @@ export function GroupStudioSession({
     return () => clearInterval(timer);
   }, [studio.studioEnabled, studio.publishStudioState]);
 
-  const handlePause = useCallback(() => {
-    setIsPaused(true);
-    avatarSync.pause();
-    ytPlayerRef.current?.pause?.();
-    cancelAnimationFrame(animFrameRef.current);
-  }, [avatarSync]);
-
-  const handleResume = useCallback(() => {
-    setIsPaused(false);
-    avatarSync.resume();
-    ytPlayerRef.current?.play?.();
-    animFrameRef.current = requestAnimationFrame(practiceLoop);
-  }, [avatarSync, practiceLoop]);
-
-  const handleEnd = useCallback(async () => {
-    cancelAnimationFrame(animFrameRef.current);
-    ytPlayerRef.current?.pause?.();
-    dance.stopTracking();
-    studio.stopStudio();
-    const recording = await recorder.stopRecording();
-    onEnd({
-      syncScores: scores,
-      scores,
-      duration: currentTime,
-      overall: scores.overall || 0,
-      recordedMediaUrl: recording?.url || recorder.recordedUrl,
-      recordedBlob: recording?.blob || recorder.recordedBlob,
-      scoreTimeline: [
-        { time: 0, score: Math.max(0, (scores.overall || 0) - 10) },
-        { time: Math.max(1, Math.floor(currentTime / 2)), score: scores.overall || 0 },
-        { time: Math.max(2, currentTime), score: scores.overall || 0 },
-      ],
-      groupId,
-      memberId: myMemberId,
-      songId,
-      groupName: group?.nameKr,
-      memberName: myMember?.nameKr,
-      songTitle: song?.title,
-      completed: true,
-    });
-  }, [dance, studio, recorder, onEnd, scores, currentTime, groupId, myMemberId, songId, group, myMember, song]);
-
-  useEffect(() => {
-    endPracticeRef.current = handleEnd;
-  }, [handleEnd]);
+  const handleForceQuit = useCallback(async () => {
+    forceStop();
+    await finishSession(getFinalStats());
+  }, [forceStop, finishSession, getFinalStats]);
 
   useEffect(() => () => {
     cancelAnimationFrame(animFrameRef.current);
@@ -375,28 +446,17 @@ export function GroupStudioSession({
 
   if (!group || !myMember || !song) return null;
 
-  const gridStyle = isMobile
-    ? {
-        width: '100vw',
-        height: '100dvh',
-        background: '#030308',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        padding: 8,
-        paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))',
-        paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
-      }
-    : {
-        width: '100vw',
-        height: '100vh',
-        background: '#030308',
-        display: 'grid',
-        gridTemplateColumns: '1fr 2fr',
-        gridTemplateRows: 'auto 1fr auto',
-        gap: 8,
-        padding: 8,
-      };
+  const gridStyle = {
+    width: '100vw',
+    height: isMobile ? '100dvh' : '100vh',
+    background: '#030308',
+    display: 'grid',
+    gridTemplateRows: 'auto 1fr auto',
+    gap: 8,
+    padding: 8,
+    paddingTop: 'calc(8px + env(safe-area-inset-top, 0px))',
+    paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+  };
 
   return (
     <div ref={screenRef} className={`tv-mode group-studio-session ${layoutClass}`} style={gridStyle}>
@@ -465,59 +525,34 @@ export function GroupStudioSession({
         onStopStudio={() => { studio.stopStudio(); setStudioModalOpen(false); }}
       />
 
-      {referenceYoutubeUrl ? (
-        <div
-          style={{
-            background: '#0a0a14',
-            border: '1px solid rgba(255,255,255,0.08)',
-            borderRadius: 16,
-            overflow: 'hidden',
-            display: 'flex',
-            flexDirection: 'column',
-            minHeight: isMobile ? 160 : undefined,
-            position: 'relative',
-          }}
-        >
-          <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.referenceVideo')}</span>
+      <div className={`group-studio-practice-shell ${referenceYoutubeUrl ? '' : 'group-studio-practice-shell--no-ref'}`}>
+        {referenceYoutubeUrl ? (
+          <div className="group-studio-ref-pane">
+            <div className="group-studio-pane-label">{t('groupStudio.session.referenceVideo')}</div>
+            <div className="group-studio-ref-body">
+              <YouTubeTVPlayer ref={ytPlayerRef} embedUrl={referenceYoutubeUrl} autoplay={false} />
+            </div>
           </div>
-          <div style={{ flex: 1, position: 'relative', minHeight: 120 }}>
-            <YouTubeTVPlayer ref={ytPlayerRef} embedUrl={referenceYoutubeUrl} autoplay={false} />
-          </div>
-        </div>
-      ) : null}
+        ) : null}
 
-      <div
-        style={{
-          background: '#0a0a14',
-          border: `1px solid ${myMember.color}33`,
-          borderRadius: 16,
-          overflow: 'hidden',
-          display: 'flex',
-          flexDirection: 'column',
-          minHeight: isMobile ? 200 : undefined,
-        }}
-      >
-        <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', justifyContent: 'space-between' }}>
-          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.myCamera')}</span>
-          <span style={{ fontSize: 11, fontWeight: 600, color: myMember.color }}>{myMember.nameKr}</span>
-        </div>
-        <div style={{ flex: 1, position: 'relative', minHeight: 160 }}>
-          <video ref={dance.videoRef} autoPlay playsInline muted style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }} />
-          <canvas ref={dance.canvasRef} style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', transform: 'scaleX(-1)' }} />
-        </div>
-        <div style={{ padding: '10px 14px', textAlign: 'center', background: 'rgba(0,0,0,0.4)' }}>
-          <div style={{ fontSize: 32, fontWeight: 800, color: scores.overall > 80 ? '#00FF88' : scores.overall > 60 ? '#FFD700' : isPracticing ? '#FF4444' : 'rgba(255,255,255,0.2)' }}>
-            {isPracticing ? scores.overall || 0 : '—'}
-          </div>
-          <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>{t('groupStudio.session.syncScore')}</div>
-        </div>
-      </div>
-
-      <div style={{ background: '#0a0a14', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 16, position: 'relative', overflow: 'hidden', flex: isMobile ? 1 : undefined }}>
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.5)', zIndex: 10, display: 'flex', justifyContent: 'space-between' }}>
+        <div className="group-studio-stage-pane group-studio-stage-panel" style={{ borderColor: `${myMember.color}33` }}>
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.5)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.stageLabel')}</span>
-          <div style={{ display: 'flex', gap: 4 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+            <button
+              type="button"
+              className={`group-studio-stage-view-toggle ${stageViewMode === '3d' ? 'is-active' : ''}`}
+              onClick={() => setStageViewMode('3d')}
+            >
+              3D
+            </button>
+            <button
+              type="button"
+              className={`group-studio-stage-view-toggle ${stageViewMode === '2d' ? 'is-active' : ''}`}
+              onClick={() => setStageViewMode('2d')}
+            >
+              2D
+            </button>
             {group.members.map((m) => (
               <div key={m.id} style={{ width: 18, height: 18, borderRadius: '50%', background: m.id === myMemberId ? m.color : `${m.color}44`, border: `1px solid ${m.color}66`, fontSize: 9, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 {m.id === myMemberId ? '👤' : m.avatar}
@@ -525,8 +560,66 @@ export function GroupStudioSession({
             ))}
           </div>
         </div>
-        <canvas ref={stageCanvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+
+        {show3DRenderer ? (
+          <Suspense
+            fallback={
+              <div style={{ minHeight: 280, display: 'grid', placeItems: 'center', color: 'rgba(255,255,255,0.45)', fontSize: 12 }}>
+                3D 스테이지 로딩 중...
+              </div>
+            }
+          >
+            <GroupDanceStage3D
+              snapshot={danceEngine.snapshot}
+              className="group-studio-stage-3d"
+              avatarAssets={avatarAssets}
+              formationHole={formationHole}
+              useCharacterAvatars={stageViewMode === '3d'}
+            />
+          </Suspense>
+        ) : (
+          <canvas ref={stageCanvasRef} style={{ width: '100%', height: '100%', minHeight: 280, display: 'block' }} />
+        )}
+
+        {danceEngine.error && stageViewMode === '3d' ? (
+          <div style={{ position: 'absolute', left: 12, right: 12, bottom: 12, padding: '8px 10px', borderRadius: 10, background: 'rgba(40,20,24,0.85)', color: '#ffc4cc', fontSize: 11, zIndex: 12 }}>
+            3D 데이터 로드 실패 — 2D 보기로 전환해 주세요.
+          </div>
+        ) : null}
+
         {countdown !== null ? <CountdownOverlay count={countdown} /> : null}
+
+        {isPracticing && (isRunning || isFinished) ? (
+          <TempoLockIndicator
+            isRunning={isRunning}
+            currentTime={currentTime}
+            totalDuration={maxDuration}
+          />
+        ) : null}
+
+        <MissedBeatAlert show={showMissedAlert} onDismiss={() => setShowMissedAlert(false)} />
+
+        {isPracticing && isRunning ? (
+          <button
+            type="button"
+            onClick={handleForceQuit}
+            style={{
+              position: 'absolute',
+              top: 52,
+              right: 12,
+              padding: '6px 16px',
+              background: 'rgba(255,68,68,0.15)',
+              border: '1px solid rgba(255,68,68,0.3)',
+              borderRadius: 8,
+              color: '#FF4444',
+              fontSize: 12,
+              cursor: 'pointer',
+              zIndex: 25,
+            }}
+          >
+            그만하기
+          </button>
+        ) : null}
 
         {sessionPhase === 'lobby' ? (
           <div style={{ position: 'absolute', inset: 0, background: 'rgba(3,3,8,0.88)', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: 24, zIndex: 20 }}>
@@ -534,8 +627,21 @@ export function GroupStudioSession({
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginBottom: 8 }}>
               {otherMembers.map((m) => `${m.nameKr} AI`).join(' · ')}
             </p>
-            <p style={{ fontSize: 12, color: myMember.color, marginBottom: 28 }}>
+            <p style={{ fontSize: 12, color: myMember.color, marginBottom: 12 }}>
               {t('groupStudio.session.emptySlot', { member: myMember.nameKr })}
+            </p>
+            <p
+              style={{
+                fontSize: 12,
+                color: '#FF4444',
+                marginBottom: 28,
+                textAlign: 'center',
+                lineHeight: 1.6,
+              }}
+            >
+              ⚠️ 시작하면 멈추거나 되돌릴 수 없습니다.
+              <br />
+              실제 그룹 무대처럼 끝까지 함께 진행하세요.
             </p>
             <button
               type="button"
@@ -561,29 +667,93 @@ export function GroupStudioSession({
             </button>
           </div>
         ) : null}
+        </div>
+
+        <div className="group-studio-user-pane group-studio-stage-panel group-studio-stage-panel--user-slot">
+          <div className="group-studio-pane-label group-studio-user-pane-header">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <div
+                style={{
+                  width: 6,
+                  height: 6,
+                  borderRadius: '50%',
+                  background: dance.isTracking ? '#00FF88' : '#FF4444',
+                  boxShadow: dance.isTracking ? '0 0 6px #00FF88' : 'none',
+                }}
+              />
+              <span>{t('groupStudio.session.myCamera')}</span>
+            </div>
+            <span style={{ fontWeight: 600, color: myMember.color }}>{myMember.nameKr}</span>
+          </div>
+          <div className="group-studio-user-body">
+            <video
+              ref={dance.videoRef}
+              autoPlay
+              playsInline
+              muted
+              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
+            />
+            <canvas
+              ref={dance.canvasRef}
+              style={{
+                position: 'absolute',
+                inset: 0,
+                width: '100%',
+                height: '100%',
+                transform: 'scaleX(-1)',
+              }}
+            />
+          </div>
+          <div className="group-studio-user-score">
+            <div
+              style={{
+                fontSize: 32,
+                fontWeight: 800,
+                color: roundedScore > 80 ? '#00FF88' : roundedScore > 60 ? '#FFD700' : isPracticing ? '#FF4444' : 'rgba(255,255,255,0.2)',
+              }}
+            >
+              {isPracticing ? roundedScore || 0 : '—'}
+            </div>
+            <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.3)', letterSpacing: '0.1em' }}>
+              {t('groupStudio.session.syncScore')}
+            </div>
+          </div>
+        </div>
       </div>
 
       <div style={{ gridColumn: isMobile ? undefined : '1 / -1', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '8px 16px', background: 'rgba(0,0,0,0.6)', borderRadius: 12, flexWrap: 'wrap', gap: 8 }}>
         <span style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-          {isPracticing
+          {isPracticing && isRunning
             ? `${Math.floor(currentTime / 60).toString().padStart(2, '0')}:${Math.floor(currentTime % 60).toString().padStart(2, '0')}`
-            : sessionPhase === 'waiting_slot' ? t('groupStudio.session.waitingPosition') : t('groupStudio.session.ready')}
+            : sessionPhase === 'waiting_slot'
+              ? t('groupStudio.session.waitingPosition')
+              : t('groupStudio.session.ready')}
         </span>
         <div style={{ display: 'flex', gap: 8 }}>
-          {isPracticing ? (
-            <button type="button" onClick={isPaused ? handleResume : handlePause} style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontSize: 12, cursor: 'pointer' }}>
-              {isPaused ? t('groupStudio.session.resume') : t('groupStudio.session.pause')}
-            </button>
-          ) : null}
-          <button type="button" onClick={handleEnd} style={{ padding: '6px 16px', background: 'rgba(255,68,68,0.15)', border: '1px solid rgba(255,68,68,0.3)', borderRadius: 8, color: '#FF4444', fontSize: 12, cursor: 'pointer' }}>
-            {t('groupStudio.session.end')}
-          </button>
           {onHome ? (
-            <button type="button" onClick={onHome} style={{ padding: '6px 16px', background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: 8, color: 'rgba(255,255,255,0.6)', fontSize: 12, cursor: 'pointer' }}>
+            <button
+              type="button"
+              onClick={onHome}
+              disabled={isPracticing && isRunning}
+              style={{
+                padding: '6px 16px',
+                background: 'rgba(255,255,255,0.06)',
+                border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: 8,
+                color: isPracticing && isRunning ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)',
+                fontSize: 12,
+                cursor: isPracticing && isRunning ? 'not-allowed' : 'pointer',
+              }}
+            >
               {t('groupStudio.session.home')}
             </button>
           ) : null}
         </div>
+        <span style={{ fontSize: 11, color: myMember.color, fontWeight: 500 }}>
+          {isPracticing && isRunning
+            ? `${myMember.nameKr} · 실시간 진행 중`
+            : `${myMember.nameKr} ${t('groupStudio.session.practiceStep')}`}
+        </span>
       </div>
     </div>
   );

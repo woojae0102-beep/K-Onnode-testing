@@ -1,0 +1,136 @@
+{
+  "meta": {
+    "groupId": "blackpink",
+    "songId": "demo",
+    "title": "BLACKPINK Demo Choreography",
+    "bpm": 140,
+    "durationSec": 4,
+    "formation": "diamond",
+    "fps": 30,
+    "version": "1"
+  },
+  "members": [
+    {
+      "memberId": "jennie",
+      "displayName": "Jennie",
+      "displayNameKr": "제니",
+      "persona": { "styleId": "charismatic", "energy": 0.92, "sharpness": 0.88, "groove": 0.75, "accentColor": "#FF6B9D", "lineScale": 1.1 },
+      "formationAnchor": { "x": 0.5, "y": 0.3, "z": 0 }
+    },
+    {
+      "memberId": "lisa",
+      "displayName": "Lisa",
+      "displayNameKr": "리사",
+      "persona": { "styleId": "power", "energy": 0.95, "sharpness": 0.9, "groove": 0.85, "accentColor": "#FFD700", "lineScale": 1.15 },
+      "formationAnchor": { "x": 0.75, "y": 0.5, "z": -0.05 }
+    },
+    {
+      "memberId": "rose",
+      "displayName": "Rosé",
+      "displayNameKr": "로제",
+      "persona": { "styleId": "elegant", "energy": 0.78, "sharpness": 0.82, "groove": 0.8, "accentColor": "#A78BFA", "lineScale": 1 },
+      "formationAnchor": { "x": 0.25, "y": 0.5, "z": -0.05 }
+    },
+    {
+      "memberId": "jisoo",
+      "displayName": "Jisoo",
+      "displayNameKr": "지수",
+      "persona": { "styleId": "graceful", "energy": 0.8, "sharpness": 0.78, "groove": 0.72, "accentColor": "#6EE7B7", "lineScale": 1 },
+      "formationAnchor": { "x": 0.5, "y": 0.7, "z": 0.05 }
+    }
+  ],
+  "frames": [
+    {
+      "timestamp": 0,
+      "members": [
+        {
+          "memberId": "jennie",
+          "joints": {
+            "nose": { "x": 0.5, "y": 0.22, "z": 0 },
+            "left_shoulder": { "x": 0.46, "y": 0.28, "z": 0 },
+            "right_shoulder": { "x": 0.54, "y": 0.28, "z": 0 },
+            "left_hip": { "x": 0.47, "y": 0.38, "z": 0 },
+            "right_hip": { "x": 0.53, "y": 0.38, "z": 0 }
+          }
+        },
+        {
+          "memberId": "lisa",
+          "joints": {
+            "nose": { "x": 0.75, "y": 0.35, "z": -0.05 },
+            "left_shoulder": { "x": 0.71, "y": 0.41, "z": -0.05 },
+            "right_shoulder": { "x": 0.79, "y": 0.41, "z": -0.05 },
+            "left_hip": { "x": 0.72, "y": 0.52, "z": -0.05 },
+            "right_hip": { "x": 0.78, "y": 0.52, "z": -0.05 }
+          }
+        },
+        {
+          "memberId": "rose",
+          "joints": {
+            "nose": { "x": 0.25, "y": 0.35, "z": -0.05 },
+            "left_shoulder": { "x": 0.21, "y": 0.41, "z": -0.05 },
+            "right_shoulder": { "x": 0.29, "y": 0.41, "z": -0.05 },
+            "left_hip": { "x": 0.22, "y": 0.52, "z": -0.05 },
+            "right_hip": { "x": 0.28, "y": 0.52, "z": -0.05 }
+          }
+        },
+        {
+          "memberId": "jisoo",
+          "joints": {
+            "nose": { "x": 0.5, "y": 0.62, "z": 0.05 },
+            "left_shoulder": { "x": 0.46, "y": 0.68, "z": 0.05 },
+            "right_shoulder": { "x": 0.54, "y": 0.68, "z": 0.05 },
+            "left_hip": { "x": 0.47, "y": 0.78, "z": 0.05 },
+            "right_hip": { "x": 0.53, "y": 0.78, "z": 0.05 }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 2,
+      "members": [
+        {
+          "memberId": "jennie",
+          "joints": {
+            "nose": { "x": 0.5, "y": 0.2, "z": 0.02 },
+            "left_shoulder": { "x": 0.44, "y": 0.26, "z": 0.02 },
+            "right_shoulder": { "x": 0.56, "y": 0.26, "z": 0.02 },
+            "left_elbow": { "x": 0.4, "y": 0.32, "z": 0.03 },
+            "right_elbow": { "x": 0.6, "y": 0.32, "z": 0.03 },
+            "left_hip": { "x": 0.47, "y": 0.38, "z": 0.02 },
+            "right_hip": { "x": 0.53, "y": 0.38, "z": 0.02 }
+          }
+        },
+        {
+          "memberId": "lisa",
+          "joints": {
+            "nose": { "x": 0.76, "y": 0.34, "z": -0.04 },
+            "left_shoulder": { "x": 0.7, "y": 0.4, "z": -0.04 },
+            "right_shoulder": { "x": 0.8, "y": 0.4, "z": -0.04 },
+            "left_hip": { "x": 0.72, "y": 0.51, "z": -0.04 },
+            "right_hip": { "x": 0.78, "y": 0.51, "z": -0.04 }
+          }
+        },
+        {
+          "memberId": "rose",
+          "joints": {
+            "nose": { "x": 0.24, "y": 0.34, "z": -0.04 },
+            "left_shoulder": { "x": 0.2, "y": 0.4, "z": -0.04 },
+            "right_shoulder": { "x": 0.3, "y": 0.4, "z": -0.04 },
+            "left_hip": { "x": 0.22, "y": 0.51, "z": -0.04 },
+            "right_hip": { "x": 0.28, "y": 0.51, "z": -0.04 }
+          }
+        },
+        {
+          "memberId": "jisoo",
+          "joints": {
+            "nose": { "x": 0.5, "y": 0.6, "z": 0.06 },
+            "left_shoulder": { "x": 0.45, "y": 0.66, "z": 0.06 },
+            "right_shoulder": { "x": 0.55, "y": 0.66, "z": 0.06 },
+            "left_hip": { "x": 0.47, "y": 0.76, "z": 0.06 },
+            "right_hip": { "x": 0.53, "y": 0.76, "z": 0.06 }
+          }
+        }
+      ]
+    }
+  ]
+}

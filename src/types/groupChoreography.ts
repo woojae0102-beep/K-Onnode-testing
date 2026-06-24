@@ -1,0 +1,83 @@
+// @ts-nocheck
+/**
+ * 그룹 안무 데이터셋 JSON 스키마
+ * - 멤버별 ID, 3D 관절 좌표(x,y,z), 페르소나 스타일 속성
+ * - public/data/choreography/*.json 으로 배포 후 lazy load
+ */
+
+export interface ChoreographyJoint {
+  x: number;
+  y: number;
+  z: number;
+  visibility?: number;
+}
+
+export interface PersonaStyle {
+  /** dance | vocal | leader | center 등 역할 태그 */
+  styleId: string;
+  /** 0~1 에너지 강도 — 렌더링 glow/line width에 반영 */
+  energy: number;
+  /** 0~1 동작 날카로움 — 보간 smoothing 계수 */
+  sharpness: number;
+  /** 0~1 그루브/리듬감 — 타이밍 오프셋 ms */
+  groove: number;
+  accentColor: string;
+  /** Three.js 스켈레톤 두께 배율 */
+  lineScale?: number;
+}
+
+export interface ChoreographyMemberMeta {
+  memberId: string;
+  displayName: string;
+  displayNameKr?: string;
+  persona: PersonaStyle;
+  /** 대형 기준 슬롯 (0~1 정규화, z=깊이) */
+  formationAnchor: { x: number; y: number; z: number };
+}
+
+export interface ChoreographyMemberFrame {
+  memberId: string;
+  joints: Record<string, ChoreographyJoint>;
+}
+
+export interface ChoreographyFrame {
+  timestamp: number;
+  members: ChoreographyMemberFrame[];
+}
+
+export interface ChoreographyDatasetMeta {
+  groupId: string;
+  songId: string;
+  title?: string;
+  bpm?: number;
+  durationSec: number;
+  formation: 'line' | 'v_shape' | 'diamond' | 'scattered';
+  fps?: number;
+  version?: string;
+}
+
+export interface ChoreographyDataset {
+  meta: ChoreographyDatasetMeta;
+  members: ChoreographyMemberMeta[];
+  frames: ChoreographyFrame[];
+}
+
+/** 런타임 AI 아바타 인스턴스 (AvatarGroupManager 출력) */
+export interface AIAvatarInstance {
+  memberId: string;
+  displayName: string;
+  persona: PersonaStyle;
+  /** 현재 프레임 관절 (formation 보정 후) */
+  joints: Record<string, ChoreographyJoint>;
+  /** 3D 월드 오프셋 (dynamic positioning) */
+  worldOffset: { x: number; y: number; z: number };
+}
+
+/** 사용자 + AI 아바타 동기화 스냅샷 (렌더러 입력) */
+export interface GroupDanceRenderSnapshot {
+  timestamp: number;
+  userMemberId: string;
+  userJoints: Record<string, ChoreographyJoint> | null;
+  userAnchor: { x: number; y: number; z: number };
+  aiAvatars: AIAvatarInstance[];
+}

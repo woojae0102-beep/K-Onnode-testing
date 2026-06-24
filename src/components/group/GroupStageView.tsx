@@ -2,8 +2,8 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
-import { useAvatarSync } from '../../hooks/useAvatarSync';
-import { useFormationTracker } from '../../hooks/useFormationTracker';
+import { useIndependentTimeline } from '../../hooks/useIndependentTimeline';
+import { useGroupSync } from '../../hooks/useGroupSync';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import {
@@ -14,6 +14,8 @@ import {
 } from '../../utils/groupSkeletonDraw';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import FormationGuide from './FormationGuide';
+import TempoLockIndicator from './TempoLockIndicator';
+import MissedBeatAlert from './MissedBeatAlert';
 import type { Agency } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import '../../styles/studio-mode.css';
@@ -31,21 +33,65 @@ export function GroupStageView({
   const otherMembers = group?.members.filter((m) => m.id !== myMemberId) || [];
   const agencyColor = AGENCY_COLORS[agency as Agency] || '#FF1F8E';
 
+  const totalDuration =
+    skeletonData?.length > 0
+      ? skeletonData[skeletonData.length - 1]?.timestamp || 60
+      : 60;
+
+  const {
+    currentTime,
+    isRunning,
+    isFinished,
+    startTimeline,
+    forceStop,
+    getCurrentFrame,
+  } = useIndependentTimeline(skeletonData || [], totalDuration);
+
+  const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
+    myMemberId,
+    group?.members || [],
+  );
+
   const stageCanvasRef = useRef(null);
-  const [currentTime, setCurrentTime] = useState(0);
-  const [isPlaying, setIsPlaying] = useState(false);
-  const [isPaused, setIsPaused] = useState(false);
-  const [scores, setScores] = useState({});
+  const [hasStarted, setHasStarted] = useState(false);
+  const [showMissedAlert, setShowMissedAlert] = useState(false);
   const [studioModalOpen, setStudioModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const screenRef = useRef(null);
-  const animFrameRef = useRef(0);
   const groupStageRef = useRef(null);
+  const endedRef = useRef(false);
+  const prevSmoothScoreRef = useRef(100);
 
   const { layoutClass, isMobile } = useTVScreenLayout();
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
-  const avatarSync = useAvatarSync(skeletonData);
-  const formation = useFormationTracker(groupId, myMemberId);
+
+  const roundedScore = Math.round(syncScore);
+
+  const studio = useStudioSession({
+    localStream: dance.getStream(),
+    mode: 'group',
+    agency,
+    songTitle: `${group?.nameKr || '그룹'} · ${myMember?.nameKr || ''} 파트`,
+    playbackRate: 1,
+    getCurrentTime: () => currentTime,
+    feedbackText: roundedScore
+      ? `싱크 점수 ${roundedScore}점 — ${roundedScore > 80 ? '훌륭해요!' : '조금 더 맞춰봐요!'}`
+      : '그룹 연습 준비 중...',
+    score: roundedScore,
+    scores: {
+      rhythm: roundedScore,
+      posture: roundedScore,
+      angle: roundedScore,
+      expression: 0,
+      energy: 0,
+      stability: roundedScore,
+    },
+    poseData: dance.poseData,
+    practiceStep: 2,
+    practiceStepLabel: '그룹 연습',
+    isPaused: false,
+    isPlaying: isRunning,
+  });
 
   useEffect(() => {
     const updateFullscreen = () => {
@@ -75,32 +121,6 @@ export function GroupStageView({
       /* fullscreen can be blocked by browser/device settings */
     }
   }, []);
-
-  const studio = useStudioSession({
-    localStream: dance.getStream(),
-    mode: 'group',
-    agency,
-    songTitle: `${group?.nameKr || '그룹'} · ${myMember?.nameKr || ''} 파트`,
-    playbackRate: 1,
-    getCurrentTime: () => avatarSync.getElapsed(),
-    feedbackText: scores.overall
-      ? `싱크 점수 ${scores.overall}점 — ${scores.overall > 80 ? '훌륭해요!' : '조금 더 맞춰봐요!'}`
-      : '그룹 연습 준비 중...',
-    score: scores.overall || 0,
-    scores: {
-      rhythm: scores.overall || 0,
-      posture: scores.position || 0,
-      angle: scores.formation || 0,
-      expression: 0,
-      energy: 0,
-      stability: 0,
-    },
-    poseData: dance.poseData,
-    practiceStep: 2,
-    practiceStepLabel: '그룹 연습',
-    isPaused,
-    isPlaying: isPlaying && !isPaused,
-  });
 
   const resizeStageCanvas = useCallback(() => {
     const canvas = stageCanvasRef.current;
@@ -152,29 +172,57 @@ export function GroupStageView({
     [group, myMember, myMemberId, dance.poseData],
   );
 
-  const calculateScores = useCallback(
-    (userPose, frame) => {
-      if (!userPose?.joints || !frame) return;
-      const formationScore = formation.scoreFormation(userPose.joints, frame);
-      const positionScore = formation.scorePosition(userPose.joints);
-      const overall = Math.round(formationScore * 0.7 + positionScore * 0.3);
-      setScores({
-        overall,
-        formation: formationScore,
-        position: positionScore,
-        timestamp: avatarSync.getElapsed(),
+  const finishSession = useCallback(
+    (stats) => {
+      if (endedRef.current) return;
+      endedRef.current = true;
+      dance.stopTracking();
+      studio.stopStudio();
+
+      onEnd({
+        scores: {
+          overall: stats.avgScore,
+          pose: stats.avgScore,
+          timing: stats.avgScore,
+          formation: stats.avgScore,
+          position: stats.avgScore,
+        },
+        syncScores: {
+          overall: stats.avgScore,
+          pose: stats.avgScore,
+          timing: stats.avgScore,
+        },
+        duration: currentTime,
+        overall: stats.avgScore,
+        avgScore: stats.avgScore,
+        missedBeats: stats.missedBeats,
+        worstMoments: stats.worstMoments,
+        bestMoments: stats.bestMoments,
+        scoreHistory: stats.scoreHistory,
+        groupId,
+        memberId: myMemberId,
+        groupName: group?.nameKr,
+        memberName: myMember?.nameKr,
       });
     },
-    [formation, avatarSync],
+    [dance, studio, onEnd, currentTime, groupId, myMemberId, group, myMember],
   );
 
-  const renderLoop = useCallback(() => {
-    if (isPaused) return;
-    const elapsed = avatarSync.getElapsed();
-    setCurrentTime(elapsed);
-    const frame = avatarSync.getCurrentFrame();
+  useEffect(() => {
+    if (!isRunning && !isFinished) return;
+
+    const frame = getCurrentFrame();
     if (frame) renderGroupStage(frame);
-    if (dance.poseData && frame) calculateScores(dance.poseData, frame);
+
+    if (dance.poseData && frame) {
+      const accuracy = updateSyncScore(dance.poseData, frame, currentTime);
+      if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
+        setShowMissedAlert(true);
+      }
+      if (accuracy != null) {
+        prevSmoothScoreRef.current = prevSmoothScoreRef.current * 0.7 + accuracy * 0.3;
+      }
+    }
 
     groupStageRef.current = {
       groupId,
@@ -183,7 +231,7 @@ export function GroupStageView({
       myMemberName: myMember?.nameKr,
       myMemberColor: myMember?.color,
       currentFrame: frame,
-      score: scores.overall || 0,
+      score: roundedScore,
       members: group?.members.map((m) => ({
         id: m.id,
         nameKr: m.nameKr,
@@ -194,20 +242,26 @@ export function GroupStageView({
         isUser: m.id === myMemberId,
       })),
     };
-
-    animFrameRef.current = requestAnimationFrame(renderLoop);
   }, [
-    isPaused,
-    avatarSync,
-    renderGroupStage,
+    currentTime,
+    isRunning,
+    isFinished,
     dance.poseData,
-    calculateScores,
+    getCurrentFrame,
+    renderGroupStage,
+    updateSyncScore,
     groupId,
     group,
     myMemberId,
     myMember,
-    scores.overall,
+    roundedScore,
   ]);
+
+  useEffect(() => {
+    if (isFinished) {
+      finishSession(getFinalStats());
+    }
+  }, [isFinished, finishSession, getFinalStats]);
 
   useEffect(() => {
     if (!studio.studioEnabled) return undefined;
@@ -221,46 +275,27 @@ export function GroupStageView({
 
   const startPractice = useCallback(async () => {
     await dance.startTracking();
-    avatarSync.start();
-    setIsPlaying(true);
-    setIsPaused(false);
-    cancelAnimationFrame(animFrameRef.current);
-    animFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [dance, avatarSync, renderLoop]);
+    setHasStarted(true);
+    startTimeline();
+  }, [dance, startTimeline]);
 
-  const handlePause = useCallback(() => {
-    setIsPaused(true);
-    avatarSync.pause();
-    cancelAnimationFrame(animFrameRef.current);
-  }, [avatarSync]);
+  const handleForceQuit = useCallback(() => {
+    forceStop();
+    finishSession(getFinalStats());
+  }, [forceStop, finishSession, getFinalStats]);
 
-  const handleResume = useCallback(() => {
-    setIsPaused(false);
-    avatarSync.resume();
-    animFrameRef.current = requestAnimationFrame(renderLoop);
-  }, [avatarSync, renderLoop]);
-
-  const handleEnd = useCallback(() => {
-    cancelAnimationFrame(animFrameRef.current);
-    dance.stopTracking();
-    studio.stopStudio();
-    onEnd({
-      scores,
-      duration: currentTime,
-      overall: scores.overall || 0,
-      groupId,
-      memberId: myMemberId,
-      groupName: group?.nameKr,
-      memberName: myMember?.nameKr,
-    });
-  }, [dance, studio, onEnd, scores, currentTime, groupId, myMemberId, group, myMember]);
-
-  useEffect(() => () => {
-    cancelAnimationFrame(animFrameRef.current);
-    dance.stopTracking();
-  }, [dance]);
+  useEffect(
+    () => () => {
+      dance.stopTracking();
+    },
+    [dance],
+  );
 
   if (!group || !myMember) return null;
+
+  const showStartOverlay = !hasStarted && !isRunning && currentTime === 0;
+  const scoreColor =
+    roundedScore > 70 ? '#00FF88' : roundedScore > 40 ? '#FFD700' : '#FF4444';
 
   const gridStyle = isMobile
     ? {
@@ -360,7 +395,6 @@ export function GroupStageView({
         }}
       />
 
-      {/* 좌: 내 카메라 */}
       <div
         style={{
           background: '#0a0a14',
@@ -439,16 +473,11 @@ export function GroupStageView({
             style={{
               fontSize: 32,
               fontWeight: 800,
-              color:
-                (scores.overall || 0) > 80
-                  ? '#00FF88'
-                  : (scores.overall || 0) > 60
-                    ? '#FFD700'
-                    : '#FF4444',
+              color: scoreColor,
               textShadow: '0 0 20px currentColor',
             }}
           >
-            {scores.overall || 0}
+            {roundedScore}
           </div>
           <div
             style={{
@@ -460,10 +489,14 @@ export function GroupStageView({
           >
             SYNC SCORE
           </div>
+          {isRunning && missedBeats > 0 ? (
+            <div style={{ fontSize: 10, color: 'rgba(255,68,68,0.7)', marginTop: 4 }}>
+              놓친 박자 {missedBeats}
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* 우: 그룹 스테이지 */}
       <div
         style={{
           background: '#0a0a14',
@@ -501,8 +534,7 @@ export function GroupStageView({
                   width: 20,
                   height: 20,
                   borderRadius: '50%',
-                  background:
-                    member.id === myMemberId ? member.color : `${member.color}44`,
+                  background: member.id === myMemberId ? member.color : `${member.color}44`,
                   border: `1px solid ${member.color}66`,
                   display: 'flex',
                   alignItems: 'center',
@@ -516,12 +548,41 @@ export function GroupStageView({
           </div>
         </div>
 
-        <canvas
-          ref={stageCanvasRef}
-          style={{ width: '100%', height: '100%', display: 'block' }}
-        />
+        <canvas ref={stageCanvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
 
-        {!isPlaying ? (
+        {(isRunning || isFinished) && (
+          <TempoLockIndicator
+            isRunning={isRunning}
+            currentTime={currentTime}
+            totalDuration={totalDuration}
+          />
+        )}
+
+        <MissedBeatAlert show={showMissedAlert} onDismiss={() => setShowMissedAlert(false)} />
+
+        {isRunning && (
+          <button
+            type="button"
+            onClick={handleForceQuit}
+            style={{
+              position: 'absolute',
+              top: 12,
+              right: 12,
+              padding: '6px 16px',
+              background: 'rgba(255,68,68,0.15)',
+              border: '1px solid rgba(255,68,68,0.3)',
+              borderRadius: 8,
+              color: '#FF4444',
+              fontSize: 12,
+              cursor: 'pointer',
+              zIndex: 25,
+            }}
+          >
+            그만하기
+          </button>
+        )}
+
+        {showStartOverlay ? (
           <div
             style={{
               position: 'absolute',
@@ -532,6 +593,7 @@ export function GroupStageView({
               alignItems: 'center',
               justifyContent: 'center',
               padding: 24,
+              zIndex: 15,
             }}
           >
             <div style={{ fontSize: 20, fontWeight: 600, color: '#fff', marginBottom: 8 }}>
@@ -541,7 +603,7 @@ export function GroupStageView({
               style={{
                 fontSize: 13,
                 color: 'rgba(255,255,255,0.5)',
-                marginBottom: 24,
+                marginBottom: 16,
                 textAlign: 'center',
               }}
             >
@@ -550,7 +612,29 @@ export function GroupStageView({
               AI 아바타로 함께 연습합니다
             </div>
 
-            <div style={{ display: 'flex', gap: 10, marginBottom: 32, flexWrap: 'wrap', justifyContent: 'center' }}>
+            <div
+              style={{
+                fontSize: 13,
+                color: '#FF4444',
+                marginBottom: 16,
+                textAlign: 'center',
+                lineHeight: 1.6,
+              }}
+            >
+              ⚠️ 시작하면 멈추거나 되돌릴 수 없습니다.
+              <br />
+              실제 그룹 무대처럼 끝까지 함께 진행하세요.
+            </div>
+
+            <div
+              style={{
+                display: 'flex',
+                gap: 10,
+                marginBottom: 32,
+                flexWrap: 'wrap',
+                justifyContent: 'center',
+              }}
+            >
               {group.members.map((member) => (
                 <div key={member.id} style={{ textAlign: 'center' }}>
                   <div
@@ -607,7 +691,6 @@ export function GroupStageView({
         ) : null}
       </div>
 
-      {/* 하단 컨트롤 */}
       <div
         style={{
           gridColumn: isMobile ? undefined : '1 / -1',
@@ -631,50 +714,19 @@ export function GroupStageView({
             .padStart(2, '0')}
         </div>
         <div style={{ display: 'flex', gap: 10 }}>
-          {isPlaying ? (
-            <button
-              type="button"
-              onClick={isPaused ? handleResume : handlePause}
-              style={{
-                padding: '6px 20px',
-                background: 'rgba(255,255,255,0.06)',
-                border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: 8,
-                color: 'rgba(255,255,255,0.6)',
-                fontSize: 12,
-                cursor: 'pointer',
-              }}
-            >
-              {isPaused ? '재개' : '일시정지'}
-            </button>
-          ) : null}
-          <button
-            type="button"
-            onClick={handleEnd}
-            style={{
-              padding: '6px 20px',
-              background: 'rgba(255,68,68,0.15)',
-              border: '1px solid rgba(255,68,68,0.3)',
-              borderRadius: 8,
-              color: '#FF4444',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
-          >
-            종료
-          </button>
           {onHome ? (
             <button
               type="button"
               onClick={onHome}
+              disabled={isRunning}
               style={{
                 padding: '6px 20px',
                 background: 'rgba(255,255,255,0.06)',
                 border: '1px solid rgba(255,255,255,0.12)',
                 borderRadius: 8,
-                color: 'rgba(255,255,255,0.6)',
+                color: isRunning ? 'rgba(255,255,255,0.2)' : 'rgba(255,255,255,0.6)',
                 fontSize: 12,
-                cursor: 'pointer',
+                cursor: isRunning ? 'not-allowed' : 'pointer',
               }}
             >
               홈
@@ -682,7 +734,9 @@ export function GroupStageView({
           ) : null}
         </div>
         <div style={{ fontSize: 11, color: myMember.color, fontWeight: 500 }}>
-          {myMember.nameKr} 파트 연습 중
+          {isRunning
+            ? `${myMember.nameKr} 파트 · 실시간 진행 중`
+            : `${myMember.nameKr} 파트 연습`}
         </div>
       </div>
     </div>

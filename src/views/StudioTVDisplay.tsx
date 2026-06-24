@@ -54,23 +54,33 @@ export default function StudioTVDisplay({ code, isHost = false }) {
   }, [webrtc.remoteStream, isCameraMode]);
 
   useEffect(() => {
-    const t = syncState?.currentTime;
-    if (typeof t !== 'number' || !playerRef.current?.isReady?.() || isPaused) return;
+    const syncTime = isGroup ? groupStage?.currentTime : syncState?.currentTime;
+    if (typeof syncTime !== 'number' || !playerRef.current?.isReady?.() || isPaused) return;
     const now = Date.now();
     if (now - lastSeekRef.current < 400) return;
     const local = playerRef.current.getCurrentTime?.() || 0;
-    if (Math.abs(local - t) > 0.6) {
-      playerRef.current.seekTo?.(t);
+    if (Math.abs(local - syncTime) > 0.6) {
+      playerRef.current.seekTo?.(syncTime);
       lastSeekRef.current = now;
     }
-  }, [syncState?.currentTime, isPaused]);
+  }, [syncState?.currentTime, groupStage?.currentTime, isPaused, isGroup]);
 
   useEffect(() => {
     if (isPaused) playerRef.current?.pause?.();
-    else if (syncState?.isPlaying) playerRef.current?.play?.();
-  }, [isPaused, syncState?.isPlaying]);
+    else if (isGroup ? groupStage?.isPlaying : syncState?.isPlaying) playerRef.current?.play?.();
+  }, [isPaused, syncState?.isPlaying, groupStage?.isPlaying, isGroup]);
 
   const vocal = syncState?.vocalMetrics || {};
+  const groupRefUrl = groupStage?.referenceVideoUrl || syncState?.referenceVideoUrl;
+  const beatProgress = groupStage?.beatProgress ?? 0;
+  const groupCurrentTime = groupStage?.currentTime ?? 0;
+  const groupMaxDuration = groupStage?.maxDuration ?? 0;
+  const groupBpm = groupStage?.bpm;
+
+  const formatTime = (sec) => {
+    const s = Math.max(0, Math.floor(sec || 0));
+    return `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+  };
 
   return (
     <div className="studio-tv-root">
@@ -104,14 +114,42 @@ export default function StudioTVDisplay({ code, isHost = false }) {
           </div>
 
           <div className="studio-tv-ref">
-            <div className="studio-tv-ref-label">{isGroup ? '그룹 스테이지' : '안무 시범'}</div>
+            <div className="studio-tv-ref-label">{isGroup ? '그룹 스테이지 · 레퍼런스' : '안무 시범'}</div>
             <div className="studio-tv-ref-body">
               {isGroup ? (
-                <GroupTVStageCanvas
-                  groupStage={groupStage}
-                  poseSnapshot={syncState?.poseSnapshot}
-                  className="studio-tv-group-stage"
-                />
+                <div className="studio-tv-group-dual">
+                  {groupRefUrl ? (
+                    <div className="studio-tv-group-ref-video">
+                      <YouTubeTVPlayer
+                        ref={playerRef}
+                        embedUrl={groupRefUrl}
+                        playbackRate={syncState?.playbackRate || 1}
+                        autoplay={false}
+                      />
+                    </div>
+                  ) : null}
+                  <div className="studio-tv-group-beat">
+                    <div className="studio-tv-group-beat-meta">
+                      <span>{formatTime(groupCurrentTime)}</span>
+                      {groupMaxDuration ? <span>{formatTime(groupMaxDuration)}</span> : null}
+                      {groupBpm ? <span className="studio-tv-group-bpm">{groupBpm} BPM</span> : null}
+                    </div>
+                    <div className="studio-tv-group-beat-track">
+                      <div
+                        className="studio-tv-group-beat-fill"
+                        style={{
+                          width: `${Math.round(Math.min(1, Math.max(0, beatProgress)) * 100)}%`,
+                          background: agencyColor,
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <GroupTVStageCanvas
+                    groupStage={groupStage}
+                    poseSnapshot={syncState?.poseSnapshot}
+                    className="studio-tv-group-stage"
+                  />
+                </div>
               ) : syncState?.referenceVideoUrl ? (
                 <YouTubeTVPlayer
                   ref={playerRef}

@@ -5,6 +5,8 @@ import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useGroupChoreoExtract } from '../../hooks/useGroupChoreoExtract';
 import { getSongVideo, saveSongVideo } from '../../services/groupStudioStorage';
+import { buildDanceDatabase, saveDanceDatabase, loadDanceDatabase } from '../../services/dance/DanceDatabaseService';
+import MemberAutoDetect from './MemberAutoDetect';
 import { extractYoutubeVideoId } from '../../utils/dancePracticeVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
 import '../../styles/group-studio.css';
@@ -29,6 +31,9 @@ export function ChoreoExtractScreen({
   const [cacheReady, setCacheReady] = useState(false);
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
+  const [phase, setPhase] = useState('upload');
+  const [pendingAnalysis, setPendingAnalysis] = useState(null);
+  const [pendingMeta, setPendingMeta] = useState(null);
 
   const {
     isExtracting,
@@ -39,6 +44,7 @@ export function ChoreoExtractScreen({
     cancel,
     loadFromCache,
     extractChoreo,
+    extractAnalysis,
   } = useGroupChoreoExtract();
 
   useEffect(() => {
@@ -66,43 +72,57 @@ export function ChoreoExtractScreen({
 
   const runExtract = useCallback(async (file) => {
     if (!song || !group) return;
-    const frames = await extractChoreo({
+    const result = await extractAnalysis({
       songId,
       groupId: song.groupId,
       videoId,
-      focusMemberId: memberId,
       file,
       videoRef,
     });
-    if (frames?.length) {
-      if (videoId) {
-        saveSongVideo(songId, {
-          videoId,
-          youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-          title: videoTitle,
-          videoType: 'user_youtube',
-        });
-      }
-      onComplete(frames, { videoId, durationSec: frames[frames.length - 1]?.timestamp || song.duration });
+    if (result?.analysisResult) {
+      setPendingAnalysis(result.analysisResult);
+      setPendingMeta({ videoId: result.videoId, fileName: file?.name });
+      setPhase('confirm');
     }
-  }, [song, group, extractChoreo, songId, videoId, memberId, videoTitle, onComplete]);
+  }, [song, group, extractAnalysis, songId, videoId]);
 
   const handleUseCache = useCallback(async () => {
+    const danceDb = await loadDanceDatabase(song.groupId, songId, videoId);
+    if (danceDb?.skeletonFrames?.length) {
+      onComplete(danceDb.skeletonFrames, {
+        videoId,
+        durationSec: danceDb.durationSec || song?.duration,
+        fromCache: true,
+        danceDatabase: danceDb,
+      });
+      return;
+    }
     const frames = await loadFromCache(songId, videoId);
     if (frames?.length) {
       onComplete(frames, { videoId, durationSec: frames[frames.length - 1]?.timestamp || song?.duration, fromCache: true });
     }
-  }, [loadFromCache, songId, videoId, onComplete, song]);
+  }, [loadFromCache, loadDanceDatabase, songId, videoId, onComplete, song]);
 
   const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
     if (file) runExtract(file);
   }, [runExtract]);
 
-  const handleYoutubeExtract = useCallback(() => {
+  const handleYoutubeExtract = useCallback(async () => {
     if (!videoId) return;
-    runExtract(null);
-  }, [videoId, runExtract]);
+    const result = await extractAnalysis({
+      songId,
+      groupId: song.groupId,
+      videoId,
+      file: null,
+      videoRef,
+    });
+    if (result?.analysisResult) {
+      setPendingAnalysis(result.analysisResult);
+      setPendingMeta({ videoId: result.videoId });
+      setPhase('confirm');
+    }
+  }, [videoId, extractAnalysis, songId, song, videoRef]);
 
   const handleApplyUrl = useCallback(() => {
     const id = extractYoutubeVideoId(urlInput.trim());
@@ -122,6 +142,45 @@ export function ChoreoExtractScreen({
   }, [urlInput, songId, t]);
 
   if (!song || !group || !member) return null;
+
+  if (phase === 'confirm' && pendingAnalysis) {
+    return (
+      <MemberAutoDetect
+        groupId={song.groupId}
+        myMemberId={memberId}
+        analysisResult={pendingAnalysis}
+        onConfirm={async (trackToMemberMap) => {
+          const danceDb = buildDanceDatabase({
+            groupId: song.groupId,
+            songId,
+            userMemberId: memberId,
+            analysisResult: pendingAnalysis,
+            trackToMember: trackToMemberMap,
+            videoId: pendingMeta?.videoId || videoId,
+          });
+          await saveDanceDatabase(danceDb);
+          if (videoId) {
+            saveSongVideo(songId, {
+              videoId,
+              youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+              title: videoTitle,
+              videoType: 'user_youtube',
+            });
+          }
+          onComplete(danceDb.skeletonFrames, {
+            videoId: pendingMeta?.videoId || videoId,
+            durationSec: danceDb.durationSec,
+            danceDatabase: danceDb,
+          });
+        }}
+        onRetry={() => {
+          setPhase('upload');
+          setPendingAnalysis(null);
+          setPendingMeta(null);
+        }}
+      />
+    );
+  }
 
   const youtubeUrl = videoId ? `https://www.youtube.com/watch?v=${videoId}` : '';
 

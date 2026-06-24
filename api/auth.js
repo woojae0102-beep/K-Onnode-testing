@@ -1,5 +1,4 @@
 const { getAdmin } = require('../lib/api-lib/firebaseAdmin.cjs');
-const socialHandler = require('../lib/api-handlers/auth/social');
 
 function actionFromReq(req) {
   const url = new URL(req.url || '/', 'http://localhost');
@@ -130,16 +129,25 @@ async function subscriptionWebhook(req, res) {
 }
 
 module.exports = async function handler(req, res) {
-  const parts = partsFromReq(req);
-  const action = parts[0] || actionFromReq(req);
-  if (action === 'kakao-token') return kakaoToken(req, res);
-  if (action === 'verify-token') return verifyToken(req, res);
-  if (action === 'subscription-webhook') return subscriptionWebhook(req, res);
-  if (action === 'social') {
-    const subPath = parts.slice(1).join('/');
-    req.url = `/api/auth/social?path=${encodeURIComponent(subPath)}`;
-    return socialHandler(req, res);
+  try {
+    const parts = partsFromReq(req);
+    const action = parts[0] || actionFromReq(req);
+    if (action === 'kakao-token') return kakaoToken(req, res);
+    if (action === 'verify-token') return verifyToken(req, res);
+    if (action === 'subscription-webhook') return subscriptionWebhook(req, res);
+    if (action === 'social') {
+      const socialHandler = require('../lib/api-handlers/auth/social');
+      const subPath = parts.slice(1).join('/');
+      req.url = `/api/auth/social?path=${encodeURIComponent(subPath)}`;
+      return socialHandler(req, res);
+    }
+    return res.status(404).json({ error: 'Unknown auth action', action });
+  } catch (err) {
+    console.error('[auth] handler failed:', err);
+    return res.status(500).json({
+      error: 'auth_handler_failed',
+      detail: err?.message || String(err),
+    });
   }
-  return res.status(404).json({ error: 'Unknown auth action', action });
 };
 

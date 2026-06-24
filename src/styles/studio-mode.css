@@ -854,6 +854,64 @@
   border: none;
 }
 
+.studio-tv-group-dual {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+  gap: 2px;
+}
+
+.studio-tv-group-ref-video {
+  flex: 0 0 38%;
+  min-height: 120px;
+  position: relative;
+  background: #000;
+}
+
+.studio-tv-group-beat {
+  flex-shrink: 0;
+  padding: 8px 12px 6px;
+  background: rgba(0, 0, 0, 0.35);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.studio-tv-group-beat-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-bottom: 6px;
+  letter-spacing: 0.08em;
+}
+
+.studio-tv-group-bpm {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.studio-tv-group-beat-track {
+  height: 4px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.studio-tv-group-beat-fill {
+  height: 100%;
+  border-radius: inherit;
+  transition: width 0.35s linear;
+}
+
+.studio-tv-group-stage {
+  flex: 1;
+  min-height: 0;
+}
+
 @media (max-width: 900px) {
   .studio-tv-top { grid-template-columns: 1fr 1fr; }
   .studio-tv-main { grid-template-columns: 1fr; grid-template-rows: 1fr 1fr; }

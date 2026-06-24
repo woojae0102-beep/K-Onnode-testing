@@ -9,6 +9,7 @@ const HANDLERS = {
   'youtube-search': () => require(path.join(__dirname, '../lib/api-handlers/group/youtube-search')),
   'video-metadata': () => require(path.join(__dirname, '../lib/api-handlers/group/video-metadata')),
   'proxy-video': () => require(path.join(__dirname, '../lib/api-handlers/group/proxy-video')),
+  'analyze-formation': () => require(path.join(__dirname, '../lib/api-handlers/group/analyze-formation')),
   'shorts-upload': () => require(path.join(__dirname, '../lib/api-handlers/group/shorts-upload')),
 };
 

@@ -5,6 +5,7 @@ import {
   drawMySpot,
   drawAIAvatar,
   drawUserSkeleton,
+  drawGhostSlot,
 } from '../../utils/groupSkeletonDraw';
 
 export default function GroupTVStageCanvas({ groupStage, poseSnapshot, className = '' }) {
@@ -29,8 +30,19 @@ export default function GroupTVStageCanvas({ groupStage, poseSnapshot, className
       const members = groupStage?.members || [];
       const myMember = members.find((m) => m.isUser);
       const myMemberId = groupStage?.myMemberId;
+      const formationHole = groupStage?.formationHole;
 
-      if (myMember) {
+      if (formationHole?.anchor) {
+        drawGhostSlot(
+          ctx,
+          {
+            x: formationHole.anchor.x * canvas.width,
+            y: formationHole.anchor.y * canvas.height,
+          },
+          formationHole.color || groupStage?.myMemberColor || '#FF1F8E',
+          formationHole.label || 'YOU',
+        );
+      } else if (myMember) {
         drawMySpot(
           ctx,
           { x: myMember.defaultX * canvas.width, y: myMember.defaultY * canvas.height },

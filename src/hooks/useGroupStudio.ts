@@ -12,6 +12,7 @@ export function useGroupStudio() {
   const [sessionComparison, setSessionComparison] = useState(null);
   const [practiceVideo, setPracticeVideo] = useState(null);
   const [practiceDuration, setPracticeDuration] = useState(null);
+  const [danceDatabase, setDanceDatabase] = useState(null);
 
   const selectSong = useCallback((songId) => {
     setSelectedSongId(songId);
@@ -29,6 +30,7 @@ export function useGroupStudio() {
 
   const completeChoreoExtract = useCallback((frames, meta = {}) => {
     setSkeletonData(frames);
+    setDanceDatabase(meta.danceDatabase || null);
     const song = getSongById(selectedSongId);
     const saved = getSongVideo(selectedSongId);
     const userVideo = saved?.videoType === 'user_youtube' ? saved : null;
@@ -64,6 +66,7 @@ export function useGroupStudio() {
     setSessionComparison(null);
     setPracticeVideo(null);
     setPracticeDuration(null);
+    setDanceDatabase(null);
   }, []);
 
   const goBack = useCallback(() => {
@@ -91,6 +94,7 @@ export function useGroupStudio() {
     sessionComparison,
     practiceVideo,
     practiceDuration,
+    danceDatabase,
     selectSong,
     startPositionSelect,
     selectPosition,

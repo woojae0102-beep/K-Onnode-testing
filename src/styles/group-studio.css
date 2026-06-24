@@ -56,6 +56,41 @@
   margin: 0;
 }
 
+.group-studio-stage-panel {
+  background: #0a0a14;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 16px;
+  position: relative;
+  overflow: hidden;
+  min-height: 280px;
+}
+
+.group-studio-stage-panel--user-slot {
+  border-color: rgba(255, 31, 142, 0.25);
+}
+
+.group-studio-stage-3d {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+}
+
+.group-studio-stage-view-toggle {
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.65);
+  font-size: 10px;
+  cursor: pointer;
+}
+
+.group-studio-stage-view-toggle.is-active {
+  border-color: rgba(255, 31, 142, 0.45);
+  color: #fff;
+  background: rgba(255, 31, 142, 0.15);
+}
+
 .group-studio-search {
   display: flex;
   align-items: center;
@@ -519,6 +554,85 @@
 .group-studio-sync-item strong {
   font-size: 24px;
   font-weight: 800;
+}
+
+/* Group Studio Session — 3-split practice layout */
+.group-studio-session {
+  min-height: 0;
+}
+
+.group-studio-practice-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(0, 1.25fr) minmax(0, 0.85fr);
+  gap: 8px;
+  min-height: 0;
+  flex: 1;
+  overflow: hidden;
+}
+
+.group-studio-practice-shell--no-ref {
+  grid-template-columns: minmax(0, 1.45fr) minmax(0, 0.85fr);
+}
+
+.group-studio-ref-pane,
+.group-studio-stage-pane,
+.group-studio-user-pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.group-studio-pane-label {
+  padding: 10px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  letter-spacing: 0.08em;
+  flex-shrink: 0;
+}
+
+.group-studio-user-pane-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.group-studio-ref-body,
+.group-studio-user-body {
+  flex: 1;
+  position: relative;
+  min-height: 120px;
+}
+
+.group-studio-user-body {
+  min-height: 160px;
+}
+
+.group-studio-user-score {
+  padding: 10px 14px;
+  text-align: center;
+  background: rgba(0, 0, 0, 0.4);
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  flex-shrink: 0;
+}
+
+@media (max-width: 900px) {
+  .group-studio-practice-shell,
+  .group-studio-practice-shell--no-ref {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(220px, 1fr) auto;
+    overflow-y: auto;
+  }
+
+  .group-studio-ref-body {
+    min-height: 140px;
+  }
+
+  .group-studio-stage-pane {
+    min-height: 280px;
+  }
 }
 
 @media (max-width: 480px) {

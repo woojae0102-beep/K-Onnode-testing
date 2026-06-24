@@ -37,6 +37,7 @@ export default function GroupPracticeView({
     skeletonData,
     sessionResult,
     sessionComparison,
+    danceDatabase,
     selectSong,
     startPositionSelect,
     selectPosition,
@@ -239,6 +240,7 @@ export default function GroupPracticeView({
           skeletonData={skeletonData}
           referenceYoutubeUrl={practiceVideo?.youtubeUrl}
           practiceDuration={practiceDuration}
+          danceDatabase={danceDatabase}
           agency={agency}
           onEnd={handleEnd}
           onHome={handleGoHome}

@@ -24,10 +24,19 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
   const [showShorts, setShowShorts] = useState(false);
 
   const sync = result?.syncScores || result?.scores || {};
-  const overall = result?.overall || sync.overall || 0;
+  const overall = result?.overall || result?.avgScore || sync.overall || 0;
   const duration = result?.duration || 0;
+  const missedBeats = result?.missedBeats ?? 0;
+  const worstMoments = result?.worstMoments || [];
+  const bestMoments = result?.bestMoments || [];
   const mins = Math.floor(duration / 60);
   const secs = Math.floor(duration % 60);
+
+  const formatMoment = (timeSec) => {
+    const m = Math.floor(timeSec / 60);
+    const s = Math.floor(timeSec % 60);
+    return `${m}:${s.toString().padStart(2, '0')}`;
+  };
 
   const metrics = ['position', 'timing', 'pose', 'formation', 'energy'];
 
@@ -112,6 +121,38 @@ export function PerformanceReport({ result, songId, memberId, comparison, onRetr
             </div>
           ))}
         </div>
+
+        {(missedBeats > 0 || worstMoments.length > 0 || bestMoments.length > 0) ? (
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))',
+              gap: 12,
+              marginBottom: 24,
+            }}
+          >
+            <div className="group-studio-sync-item">
+              <span>놓친 박자</span>
+              <strong style={{ color: missedBeats > 3 ? '#FF4444' : '#FFD700' }}>{missedBeats}</strong>
+            </div>
+            {worstMoments.length > 0 ? (
+              <div className="group-studio-sync-item">
+                <span>최악 구간</span>
+                <strong style={{ color: '#FF4444', fontSize: 13 }}>
+                  {worstMoments.map(formatMoment).join(' · ')}
+                </strong>
+              </div>
+            ) : null}
+            {bestMoments.length > 0 ? (
+              <div className="group-studio-sync-item">
+                <span>최고 구간</span>
+                <strong style={{ color: '#00FF88', fontSize: 13 }}>
+                  {bestMoments.map(formatMoment).join(' · ')}
+                </strong>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
 
         <PracticeComparisonPanel
           comparison={comparison}

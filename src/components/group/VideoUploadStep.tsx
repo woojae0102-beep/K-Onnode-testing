@@ -1,8 +1,9 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
-import { useSkeletonExtract } from '../../hooks/useSkeletonExtract';
-import SkeletonExtractor from './SkeletonExtractor';
+import { useVideoAnalysis } from '../../hooks/useVideoAnalysis';
+import { buildDanceDatabase, saveDanceDatabase } from '../../services/dance/DanceDatabaseService';
+import MemberAutoDetect from './MemberAutoDetect';
 
 const ACCEPTED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'];
 
@@ -12,7 +13,11 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
   const fileInputRef = useRef(null);
   const [videoFile, setVideoFile] = useState(null);
   const [previewUrl, setPreviewUrl] = useState('');
-  const { isExtracting, progress, step, error, videoRef, extractFromFile } = useSkeletonExtract();
+  const [analysisResult, setAnalysisResult] = useState(null);
+  const [phase, setPhase] = useState('upload');
+  const [localError, setLocalError] = useState('');
+
+  const { analyzeVideo, progress, statusMessage, isAnalyzing, error, cancel } = useVideoAnalysis();
 
   if (!group || !member) return null;
 
@@ -24,24 +29,123 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
       return;
     }
     setVideoFile(file);
+    setLocalError('');
     if (previewUrl) URL.revokeObjectURL(previewUrl);
     setPreviewUrl(URL.createObjectURL(file));
   };
 
-  const handleStartExtraction = async () => {
+  const startAnalysis = async () => {
     if (!videoFile) return;
-    const data = await extractFromFile(videoFile, groupId);
-    if (data) {
-      setTimeout(() => onExtracted(data), 600);
+    setPhase('analyzing');
+    setLocalError('');
+
+    try {
+      const result = await analyzeVideo(videoFile);
+      setAnalysisResult(result);
+      setPhase('confirm');
+    } catch (err) {
+      setLocalError(err?.message || '분석에 실패했습니다.');
+      setPhase('upload');
     }
   };
 
-  if (isExtracting) {
+  const handleRetry = () => {
+    cancel();
+    setAnalysisResult(null);
+    setPhase('upload');
+    setLocalError('');
+  };
+
+  if (phase === 'confirm' && analysisResult) {
     return (
-      <>
-        <video ref={videoRef} style={{ display: 'none' }} muted playsInline />
-        <SkeletonExtractor progress={progress} step={step} memberCount={group.memberCount} />
-      </>
+      <MemberAutoDetect
+        groupId={groupId}
+        myMemberId={memberId}
+        analysisResult={analysisResult}
+        onConfirm={async (trackToMemberMap) => {
+          const danceDb = buildDanceDatabase({
+            groupId,
+            songId: `${groupId}-upload`,
+            userMemberId: memberId,
+            analysisResult,
+            trackToMember: trackToMemberMap,
+          });
+          await saveDanceDatabase(danceDb);
+          const frames = danceDb.skeletonFrames;
+          if (!frames.length) {
+            setLocalError('매칭된 AI 멤버 데이터가 없습니다. 멤버 매칭을 다시 확인해주세요.');
+            setPhase('upload');
+            return;
+          }
+          onExtracted(frames, {
+            detectedMemberCount: analysisResult.detectedMemberCount,
+            trackCount: trackToMemberMap.size,
+            danceDatabase: danceDb,
+          });
+        }}
+        onRetry={handleRetry}
+      />
+    );
+  }
+
+  if (phase === 'analyzing' || isAnalyzing) {
+    return (
+      <div
+        style={{
+          minHeight: '100dvh',
+          background: '#030308',
+          padding: 'calc(40px + env(safe-area-inset-top, 0px)) 24px',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          fontFamily: 'Inter, sans-serif',
+        }}
+      >
+        <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
+          <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 12 }}>
+            영상 분석 중
+          </div>
+          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 24, lineHeight: 1.6 }}>
+            {statusMessage}
+          </div>
+          <div
+            style={{
+              height: 8,
+              borderRadius: 4,
+              background: 'rgba(255,255,255,0.08)',
+              overflow: 'hidden',
+              marginBottom: 12,
+            }}
+          >
+            <div
+              style={{
+                height: '100%',
+                width: `${progress}%`,
+                background: `linear-gradient(90deg, ${member.color}, #6C5CE7)`,
+                transition: 'width 0.25s ease',
+              }}
+            />
+          </div>
+          <div style={{ fontSize: 24, fontWeight: 800, color: member.color }}>{progress}%</div>
+          <button
+            type="button"
+            onClick={handleRetry}
+            style={{
+              marginTop: 24,
+              padding: '8px 16px',
+              background: 'none',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: 8,
+              color: 'rgba(255,255,255,0.5)',
+              fontSize: 12,
+              cursor: 'pointer',
+            }}
+          >
+            취소
+          </button>
+        </div>
+      </div>
     );
   }
 
@@ -54,8 +158,6 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
         fontFamily: 'Inter, sans-serif',
       }}
     >
-      <video ref={videoRef} style={{ display: 'none' }} muted playsInline />
-
       <button
         type="button"
         onClick={onBack}
@@ -79,7 +181,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
             {group.nameKr} · {member.nameKr} 파트 연습용 영상을 올려주세요
             <br />
-            원본 영상은 저장하지 않고 스켈레톤 데이터만 추출합니다
+            인원 자동 감지 + 멤버 추적으로 AI 아바타 동작을 분리합니다
           </div>
         </div>
 
@@ -110,7 +212,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             {videoFile ? videoFile.name : '영상 파일 선택'}
           </div>
           <div style={{ fontSize: 12, color: 'rgba(255,255,255,0.4)' }}>
-            mp4 · mov · webm 지원
+            mp4 · mov · webm · 전체 멤버가 보이는 영상 권장
           </div>
         </button>
 
@@ -131,7 +233,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
           </div>
         ) : null}
 
-        {error ? (
+        {(localError || error) ? (
           <div
             style={{
               padding: '12px 16px',
@@ -143,14 +245,14 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
               marginBottom: 16,
             }}
           >
-            {error}
+            {localError || error}
           </div>
         ) : null}
 
         <button
           type="button"
           disabled={!videoFile}
-          onClick={handleStartExtraction}
+          onClick={startAnalysis}
           style={{
             width: '100%',
             padding: '16px',
@@ -166,7 +268,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             boxShadow: videoFile ? `0 0 24px ${member.color}40` : 'none',
           }}
         >
-          {videoFile ? '스켈레톤 분석 시작' : '영상을 먼저 선택하세요'}
+          {videoFile ? '분석 시작 (인원 자동 감지)' : '영상을 먼저 선택하세요'}
         </button>
 
         <div
@@ -181,8 +283,8 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             lineHeight: 1.6,
           }}
         >
-          💡 저작권 보호: 원본 영상은 분석 후 즉시 삭제되며, 스켈레톤 좌표만 사용합니다.
-          그룹 멤버 {group.memberCount}명의 동작이 AI 아바타로 재현됩니다.
+          💡 포메이션 변경·가림에도 추적 ID를 유지합니다. 분석 후 멤버 매칭을 직접 확인할 수
+          있습니다. 원본 영상은 저장하지 않습니다.
         </div>
       </div>
     </div>
