@@ -10,10 +10,17 @@ import {
   saveCachedChoreo,
 } from '../services/groupChoreoCache';
 import { buildProxyVideoUrl } from '../services/groupStudioApi';
+import {
+  CHOREO_MAX_DURATION_SEC,
+  CHOREO_MAX_POSES,
+  CHOREO_MEMBER_PROBE_SAMPLES,
+  CHOREO_POSE_MODEL_URL,
+  CHOREO_SAMPLE_FPS,
+} from '../config/choreoExtractConfig';
 
-const MAX_DURATION_SEC = 360;
-const SAMPLE_FPS = 15;
-const MAX_POSES = 8;
+const MAX_DURATION_SEC = CHOREO_MAX_DURATION_SEC;
+const SAMPLE_FPS = CHOREO_SAMPLE_FPS;
+const MAX_POSES = CHOREO_MAX_POSES;
 
 function waitForVideoEvent(video, event) {
   return new Promise((resolve) => {
@@ -30,8 +37,7 @@ async function createPoseDetector(group) {
   const createDetector = async (delegate) =>
     PoseLandmarker.createFromOptions(vision, {
       baseOptions: {
-        modelAssetPath:
-          'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task',
+        modelAssetPath: CHOREO_POSE_MODEL_URL.lite,
         delegate,
       },
       runningMode: 'VIDEO',
@@ -74,7 +80,11 @@ export function useGroupChoreoExtract() {
     const tracker = new MultiPersonTracker();
 
     onProgress?.(5, '영상 속 인원을 파악하고 있습니다...');
-    const detectedMemberCount = await tracker.detectMemberCount(video, detector);
+    const detectedMemberCount = await tracker.detectMemberCount(
+      video,
+      detector,
+      CHOREO_MEMBER_PROBE_SAMPLES,
+    );
     if (detectedMemberCount === 0) {
       detector.close?.();
       return null;
@@ -149,7 +159,9 @@ export function useGroupChoreoExtract() {
         } else if (videoId) {
           video.src = buildProxyVideoUrl(videoId);
           video.crossOrigin = 'anonymous';
-          await waitForVideoEvent(video, 'loadeddata');
+          video.preload = 'auto';
+          await waitForVideoEvent(video, 'loadedmetadata');
+          await waitForVideoEvent(video, 'canplay');
         } else {
           throw new Error('영상 소스가 없습니다.');
         }
@@ -242,7 +254,9 @@ export function useGroupChoreoExtract() {
         const proxyUrl = buildProxyVideoUrl(videoId);
         video.src = proxyUrl;
         video.crossOrigin = 'anonymous';
-        await waitForVideoEvent(video, 'loadeddata');
+        video.preload = 'auto';
+        await waitForVideoEvent(video, 'loadedmetadata');
+        await waitForVideoEvent(video, 'canplay');
         setProgress(15);
         setStep('YouTube 안무 영상을 분석하고 있습니다...');
 
