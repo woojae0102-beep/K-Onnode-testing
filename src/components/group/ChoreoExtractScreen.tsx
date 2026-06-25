@@ -2,7 +2,7 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
-import { GROUP_DATA } from '../../data/groupPracticeData';
+import { getGroupData } from '../../data/groupPracticeData';
 import { useGroupChoreoExtract } from '../../hooks/useGroupChoreoExtract';
 import { getSongVideo, saveSongVideo } from '../../services/groupStudioStorage';
 import { buildDanceDatabase, saveDanceDatabase, loadDanceDatabase } from '../../services/dance/DanceDatabaseService';
@@ -19,7 +19,7 @@ export function ChoreoExtractScreen({
 }) {
   const { t } = useTranslation();
   const song = getSongById(songId);
-  const group = song ? GROUP_DATA[song.groupId] : null;
+  const group = song ? getGroupData(song.groupId) : null;
   const member = group?.members.find((m) => m.id === memberId);
 
   const videoRef = useRef(null);
@@ -323,7 +323,23 @@ export function ChoreoExtractScreen({
           {t('groupStudio.choreoExtract.privacyNote')}
         </p>
 
-        <video ref={videoRef} playsInline muted style={{ display: 'none' }} />
+        <video
+          ref={videoRef}
+          playsInline
+          muted
+          crossOrigin="anonymous"
+          preload="auto"
+          style={{
+            position: 'fixed',
+            width: 320,
+            height: 180,
+            opacity: 0,
+            pointerEvents: 'none',
+            left: 0,
+            top: 0,
+            zIndex: -1,
+          }}
+        />
       </div>
     </div>
   );

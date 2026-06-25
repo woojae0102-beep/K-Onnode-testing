@@ -1,5 +1,6 @@
 // @ts-nocheck
 import type { JointPoint } from '../types/groupPractice';
+import { seekVideoTo } from '../utils/choreoVideoUtils';
 
 export interface JointPosition extends JointPoint {
   confidence?: number;
@@ -95,8 +96,7 @@ export class MultiPersonTracker {
 
     for (let i = 0; i < sampleCount; i += 1) {
       const t = (duration / sampleCount) * i;
-      video.currentTime = t;
-      await waitForSeeked(video);
+      await seekVideoTo(video, t);
 
       const results = detector.detectForVideo(video, t * 1000);
       const validCount =
@@ -234,12 +234,6 @@ export class MultiPersonTracker {
     this.nextTrackId = 0;
     this.activeTracksLastPosition.clear();
   }
-}
-
-function waitForSeeked(video: HTMLVideoElement) {
-  return new Promise<void>((resolve) => {
-    video.addEventListener('seeked', () => resolve(), { once: true });
-  });
 }
 
 export default MultiPersonTracker;

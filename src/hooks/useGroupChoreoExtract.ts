@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useState } from 'react';
-import { GROUP_DATA } from '../data/groupPracticeData';
+import { getGroupData } from '../data/groupPracticeData';
 import { MultiPersonTracker } from '../services/MultiPersonTracker';
 import { buildSkeletonFramesFromAnalysis } from '../services/videoAnalysisUtils';
 import { suggestTrackToMemberMap } from '../services/formationMatching';
@@ -9,7 +9,6 @@ import {
   getCachedChoreo,
   saveCachedChoreo,
 } from '../services/groupChoreoCache';
-import { buildProxyVideoUrl } from '../services/groupStudioApi';
 import {
   CHOREO_MAX_DURATION_SEC,
   CHOREO_MAX_POSES,
@@ -17,36 +16,61 @@ import {
   CHOREO_POSE_MODEL_URL,
   CHOREO_SAMPLE_FPS,
 } from '../config/choreoExtractConfig';
+import { prepareAnalysisVideo, seekVideoTo } from '../utils/choreoVideoUtils';
 
 const MAX_DURATION_SEC = CHOREO_MAX_DURATION_SEC;
 const SAMPLE_FPS = CHOREO_SAMPLE_FPS;
 const MAX_POSES = CHOREO_MAX_POSES;
+const AI_INIT_TIMEOUT_MS = 60000;
 
-function waitForVideoEvent(video, event) {
-  return new Promise((resolve) => {
-    video.addEventListener(event, resolve, { once: true });
-  });
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
 }
 
-async function createPoseDetector(group) {
-  const visionModule = await import('@mediapipe/tasks-vision');
-  const { PoseLandmarker, FilesetResolver } = visionModule;
-  const vision = await FilesetResolver.forVisionTasks(
-    'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm',
+async function createPoseDetector(onStatus) {
+  onStatus?.('MediaPipe AI 모듈 로드 중...');
+  const visionModule = await withTimeout(
+    import('@mediapipe/tasks-vision'),
+    AI_INIT_TIMEOUT_MS,
+    'AI 모듈 로드 시간이 초과되었습니다. 네트워크 연결 후 다시 시도해 주세요.',
   );
-  const createDetector = async (delegate) =>
-    PoseLandmarker.createFromOptions(vision, {
-      baseOptions: {
-        modelAssetPath: CHOREO_POSE_MODEL_URL.lite,
-        delegate,
-      },
-      runningMode: 'VIDEO',
-      numPoses: MAX_POSES,
-    });
+  const { PoseLandmarker, FilesetResolver } = visionModule;
+
+  onStatus?.('AI 모션 분석 엔진 초기화 중...');
+  const vision = await withTimeout(
+    FilesetResolver.forVisionTasks(
+      'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm',
+    ),
+    AI_INIT_TIMEOUT_MS,
+    'AI 엔진(WASM) 초기화 시간이 초과되었습니다. 페이지를 새로고침 후 다시 시도해 주세요.',
+  );
+
+  const build = async (delegate) => {
+    onStatus?.(delegate === 'GPU' ? 'GPU AI 모델 로드 중...' : 'CPU AI 모델 로드 중...');
+    return withTimeout(
+      PoseLandmarker.createFromOptions(vision, {
+        baseOptions: {
+          modelAssetPath: CHOREO_POSE_MODEL_URL.lite,
+          delegate,
+        },
+        runningMode: 'VIDEO',
+        numPoses: MAX_POSES,
+      }),
+      AI_INIT_TIMEOUT_MS,
+      'AI 포즈 모델 로드 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
+    );
+  };
+
   try {
-    return await createDetector('GPU');
-  } catch {
-    return createDetector('CPU');
+    return await build('GPU');
+  } catch (gpuErr) {
+    console.warn('[createPoseDetector] GPU failed, falling back to CPU', gpuErr);
+    return build('CPU');
   }
 }
 
@@ -61,6 +85,7 @@ export function useGroupChoreoExtract() {
   const cancel = useCallback(() => {
     abortRef.current = true;
     setIsExtracting(false);
+    setStep('취소됨');
   }, []);
 
   const loadFromCache = useCallback(async (songId, videoId) => {
@@ -71,12 +96,11 @@ export function useGroupChoreoExtract() {
     return cached.frames;
   }, []);
 
-  const extractAnalysisFromVideo = useCallback(async (video, groupId, onProgress) => {
-    const group = GROUP_DATA[groupId];
-    if (!group || !video) return null;
+  const extractAnalysisFromVideo = useCallback(async (video, groupId, detector, onProgress) => {
+    const group = getGroupData(groupId);
+    if (!group || !video || !detector) return null;
 
     abortRef.current = false;
-    const detector = await createPoseDetector(group);
     const tracker = new MultiPersonTracker();
 
     onProgress?.(5, '영상 속 인원을 파악하고 있습니다...');
@@ -86,7 +110,6 @@ export function useGroupChoreoExtract() {
       CHOREO_MEMBER_PROBE_SAMPLES,
     );
     if (detectedMemberCount === 0) {
-      detector.close?.();
       return null;
     }
 
@@ -97,8 +120,7 @@ export function useGroupChoreoExtract() {
 
     for (let t = 0; t < duration; t += sampleInterval) {
       if (abortRef.current) break;
-      video.currentTime = t;
-      await waitForVideoEvent(video, 'seeked');
+      await seekVideoTo(video, t);
 
       const results = detector.detectForVideo(video, t * 1000);
       const trackedPeople = tracker.trackFrame(results.landmarks || [], t);
@@ -110,7 +132,6 @@ export function useGroupChoreoExtract() {
       onProgress?.(pct, `${detectedMemberCount}명 추적 중... ${pct}%`);
     }
 
-    detector.close?.();
     if (!frames.length) return null;
 
     return {
@@ -121,8 +142,8 @@ export function useGroupChoreoExtract() {
   }, []);
 
   const extractFromVideoElement = useCallback(
-    async (video, groupId, focusMemberId, onProgress) => {
-      const analysisResult = await extractAnalysisFromVideo(video, groupId, onProgress);
+    async (video, groupId, focusMemberId, detector, onProgress) => {
+      const analysisResult = await extractAnalysisFromVideo(video, groupId, detector, onProgress);
       if (!analysisResult) return null;
       const trackToMemberMap = suggestTrackToMemberMap(
         groupId,
@@ -136,7 +157,7 @@ export function useGroupChoreoExtract() {
 
   const extractAnalysis = useCallback(
     async ({ songId, groupId, videoId, file, videoRef }) => {
-      const group = GROUP_DATA[groupId];
+      const group = getGroupData(groupId);
       if (!group) return null;
 
       setError('');
@@ -144,47 +165,59 @@ export function useGroupChoreoExtract() {
       abortRef.current = false;
       setIsExtracting(true);
       setProgress(5);
-      setStep('AI 모션 분석 엔진 초기화 중...');
+      setStep('준비 중...');
+
+      let cleanup = () => {};
 
       try {
         const video = videoRef?.current;
         if (!video) throw new Error('비디오 요소가 없습니다.');
 
-        let objectUrl = '';
-        if (file) {
-          objectUrl = URL.createObjectURL(file);
-          video.src = objectUrl;
-          video.crossOrigin = 'anonymous';
-          await waitForVideoEvent(video, 'loadeddata');
-        } else if (videoId) {
-          video.src = buildProxyVideoUrl(videoId);
-          video.crossOrigin = 'anonymous';
-          video.preload = 'auto';
-          await waitForVideoEvent(video, 'loadedmetadata');
-          await waitForVideoEvent(video, 'canplay');
-        } else {
-          throw new Error('영상 소스가 없습니다.');
-        }
+        const status = (msg) => {
+          setStep(msg);
+        };
+
+        const videoPrep = prepareAnalysisVideo(video, { file, videoId, onStatus: status });
+        const detectorPrep = createPoseDetector(status);
+
+        const prep = await videoPrep;
+        cleanup = prep.cleanup;
+
+        if (abortRef.current) throw new Error('취소되었습니다.');
+
+        setProgress(12);
+        const detector = await detectorPrep;
 
         setProgress(15);
         setStep(`${group.nameKr} 안무를 분석하고 있습니다...`);
 
-        const analysisResult = await extractAnalysisFromVideo(video, groupId, (pct, msg) => {
-          setProgress(Math.round(15 + pct * 0.8));
-          setStep(msg);
-        });
+        const analysisResult = await extractAnalysisFromVideo(
+          video,
+          groupId,
+          detector,
+          (pct, msg) => {
+            setProgress(Math.round(15 + pct * 0.8));
+            setStep(msg);
+          },
+        );
 
-        if (objectUrl) URL.revokeObjectURL(objectUrl);
-        video.src = '';
+        detector.close?.();
+        cleanup();
 
-        if (!analysisResult) throw new Error('영상에서 동작을 감지하지 못했습니다.');
+        if (!analysisResult) throw new Error('영상에서 동작을 감지하지 못했습니다. 안무 연습 영상인지 확인하거나 파일을 직접 업로드해 주세요.');
 
         setProgress(100);
         setStep('분석 완료 — 멤버 매칭을 확인해주세요');
         setIsExtracting(false);
-        return { analysisResult, songId, groupId, videoId: videoId || (file ? `file:${file.name}` : null) };
+        return {
+          analysisResult,
+          songId,
+          groupId,
+          videoId: videoId || (file ? `file:${file.name}` : null),
+        };
       } catch (err) {
         console.error('[useGroupChoreoExtract.extractAnalysis]', err);
+        cleanup();
         setError(err?.message || '안무 분석에 실패했습니다.');
         setIsExtracting(false);
         return null;
@@ -202,7 +235,7 @@ export function useGroupChoreoExtract() {
     skipCache = false,
     videoRef,
   }) => {
-    const group = GROUP_DATA[groupId];
+    const group = getGroupData(groupId);
     if (!group) return null;
 
     setError('');
@@ -220,67 +253,54 @@ export function useGroupChoreoExtract() {
     abortRef.current = false;
     setIsExtracting(true);
     setProgress(5);
-    setStep('AI 모션 감지 시스템 초기화 중...');
+    setStep('준비 중...');
+
+    let cleanup = () => {};
 
     try {
       const video = videoRef?.current;
       if (!video) throw new Error('비디오 요소가 없습니다.');
 
-      if (file) {
-        const url = URL.createObjectURL(file);
-        video.src = url;
-        video.crossOrigin = 'anonymous';
-        await waitForVideoEvent(video, 'loadeddata');
-        setProgress(15);
-        setStep(`${group.nameKr} 안무를 분석하고 있습니다...`);
+      const status = (msg) => setStep(msg);
+      const prep = await prepareAnalysisVideo(video, { file, videoId, onStatus: status });
+      cleanup = prep.cleanup;
 
-        const frames = await extractFromVideoElement(video, groupId, focusMemberId, (pct, msg) => {
+      setProgress(12);
+      const detector = await createPoseDetector(status);
+
+      setProgress(15);
+      setStep(file ? `${group.nameKr} 안무를 분석하고 있습니다...` : 'YouTube 안무 영상을 분석하고 있습니다...');
+
+      const frames = await extractFromVideoElement(
+        video,
+        groupId,
+        focusMemberId,
+        detector,
+        (pct, msg) => {
           setProgress(Math.round(15 + pct * 0.8));
           setStep(msg);
-        });
+        },
+      );
 
-        URL.revokeObjectURL(url);
-        video.src = '';
+      detector.close?.();
+      cleanup();
 
-        if (!frames?.length) throw new Error('영상에서 동작을 감지하지 못했습니다.');
-        await persistCache(songId, videoId || `file:${file.name}`, frames, groupId, videoId);
-        setProgress(100);
-        setStep('안무 추출 완료!');
-        setIsExtracting(false);
-        return frames;
+      if (!frames?.length) {
+        throw new Error(
+          videoId
+            ? 'YouTube 영상 추출에 실패했습니다. 영상 파일을 직접 업로드해 주세요.'
+            : '영상에서 동작을 감지하지 못했습니다.',
+        );
       }
 
-      if (videoId) {
-        const proxyUrl = buildProxyVideoUrl(videoId);
-        video.src = proxyUrl;
-        video.crossOrigin = 'anonymous';
-        video.preload = 'auto';
-        await waitForVideoEvent(video, 'loadedmetadata');
-        await waitForVideoEvent(video, 'canplay');
-        setProgress(15);
-        setStep('YouTube 안무 영상을 분석하고 있습니다...');
-
-        const frames = await extractFromVideoElement(video, groupId, focusMemberId, (pct, msg) => {
-          setProgress(Math.round(15 + pct * 0.8));
-          setStep(msg);
-        });
-
-        video.src = '';
-
-        if (!frames?.length) {
-          throw new Error('YouTube 영상 추출에 실패했습니다. 영상 파일을 직접 업로드해 주세요.');
-        }
-
-        await persistCache(songId, videoId, frames, groupId, videoId);
-        setProgress(100);
-        setStep('안무 추출 완료!');
-        setIsExtracting(false);
-        return frames;
-      }
-
-      throw new Error('영상 소스가 없습니다.');
+      await persistCache(songId, videoId || (file ? `file:${file.name}` : null), frames, groupId, videoId);
+      setProgress(100);
+      setStep('안무 추출 완료!');
+      setIsExtracting(false);
+      return frames;
     } catch (err) {
       console.error('[useGroupChoreoExtract]', err);
+      cleanup();
       setError(err?.message || '안무 추출에 실패했습니다.');
       setIsExtracting(false);
       return null;
