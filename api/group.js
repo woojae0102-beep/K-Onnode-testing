@@ -26,7 +26,18 @@ module.exports = async function handler(req, res) {
   if (!load) {
     return res.status(404).json({ error: 'Unknown group action', path: parts.join('/') });
   }
-  const fn = load();
-  const delegate = typeof fn === 'function' ? fn : fn.default;
-  return delegate(req, res);
+  try {
+    const fn = load();
+    const delegate = typeof fn === 'function' ? fn : fn.default;
+    return await delegate(req, res);
+  } catch (err) {
+    console.error('[group]', action, err?.message || err);
+    if (!res.headersSent) {
+      return res.status(502).json({
+        error: err?.message || 'group_handler_failed',
+        hint: '서버 처리 중 오류가 발생했습니다. 잠시 후 다시 시도하거나 영상 파일을 직접 업로드해 주세요.',
+      });
+    }
+    return undefined;
+  }
 };

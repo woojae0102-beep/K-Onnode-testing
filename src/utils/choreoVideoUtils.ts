@@ -64,7 +64,7 @@ export function waitForVideoEvent(video, event, timeoutMs = VIDEO_LOAD_TIMEOUT_M
   });
 }
 
-export async function probeProxyVideo(videoId, timeoutMs = 20000) {
+export async function probeProxyVideo(videoId, timeoutMs = 45000) {
   const url = buildProxyVideoUrl(videoId);
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
@@ -75,14 +75,16 @@ export async function probeProxyVideo(videoId, timeoutMs = 20000) {
       signal: controller.signal,
     });
     if (!res.ok && res.status !== 206) {
-      let hint = '';
+      let message = '';
       try {
         const json = await res.json();
-        hint = json.hint || json.error || '';
+        message = json.hint || json.error || '';
       } catch {
         /* ignore */
       }
-      throw new Error(hint || 'YouTube 프록시 영상을 가져올 수 없습니다. 영상 파일을 직접 업로드해 주세요.');
+      throw new Error(
+        message || 'YouTube 영상 스트림을 가져올 수 없습니다. 영상 파일을 직접 업로드해 주세요.',
+      );
     }
     const type = res.headers.get('content-type') || '';
     if (type.includes('json') || type.includes('text')) {
