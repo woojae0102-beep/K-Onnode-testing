@@ -1074,7 +1074,7 @@
       "invalidYoutubeUrl": "Enter a valid YouTube URL.",
       "useCache": "Practice with cached choreography",
       "extractYoutube": "Extract from YouTube (tab capture)",
-      "extractYoutubeHint": "When prompted, share this browser tab. The YouTube video will play and record automatically.",
+      "extractYoutubeHint": "Tap Extract and choose this browser tab when the share dialog opens. The YouTube video will play and record automatically. (Chrome/Edge recommended)",
       "uploadFile": "Upload video file (most reliable)",
       "cancel": "Cancel",
       "cacheLoaded": "Loaded choreography from cache",

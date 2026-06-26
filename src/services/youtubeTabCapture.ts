@@ -32,10 +32,7 @@ export async function recordYoutubeTabVideo({
   maxDurationSec = CHOREO_MAX_DURATION_SEC,
   onStatus,
 }) {
-  if (!youtubePlayerRef?.isReady?.()) {
-    await waitFor(() => youtubePlayerRef?.isReady?.(), 20000);
-  }
-
+  // getDisplayMedia는 버튼 클릭 직후에만 허용됩니다. 플레이어 대기 전에 먼저 호출해야 합니다.
   onStatus?.('탭 공유 창에서 이 페이지 탭을 선택해 주세요. YouTube 영상이 자동 재생·녹화됩니다.');
 
   let displayStream;
@@ -53,6 +50,11 @@ export async function recordYoutubeTabVideo({
       throw new Error('탭 공유가 취소되었습니다. 다시 시도하거나 영상 파일을 업로드해 주세요.');
     }
     throw new Error('탭 공유를 시작할 수 없습니다. Chrome/Edge 최신 버전을 사용해 주세요.');
+  }
+
+  if (!youtubePlayerRef?.isReady?.()) {
+    onStatus?.('YouTube 플레이어 준비 중...');
+    await waitFor(() => youtubePlayerRef?.isReady?.(), 20000);
   }
 
   const rawDuration = Number(youtubePlayerRef.getDuration?.() || 0);

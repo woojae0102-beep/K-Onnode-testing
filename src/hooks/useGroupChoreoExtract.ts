@@ -177,21 +177,30 @@ export function useGroupChoreoExtract() {
           setStep(msg);
         };
 
-        const videoPrep = prepareAnalysisVideo(video, {
+        let detectorPromise = null;
+
+        // YouTube: 영상 준비(탭 녹화)를 먼저 시작하고, 녹화 중 AI 모델을 병렬 로드
+        const prepPromise = prepareAnalysisVideo(video, {
           file,
           videoId,
           onStatus: status,
           youtubePlayerRef,
         });
-        const detectorPrep = createPoseDetector(status);
 
-        const prep = await videoPrep;
+        if (videoId && youtubePlayerRef && !file) {
+          // 녹화 안내 메시지가 AI 로드 메시지에 덮이지 않도록
+          detectorPromise = createPoseDetector(null);
+        }
+
+        const prep = await prepPromise;
         cleanup = prep.cleanup;
 
         if (abortRef.current) throw new Error('취소되었습니다.');
 
         setProgress(12);
-        const detector = await detectorPrep;
+        const detector = detectorPromise
+          ? await detectorPromise
+          : await createPoseDetector(status);
 
         setProgress(15);
         setStep(`${group.nameKr} 안무를 분석하고 있습니다...`);

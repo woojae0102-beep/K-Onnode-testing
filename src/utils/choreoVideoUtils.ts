@@ -112,38 +112,63 @@ async function fetchProxyVideoBlob(videoId, onStatus) {
   }
 }
 
+async function loadProxyStreamIntoVideo(video, videoId, onStatus) {
+  onStatus?.('서버에서 YouTube 영상 스트리밍 중...');
+  video.src = buildProxyVideoUrl(videoId);
+  await waitForVideoEvent(video, 'loadedmetadata', 60000);
+  if (!Number.isFinite(video.duration) || video.duration <= 0) {
+    await waitForVideoEvent(video, 'canplay', 60000);
+  }
+  return {
+    objectUrl: null,
+    cleanup: () => {
+      video.src = '';
+    },
+  };
+}
+
 async function prepareYoutubeVideo(video, { videoId, onStatus, youtubePlayerRef }) {
   const attempts = [];
 
-  try {
-    const blob = await downloadYoutubeVideoBlob(videoId, onStatus);
-    return loadBlobIntoVideo(video, blob, onStatus);
-  } catch (err) {
-    attempts.push(err?.message || String(err));
-    console.warn('[prepareYoutubeVideo] client download failed:', err);
-  }
-
+  // 1) 탭 녹화 — 사용자 클릭 직후 실행해야 하며, Vercel 서버 우회에 가장 안정적
   if (youtubePlayerRef) {
     try {
       const blob = await recordYoutubeTabVideo({ youtubePlayerRef, onStatus });
       return loadBlobIntoVideo(video, blob, onStatus);
     } catch (err) {
-      attempts.push(err?.message || String(err));
+      attempts.push(`탭 녹화: ${err?.message || String(err)}`);
       console.warn('[prepareYoutubeVideo] tab capture failed:', err);
     }
+  }
+
+  // 2) 브라우저 직접 다운로드 (사용자 IP)
+  try {
+    const blob = await downloadYoutubeVideoBlob(videoId, onStatus);
+    return loadBlobIntoVideo(video, blob, onStatus);
+  } catch (err) {
+    attempts.push(`브라우저 다운로드: ${err?.message || String(err)}`);
+    console.warn('[prepareYoutubeVideo] client download failed:', err);
+  }
+
+  // 3) 서버 프록시 — Vercel 등 데이터센터 IP는 YouTube 봇 차단으로 자주 실패
+  try {
+    return await loadProxyStreamIntoVideo(video, videoId, onStatus);
+  } catch (streamErr) {
+    attempts.push(`서버 스트리밍: ${streamErr?.message || String(streamErr)}`);
+    console.warn('[prepareYoutubeVideo] server stream failed:', streamErr);
   }
 
   try {
     const blob = await fetchProxyVideoBlob(videoId, onStatus);
     return loadBlobIntoVideo(video, blob, onStatus);
   } catch (err) {
-    attempts.push(err?.message || String(err));
+    attempts.push(`서버 다운로드: ${err?.message || String(err)}`);
     console.warn('[prepareYoutubeVideo] server proxy failed:', err);
   }
 
   throw new Error(
-    attempts.length > 1
-      ? `YouTube 영상을 준비할 수 없습니다.\n${attempts.map((m, i) => `${i + 1}. ${m}`).join('\n')}`
+    youtubePlayerRef
+      ? 'YouTube 영상 준비에 실패했습니다. 「안무 추출」을 다시 누른 뒤 탭 공유 창에서 이 페이지 탭을 선택해 주세요. (Chrome/Edge 권장)'
       : (attempts[0] || 'YouTube 영상을 준비할 수 없습니다. 영상 파일을 직접 업로드해 주세요.'),
   );
 }

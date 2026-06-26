@@ -1073,7 +1073,7 @@
       "invalidYoutubeUrl": "올바른 YouTube URL을 입력해 주세요.",
       "useCache": "저장된 안무 데이터로 바로 연습",
       "extractYoutube": "YouTube 영상에서 추출 (탭 녹화)",
-      "extractYoutubeHint": "추출 시 탭 공유 창에서 이 페이지를 선택하면 YouTube 영상이 자동 재생·녹화됩니다.",
+      "extractYoutubeHint": "「안무 추출」을 누르면 탭 공유 창이 바로 열립니다. 이 페이지 탭을 선택하면 YouTube 영상이 자동 재생·녹화됩니다. (Chrome/Edge 권장)",
       "uploadFile": "영상 파일 업로드 (가장 안정적)",
       "cancel": "취소",
       "cacheLoaded": "캐시에서 안무를 불러왔습니다",
