@@ -23,6 +23,15 @@ const SAMPLE_FPS = CHOREO_SAMPLE_FPS;
 const MAX_POSES = CHOREO_MAX_POSES;
 const AI_INIT_TIMEOUT_MS = 60000;
 
+/** MediaPipe VIDEO 모드는 detectForVideo 타임스탬프가 반드시 단조 증가해야 함 */
+function createMonotonicTimestampSource(stepMs = Math.round(1000 / CHOREO_SAMPLE_FPS)) {
+  let value = 0;
+  return () => {
+    value += stepMs;
+    return value;
+  };
+}
+
 function withTimeout(promise, ms, message) {
   return Promise.race([
     promise,
@@ -102,12 +111,14 @@ export function useGroupChoreoExtract() {
 
     abortRef.current = false;
     const tracker = new MultiPersonTracker();
+    const nextTimestampMs = createMonotonicTimestampSource();
 
     onProgress?.(5, '영상 속 인원을 파악하고 있습니다...');
     const detectedMemberCount = await tracker.detectMemberCount(
       video,
       detector,
       CHOREO_MEMBER_PROBE_SAMPLES,
+      nextTimestampMs,
     );
     if (detectedMemberCount === 0) {
       return null;
@@ -122,7 +133,7 @@ export function useGroupChoreoExtract() {
       if (abortRef.current) break;
       await seekVideoTo(video, t);
 
-      const results = detector.detectForVideo(video, t * 1000);
+      const results = detector.detectForVideo(video, nextTimestampMs());
       const trackedPeople = tracker.trackFrame(results.landmarks || [], t);
       if (trackedPeople.length) {
         frames.push({ timestamp: t, detectedPeople: trackedPeople });

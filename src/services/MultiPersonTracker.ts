@@ -88,8 +88,10 @@ export class MultiPersonTracker {
     video: HTMLVideoElement,
     detector: { detectForVideo: (video: HTMLVideoElement, ms: number) => { landmarks?: unknown[] } },
     sampleCount = 20,
+    nextTimestampMs?: () => number,
   ): Promise<number> {
-    const duration = video.duration || 0;
+    const rawDuration = video.duration || 0;
+    const duration = Math.min(Math.max(rawDuration, 10), 180);
     if (!duration) return 0;
 
     const counts: number[] = [];
@@ -98,7 +100,8 @@ export class MultiPersonTracker {
       const t = (duration / sampleCount) * i;
       await seekVideoTo(video, t);
 
-      const results = detector.detectForVideo(video, t * 1000);
+      const timestampMs = nextTimestampMs ? nextTimestampMs() : t * 1000;
+      const results = detector.detectForVideo(video, timestampMs);
       const validCount =
         results.landmarks?.filter((lm: unknown[]) => {
           if (!Array.isArray(lm) || !lm.length) return false;
