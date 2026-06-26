@@ -1073,8 +1073,9 @@
       "applyYoutubeUrl": "Apply",
       "invalidYoutubeUrl": "Enter a valid YouTube URL.",
       "useCache": "Practice with cached choreography",
-      "extractYoutube": "Extract from rehearsal video",
-      "uploadFile": "Upload video file to extract",
+      "extractYoutube": "Extract from YouTube (tab capture)",
+      "extractYoutubeHint": "When prompted, share this browser tab. The YouTube video will play and record automatically.",
+      "uploadFile": "Upload video file (most reliable)",
       "cancel": "Cancel",
       "cacheLoaded": "Loaded choreography from cache",
       "privacyNote": "Original videos are not stored; only skeleton data is cached on your device."

@@ -89,6 +89,17 @@ function devApiPlugin() {
               return res;
             };
           }
+          if (typeof res.send !== 'function') {
+            res.send = (body) => {
+              if (Buffer.isBuffer(body) || typeof body === 'string') {
+                if (!res.headersSent) res.setHeader('Content-Type', res.getHeader('Content-Type') || 'application/octet-stream');
+                res.end(body);
+              } else {
+                res.end(JSON.stringify(body));
+              }
+              return res;
+            };
+          }
           await fn(req, res);
         } catch (err) {
           console.error(`[dev-api] error in ${handlerPath}:`, err);

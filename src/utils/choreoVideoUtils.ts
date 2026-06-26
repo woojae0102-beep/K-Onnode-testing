@@ -1,5 +1,7 @@
 // @ts-nocheck
 import { buildProxyVideoUrl } from '../services/groupStudioApi';
+import { downloadYoutubeVideoBlob } from '../services/youtubeClientDownload';
+import { recordYoutubeTabVideo } from '../services/youtubeTabCapture';
 
 export const VIDEO_LOAD_TIMEOUT_MS = 90000;
 export const VIDEO_SEEK_TIMEOUT_MS = 8000;
@@ -33,7 +35,7 @@ export function waitForVideoEvent(video, event, timeoutMs = VIDEO_LOAD_TIMEOUT_M
     const onErr = () => {
       const code = video.error?.code;
       const detail = code === 4 ? '재생 형식을 지원하지 않습니다.' : '영상 로드에 실패했습니다.';
-      finish(reject, new Error(`YouTube 영상 오류: ${detail} 파일 업로드를 시도해 주세요.`));
+      finish(reject, new Error(`영상 오류: ${detail} 다른 방식으로 다시 시도해 주세요.`));
     };
     const onStalled = () => {
       if (event === 'canplay' && video.readyState >= 2 && video.duration > 0) {
@@ -51,7 +53,7 @@ export function waitForVideoEvent(video, event, timeoutMs = VIDEO_LOAD_TIMEOUT_M
         new Error(
           event === 'seeked'
             ? '영상 구간 이동 시간이 초과되었습니다. 네트워크 상태를 확인하거나 파일을 직접 업로드해 주세요.'
-            : 'YouTube 영상 연결 시간이 초과되었습니다. URL을 확인하거나 영상 파일을 직접 업로드해 주세요.',
+            : '영상 연결 시간이 초과되었습니다. 파일 업로드를 시도해 주세요.',
         ),
       );
     }, timeoutMs);
@@ -64,17 +66,33 @@ export function waitForVideoEvent(video, event, timeoutMs = VIDEO_LOAD_TIMEOUT_M
   });
 }
 
-export async function probeProxyVideo(videoId, timeoutMs = 45000) {
-  const url = buildProxyVideoUrl(videoId);
+async function loadBlobIntoVideo(video, blob, onStatus) {
+  const objectUrl = URL.createObjectURL(blob);
+  onStatus?.('분석용 영상 준비 중...');
+  video.src = objectUrl;
+  await waitForVideoEvent(video, 'loadedmetadata');
+  if (!Number.isFinite(video.duration) || video.duration <= 0) {
+    await waitForVideoEvent(video, 'loadeddata', 30000);
+  }
+  return {
+    objectUrl,
+    cleanup: () => {
+      URL.revokeObjectURL(objectUrl);
+      video.src = '';
+    },
+  };
+}
+
+async function fetchProxyVideoBlob(videoId, onStatus) {
+  onStatus?.('서버에서 YouTube 영상 연결 중...');
   const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const timer = setTimeout(() => controller.abort(), 45000);
   try {
-    const res = await fetch(url, {
+    const res = await fetch(buildProxyVideoUrl(videoId), {
       method: 'GET',
-      headers: { Range: 'bytes=0-65535' },
       signal: controller.signal,
     });
-    if (!res.ok && res.status !== 206) {
+    if (!res.ok) {
       let message = '';
       try {
         const json = await res.json();
@@ -82,21 +100,55 @@ export async function probeProxyVideo(videoId, timeoutMs = 45000) {
       } catch {
         /* ignore */
       }
-      throw new Error(
-        message || 'YouTube 영상 스트림을 가져올 수 없습니다. 영상 파일을 직접 업로드해 주세요.',
-      );
+      throw new Error(message || '서버 YouTube 연결에 실패했습니다.');
     }
     const type = res.headers.get('content-type') || '';
     if (type.includes('json') || type.includes('text')) {
-      throw new Error('YouTube 영상 스트림 대신 오류 응답이 반환되었습니다. 파일 업로드를 시도해 주세요.');
+      throw new Error('서버에서 영상 대신 오류 응답이 반환되었습니다.');
     }
-    return url;
+    return res.blob();
   } finally {
     clearTimeout(timer);
   }
 }
 
-export async function prepareAnalysisVideo(video, { file, videoId, onStatus }) {
+async function prepareYoutubeVideo(video, { videoId, onStatus, youtubePlayerRef }) {
+  const attempts = [];
+
+  try {
+    const blob = await downloadYoutubeVideoBlob(videoId, onStatus);
+    return loadBlobIntoVideo(video, blob, onStatus);
+  } catch (err) {
+    attempts.push(err?.message || String(err));
+    console.warn('[prepareYoutubeVideo] client download failed:', err);
+  }
+
+  if (youtubePlayerRef) {
+    try {
+      const blob = await recordYoutubeTabVideo({ youtubePlayerRef, onStatus });
+      return loadBlobIntoVideo(video, blob, onStatus);
+    } catch (err) {
+      attempts.push(err?.message || String(err));
+      console.warn('[prepareYoutubeVideo] tab capture failed:', err);
+    }
+  }
+
+  try {
+    const blob = await fetchProxyVideoBlob(videoId, onStatus);
+    return loadBlobIntoVideo(video, blob, onStatus);
+  } catch (err) {
+    attempts.push(err?.message || String(err));
+    console.warn('[prepareYoutubeVideo] server proxy failed:', err);
+  }
+
+  throw new Error(
+    attempts.length > 1
+      ? `YouTube 영상을 준비할 수 없습니다.\n${attempts.map((m, i) => `${i + 1}. ${m}`).join('\n')}`
+      : (attempts[0] || 'YouTube 영상을 준비할 수 없습니다. 영상 파일을 직접 업로드해 주세요.'),
+  );
+}
+
+export async function prepareAnalysisVideo(video, { file, videoId, onStatus, youtubePlayerRef }) {
   if (!video) throw new Error('비디오 요소가 없습니다.');
 
   video.playsInline = true;
@@ -109,19 +161,17 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus }) {
     const objectUrl = URL.createObjectURL(file);
     video.src = objectUrl;
     await waitForVideoEvent(video, 'loadeddata');
-    return { objectUrl, cleanup: () => { URL.revokeObjectURL(objectUrl); video.src = ''; } };
+    return {
+      objectUrl,
+      cleanup: () => {
+        URL.revokeObjectURL(objectUrl);
+        video.src = '';
+      },
+    };
   }
 
   if (videoId) {
-    onStatus?.('YouTube 영상 연결 확인 중...');
-    const proxyUrl = await probeProxyVideo(videoId);
-    onStatus?.('YouTube 영상 불러오는 중...');
-    video.src = proxyUrl;
-    await waitForVideoEvent(video, 'loadedmetadata');
-    if (!Number.isFinite(video.duration) || video.duration <= 0) {
-      await waitForVideoEvent(video, 'loadeddata', 30000);
-    }
-    return { objectUrl: '', cleanup: () => { video.src = ''; } };
+    return prepareYoutubeVideo(video, { videoId, onStatus, youtubePlayerRef });
   }
 
   throw new Error('영상 소스가 없습니다.');

@@ -156,7 +156,7 @@ export function useGroupChoreoExtract() {
   );
 
   const extractAnalysis = useCallback(
-    async ({ songId, groupId, videoId, file, videoRef }) => {
+    async ({ songId, groupId, videoId, file, videoRef, youtubePlayerRef }) => {
       const group = getGroupData(groupId);
       if (!group) return null;
 
@@ -177,7 +177,12 @@ export function useGroupChoreoExtract() {
           setStep(msg);
         };
 
-        const videoPrep = prepareAnalysisVideo(video, { file, videoId, onStatus: status });
+        const videoPrep = prepareAnalysisVideo(video, {
+          file,
+          videoId,
+          onStatus: status,
+          youtubePlayerRef,
+        });
         const detectorPrep = createPoseDetector(status);
 
         const prep = await videoPrep;
@@ -234,6 +239,7 @@ export function useGroupChoreoExtract() {
     file,
     skipCache = false,
     videoRef,
+    youtubePlayerRef,
   }) => {
     const group = getGroupData(groupId);
     if (!group) return null;
@@ -262,7 +268,12 @@ export function useGroupChoreoExtract() {
       if (!video) throw new Error('비디오 요소가 없습니다.');
 
       const status = (msg) => setStep(msg);
-      const prep = await prepareAnalysisVideo(video, { file, videoId, onStatus: status });
+      const prep = await prepareAnalysisVideo(video, {
+        file,
+        videoId,
+        onStatus: status,
+        youtubePlayerRef,
+      });
       cleanup = prep.cleanup;
 
       setProgress(12);

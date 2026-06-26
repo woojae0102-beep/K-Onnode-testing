@@ -78,6 +78,7 @@ export function ChoreoExtractScreen({
       videoId,
       file,
       videoRef,
+      youtubePlayerRef: ytRef,
     });
     if (result?.analysisResult) {
       setPendingAnalysis(result.analysisResult);
@@ -116,6 +117,7 @@ export function ChoreoExtractScreen({
       videoId,
       file: null,
       videoRef,
+      youtubePlayerRef: ytRef,
     });
     if (result?.analysisResult) {
       setPendingAnalysis(result.analysisResult);
@@ -289,14 +291,19 @@ export function ChoreoExtractScreen({
             ) : null}
 
             {videoId ? (
-              <button
-                type="button"
-                className="group-studio-start-btn"
-                style={{ background: 'rgba(255,255,255,0.08)', border: '1px solid rgba(255,255,255,0.15)' }}
-                onClick={handleYoutubeExtract}
-              >
-                {t('groupStudio.choreoExtract.extractYoutube')}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="group-studio-start-btn"
+                  style={{ background: `linear-gradient(135deg, ${song.albumColor}, ${song.albumColor2})` }}
+                  onClick={handleYoutubeExtract}
+                >
+                  {t('groupStudio.choreoExtract.extractYoutube')}
+                </button>
+                <p style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', margin: 0, lineHeight: 1.6 }}>
+                  {t('groupStudio.choreoExtract.extractYoutubeHint')}
+                </p>
+              </>
             ) : null}
 
             <button
