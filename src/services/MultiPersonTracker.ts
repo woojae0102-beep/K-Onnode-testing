@@ -86,9 +86,9 @@ export class MultiPersonTracker {
 
   async detectMemberCount(
     video: HTMLVideoElement,
-    detector: { detectForVideo: (video: HTMLVideoElement, ms: number) => { landmarks?: unknown[] } },
+    detector: { detect: (video: HTMLVideoElement) => { landmarks?: unknown[] } },
     sampleCount = 20,
-    nextTimestampMs?: () => number,
+    detectFrame: (detector: { detect: (video: HTMLVideoElement) => { landmarks?: unknown[] } }, video: HTMLVideoElement) => { landmarks?: unknown[] } = (d, v) => d.detect(v),
   ): Promise<number> {
     const rawDuration = video.duration || 0;
     const duration = Math.min(Math.max(rawDuration, 10), 180);
@@ -100,8 +100,7 @@ export class MultiPersonTracker {
       const t = (duration / sampleCount) * i;
       await seekVideoTo(video, t);
 
-      const timestampMs = nextTimestampMs ? nextTimestampMs() : t * 1000;
-      const results = detector.detectForVideo(video, timestampMs);
+      const results = detectFrame(detector, video);
       const validCount =
         results.landmarks?.filter((lm: unknown[]) => {
           if (!Array.isArray(lm) || !lm.length) return false;

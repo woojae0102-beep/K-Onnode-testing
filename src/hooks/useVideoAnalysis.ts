@@ -27,7 +27,7 @@ async function createPoseDetector() {
           'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task',
         delegate,
       },
-      runningMode: 'VIDEO',
+      runningMode: 'IMAGE',
       numPoses: MAX_POSES,
     });
 
@@ -75,7 +75,7 @@ export function useVideoAnalysis() {
       setStatusMessage('영상 속 인원을 파악하고 있습니다...');
       setProgress(15);
 
-      const memberCount = await trackerRef.current.detectMemberCount(video, detector);
+      const memberCount = await trackerRef.current.detectMemberCount(video, detector, 20, (d, v) => d.detect(v));
       if (memberCount === 0) {
         throw new Error('영상에서 사람을 감지하지 못했습니다. 더 선명한 영상을 사용해주세요.');
       }
@@ -93,7 +93,7 @@ export function useVideoAnalysis() {
         video.currentTime = t;
         await waitForVideoEvent(video, 'seeked');
 
-        const results = detector.detectForVideo(video, t * 1000);
+        const results = detector.detect(video);
         const trackedPeople = trackerRef.current.trackFrame(results.landmarks || [], t);
         frames.push({ timestamp: t, detectedPeople: trackedPeople });
 
