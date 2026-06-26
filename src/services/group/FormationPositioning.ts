@@ -7,11 +7,16 @@ export interface StageAnchor {
   z: number;
 }
 
+/** AI-only 추출 데이터 기준 기본 대형 스케일 (1.0 = 원본, 1.25 = 약간 넓게) */
+export const FORMATION_SPREAD_SCALE = 1.25;
+
 export interface FormationPositioningInput {
   frame: ChoreographyFrame | null;
   userMemberId: string;
-  /** MediaPipe 실시간 앵커 또는 default 슬롯 */
+  /** MediaPipe 실시간 앵커 (현재 사용자 위치) */
   userAnchor: StageAnchor;
+  /** 원본 안무에서 사용자 슬롯 (defaultX/Y — AI-only 프레임일 때 필수) */
+  referenceUserSlot?: StageAnchor;
   aiMemberIds: string[];
   /** 대형 스케일 (카메라 거리/무대 크기) */
   scale?: number;
@@ -37,8 +42,9 @@ export function applyFormationPositioning({
   frame,
   userMemberId,
   userAnchor,
+  referenceUserSlot,
   aiMemberIds,
-  scale = 1,
+  scale = FORMATION_SPREAD_SCALE,
 }: FormationPositioningInput): PositionedMemberJoints[] {
   if (!frame?.members?.length) {
     return aiMemberIds.map((memberId) => ({
@@ -50,7 +56,10 @@ export function applyFormationPositioning({
 
   const byId = new Map(frame.members.map((m) => [m.memberId, m]));
   const userFrame = byId.get(userMemberId);
-  const userRoot = userFrame ? computeRoot(userFrame.joints) : userAnchor;
+  /** 원본 영상에서 사용자 기준점 — AI-only 추출 시 referenceUserSlot 사용 */
+  const refRoot = userFrame
+    ? computeRoot(userFrame.joints)
+    : referenceUserSlot || userAnchor;
 
   return aiMemberIds.map((memberId) => {
     const memberFrame = byId.get(memberId);
@@ -59,25 +68,29 @@ export function applyFormationPositioning({
     }
 
     const memberRoot = computeRoot(memberFrame.joints);
-    const delta = {
-      x: (memberRoot.x - userRoot.x) * scale,
-      y: (memberRoot.y - userRoot.y) * scale,
-      z: (memberRoot.z - userRoot.z) * scale,
+    const spread = {
+      x: (memberRoot.x - refRoot.x) * scale,
+      y: (memberRoot.y - refRoot.y) * scale,
+      z: (memberRoot.z - refRoot.z) * scale,
     };
 
-    const worldOffset = {
-      x: userAnchor.x + delta.x,
-      y: userAnchor.y + delta.y,
-      z: userAnchor.z + delta.z,
+    const targetRoot = {
+      x: userAnchor.x + spread.x,
+      y: userAnchor.y + spread.y,
+      z: userAnchor.z + spread.z,
     };
 
-    const joints = translateJoints(memberFrame.joints, {
-      x: userAnchor.x - userRoot.x + delta.x,
-      y: userAnchor.y - userRoot.y + delta.y,
-      z: userAnchor.z - userRoot.z + delta.z,
-    });
+    const offset = {
+      x: targetRoot.x - memberRoot.x,
+      y: targetRoot.y - memberRoot.y,
+      z: targetRoot.z - memberRoot.z,
+    };
 
-    return { memberId, joints, worldOffset };
+    return {
+      memberId,
+      joints: translateJoints(memberFrame.joints, offset),
+      worldOffset: targetRoot,
+    };
   });
 }
 

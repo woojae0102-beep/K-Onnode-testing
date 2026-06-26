@@ -12,6 +12,7 @@ import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { buildSkeletonFramesFromAnalysis } from '../videoAnalysisUtils';
 import { buildFormationTimeline } from './FormationTimelineBuilder';
+import { smoothSkeletonFrames } from '../motion/JointKalmanFilter';
 import { saveCachedChoreo, buildChoreoCacheKey, getCachedChoreo } from '../groupChoreoCache';
 
 const DB_NAME = 'onnode_dance_data_v2';
@@ -120,10 +121,12 @@ export function buildDanceDatabase({
   videoId?: string;
   sampleFps?: number;
 }): DanceDatabase {
-  const skeletonFrames = buildSkeletonFramesFromAnalysis(
-    analysisResult,
-    trackToMember,
-    userMemberId,
+  const skeletonFrames = smoothSkeletonFrames(
+    buildSkeletonFramesFromAnalysis(
+      analysisResult,
+      trackToMember,
+      userMemberId,
+    ),
   );
   const positionMap = buildPositionMap(userMemberId, trackToMember, groupId);
   const formation = buildFormationTimeline({

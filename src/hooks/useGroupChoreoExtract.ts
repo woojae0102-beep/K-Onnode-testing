@@ -108,7 +108,6 @@ export function useGroupChoreoExtract() {
     abortRef.current = false;
     const tracker = new MultiPersonTracker();
 
-    console.log('[STEP D] 인원수 감지 시작');
     onProgress?.(5, '영상 속 인원을 파악하고 있습니다...');
     const detectedMemberCount = await tracker.detectMemberCount(
       video,
@@ -116,7 +115,6 @@ export function useGroupChoreoExtract() {
       CHOREO_MEMBER_PROBE_SAMPLES,
       detectPoses,
     );
-    console.log('[STEP E] 인원수 감지 완료', detectedMemberCount);
     if (detectedMemberCount === 0) {
       return null;
     }
@@ -126,7 +124,6 @@ export function useGroupChoreoExtract() {
     const sampleInterval = 1 / SAMPLE_FPS;
     const frames = [];
 
-    console.log('[STEP F] 프레임별 추적 시작', { duration, sampleInterval });
     for (let t = 0; t < duration; t += sampleInterval) {
       if (abortRef.current) break;
       await seekVideoTo(video, t);
@@ -143,7 +140,6 @@ export function useGroupChoreoExtract() {
 
     if (!frames.length) return null;
 
-    console.log('[STEP G] 프레임별 추적 완료', frames.length);
     return {
       detectedMemberCount,
       frames,
@@ -183,15 +179,11 @@ export function useGroupChoreoExtract() {
         const video = videoRef?.current;
         if (!video) throw new Error('비디오 요소가 없습니다.');
 
-        console.log('[STEP A] 영상 업로드 시작', file?.name || videoId || 'unknown');
-
         const status = (msg) => {
           setStep(msg);
         };
 
         let detectorPromise = null;
-
-        console.log('[STEP B] MediaPipe 초기화 시작');
 
         // YouTube: 영상 준비(탭 녹화)를 먼저 시작하고, 녹화 중 AI 모델을 병렬 로드
         const prepPromise = prepareAnalysisVideo(video, {
@@ -215,7 +207,6 @@ export function useGroupChoreoExtract() {
         const detector = detectorPromise
           ? await detectorPromise
           : await createPoseDetector(status);
-        console.log('[STEP C] MediaPipe 초기화 완료', Boolean(detector));
 
         setProgress(15);
         setStep(`${group.nameKr} 안무를 분석하고 있습니다...`);
@@ -235,10 +226,6 @@ export function useGroupChoreoExtract() {
 
         if (!analysisResult) throw new Error('영상에서 동작을 감지하지 못했습니다. 안무 연습 영상인지 확인하거나 파일을 직접 업로드해 주세요.');
 
-        console.log('[STEP H] 결과 콜백 호출', {
-          detectedMemberCount: analysisResult.detectedMemberCount,
-          frameCount: analysisResult.frames?.length,
-        });
         setProgress(100);
         setStep('분석 완료 — 멤버 매칭을 확인해주세요');
         setIsExtracting(false);

@@ -10,6 +10,7 @@ import { AvatarGroupManager } from './AvatarGroupManager';
 import {
   applyFormationPositioning,
   computeLiveUserAnchor,
+  FORMATION_SPREAD_SCALE,
 } from './FormationPositioning';
 
 export interface GroupDanceSyncInput {
@@ -63,8 +64,9 @@ export class GroupDanceSyncEngine {
       frame,
       userMemberId: state.userMemberId,
       userAnchor,
+      referenceUserSlot: userFallbackAnchor,
       aiMemberIds: this.manager.getAiMemberIds(),
-      scale: 1,
+      scale: FORMATION_SPREAD_SCALE,
     });
 
     const personaById = new Map(state.aiAvatars.map((a) => [a.memberId, a]));

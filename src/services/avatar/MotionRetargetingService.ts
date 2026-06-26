@@ -1,6 +1,20 @@
 // @ts-nocheck
 import * as THREE from 'three';
 import type { ChoreographyJoint } from '../../types/groupChoreography';
+import { JointKalmanFilter } from '../motion/JointKalmanFilter';
+
+/** 실시간 카메라 포즈 스무딩 (인스턴스당 1개) */
+let livePoseFilter: JointKalmanFilter | null = null;
+
+export function getLivePoseKalmanFilter() {
+  if (!livePoseFilter) livePoseFilter = new JointKalmanFilter();
+  return livePoseFilter;
+}
+
+export function resetLivePoseKalmanFilter() {
+  livePoseFilter?.reset();
+  livePoseFilter = null;
+}
 
 /** MediaPipe 관절 → Mixamo/RPM 본 이름 매핑 */
 const BONE_MAP: Record<string, string[]> = {
@@ -100,4 +114,11 @@ export function normalizedJointsToWorld(
   return out;
 }
 
-export default { applyJointsToSkeleton, normalizedJointsToWorld };
+export function smoothLiveJoints(
+  joints: Record<string, ChoreographyJoint> | null,
+): Record<string, ChoreographyJoint> {
+  if (!joints) return {};
+  return getLivePoseKalmanFilter().smoothJoints(joints) as Record<string, ChoreographyJoint>;
+}
+
+export default { applyJointsToSkeleton, normalizedJointsToWorld, smoothLiveJoints, resetLivePoseKalmanFilter };

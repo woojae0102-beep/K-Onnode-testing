@@ -5,7 +5,7 @@ import { Grid, OrbitControls, PerspectiveCamera, ContactShadows } from '@react-t
 import type { GroupDanceRenderSnapshot } from '../../../types/groupChoreography';
 import type { FormationHole } from '../../../types/danceDatabase';
 import { SkeletonAvatar3D } from './SkeletonAvatar3D';
-import { AvatarCharacter3D } from './AvatarCharacter3D';
+import { AvatarCharacterWithFallback } from './AvatarCharacterWithFallback';
 import { normalizedToStage } from '../../../services/group/FormationPositioning';
 
 const STAGE = { width: 4, height: 3, depth: 2 };
@@ -100,7 +100,7 @@ export function GroupDanceStage3D({
             const glbUrl = avatarAssets[avatar.memberId]?.glbUrl;
             if (useCharacterAvatars && glbUrl) {
               return (
-                <AvatarCharacter3D
+                <AvatarCharacterWithFallback
                   key={avatar.memberId}
                   glbUrl={glbUrl}
                   joints={avatar.joints}

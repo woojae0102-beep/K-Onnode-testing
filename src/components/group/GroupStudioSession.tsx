@@ -17,6 +17,7 @@ import {
   drawAIAvatar,
   drawUserSkeleton,
 } from '../../utils/groupSkeletonDraw';
+import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
 import TempoLockIndicator from './TempoLockIndicator';
@@ -68,13 +69,6 @@ export function GroupStudioSession({
   const prevSmoothScoreRef = useRef(100);
 
   const { layoutClass, isMobile } = useTVScreenLayout();
-
-  useEffect(() => {
-    console.log('[STEP 7] GroupStudioSession skeletonData', {
-      frameCount: skeletonData?.length,
-      membersInFirstFrame: skeletonData?.[0]?.members?.map((m) => m.estimatedMemberId),
-    });
-  }, [skeletonData]);
 
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
   const recorder = useTVRecorder();
@@ -203,18 +197,18 @@ export function GroupStudioSession({
 
   const syncDanceStage = useCallback(
     (elapsedSec) => {
-      if (!show3DRenderer) return null;
+      if (danceEngine.loading) return null;
       const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
       return danceEngine.tick(
         elapsedSec,
         showUserPose ? dance.poseData?.joints || null : null,
       );
     },
-    [show3DRenderer, danceEngine, isPracticing, sessionPhase, dance.poseData],
+    [danceEngine, isPracticing, sessionPhase, dance.poseData],
   );
 
   const renderGroupStage = useCallback(
-    (frame) => {
+    (snapshot) => {
       if (show3DRenderer) return;
       const canvas = stageCanvasRef.current;
       if (!canvas || !myMember) return;
@@ -234,22 +228,18 @@ export function GroupStudioSession({
         drawGhostSlot(ctx, holePos, formationHole?.color || myMember.color, formationHole?.label || 'YOU');
       }
 
-      frame?.members?.forEach((memberData) => {
-        if (memberData.estimatedMemberId === myMemberId) return;
-        const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
-        if (!member) return;
-        drawAIAvatar(ctx, memberData.joints, member.color, member.nameKr, canvas);
+      const aiAvatars = snapshot?.aiAvatars || [];
+      aiAvatars.forEach((avatar) => {
+        const member = group.members.find((m) => m.id === avatar.memberId);
+        if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
+        drawAIAvatar(ctx, avatar.joints, member.color, member.nameKr, canvas);
       });
 
       if (dance.poseData?.joints && (isPracticing || sessionPhase === 'waiting_slot')) {
-        drawUserSkeleton(
-          ctx,
-          dance.poseData.joints,
-          myMember.color,
-          canvas,
-          myMember.defaultX,
-          myMember.defaultY,
-        );
+        const smoothed = smoothLiveJoints(dance.poseData.joints);
+        const anchorX = snapshot?.userAnchor?.x ?? myMember.defaultX;
+        const anchorY = snapshot?.userAnchor?.y ?? myMember.defaultY;
+        drawUserSkeleton(ctx, smoothed, myMember.color, canvas, anchorX, anchorY);
       }
     },
     [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole],
@@ -258,9 +248,9 @@ export function GroupStudioSession({
   useEffect(() => {
     if (show3DRenderer) return;
     if (sessionPhase !== 'lobby' && sessionPhase !== 'waiting_slot') return;
-    const frame = skeletonData?.[0];
-    if (frame) renderGroupStage(frame);
-  }, [show3DRenderer, sessionPhase, skeletonData, renderGroupStage]);
+    const snapshot = syncDanceStage(0);
+    if (snapshot) renderGroupStage(snapshot);
+  }, [show3DRenderer, sessionPhase, syncDanceStage, renderGroupStage]);
 
   const checkSlotEntry = useCallback(() => {
     if (!dance.poseData?.joints?.nose || slotEnteredRef.current) return false;
@@ -323,8 +313,8 @@ export function GroupStudioSession({
     if (!isPracticing || (!isRunning && !isFinished)) return;
 
     const frame = getPracticeFrame();
-    syncDanceStage(currentTime);
-    if (frame) renderGroupStage(frame);
+    const snapshot = syncDanceStage(currentTime);
+    if (snapshot) renderGroupStage(snapshot);
 
     if (dance.poseData && frame) {
       const accuracy = updateSyncScore(dance.poseData, frame, currentTime);
@@ -423,9 +413,8 @@ export function GroupStudioSession({
   }, [startPracticeAfterCountdown]);
 
   const waitingLoop = useCallback(() => {
-    const frame = skeletonData?.[0];
-    syncDanceStage(0);
-    if (frame) renderGroupStage(frame);
+    const snapshot = syncDanceStage(0);
+    if (snapshot) renderGroupStage(snapshot);
 
     if (sessionPhase === 'waiting_slot' && checkSlotEntry()) {
       runCountdown();
@@ -435,9 +424,10 @@ export function GroupStudioSession({
     if (sessionPhase === 'waiting_slot' || sessionPhase === 'lobby') {
       animFrameRef.current = requestAnimationFrame(waitingLoop);
     }
-  }, [skeletonData, renderGroupStage, sessionPhase, checkSlotEntry, runCountdown, syncDanceStage]);
+  }, [renderGroupStage, sessionPhase, checkSlotEntry, runCountdown, syncDanceStage]);
 
   const enterStudio = useCallback(async () => {
+    resetLivePoseKalmanFilter();
     await dance.startTracking();
     const stream = dance.getStream();
     if (stream) recorder.startRecording(stream);
@@ -464,6 +454,7 @@ export function GroupStudioSession({
   useEffect(() => () => {
     cancelAnimationFrame(animFrameRef.current);
     dance.stopTracking();
+    resetLivePoseKalmanFilter();
   }, [dance]);
 
   if (!group || !myMember || !song) return null;

@@ -23,8 +23,6 @@ export function MemberAutoDetect({
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
   useEffect(() => {
-    let cancelled = false;
-
     const applyLocalFallback = () => {
       const trackIds = Array.from(analysisResult.trackIdToInitialPosition.keys());
       const sortedTracks = trackIds.sort((a, b) => {
@@ -40,41 +38,9 @@ export function MemberAutoDetect({
       setTrackAssignments(initialMap);
     };
 
-    (async () => {
-      try {
-        const tracks = Array.from(analysisResult.trackIdToInitialPosition.entries()).map(
-          ([trackId, pos]) => ({ trackId, x: pos.x, y: pos.y }),
-        );
-        const res = await fetch('/api/group?path=analyze-formation', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ groupId, myMemberId, tracks }),
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (!cancelled && data.suggestions) {
-            const initialMap = new Map();
-            Object.entries(data.suggestions).forEach(([trackId, memberId]) => {
-              initialMap.set(Number(trackId), memberId as string);
-            });
-            setTrackAssignments(initialMap);
-            setLoadingSuggestions(false);
-            return;
-          }
-        }
-      } catch {
-        /* fallback below */
-      }
-      if (!cancelled) {
-        applyLocalFallback();
-        setLoadingSuggestions(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [analysisResult, groupId, myMemberId, otherMembers]);
+    applyLocalFallback();
+    setLoadingSuggestions(false);
+  }, [analysisResult, otherMembers]);
 
   if (!group) return null;
 

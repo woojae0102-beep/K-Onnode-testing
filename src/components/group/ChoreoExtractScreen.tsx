@@ -152,9 +152,6 @@ export function ChoreoExtractScreen({
         myMemberId={memberId}
         analysisResult={pendingAnalysis}
         onConfirm={async (trackToMemberMap) => {
-          console.log('[STEP 7] MemberAutoDetect onConfirm', {
-            trackToMember: Object.fromEntries(trackToMemberMap),
-          });
           const danceDb = buildDanceDatabase({
             groupId: song.groupId,
             songId,
@@ -162,10 +159,6 @@ export function ChoreoExtractScreen({
             analysisResult: pendingAnalysis,
             trackToMember: trackToMemberMap,
             videoId: pendingMeta?.videoId || videoId,
-          });
-          console.log('[STEP 7] skeletonFrames 생성', {
-            frameCount: danceDb.skeletonFrames?.length,
-            sampleMember: danceDb.skeletonFrames?.[0]?.members?.[0]?.estimatedMemberId,
           });
           await saveDanceDatabase(danceDb);
           if (videoId) {
