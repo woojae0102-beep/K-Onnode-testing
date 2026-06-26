@@ -1,0 +1,23 @@
+---
+description: 코칭 · SongAnalysis · Claude 페르소나 API (3D와 별개)
+globs: api/coaching.js,src/hooks/use*Persona*.ts,src/hooks/useSpotifyAnalysis.ts,src/utils/coachingFallbacks.ts,lib/trainer-knowledge/**/*
+alwaysApply: false
+---
+
+# 코칭 페르소나 (텍스트 AI)
+
+**그룹 3D PersonaStyle·RPM GLB와 혼동 금지.**
+
+## 연결
+
+- 곡 분석: `useSpotifyAnalysis` → `POST /api/coaching/analyze-song` → Claude (`ANTHROPIC_API_KEY`)
+- 댄스 코칭: `useDancePersonaCoach` → `POST /api/coaching/dance-persona` + RAG
+- 키 없음: `coachingFallbacks.ts` 규칙 기반 fallback
+
+## SongAnalysis 필드
+
+`personaName`, `personaDescription`, `danceAttitude`, `vocalAttitude` — UI·코칭 문구용, 3D 생성 아님.
+
+## 3D 로드맵 (미구현)
+
+페르소나 분석 AI → 3D 생성 API → `ReadyPlayerMeService` 연동은 별도 Epic. 여기서 자동으로 붙이지 말 것.

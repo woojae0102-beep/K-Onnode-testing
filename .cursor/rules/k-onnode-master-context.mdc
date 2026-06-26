@@ -1,0 +1,29 @@
+---
+description: K-Onnode 프로젝트 마스터 컨텍스트 — 모든 작업 전 필수 참조
+alwaysApply: true
+---
+
+# K-Onnode 마스터 컨텍스트
+
+## 필수: 작업 시작 시
+
+1. **`MASTER_CONTEXT.md`**(프로젝트 루트)를 읽고 현재 repo 상태·파일 연결·알려진 이슈를 확인한다.
+2. 사용자가 **「이번 작업 지시」** 블록(§13)을 붙였으면 그것이 최우선이다.
+3. `PROJECT_PROMPT.md`와 충돌하면 **`MASTER_CONTEXT.md` 우선**.
+
+## 절대 잊지 말 것 (요약)
+
+| 영역 | 규칙 |
+|------|------|
+| 그룹 YouTube 추출 | 탭 녹화 1순위 · `getDisplayMedia`는 클릭 직후 · `youtubePlayerRef` 전달 |
+| MediaPipe seek 분석 | **`runningMode: IMAGE` + `detect()`** — VIDEO+detectForVideo 금지 |
+| API 핸들러 | `lib/api-handlers/package.json` → `"type":"commonjs"` 유지 |
+| 그룹 PersonaStyle | AI 분석 **없음** — 하드코딩 (`useGroupDanceEngine`) |
+| 3D GLB | RPM **생성 API 미연결** — 데모 GLB 1개 공유 |
+| 코칭 페르소나 | Claude `/api/coaching/*` — 3D 파이프라인과 **별개** |
+| 커밋/배포 | 사용자 명시 시에만 |
+| 응답 언어 | **한국어** |
+
+## 작업 후
+
+큰 기능·버그 수정이 끝나면 `MASTER_CONTEXT.md` §6·§9(구현 상태·알려진 이슈) 업데이트를 사용자에게 제안한다.

@@ -1,0 +1,39 @@
+---
+description: 그룹 스튜디오 · YouTube 안무 추출 · 3D 스테이지 수정 시
+globs: src/components/group/**/*,src/hooks/useGroup*.ts,src/utils/choreoVideoUtils.ts,src/services/youtube*.ts,src/services/group/**/*,src/services/avatar/**/*,src/services/dance/**/*
+alwaysApply: false
+---
+
+# 그룹 스튜디오 · 안무 추출
+
+`MASTER_CONTEXT.md` §5·§6·§10을 먼저 읽는다.
+
+## Phase 흐름
+
+`useGroupStudio.ts`: home → song_detail → position_select → **choreo_extract** → practice → result
+
+## 데이터 흐름 (수정 시 연결 유지)
+
+```
+ChoreoExtractScreen → useGroupChoreoExtract → choreoVideoUtils
+  → MultiPersonTracker → MemberAutoDetect → DanceDatabaseService
+  → GroupStudioSession → useGroupDanceEngine → GroupDanceStage3D
+```
+
+## 영상 준비 (`prepareYoutubeVideo`)
+
+1. 탭 녹화 (`youtubeTabCapture.ts`) — 플레이어 대기 **전에** `getDisplayMedia`
+2. 브라우저 ytdl (`youtubeClientDownload.ts`)
+3. 서버 proxy (`/api/group?path=proxy-video`) — Vercel에서 자주 실패
+
+## MediaPipe
+
+- `createPoseDetector`: `runningMode: 'IMAGE'`
+- 프레임마다 `detector.detect(video)` — 타임스탬프 불필요
+- 설정: `src/config/choreoExtractConfig.ts`
+
+## 3D (현재 한계)
+
+- `ReadyPlayerMeService.ts`: 멤버별 **생성 없음**, 데모 GLB 공유
+- `MotionRetargetingService.ts`: 스켈레톤 → 본 회전만
+- PersonaStyle AI 연동은 **미구현** — 임의 API 추가 전 사용자와 합의

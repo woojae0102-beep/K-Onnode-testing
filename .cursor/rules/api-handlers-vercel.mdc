@@ -1,0 +1,31 @@
+---
+description: Vercel API · lib/api-handlers · YouTube 프록시 수정 시
+globs: api/**/*,lib/api-handlers/**/*,vercel.json,vite.config.js
+alwaysApply: false
+---
+
+# Serverless API 규칙
+
+`MASTER_CONTEXT.md` §7·§9 참조.
+
+## 구조
+
+- 라우터: `api/group.js`, `api/coaching.js`, … (CommonJS, `api/package.json`)
+- 핸들러: `lib/api-handlers/**` — **`lib/api-handlers/package.json`에 `"type":"commonjs"` 필수**
+- Rewrite: `vercel.json` — `/api/group/:path*` → `?path=:path*`
+- 로컬: `vite.config.js` `devApiPlugin()` 동일 rewrite
+
+## group/proxy-video
+
+- `lib/api-handlers/group/streamResolver.cjs`
+- 순서: youtubei.js ANDROID pipe → ytdl → Piped/Invidious
+- Vercel IP: YouTube 봇 차단 흔함 — 클라이언트 탭 녹화가 주 경로
+
+## 에러 메시지
+
+- `api/group.js` catch: "서버 처리 중 오류…" (핸들러 로드 실패)
+- `proxy-video.js` catch: "YouTube 스트림 연결에 실패…" (스트림 해석 실패)
+
+## dev middleware
+
+`vite.config.js`에 `res.json`, `res.send` 폴리필 필요 (스트리밍 응답용).

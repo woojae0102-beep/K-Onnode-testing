@@ -10,6 +10,7 @@ import { useGroupDanceEngine } from '../../hooks/useGroupDanceEngine';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { useGroupAvatarAssets } from '../../hooks/useGroupAvatarAssets';
+import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import {
   drawStageBackground,
   drawGhostSlot,
@@ -58,7 +59,7 @@ export function GroupStudioSession({
   const [showMissedAlert, setShowMissedAlert] = useState(false);
   const [studioModalOpen, setStudioModalOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [stageViewMode, setStageViewMode] = useState('3d');
+  const [stageViewMode, setStageViewMode] = useState('2d');
   const screenRef = useRef(null);
   const animFrameRef = useRef(0);
   const groupStageRef = useRef(null);
@@ -67,6 +68,14 @@ export function GroupStudioSession({
   const prevSmoothScoreRef = useRef(100);
 
   const { layoutClass, isMobile } = useTVScreenLayout();
+
+  useEffect(() => {
+    console.log('[STEP 7] GroupStudioSession skeletonData', {
+      frameCount: skeletonData?.length,
+      membersInFirstFrame: skeletonData?.[0]?.members?.map((m) => m.estimatedMemberId),
+    });
+  }, [skeletonData]);
+
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
   const recorder = useTVRecorder();
   const {
@@ -101,6 +110,12 @@ export function GroupStudioSession({
   const { assets: avatarAssets } = useGroupAvatarAssets(groupId, aiMemberIds);
   const use3DStage = stageViewMode === '3d' && !danceEngine.error;
   const show3DRenderer = use3DStage && !danceEngine.loading;
+
+  useEffect(() => {
+    if (danceEngine.error && stageViewMode === '3d') {
+      setStageViewMode('2d');
+    }
+  }, [danceEngine.error, stageViewMode]);
 
   useEffect(() => {
     if (!show3DRenderer || !skeletonData?.length) return;
@@ -239,6 +254,13 @@ export function GroupStudioSession({
     },
     [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole],
   );
+
+  useEffect(() => {
+    if (show3DRenderer) return;
+    if (sessionPhase !== 'lobby' && sessionPhase !== 'waiting_slot') return;
+    const frame = skeletonData?.[0];
+    if (frame) renderGroupStage(frame);
+  }, [show3DRenderer, sessionPhase, skeletonData, renderGroupStage]);
 
   const checkSlotEntry = useCallback(() => {
     if (!dance.poseData?.joints?.nose || slotEnteredRef.current) return false;
