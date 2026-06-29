@@ -1,6 +1,10 @@
 // @ts-nocheck
 import type { JointPoint } from '../types/groupPractice';
 import { seekVideoTo } from '../utils/choreoVideoUtils';
+import {
+  CHOREO_MAX_OCCLUSION_SEC,
+  CHOREO_MIN_PERSON_CONFIDENCE,
+} from '../config/choreoExtractConfig';
 
 export interface JointPosition extends JointPoint {
   confidence?: number;
@@ -11,11 +15,22 @@ export interface TrackedPerson {
   joints: Record<string, JointPosition>;
   lastSeenTimestamp: number;
   confidence: number;
+  /** 실제 감지가 아닌 가려짐 보강 데이터 */
+  isEstimated?: boolean;
 }
 
 export interface DetectionFrame {
   timestamp: number;
   detectedPeople: TrackedPerson[];
+}
+
+interface PersistentTrack {
+  trackId: number;
+  lastKnownPosition: { x: number; y: number };
+  lastSeenTimestamp: number;
+  lastKnownJoints: Record<string, JointPosition>;
+  consecutiveMissedFrames: number;
+  isCurrentlyVisible: boolean;
 }
 
 const JOINT_MAP: Record<string, number> = {
@@ -34,17 +49,22 @@ const JOINT_MAP: Record<string, number> = {
   right_ankle: 28,
 };
 
+const CORE_JOINTS = ['nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip'] as const;
+
 export class MultiPersonTracker {
   private nextTrackId = 0;
 
-  private activeTracksLastPosition = new Map<
-    number,
-    { x: number; y: number; lastSeen: number; lastJoints?: Record<string, JointPosition> }
-  >();
+  private persistentTracks = new Map<number, PersistentTrack>();
 
-  private readonly MAX_OCCLUSION_TIME = 0.5;
+  private readonly MATCH_DISTANCE_THRESHOLD = 0.2;
 
-  private readonly MATCH_DISTANCE_THRESHOLD = 0.15;
+  private maxTracksSeen = 0;
+
+  private allTrackIdsEver = new Set<number>();
+
+  private sampleFps = 10;
+
+  private maxMissedFrames = Math.ceil(CHOREO_MAX_OCCLUSION_SEC * 10);
 
   private readonly POSE_KEYS = [
     'left_shoulder',
@@ -54,6 +74,12 @@ export class MultiPersonTracker {
     'left_knee',
     'right_knee',
   ] as const;
+
+  /** 분석 샘플 fps에 맞춰 가려짐 허용 프레임 수 조정 */
+  setSampleFps(fps: number) {
+    this.sampleFps = fps || 10;
+    this.maxMissedFrames = Math.ceil(CHOREO_MAX_OCCLUSION_SEC * this.sampleFps);
+  }
 
   private poseSimilarity(
     a: Record<string, JointPosition>,
@@ -75,20 +101,36 @@ export class MultiPersonTracker {
   private matchScore(
     detection: { centerPos: { x: number; y: number }; joints: Record<string, JointPosition> },
     trackId: number,
-    lastPos: { x: number; y: number; lastJoints?: Record<string, JointPosition> },
+    lastPos: PersistentTrack,
   ): number {
-    const dist = Math.hypot(detection.centerPos.x - lastPos.x, detection.centerPos.y - lastPos.y);
-    const poseDist = lastPos.lastJoints
-      ? this.poseSimilarity(detection.joints, lastPos.lastJoints)
+    const dist = Math.hypot(
+      detection.centerPos.x - lastPos.lastKnownPosition.x,
+      detection.centerPos.y - lastPos.lastKnownPosition.y,
+    );
+    const poseDist = lastPos.lastKnownJoints
+      ? this.poseSimilarity(detection.joints, lastPos.lastKnownJoints)
       : dist;
     return dist * 0.55 + poseDist * 0.45;
+  }
+
+  /** MediaPipe landmarks 배열 → 유효 인원 수 (관대한 필터) */
+  countValidPoses(landmarks: unknown[] | undefined): number {
+    if (!landmarks?.length) return 0;
+    return landmarks.filter((lm) => {
+      const joints = this.extractJoints(lm as unknown[]);
+      return this.calculateConfidence(joints) > CHOREO_MIN_PERSON_CONFIDENCE;
+    }).length;
   }
 
   async detectMemberCount(
     video: HTMLVideoElement,
     detector: { detect: (video: HTMLVideoElement) => { landmarks?: unknown[] } },
-    sampleCount = 20,
-    detectFrame: (detector: { detect: (video: HTMLVideoElement) => { landmarks?: unknown[] } }, video: HTMLVideoElement) => { landmarks?: unknown[] } = (d, v) => d.detect(v),
+    sampleCount = 12,
+    detectFrame: (
+      detector: { detect: (video: HTMLVideoElement) => { landmarks?: unknown[] } },
+      video: HTMLVideoElement,
+    ) => { landmarks?: unknown[] } = (d, v) => d.detect(v),
+    expectedMemberCount = 5,
   ): Promise<number> {
     const rawDuration = video.duration || 0;
     const duration = Math.min(Math.max(rawDuration, 10), 180);
@@ -101,14 +143,21 @@ export class MultiPersonTracker {
       await seekVideoTo(video, t);
 
       const results = detectFrame(detector, video);
-      const validCount =
-        results.landmarks?.filter((lm: unknown[]) => {
-          if (!Array.isArray(lm) || !lm.length) return false;
-          const avgVisibility =
-            lm.reduce((sum: number, j: { visibility?: number }) => sum + (j?.visibility || 0), 0) /
-            lm.length;
-          return avgVisibility > 0.5;
-        }).length || 0;
+      const validCount = this.countValidPoses(results.landmarks as unknown[]);
+
+      if (import.meta.env.DEV && results.landmarks?.length) {
+        console.debug(
+          '[진단] 프레임 인원',
+          validCount,
+          '/ raw',
+          results.landmarks.length,
+          '신뢰도',
+          (results.landmarks as unknown[][]).map((lm) => {
+            const joints = this.extractJoints(lm);
+            return this.calculateConfidence(joints).toFixed(2);
+          }),
+        );
+      }
 
       if (validCount > 0) counts.push(validCount);
     }
@@ -120,54 +169,121 @@ export class MultiPersonTracker {
       frequency[c] = (frequency[c] || 0) + 1;
     });
 
-    const mostCommon = Object.entries(frequency).sort(([, a], [, b]) => b - a)[0];
-    return parseInt(mostCommon[0], 10);
+    const sorted = Object.entries(frequency).sort(([, a], [, b]) => b - a);
+    const mostCommon = parseInt(sorted[0][0], 10);
+    const peak = Math.max(...counts);
+
+    /** 목표 정원에 가장 가까운 값 (과소/과다 방지) */
+    if (expectedMemberCount > 0) {
+      if (peak >= expectedMemberCount) return expectedMemberCount;
+      if (mostCommon >= expectedMemberCount - 1) return mostCommon;
+    }
+    return mostCommon;
   }
 
-  trackFrame(detectedLandmarks: unknown[], timestamp: number): TrackedPerson[] {
-    const currentDetections = (detectedLandmarks || []).map((landmarks) => ({
-      joints: this.extractJoints(landmarks as unknown[]),
-      centerPos: this.calculateCenter(landmarks as unknown[]),
-    }));
+  trackFrame(
+    detectedLandmarks: unknown[],
+    timestamp: number,
+    expectedMemberCount = 5,
+  ): TrackedPerson[] {
+    const currentDetections = (detectedLandmarks || [])
+      .map((landmarks) => ({
+        joints: this.extractJoints(landmarks as unknown[]),
+        centerPos: this.calculateCenter(landmarks as unknown[]),
+        confidence: 0,
+      }))
+      .map((d) => ({ ...d, confidence: this.calculateConfidence(d.joints) }))
+      .filter((d) => d.confidence > CHOREO_MIN_PERSON_CONFIDENCE);
 
-    const trackedPeople: TrackedPerson[] = [];
-    const usedTrackIds = new Set<number>();
+    const matchedTrackIds = new Set<number>();
+    const result: TrackedPerson[] = [];
 
     currentDetections.forEach((detection) => {
       let bestMatchId: number | null = null;
       let bestMatchScore = Infinity;
 
-      this.activeTracksLastPosition.forEach((lastPos, trackId) => {
-        if (usedTrackIds.has(trackId)) return;
-        if (timestamp - lastPos.lastSeen > this.MAX_OCCLUSION_TIME) return;
-
-        const score = this.matchScore(detection, trackId, lastPos);
+      this.persistentTracks.forEach((track, trackId) => {
+        if (matchedTrackIds.has(trackId)) return;
+        const score = this.matchScore(detection, trackId, track);
         if (score < this.MATCH_DISTANCE_THRESHOLD && score < bestMatchScore) {
           bestMatchScore = score;
           bestMatchId = trackId;
         }
       });
 
-      const trackId = bestMatchId !== null ? bestMatchId : this.nextTrackId;
-      if (bestMatchId === null) this.nextTrackId += 1;
-      usedTrackIds.add(trackId);
+      if (bestMatchId === null) {
+        if (this.persistentTracks.size < expectedMemberCount) {
+          bestMatchId = this.nextTrackId;
+          this.nextTrackId += 1;
+        } else {
+          let oldestMissedId: number | null = null;
+          let maxMissed = -1;
+          this.persistentTracks.forEach((track, trackId) => {
+            if (matchedTrackIds.has(trackId)) return;
+            if (track.consecutiveMissedFrames > maxMissed) {
+              maxMissed = track.consecutiveMissedFrames;
+              oldestMissedId = trackId;
+            }
+          });
+          bestMatchId = oldestMissedId ?? this.nextTrackId;
+          if (oldestMissedId === null) {
+            this.nextTrackId += 1;
+          }
+        }
+      }
 
-      this.activeTracksLastPosition.set(trackId, {
-        x: detection.centerPos.x,
-        y: detection.centerPos.y,
-        lastSeen: timestamp,
-        lastJoints: detection.joints,
+      matchedTrackIds.add(bestMatchId);
+      this.allTrackIdsEver.add(bestMatchId);
+
+      this.persistentTracks.set(bestMatchId, {
+        trackId: bestMatchId,
+        lastKnownPosition: detection.centerPos,
+        lastSeenTimestamp: timestamp,
+        lastKnownJoints: detection.joints,
+        consecutiveMissedFrames: 0,
+        isCurrentlyVisible: true,
       });
 
-      trackedPeople.push({
-        trackId,
+      result.push({
+        trackId: bestMatchId,
         joints: detection.joints,
         lastSeenTimestamp: timestamp,
-        confidence: this.calculateConfidence(detection.joints),
+        confidence: detection.confidence,
+        isEstimated: false,
       });
     });
 
-    return trackedPeople;
+    this.persistentTracks.forEach((track, trackId) => {
+      if (matchedTrackIds.has(trackId)) return;
+
+      track.consecutiveMissedFrames += 1;
+      track.isCurrentlyVisible = false;
+
+      if (track.consecutiveMissedFrames > this.maxMissedFrames) {
+        this.persistentTracks.delete(trackId);
+        return;
+      }
+
+      result.push({
+        trackId,
+        joints: track.lastKnownJoints,
+        lastSeenTimestamp: track.lastSeenTimestamp,
+        confidence: 0.2,
+        isEstimated: true,
+      });
+    });
+
+    this.maxTracksSeen = Math.max(this.maxTracksSeen, this.allTrackIdsEver.size, result.length);
+
+    return result;
+  }
+
+  getFinalTrackCount(): number {
+    return this.allTrackIdsEver.size;
+  }
+
+  getPeakTrackCount(): number {
+    return Math.max(this.maxTracksSeen, this.allTrackIdsEver.size);
   }
 
   buildInitialPositions(frames: DetectionFrame[], sampleLimit = 30): Map<number, { x: number; y: number }> {
@@ -175,6 +291,7 @@ export class MultiPersonTracker {
 
     frames.slice(0, Math.min(sampleLimit, frames.length)).forEach((frame) => {
       frame.detectedPeople.forEach((person) => {
+        if (person.isEstimated) return;
         const nose = person.joints.nose;
         if (!nose) return;
         const existing = trackPositions.get(person.trackId) || { x: 0, y: 0, count: 0 };
@@ -226,7 +343,14 @@ export class MultiPersonTracker {
     return { x: avgX, y: avgY };
   }
 
+  /** 상체 핵심 관절 기준 — 화면 가장자리 부분 가림 허용 */
   private calculateConfidence(joints: Record<string, JointPosition>): number {
+    const coreValues = CORE_JOINTS.map((name) => joints[name]).filter(Boolean);
+    if (coreValues.length >= 3) {
+      const avg =
+        coreValues.reduce((sum, j) => sum + (j.confidence ?? j.visibility ?? 0), 0) / coreValues.length;
+      return Math.max(0.4, avg);
+    }
     const values = Object.values(joints);
     if (!values.length) return 0;
     return values.reduce((sum, j) => sum + (j.confidence ?? j.visibility ?? 0), 0) / values.length;
@@ -234,7 +358,9 @@ export class MultiPersonTracker {
 
   reset() {
     this.nextTrackId = 0;
-    this.activeTracksLastPosition.clear();
+    this.persistentTracks.clear();
+    this.maxTracksSeen = 0;
+    this.allTrackIdsEver.clear();
   }
 }
 

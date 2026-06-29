@@ -45,6 +45,9 @@ export function ChoreoExtractScreen({
     loadFromCache,
     extractChoreo,
     extractAnalysis,
+    currentFrameDetectedCount,
+    expectedMemberCount,
+    insufficientWarning,
   } = useGroupChoreoExtract();
 
   useEffect(() => {
@@ -267,12 +270,42 @@ export function ChoreoExtractScreen({
           </p>
         ) : null}
 
+        {insufficientWarning ? (
+          <div
+            style={{
+              padding: '14px 16px',
+              background: 'rgba(255,68,68,0.1)',
+              border: '1px solid rgba(255,68,68,0.3)',
+              borderRadius: 12,
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ color: '#FF4444', fontSize: 13, fontWeight: 600, marginBottom: 6 }}>
+              {insufficientWarning.expected}명 중 {insufficientWarning.found}명만 감지됐어요
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.6)', fontSize: 12, lineHeight: 1.5 }}>
+              전체 멤버가 화면에 골고루 나오는 영상을 사용해 주세요.
+              한 명이라도 영상 내내 화면 밖에 있으면 감지가 어려워요.
+            </div>
+          </div>
+        ) : null}
+
         {isExtracting ? (
           <div style={{ marginBottom: 24 }}>
             <div style={{ height: 6, borderRadius: 3, background: 'rgba(255,255,255,0.08)', overflow: 'hidden', marginBottom: 10 }}>
               <div style={{ height: '100%', width: `${progress}%`, background: `linear-gradient(90deg, ${song.albumColor}, ${song.albumColor2})`, transition: 'width 0.3s' }} />
             </div>
             <p style={{ fontSize: 13, color: 'rgba(255,255,255,0.6)', margin: 0 }}>{step}</p>
+            {expectedMemberCount > 0 ? (
+              <p style={{ fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 8 }}>
+                현재 프레임 감지: {currentFrameDetectedCount}명 / 목표: {expectedMemberCount}명
+                {currentFrameDetectedCount > 0 && currentFrameDetectedCount < expectedMemberCount ? (
+                  <span style={{ color: '#FFD700', marginLeft: 8 }}>
+                    ⚠ {expectedMemberCount - currentFrameDetectedCount}명 일시적으로 가려짐 (보강 중)
+                  </span>
+                ) : null}
+              </p>
+            ) : null}
             <button type="button" onClick={cancel} style={{ marginTop: 12, background: 'none', border: '1px solid rgba(255,255,255,0.2)', borderRadius: 8, color: 'rgba(255,255,255,0.5)', padding: '6px 14px', cursor: 'pointer', fontSize: 12 }}>
               {t('groupStudio.choreoExtract.cancel')}
             </button>

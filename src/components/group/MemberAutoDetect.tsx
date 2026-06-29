@@ -18,7 +18,8 @@ export function MemberAutoDetect({
 }) {
   const group = GROUP_DATA[groupId];
   const otherMembers = group?.members.filter((m) => m.id !== myMemberId) || [];
-  const detectedCount = analysisResult.detectedMemberCount;
+  const detectedCount = analysisResult.peakTrackCount ?? analysisResult.detectedMemberCount;
+  const expectedAiTracks = group.memberCount - 1;
   const [trackAssignments, setTrackAssignments] = useState(new Map());
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
@@ -44,7 +45,7 @@ export function MemberAutoDetect({
 
   if (!group) return null;
 
-  const countMismatch = detectedCount !== group.memberCount;
+  const countMismatch = trackIds.length < expectedAiTracks || detectedCount < group.memberCount;
   const trackIds = Array.from(analysisResult.trackIdToInitialPosition.keys());
 
   return (

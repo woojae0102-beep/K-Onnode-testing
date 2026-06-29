@@ -4,14 +4,37 @@
 /** 분석할 최대 길이(초). 대부분의 안무 연습은 3분 이내로 충분 */
 export const CHOREO_MAX_DURATION_SEC = 180;
 
-/** 초당 샘플 프레임. 10fps면 연습용 스켈레톤에 충분하고 15fps 대비 ~33% 단축 */
+/** 초당 샘플 프레임. 10fps면 연습용 스켈레톤에 충분 */
 export const CHOREO_SAMPLE_FPS = 10;
 
-/** 멤버 수 사전 감지 샘플 수 (20→8로 초기 구간 단축) */
-export const CHOREO_MEMBER_PROBE_SAMPLES = 8;
+/** 재분석 시 더 촘촘한 샘플링 (순간 등장 멤버 포착) */
+export const CHOREO_RETRY_SAMPLE_FPS = 15;
 
-/** 동시 추적 인원 상한 */
-export const CHOREO_MAX_POSES = 8;
+/** 멤버 수 사전 감지 샘플 수 */
+export const CHOREO_MEMBER_PROBE_SAMPLES = 12;
+
+/** 동시 추적 인원 상한 (그룹 정원+5 미만일 때 폴백) */
+export const CHOREO_MAX_POSES_CAP = 15;
+
+/** MediaPipe 감지 신뢰도 (IMAGE 모드) */
+export const CHOREO_POSE_CONFIDENCE = {
+  normal: {
+    minPoseDetectionConfidence: 0.3,
+    minPosePresenceConfidence: 0.3,
+    minTrackingConfidence: 0.3,
+  },
+  lenient: {
+    minPoseDetectionConfidence: 0.15,
+    minPosePresenceConfidence: 0.15,
+    minTrackingConfidence: 0.15,
+  },
+} as const;
+
+/** 트래커: 감지 제외 최소 신뢰도 */
+export const CHOREO_MIN_PERSON_CONFIDENCE = 0.15;
+
+/** 트래커: 가려짐 유지 시간(초) — 10fps 기준 약 30프레임 */
+export const CHOREO_MAX_OCCLUSION_SEC = 3;
 
 /** lite: 빠름(권장) / heavy: 정밀하지만 2~3배 느림 */
 export const CHOREO_POSE_MODEL = 'lite' as const;
@@ -21,9 +44,14 @@ export const CHOREO_POSE_MODEL_URL = {
   heavy: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task',
 };
 
+/** 그룹 정원 + 5 여유 (최소 10) */
+export function resolveNumPoses(groupMemberCount: number): number {
+  const target = (groupMemberCount || 5) + 5;
+  return Math.min(Math.max(target, 10), CHOREO_MAX_POSES_CAP);
+}
+
 export function estimateExtractSeconds(durationSec: number) {
   const d = Math.min(durationSec || 180, CHOREO_MAX_DURATION_SEC);
   const frames = Math.ceil(d * CHOREO_SAMPLE_FPS) + CHOREO_MEMBER_PROBE_SAMPLES;
-  // lite + GPU 기준 대략 프레임당 40~80ms
   return Math.round(frames * 0.06 + 8);
 }
