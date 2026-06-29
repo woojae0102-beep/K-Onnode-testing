@@ -45,8 +45,8 @@ export function MemberAutoDetect({
 
   if (!group) return null;
 
-  const countMismatch = trackIds.length < expectedAiTracks || detectedCount < group.memberCount;
   const trackIds = Array.from(analysisResult.trackIdToInitialPosition.keys());
+  const countMismatch = trackIds.length < expectedAiTracks || detectedCount < group.memberCount;
 
   return (
     <div
