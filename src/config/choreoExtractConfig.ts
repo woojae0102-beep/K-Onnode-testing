@@ -44,9 +44,10 @@ export const CHOREO_POSE_MODEL_URL = {
   heavy: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task',
 };
 
-/** 그룹 정원 + 5 여유 (최소 10) */
+/** 그룹 정원 + 5 여유 (최소 10). 잘못된 입력(NaN/0)은 5명 그룹으로 폴백 */
 export function resolveNumPoses(groupMemberCount: number): number {
-  const target = (groupMemberCount || 5) + 5;
+  const count = Math.max(1, Number(groupMemberCount) || 5);
+  const target = count + 5;
   return Math.min(Math.max(target, 10), CHOREO_MAX_POSES_CAP);
 }
 

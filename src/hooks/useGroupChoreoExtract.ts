@@ -56,7 +56,20 @@ async function createPoseDetector(groupMemberCount, onStatus, { lenient = false 
   );
 
   const confidence = lenient ? CHOREO_POSE_CONFIDENCE.lenient : CHOREO_POSE_CONFIDENCE.normal;
-  const numPoses = resolveNumPoses(groupMemberCount);
+
+  const resolvedNumPoses = resolveNumPoses(groupMemberCount);
+  const numPoses = Math.max(resolvedNumPoses, (Number(groupMemberCount) || 5) + 2);
+
+  console.log(
+    `[PoseDetector] groupMemberCount=${groupMemberCount}, resolveNumPoses()=${resolvedNumPoses}, 최종 numPoses=${numPoses}`,
+  );
+
+  if (resolvedNumPoses < (Number(groupMemberCount) || 5)) {
+    console.error(
+      `[PoseDetector] ⚠️ resolveNumPoses(${groupMemberCount})가 ${resolvedNumPoses}를 반환했습니다. ` +
+        'choreoExtractConfig.ts의 resolveNumPoses 로직을 확인하세요.',
+    );
+  }
 
   const build = async (delegate) => {
     onStatus?.(delegate === 'GPU' ? 'GPU AI 모델 로드 중...' : 'CPU AI 모델 로드 중...');
@@ -97,6 +110,10 @@ async function runVideoAnalysis({
 }) {
   const group = getGroupData(groupId);
   if (!group || !video || !detector) return null;
+
+  console.log(
+    `[ChoreoExtract] groupId=${groupId}, group.memberCount=${group.memberCount}, expectedMemberCount=${expectedMemberCount}`,
+  );
 
   const tracker = new MultiPersonTracker();
   tracker.setSampleFps(sampleFps);

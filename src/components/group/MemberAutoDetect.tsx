@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import type { AnalysisResult } from '../../services/videoAnalysisTypes';
+import { identifyUserTrackId, suggestTrackToMemberMap } from '../../services/formationMatching';
 
 export function MemberAutoDetect({
   groupId,
@@ -19,34 +20,30 @@ export function MemberAutoDetect({
   const group = GROUP_DATA[groupId];
   const otherMembers = group?.members.filter((m) => m.id !== myMemberId) || [];
   const detectedCount = analysisResult.peakTrackCount ?? analysisResult.detectedMemberCount;
-  const expectedAiTracks = group.memberCount - 1;
   const [trackAssignments, setTrackAssignments] = useState(new Map());
+  const [myTrackId, setMyTrackId] = useState(null);
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
   useEffect(() => {
-    const applyLocalFallback = () => {
-      const trackIds = Array.from(analysisResult.trackIdToInitialPosition.keys());
-      const sortedTracks = trackIds.sort((a, b) => {
-        const posA = analysisResult.trackIdToInitialPosition.get(a)!;
-        const posB = analysisResult.trackIdToInitialPosition.get(b)!;
-        return posA.x - posB.x;
-      });
-      const sortedMembers = [...otherMembers].sort((a, b) => a.defaultX - b.defaultX);
-      const initialMap = new Map();
-      sortedTracks.forEach((trackId, i) => {
-        if (sortedMembers[i]) initialMap.set(trackId, sortedMembers[i].id);
-      });
-      setTrackAssignments(initialMap);
-    };
-
-    applyLocalFallback();
+    const userTrackId = identifyUserTrackId(
+      groupId,
+      myMemberId,
+      analysisResult.trackIdToInitialPosition,
+    );
+    const initialMap = suggestTrackToMemberMap(
+      groupId,
+      myMemberId,
+      analysisResult.trackIdToInitialPosition,
+    );
+    setMyTrackId(userTrackId);
+    setTrackAssignments(initialMap);
     setLoadingSuggestions(false);
-  }, [analysisResult, otherMembers]);
+  }, [analysisResult, groupId, myMemberId]);
 
   if (!group) return null;
 
   const trackIds = Array.from(analysisResult.trackIdToInitialPosition.keys());
-  const countMismatch = trackIds.length < expectedAiTracks || detectedCount < group.memberCount;
+  const countMismatch = trackIds.length < group.memberCount || detectedCount < group.memberCount;
 
   return (
     <div
@@ -95,8 +92,9 @@ export function MemberAutoDetect({
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 24 }}>
           {trackIds.map((trackId) => {
-            const assignedMemberId = trackAssignments.get(trackId);
-            const assignedMember = otherMembers.find((m) => m.id === assignedMemberId);
+            const isMyTrack = trackId === myTrackId;
+            const assignedMemberId = isMyTrack ? myMemberId : trackAssignments.get(trackId);
+            const assignedMember = group.members.find((m) => m.id === assignedMemberId);
             const pos = analysisResult.trackIdToInitialPosition.get(trackId);
 
             return (
@@ -135,7 +133,9 @@ export function MemberAutoDetect({
                 <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.4)' }}>→</div>
                 <select
                   value={assignedMemberId || ''}
+                  disabled={isMyTrack}
                   onChange={(e) => {
+                    if (isMyTrack) return;
                     const newMap = new Map(trackAssignments);
                     if (e.target.value) newMap.set(trackId, e.target.value);
                     else newMap.delete(trackId);
@@ -155,9 +155,9 @@ export function MemberAutoDetect({
                   }}
                 >
                   <option value="">멤버 선택</option>
-                  {otherMembers.map((m) => (
+                  {group.members.map((m) => (
                     <option key={m.id} value={m.id}>
-                      {m.nameKr}
+                      {m.id === myMemberId ? `${m.nameKr} (내 파트)` : m.nameKr}
                     </option>
                   ))}
                 </select>

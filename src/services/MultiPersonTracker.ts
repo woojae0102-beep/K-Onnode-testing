@@ -56,7 +56,7 @@ export class MultiPersonTracker {
 
   private persistentTracks = new Map<number, PersistentTrack>();
 
-  private readonly MATCH_DISTANCE_THRESHOLD = 0.2;
+  private readonly MATCH_DISTANCE_THRESHOLD = 0.25;
 
   private maxTracksSeen = 0;
 
@@ -274,6 +274,12 @@ export class MultiPersonTracker {
     });
 
     this.maxTracksSeen = Math.max(this.maxTracksSeen, this.allTrackIdsEver.size, result.length);
+
+    if (import.meta.env.DEV) {
+      console.debug(
+        `[Tracker] 활성 트랙 수: ${this.persistentTracks.size}, expectedMemberCount: ${expectedMemberCount}`,
+      );
+    }
 
     return result;
   }

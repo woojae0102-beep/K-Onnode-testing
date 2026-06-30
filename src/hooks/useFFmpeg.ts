@@ -57,6 +57,12 @@ async function createWatermarkImage(trackType) {
   return new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
 }
 
+async function buildCaptionFilter(ffmpeg, addCaption) {
+  if (!Array.isArray(addCaption) || !addCaption.length) return null;
+  await ffmpeg.writeFile('caption.srt', new TextEncoder().encode(generateSRT(addCaption)));
+  return "subtitles=caption.srt:force_style='FontName=Arial Black,FontSize=40,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BackColour=&H80000000&,BorderStyle=4,Outline=1,Shadow=0,Bold=1,MarginV=260,Alignment=2'";
+}
+
 export function useFFmpeg() {
   const ffmpegRef = useRef(null);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -93,50 +99,52 @@ export function useFFmpeg() {
     const startTime = calculateHighlightStart(highlightScore, clipDuration);
 
     await ffmpeg.writeFile('input.webm', await fetchFile(videoBlob));
-    await ffmpeg.exec([
-      '-i', 'input.webm',
-      '-ss', String(startTime),
-      '-t', String(clipDuration),
-      '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',
-      '-c:v', 'libx264',
-      '-preset', 'veryfast',
-      '-crf', '24',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      '-movflags', '+faststart',
-      'cropped.mp4',
-    ]);
 
-    let currentFile = 'cropped.mp4';
+    const args = ['-ss', String(startTime), '-t', String(clipDuration), '-i', 'input.webm'];
+
     if (addWatermark) {
       const watermarkBlob = await createWatermarkImage(trackType);
       await ffmpeg.writeFile('watermark.png', await fetchFile(watermarkBlob));
-      await ffmpeg.exec([
-        '-i', currentFile,
-        '-i', 'watermark.png',
-        '-filter_complex', '[0:v][1:v]overlay=W-w-36:H-h-44',
-        '-c:v', 'libx264',
-        '-preset', 'veryfast',
-        '-c:a', 'copy',
-        'watermarked.mp4',
-      ]);
-      currentFile = 'watermarked.mp4';
+      args.push('-loop', '1', '-i', 'watermark.png');
     }
 
-    if (Array.isArray(addCaption) && addCaption.length > 0) {
-      await ffmpeg.writeFile('caption.srt', new TextEncoder().encode(generateSRT(addCaption)));
-      await ffmpeg.exec([
-        '-i', currentFile,
-        '-vf', "subtitles=caption.srt:force_style='FontName=Arial,FontSize=28,PrimaryColour=&HFFFFFF&,OutlineColour=&H000000&,BorderStyle=1,Outline=2,Bold=1'",
-        '-c:v', 'libx264',
-        '-preset', 'veryfast',
-        '-c:a', 'copy',
-        'output.mp4',
-      ]);
-      currentFile = 'output.mp4';
+    // 블러 배경 레터박스 + 워터마크 + 자막을 단일 filter_complex로 처리 (재인코딩 1회)
+    let filter =
+      '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,gblur=sigma=25,eq=brightness=-0.05[bg];' +
+      '[0:v]scale=1080:1920:force_original_aspect_ratio=decrease,format=yuva420p[fg];' +
+      '[bg][fg]overlay=(W-w)/2:(H-h)/2:format=auto[base]';
+
+    let lastLabel = 'base';
+    if (addWatermark) {
+      filter += `;[${lastLabel}][1:v]overlay=W-w-36:H-h-200[wm]`;
+      lastLabel = 'wm';
     }
 
-    const outputData = await ffmpeg.readFile(currentFile);
+    const captionFilter = await buildCaptionFilter(ffmpeg, addCaption);
+    if (captionFilter) {
+      filter += `;[${lastLabel}]${captionFilter}[vout]`;
+      lastLabel = 'vout';
+    }
+
+    args.push(
+      '-filter_complex', filter,
+      '-map', `[${lastLabel}]`,
+      '-map', '0:a?',
+      '-c:v', 'libx264',
+      '-preset', 'fast',
+      '-crf', '19',
+      '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac',
+      '-b:a', '192k',
+      '-af', 'loudnorm=I=-14:LRA=11:TP=-1.5',
+      '-movflags', '+faststart',
+      '-shortest',
+      'output.mp4',
+    );
+
+    await ffmpeg.exec(args);
+
+    const outputData = await ffmpeg.readFile('output.mp4');
     setProgress(100);
     return new Blob([outputData], { type: 'video/mp4' });
   }, [loadFFmpeg]);

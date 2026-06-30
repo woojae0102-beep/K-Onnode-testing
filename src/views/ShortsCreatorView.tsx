@@ -120,10 +120,37 @@ export default function ShortsCreatorView({
     setTags(defaultTags(trackType, groupId));
   }, [trackType, groupId, memberId]);
 
+  useEffect(() => {
+    if (!import.meta.env?.DEV) return;
+    if (videoBlob) {
+      console.debug('[ShortsCreator] props.videoBlob 전달됨', {
+        sizeKB: Math.round(videoBlob.size / 1024),
+        type: videoBlob.type,
+      });
+    } else {
+      console.warn('[ShortsCreator] props.videoBlob 없음 — 쇼츠 생성 시 템플릿 폴백 가능');
+    }
+  }, [videoBlob]);
+
   const generateShorts = async () => {
     setIsGenerating(true);
     try {
-      const input = sourceBlob || await createTemplateVideoBlob({ trackType, score: overallScore, caption });
+      let input;
+      if (sourceBlob) {
+        if (import.meta.env?.DEV) {
+          console.debug('[ShortsCreator] 실제 연습 녹화 영상 사용', {
+            sizeKB: Math.round(sourceBlob.size / 1024),
+            type: sourceBlob.type,
+          });
+        }
+        input = sourceBlob;
+      } else {
+        console.warn(
+          '[ShortsCreator] ⚠️ 연습 영상 없음 — createTemplateVideoBlob 폴백 템플릿 사용',
+          { trackType, overallScore },
+        );
+        input = await createTemplateVideoBlob({ trackType, score: overallScore, caption });
+      }
       setSourceBlob(input);
       const blob = await createShorts({
         videoBlob: input,
@@ -133,6 +160,13 @@ export default function ShortsCreatorView({
         addCaption: [{ start: 0, end: 3, text: trackLabel(trackType) }],
         trackType,
       });
+      if (import.meta.env?.DEV) {
+        console.debug('[ShortsCreator] 쇼츠 생성 완료', {
+          inputKB: Math.round(input.size / 1024),
+          outputKB: Math.round(blob.size / 1024),
+          usedTemplate: !sourceBlob,
+        });
+      }
       setShortsBlob(blob);
       setThumbnail(await createThumbnail(blob));
       setPhase('editing');
