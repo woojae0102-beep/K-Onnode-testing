@@ -93,7 +93,7 @@ export function skeletonFramesToChoreographyDataset({
           joints: Object.fromEntries(
             Object.entries(m.joints || {}).map(([name, j]) => [
               name,
-              { x: j.x, y: j.y, z: j.z ?? 0, visibility: j.visibility },
+              { x: j.x, y: j.y, z: j.z ?? 0, visibility: j.visibility ?? 1 },
             ]),
           ),
         })),

@@ -7,7 +7,7 @@ import {
   loadChoreographyDataset,
   skeletonFramesToChoreographyDataset,
 } from '../services/group/ChoreographyDatasetLoader';
-import type { ChoreographyDataset, GroupDanceRenderSnapshot } from '../types/groupChoreography';
+import type { ChoreographyDataset } from '../types/groupChoreography';
 
 export interface UseGroupDanceEngineOptions {
   groupId: string;
@@ -29,9 +29,8 @@ export function useGroupDanceEngine({
   practiceDuration = 180,
 }: UseGroupDanceEngineOptions) {
   const [dataset, setDataset] = useState<ChoreographyDataset | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !skeletonFrames?.length);
   const [error, setError] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<GroupDanceRenderSnapshot | null>(null);
 
   const syncEngineRef = useRef<GroupDanceSyncEngine | null>(null);
   const managerRef = useRef<AvatarGroupManager | null>(null);
@@ -44,42 +43,61 @@ export function useGroupDanceEngine({
   );
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      setLoading(true);
-      setError(null);
+    if (!group) {
+      setLoading(false);
+      return undefined;
+    }
+
+    if (skeletonFrames?.length) {
       try {
-        let loaded: ChoreographyDataset;
-        if (skeletonFrames?.length) {
-          loaded = skeletonFramesToChoreographyDataset({
-            groupId,
-            songId,
-            formation: group?.defaultFormation || 'diamond',
-            memberMeta: (group?.members || []).map((m) => ({
-              memberId: m.id,
-              displayName: m.name,
-              displayNameKr: m.nameKr,
-              persona: {
-                styleId: 'member',
-                energy: 0.8,
-                sharpness: 0.75,
-                groove: 0.7,
-                accentColor: m.color,
-              },
-              formationAnchor: { x: m.defaultX, y: m.defaultY, z: 0 },
-            })),
-            frames: skeletonFrames,
-            durationSec: practiceDuration,
-            sampleFps: 15,
-          });
-        } else {
-          loaded = await loadChoreographyDataset(groupId, songId);
-        }
+        const loaded = skeletonFramesToChoreographyDataset({
+          groupId,
+          songId,
+          formation: group.defaultFormation || 'diamond',
+          memberMeta: group.members.map((m) => ({
+            memberId: m.id,
+            displayName: m.name,
+            displayNameKr: m.nameKr,
+            persona: {
+              styleId: 'member',
+              energy: 0.8,
+              sharpness: 0.75,
+              groove: 0.7,
+              accentColor: m.color,
+            },
+            formationAnchor: { x: m.defaultX, y: m.defaultY, z: 0 },
+          })),
+          frames: skeletonFrames,
+          durationSec: practiceDuration,
+          sampleFps: 15,
+        });
+        setDataset(loaded);
+        managerRef.current = new AvatarGroupManager({
+          dataset: loaded,
+          groupMembers: group.members,
+          userMemberId,
+        });
+        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current);
+        setError(null);
+        setLoading(false);
+      } catch (err: any) {
+        setError(err?.message || String(err));
+        setLoading(false);
+      }
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+    setError(null);
+    (async () => {
+      try {
+        const loaded = await loadChoreographyDataset(groupId, songId);
         if (cancelled) return;
         setDataset(loaded);
         managerRef.current = new AvatarGroupManager({
           dataset: loaded,
-          groupMembers: group?.members || [],
+          groupMembers: group.members,
           userMemberId,
         });
         syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current);
@@ -89,6 +107,7 @@ export function useGroupDanceEngine({
         if (!cancelled) setLoading(false);
       }
     })();
+
     return () => {
       cancelled = true;
     };
@@ -98,13 +117,11 @@ export function useGroupDanceEngine({
     (elapsedSec: number, userJoints: Record<string, { x: number; y: number; z?: number }> | null = null) => {
       const engine = syncEngineRef.current;
       if (!engine) return null;
-      const next = engine.tick({
+      return engine.tick({
         elapsedSec,
         userJoints,
         userFallbackAnchor,
       });
-      setSnapshot(next);
-      return next;
     },
     [userFallbackAnchor],
   );
@@ -113,7 +130,6 @@ export function useGroupDanceEngine({
     loading,
     error,
     dataset,
-    snapshot,
     tick,
     manager: managerRef.current,
     userFallbackAnchor,

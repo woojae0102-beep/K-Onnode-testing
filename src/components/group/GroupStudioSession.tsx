@@ -83,11 +83,16 @@ export function GroupStudioSession({
   const [videoPlaybackTime, setVideoPlaybackTime] = useState(0);
   const [referenceVideoDuration, setReferenceVideoDuration] = useState(0);
   const [stageSkeletonCount, setStageSkeletonCount] = useState(0);
+  const [danceSnapshot, setDanceSnapshot] = useState(null);
   const lastSkeletonCountRef = useRef(-1);
+  const renderGroupStageRef = useRef(null);
+  const syncDanceStageRef = useRef(null);
+  const stopDanceTrackingRef = useRef(() => {});
 
   const { layoutClass, isMobile } = useTVScreenLayout();
 
   const dance = useMediaPipeTV(myMember?.color || agencyColor);
+  stopDanceTrackingRef.current = dance.stopTracking;
   const recorder = useTVRecorder();
   const {
     currentTime,
@@ -170,8 +175,10 @@ export function GroupStudioSession({
     referenceYoutubeUrl && isPracticing && isRunning ? videoPlaybackTime : currentTime;
 
   useEffect(() => {
-    practiceTimeRef.current = effectiveTime;
-  }, [effectiveTime]);
+    if (!referenceYoutubeUrl || !isPracticing) {
+      practiceTimeRef.current = currentTime;
+    }
+  }, [currentTime, referenceYoutubeUrl, isPracticing]);
 
   const countAiMembersInFrame = useCallback(
     (frame) => {
@@ -234,11 +241,13 @@ export function GroupStudioSession({
     const canvas = stageCanvasRef.current;
     if (!canvas?.parentElement) return;
     const rect = canvas.parentElement.getBoundingClientRect();
+    const parentW = rect.width > 0 ? rect.width : canvas.parentElement.clientWidth || 640;
+    const parentH = rect.height > 0 ? rect.height : canvas.parentElement.clientHeight || 360;
     const { width: renderW, height: renderH } = computeAspectFitSize(
       sourceVideoWidth,
       sourceVideoHeight,
-      rect.width,
-      rect.height,
+      parentW,
+      parentH,
     );
     const dpr = window.devicePixelRatio || 1;
     canvas.width = Math.round(renderW * dpr);
@@ -271,14 +280,13 @@ export function GroupStudioSession({
 
   const syncDanceStage = useCallback(
     (elapsedSec) => {
-      if (danceEngine.loading) return null;
       const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
       return danceEngine.tick(
         elapsedSec,
         showUserPose ? dance.poseData?.joints || null : null,
       );
     },
-    [danceEngine, isPracticing, sessionPhase, dance.poseData],
+    [danceEngine.tick, isPracticing, sessionPhase, dance.poseData],
   );
 
   const renderGroupStage = useCallback(
@@ -316,15 +324,8 @@ export function GroupStudioSession({
       }
 
       let aiRendered = 0;
-      const aiAvatars = snapshot?.aiAvatars || [];
-      aiAvatars.forEach((avatar) => {
-        const member = group.members.find((m) => m.id === avatar.memberId);
-        if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
-        drawAIAvatar(ctx, avatar.joints, member.color, member.nameKr, canvas, renderConfig, avatar.isEstimated);
-        aiRendered += 1;
-      });
 
-      if (aiRendered === 0 && skeletonData?.length) {
+      if (skeletonData?.length) {
         const frame = findFrameAtTime(skeletonData, timeSec);
         frame?.members?.forEach((memberData) => {
           if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
@@ -343,6 +344,16 @@ export function GroupStudioSession({
         });
       }
 
+      if (aiRendered === 0) {
+        const aiAvatars = snapshot?.aiAvatars || [];
+        aiAvatars.forEach((avatar) => {
+          const member = group.members.find((m) => m.id === avatar.memberId);
+          if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
+          drawAIAvatar(ctx, avatar.joints, member.color, member.nameKr, canvas, renderConfig, avatar.isEstimated);
+          aiRendered += 1;
+        });
+      }
+
       if (aiRendered !== lastSkeletonCountRef.current) {
         lastSkeletonCountRef.current = aiRendered;
         setStageSkeletonCount(aiRendered);
@@ -357,6 +368,9 @@ export function GroupStudioSession({
     },
     [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight, skeletonData, resizeStageCanvas],
   );
+
+  renderGroupStageRef.current = renderGroupStage;
+  syncDanceStageRef.current = syncDanceStage;
 
   useEffect(() => {
     if (show3DRenderer) return;
@@ -431,6 +445,8 @@ export function GroupStudioSession({
 
     let raf = 0;
     let lastScoreAt = 0;
+    let lastUiAt = 0;
+    let last3dAt = 0;
 
     const loop = () => {
       let t = practiceTimeRef.current;
@@ -441,17 +457,26 @@ export function GroupStudioSession({
         if (typeof vt === 'number' && Number.isFinite(vt)) {
           t = Math.max(0, vt);
           practiceTimeRef.current = t;
-          setVideoPlaybackTime(t);
+          const now = performance.now();
+          if (now - lastUiAt > 200) {
+            lastUiAt = now;
+            setVideoPlaybackTime(t);
+          }
         }
         if (typeof dur === 'number' && Number.isFinite(dur) && dur > 0) {
           setReferenceVideoDuration((prev) => (Math.abs(prev - dur) > 0.5 ? dur : prev));
         }
       }
 
-      const snapshot = syncDanceStage(t);
-      if (snapshot) renderGroupStage(snapshot, t);
+      const snapshot = syncDanceStageRef.current?.(t) || null;
+      renderGroupStageRef.current?.(snapshot, t);
 
       const now = performance.now();
+      if (now - last3dAt > 100) {
+        last3dAt = now;
+        setDanceSnapshot(snapshot);
+      }
+
       if (now - lastScoreAt > 120) {
         lastScoreAt = now;
         const frame = findFrameAtTime(skeletonData || [], t);
@@ -506,8 +531,6 @@ export function GroupStudioSession({
     isRunning,
     isFinished,
     referenceYoutubeUrl,
-    syncDanceStage,
-    renderGroupStage,
     skeletonData,
     dance.poseData,
     updateSyncScore,
@@ -600,9 +623,9 @@ export function GroupStudioSession({
   useEffect(() => () => {
     cancelAnimationFrame(animFrameRef.current);
     cancelAnimationFrame(practiceAnimRef.current);
-    dance.stopTracking();
+    stopDanceTrackingRef.current?.();
     resetLivePoseKalmanFilter();
-  }, [dance]);
+  }, []);
 
   if (!group || !myMember || !song) return null;
 
@@ -730,7 +753,7 @@ export function GroupStudioSession({
             }
           >
             <GroupDanceStage3D
-              snapshot={danceEngine.snapshot}
+              snapshot={danceSnapshot}
               className="group-studio-stage-3d"
               avatarAssets={avatarAssets}
               formationHole={formationHole}
@@ -738,22 +761,8 @@ export function GroupStudioSession({
             />
           </Suspense>
         ) : (
-          <div
-            style={{
-              background: '#0a0a14',
-              border: '1px solid rgba(255,255,255,0.08)',
-              borderRadius: 16,
-              overflow: 'hidden',
-              position: 'relative',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              minHeight: 280,
-              width: '100%',
-              height: '100%',
-            }}
-          >
-            <canvas ref={stageCanvasRef} style={{ display: 'block' }} />
+          <div className="group-studio-stage-canvas-wrap">
+            <canvas ref={stageCanvasRef} className="group-studio-stage-canvas" />
           </div>
         )}
 
@@ -827,7 +836,7 @@ export function GroupStudioSession({
         {isPracticing && (isRunning || isFinished) ? (
           <TempoLockIndicator
             isRunning={isRunning}
-            currentTime={currentTime}
+            currentTime={referenceYoutubeUrl ? videoPlaybackTime : currentTime}
             totalDuration={effectiveMaxDuration}
           />
         ) : null}
