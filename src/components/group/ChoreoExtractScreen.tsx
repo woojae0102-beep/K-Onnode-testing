@@ -9,7 +9,7 @@ import { buildDanceDatabase, saveDanceDatabase, loadDanceDatabase } from '../../
 import MemberAutoDetect from './MemberAutoDetect';
 import { extractYoutubeVideoId } from '../../utils/dancePracticeVideo';
 import YouTubeTVPlayer from '../tv/YouTubeTVPlayer';
-import '../../styles/group-studio.css';
+import { VIDEO_REQUIREMENTS_MESSAGE } from '../../config/groupChoreoConstants';
 
 export function ChoreoExtractScreen({
   songId,
@@ -34,6 +34,7 @@ export function ChoreoExtractScreen({
   const [phase, setPhase] = useState('upload');
   const [pendingAnalysis, setPendingAnalysis] = useState(null);
   const [pendingMeta, setPendingMeta] = useState(null);
+  const [partialDetectChoice, setPartialDetectChoice] = useState(null);
 
   const {
     isExtracting,
@@ -73,6 +74,13 @@ export function ChoreoExtractScreen({
     });
   }, [videoId, songId, loadFromCache]);
 
+  const proceedToConfirm = useCallback((analysisResult, meta) => {
+    setPendingAnalysis(analysisResult);
+    setPendingMeta(meta);
+    setPartialDetectChoice(null);
+    setPhase('confirm');
+  }, []);
+
   const runExtract = useCallback(async (file) => {
     if (!song || !group) return;
     const result = await extractAnalysis({
@@ -83,12 +91,19 @@ export function ChoreoExtractScreen({
       videoRef,
       youtubePlayerRef: ytRef,
     });
-    if (result?.analysisResult) {
-      setPendingAnalysis(result.analysisResult);
-      setPendingMeta({ videoId: result.videoId, fileName: file?.name });
-      setPhase('confirm');
+    if (result?.insufficient && result.analysisResult) {
+      setPartialDetectChoice({
+        found: result.found,
+        expected: result.expected,
+        analysisResult: result.analysisResult,
+        meta: { videoId: result.videoId, fileName: file?.name },
+      });
+      return;
     }
-  }, [song, group, extractAnalysis, songId, videoId]);
+    if (result?.analysisResult) {
+      proceedToConfirm(result.analysisResult, { videoId: result.videoId, fileName: file?.name });
+    }
+  }, [song, group, extractAnalysis, songId, videoId, proceedToConfirm]);
 
   const handleUseCache = useCallback(async () => {
     const danceDb = await loadDanceDatabase(song.groupId, songId, videoId);
@@ -122,12 +137,19 @@ export function ChoreoExtractScreen({
       videoRef,
       youtubePlayerRef: ytRef,
     });
-    if (result?.analysisResult) {
-      setPendingAnalysis(result.analysisResult);
-      setPendingMeta({ videoId: result.videoId });
-      setPhase('confirm');
+    if (result?.insufficient && result.analysisResult) {
+      setPartialDetectChoice({
+        found: result.found,
+        expected: result.expected,
+        analysisResult: result.analysisResult,
+        meta: { videoId: result.videoId },
+      });
+      return;
     }
-  }, [videoId, extractAnalysis, songId, song, videoRef]);
+    if (result?.analysisResult) {
+      proceedToConfirm(result.analysisResult, { videoId: result.videoId });
+    }
+  }, [videoId, extractAnalysis, songId, song, videoRef, proceedToConfirm]);
 
   const handleApplyUrl = useCallback(() => {
     const id = extractYoutubeVideoId(urlInput.trim());
@@ -147,6 +169,81 @@ export function ChoreoExtractScreen({
   }, [urlInput, songId, t]);
 
   if (!song || !group || !member) return null;
+
+  if (partialDetectChoice) {
+    const { found, expected, analysisResult, meta } = partialDetectChoice;
+    return (
+      <div className="group-studio">
+        <div className="group-studio-ambient" />
+        <div className="group-studio-inner" style={{ maxWidth: 480 }}>
+          <div
+            style={{
+              padding: '20px 18px',
+              background: 'rgba(255,180,0,0.08)',
+              border: '1px solid rgba(255,180,0,0.35)',
+              borderRadius: 14,
+              marginBottom: 20,
+            }}
+          >
+            <div style={{ color: '#FFD700', fontWeight: 700, fontSize: 16, marginBottom: 8 }}>
+              {expected}명 중 {found}명만 감지됐어요
+            </div>
+            <div style={{ color: 'rgba(255,255,255,0.65)', fontSize: 13, lineHeight: 1.6, marginBottom: 14, whiteSpace: 'pre-line' }}>
+              {VIDEO_REQUIREMENTS_MESSAGE}
+            </div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <button
+                type="button"
+                onClick={() => proceedToConfirm(analysisResult, meta)}
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  border: 'none',
+                  background: `linear-gradient(135deg, ${song.albumColor}, ${song.albumColor2})`,
+                  color: '#fff',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                }}
+              >
+                {found}명으로 계속 진행 (수동 멤버 매칭)
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setPartialDetectChoice(null);
+                  setPhase('upload');
+                }}
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.15)',
+                  background: 'rgba(255,255,255,0.06)',
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
+              >
+                다른 영상 다시 업로드
+              </button>
+              <button
+                type="button"
+                onClick={() => proceedToConfirm(analysisResult, meta)}
+                style={{
+                  padding: '12px 16px',
+                  borderRadius: 10,
+                  border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'transparent',
+                  color: 'rgba(255,255,255,0.75)',
+                  cursor: 'pointer',
+                }}
+              >
+                수동으로 멤버 지정하기
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (phase === 'confirm' && pendingAnalysis) {
     return (

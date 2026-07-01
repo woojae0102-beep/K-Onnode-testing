@@ -16,7 +16,9 @@ import {
   drawGhostSlot,
   drawAIAvatar,
   drawUserSkeleton,
+  buildRenderConfig,
 } from '../../utils/groupSkeletonDraw';
+import { computeAspectFitSize, normalizedToCanvas } from '../../utils/canvasSkeletonUtils';
 import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
@@ -54,6 +56,8 @@ export function GroupStudioSession({
   const stageCanvasRef = useRef(null);
   const ytPlayerRef = useRef(null);
   const maxDuration = practiceDuration || skeletonData?.[skeletonData.length - 1]?.timestamp || 180;
+  const sourceVideoWidth = skeletonData?.[0]?.videoWidth || 1920;
+  const sourceVideoHeight = skeletonData?.[0]?.videoHeight || 1080;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
@@ -185,9 +189,24 @@ export function GroupStudioSession({
     const canvas = stageCanvasRef.current;
     if (!canvas?.parentElement) return;
     const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
-  }, []);
+    const { width: renderW, height: renderH } = computeAspectFitSize(
+      sourceVideoWidth,
+      sourceVideoHeight,
+      rect.width,
+      rect.height,
+    );
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(renderW * dpr);
+    canvas.height = Math.round(renderH * dpr);
+    canvas.style.width = `${renderW}px`;
+    canvas.style.height = `${renderH}px`;
+    canvas._logicalWidth = renderW;
+    canvas._logicalHeight = renderH;
+    canvas._videoWidth = sourceVideoWidth;
+    canvas._videoHeight = sourceVideoHeight;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }, [sourceVideoWidth, sourceVideoHeight]);
 
   useEffect(() => {
     resizeStageCanvas();
@@ -215,12 +234,20 @@ export function GroupStudioSession({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      drawStageBackground(ctx, canvas.width, canvas.height);
+      const logicalW = canvas._logicalWidth ?? canvas.width;
+      const logicalH = canvas._logicalHeight ?? canvas.height;
+      const renderConfig = buildRenderConfig(
+        canvas._videoWidth || sourceVideoWidth,
+        canvas._videoHeight || sourceVideoHeight,
+        logicalW,
+        logicalH,
+      );
 
-      const holePos = {
-        x: (formationHole?.anchor?.x ?? myMember.defaultX) * canvas.width,
-        y: (formationHole?.anchor?.y ?? myMember.defaultY) * canvas.height,
-      };
+      drawStageBackground(ctx, logicalW, logicalH);
+
+      const holeNormX = formationHole?.anchor?.x ?? myMember.defaultX;
+      const holeNormY = formationHole?.anchor?.y ?? myMember.defaultY;
+      const holePos = normalizedToCanvas(holeNormX, holeNormY, renderConfig);
 
       if (showGhost && sessionPhase !== 'practicing') {
         drawGhostSlot(ctx, holePos, formationHole?.color || myMember.color, formationHole?.label || 'YOUR SLOT');
@@ -232,7 +259,7 @@ export function GroupStudioSession({
       aiAvatars.forEach((avatar) => {
         const member = group.members.find((m) => m.id === avatar.memberId);
         if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
-        drawAIAvatar(ctx, avatar.joints, member.color, member.nameKr, canvas);
+        drawAIAvatar(ctx, avatar.joints, member.color, member.nameKr, canvas, renderConfig, avatar.isEstimated);
       });
 
       if (dance.poseData?.joints && (isPracticing || sessionPhase === 'waiting_slot')) {
@@ -242,7 +269,7 @@ export function GroupStudioSession({
         drawUserSkeleton(ctx, smoothed, myMember.color, canvas, anchorX, anchorY);
       }
     },
-    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole],
+    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight],
   );
 
   useEffect(() => {
@@ -591,7 +618,23 @@ export function GroupStudioSession({
             />
           </Suspense>
         ) : (
-          <canvas ref={stageCanvasRef} style={{ width: '100%', height: '100%', minHeight: 280, display: 'block' }} />
+          <div
+            style={{
+              background: '#0a0a14',
+              border: '1px solid rgba(255,255,255,0.08)',
+              borderRadius: 16,
+              overflow: 'hidden',
+              position: 'relative',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              minHeight: 280,
+              width: '100%',
+              height: '100%',
+            }}
+          >
+            <canvas ref={stageCanvasRef} style={{ display: 'block' }} />
+          </div>
         )}
 
         {danceEngine.error && stageViewMode === '3d' ? (

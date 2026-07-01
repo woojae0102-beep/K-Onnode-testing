@@ -21,9 +21,14 @@ export function buildSkeletonFramesFromAnalysis(
   trackToMemberMap: Map<number, string>,
   excludeMemberId: string,
 ): SkeletonFrameData[] {
+  const { videoWidth, videoHeight } = analysisResult;
+
   return analysisResult.frames
     .map((frame) => ({
       timestamp: frame.timestamp,
+      timestampMs: frame.timestampMs ?? Math.round(frame.timestamp * 1000),
+      videoWidth: frame.videoWidth ?? videoWidth,
+      videoHeight: frame.videoHeight ?? videoHeight,
       members: frame.detectedPeople
         .map((person) => {
           const memberId = trackToMemberMap.get(person.trackId);
@@ -31,6 +36,7 @@ export function buildSkeletonFramesFromAnalysis(
           return {
             personIndex: person.trackId,
             estimatedMemberId: memberId,
+            isEstimated: person.isEstimated ?? false,
             joints: jointsToSkeletonJoints(person.joints),
           };
         })

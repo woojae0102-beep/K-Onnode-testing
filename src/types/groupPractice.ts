@@ -10,10 +10,15 @@ export interface SkeletonMemberData {
   personIndex: number;
   joints: Record<string, JointPoint>;
   estimatedMemberId: string | null;
+  /** 가려짐 보강 프레임 여부 */
+  isEstimated?: boolean;
 }
 
 export interface SkeletonFrameData {
   timestamp: number;
+  timestampMs?: number;
+  videoWidth?: number;
+  videoHeight?: number;
   members: SkeletonMemberData[];
 }
 

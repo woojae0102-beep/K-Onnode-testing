@@ -18,6 +18,9 @@ function interpolateFrames(
 ): SkeletonFrameData {
   const result: SkeletonFrameData = {
     timestamp: a.timestamp + (b.timestamp - a.timestamp) * ratio,
+    timestampMs: a.timestampMs,
+    videoWidth: a.videoWidth ?? b.videoWidth,
+    videoHeight: a.videoHeight ?? b.videoHeight,
     members: [],
   };
 

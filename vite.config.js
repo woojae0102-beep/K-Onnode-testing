@@ -178,8 +178,9 @@ export default defineConfig(({ mode }) => {
       },
       workbox: {
         // MediaPipe WASM/Task 파일이 커서 10MB까지 허용
-        maximumFileSizeToCacheInBytes: 10 * 1024 * 1024,
-        globPatterns: ['**/*.{js,css,html,wasm,json,png,svg,ico,woff,woff2}'],
+        maximumFileSizeToCacheInBytes: 12 * 1024 * 1024,
+        globPatterns: ['**/*.{js,css,html,json,png,svg,ico,woff,woff2}'],
+        globIgnores: ['**/mediapipe/wasm/**'],
         cleanupOutdatedCaches: true,
         clientsClaim: true,
         skipWaiting: true,
@@ -290,6 +291,13 @@ export default defineConfig(({ mode }) => {
     host: true,
     port: 5173,
     https: true,
+    headers: {
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
+    },
+  },
+  optimizeDeps: {
+    exclude: ['@mediapipe/tasks-vision'],
   },
   build: {
     target: 'es2020',

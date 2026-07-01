@@ -12,7 +12,9 @@
     "collect:knowledge": "node -e \"require('./scripts/trainer-knowledge-scheduler.cjs').collectTrainerKnowledge().catch((e)=>{console.error(e);process.exit(1)})\"",
     "refresh:instagram": "node -e \"require('./scripts/social-token-scheduler.cjs').refreshInstagramTokens().catch((e)=>{console.error(e);process.exit(1)})\"",
     "refresh:tiktok": "node -e \"require('./scripts/social-token-scheduler.cjs').refreshTikTokTokens().catch((e)=>{console.error(e);process.exit(1)})\"",
-    "generate-pwa-assets": "pwa-assets-generator --preset minimal2023 public/icons/source.svg"
+    "generate-pwa-assets": "pwa-assets-generator --preset minimal2023 public/icons/source.svg",
+    "copy:mediapipe-wasm": "node scripts/copy-mediapipe-wasm.cjs",
+    "postinstall": "node scripts/copy-mediapipe-wasm.cjs"
   },
   "dependencies": {
     "@distube/ytdl-core": "^4.16.12",

@@ -1,5 +1,13 @@
 // @ts-nocheck
 import { SKELETON_CONNECTIONS } from '../types/groupPractice';
+import {
+  buildRenderConfig,
+  drawAccurateSkeleton,
+  normalizedToCanvas,
+} from './canvasSkeletonUtils';
+
+export { normalizedToCanvas, drawAccurateSkeleton, buildRenderConfig };
+export type { CanvasRenderConfig } from './canvasSkeletonUtils';
 
 export function drawStageBackground(ctx, width, height) {
   ctx.fillStyle = '#0a0a14';
@@ -72,42 +80,29 @@ export function drawMySpot(ctx, pos, color) {
   ctx.fill();
 }
 
-export function drawAIAvatar(ctx, joints, color, memberName, canvas) {
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 12;
-  ctx.strokeStyle = `${color}CC`;
-  ctx.lineWidth = 3;
+export function drawAIAvatar(ctx, joints, color, memberName, canvas, renderConfig = null, isEstimated = false) {
+  const logicalW = canvas._logicalWidth ?? canvas.width;
+  const logicalH = canvas._logicalHeight ?? canvas.height;
 
-  SKELETON_CONNECTIONS.forEach(([start, end]) => {
-    const s = joints[start];
-    const e = joints[end];
-    if (!s || !e) return;
-    ctx.beginPath();
-    ctx.moveTo(s.x * canvas.width, s.y * canvas.height);
-    ctx.lineTo(e.x * canvas.width, e.y * canvas.height);
-    ctx.stroke();
-  });
+  const config =
+    renderConfig ||
+    buildRenderConfig(
+      canvas._videoWidth || logicalW,
+      canvas._videoHeight || logicalH,
+      logicalW,
+      logicalH,
+    );
 
-  Object.values(joints).forEach((joint) => {
-    if (!joint) return;
-    ctx.beginPath();
-    ctx.arc(joint.x * canvas.width, joint.y * canvas.height, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
-  });
-
-  const nose = joints.nose;
-  if (nose) {
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = color;
-    ctx.font = 'bold 11px Inter, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.fillText(memberName, nose.x * canvas.width, nose.y * canvas.height - 20);
-  }
-  ctx.shadowBlur = 0;
+  drawAccurateSkeleton(ctx, joints, color, memberName, config, isEstimated);
 }
 
 export function drawUserSkeleton(ctx, joints, color, canvas, anchorX, anchorY) {
+  const logicalW = canvas._logicalWidth ?? canvas.width;
+  const logicalH = canvas._logicalHeight ?? canvas.height;
+  const videoW = canvas._videoWidth || logicalW;
+  const videoH = canvas._videoHeight || logicalH;
+  const config = buildRenderConfig(videoW, videoH, logicalW, logicalH);
+
   const scaledJoints = {};
   Object.entries(joints).forEach(([name, joint]) => {
     scaledJoints[name] = {
@@ -117,20 +112,5 @@ export function drawUserSkeleton(ctx, joints, color, canvas, anchorX, anchorY) {
     };
   });
 
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 20;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 4;
-
-  SKELETON_CONNECTIONS.forEach(([start, end]) => {
-    const s = scaledJoints[start];
-    const e = scaledJoints[end];
-    if (!s || !e) return;
-    ctx.beginPath();
-    ctx.moveTo(s.x * canvas.width, s.y * canvas.height);
-    ctx.lineTo(e.x * canvas.width, e.y * canvas.height);
-    ctx.stroke();
-  });
-
-  ctx.shadowBlur = 0;
+  drawAccurateSkeleton(ctx, scaledJoints, color, 'YOU', config, false);
 }

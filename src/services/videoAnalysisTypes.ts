@@ -7,4 +7,7 @@ export interface AnalysisResult {
   peakTrackCount?: number;
   frames: DetectionFrame[];
   trackIdToInitialPosition: Map<number, { x: number; y: number }>;
+  /** 원본 영상 픽셀 크기 */
+  videoWidth?: number;
+  videoHeight?: number;
 }

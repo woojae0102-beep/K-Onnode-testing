@@ -21,6 +21,11 @@ export interface TrackedPerson {
 
 export interface DetectionFrame {
   timestamp: number;
+  /** MediaPipe/재생 동기화용 ms 타임스탬프 */
+  timestampMs?: number;
+  /** 분석 당시 원본 영상 픽셀 크기 (좌표 변환용) */
+  videoWidth?: number;
+  videoHeight?: number;
   detectedPeople: TrackedPerson[];
 }
 
@@ -50,6 +55,9 @@ const JOINT_MAP: Record<string, number> = {
 };
 
 const CORE_JOINTS = ['nose', 'left_shoulder', 'right_shoulder', 'left_hip', 'right_hip'] as const;
+
+export type { CanvasRenderConfig } from '../utils/canvasSkeletonUtils';
+export { normalizedToCanvas, drawAccurateSkeleton } from '../utils/canvasSkeletonUtils';
 
 export class MultiPersonTracker {
   private nextTrackId = 0;
