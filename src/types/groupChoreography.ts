@@ -54,6 +54,8 @@ export interface ChoreographyDatasetMeta {
   formation: 'line' | 'v_shape' | 'diamond' | 'scattered';
   fps?: number;
   version?: string;
+  /** 추출 영상 좌표 그대로 AI 배치 (formation 재배치 생략) */
+  preserveVideoFormation?: boolean;
 }
 
 export interface ChoreographyDataset {

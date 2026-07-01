@@ -18,7 +18,7 @@ import {
   resolveAnalysisDurationSec,
   resolveNumPoses,
 } from '../config/choreoExtractConfig';
-import { prepareAnalysisVideo, resolveVideoDuration, seekVideoTo } from '../utils/choreoVideoUtils';
+import { prepareAnalysisVideo, resolveVideoDuration, seekVideoTo, getSeekableEnd } from '../utils/choreoVideoUtils';
 import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../config/groupChoreoConstants';
 
 const AI_INIT_TIMEOUT_MS = 60000;
@@ -178,13 +178,39 @@ async function runVideoAnalysis({
   if (detectedMemberCount === 0) return null;
 
   const duration = resolveAnalysisDurationSec(sourceVideoDurationSec);
+  const seekEnd = getSeekableEnd(video);
+  const analysisDuration =
+    seekEnd != null ? Math.min(duration, seekEnd + 0.02) : duration;
+
+  if (import.meta.env?.DEV) {
+    console.debug(
+      `[ChoreoExtract] 분석 구간: ${analysisDuration.toFixed(1)}초 (원본 ${sourceVideoDurationSec.toFixed(1)}초)`,
+    );
+  }
+
+  try {
+    await seekVideoTo(video, 0);
+  } catch {
+    /* ignore */
+  }
+
   const sampleInterval = 1 / sampleFps;
   const frames = [];
   let lastDetectedPeople = [];
+  let consecutiveSeekFails = 0;
 
-  for (let t = 0; t < duration; t += sampleInterval) {
+  for (let t = 0; t < analysisDuration; t += sampleInterval) {
     if (abortRef.current) break;
-    await seekVideoTo(video, t);
+
+    try {
+      await seekVideoTo(video, t);
+      consecutiveSeekFails = 0;
+    } catch (seekErr) {
+      consecutiveSeekFails += 1;
+      console.warn(`[ChoreoExtract] seek 실패 t=${t.toFixed(2)}`, seekErr?.message || seekErr);
+      if (consecutiveSeekFails >= 3 || frames.length > 0) break;
+      continue;
+    }
 
     const results = detectFrame(detector, video);
     const timestampMs = Math.round(t * 1000);
@@ -230,7 +256,7 @@ async function runVideoAnalysis({
       });
     }
 
-    const pct = Math.round((t / duration) * 100);
+    const pct = Math.round((t / analysisDuration) * 100);
     onProgress?.(pct, `${expectedMemberCount}명 추적 중... ${pct}%`);
   }
 
@@ -320,6 +346,7 @@ export function useGroupChoreoExtract() {
       if (!group) return null;
 
       const expected = group.memberCount;
+      const minTracksRequired = Math.max(2, expected - 1);
       setExpectedMemberCount(expected);
       setInsufficientWarning(null);
 
@@ -348,7 +375,7 @@ export function useGroupChoreoExtract() {
         preloadedDetector,
       );
 
-      if (analysisResult && analysisResult.peakTrackCount < expected && !abortRef.current) {
+      if (analysisResult && analysisResult.peakTrackCount < minTracksRequired && !abortRef.current) {
         setStep(
           `${expected}명 중 ${analysisResult.peakTrackCount}명만 감지됐습니다. 더 정밀하게 재분석합니다...`,
         );
@@ -357,7 +384,7 @@ export function useGroupChoreoExtract() {
 
       if (!analysisResult) return { ok: false, reason: 'no_detection' };
 
-      if (analysisResult.peakTrackCount < expected) {
+      if (analysisResult.peakTrackCount < minTracksRequired) {
         return {
           ok: false,
           reason: 'insufficient',

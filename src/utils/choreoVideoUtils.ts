@@ -2,6 +2,7 @@
 import { buildProxyVideoUrl } from '../services/groupStudioApi';
 import { downloadYoutubeVideoBlob } from '../services/youtubeClientDownload';
 import { recordYoutubeTabVideo } from '../services/youtubeTabCapture';
+import { CHOREO_MAX_DURATION_SEC } from '../config/choreoExtractConfig';
 
 export const VIDEO_LOAD_TIMEOUT_MS = 90000;
 export const VIDEO_SEEK_TIMEOUT_MS = 8000;
@@ -66,6 +67,52 @@ export function waitForVideoEvent(video, event, timeoutMs = VIDEO_LOAD_TIMEOUT_M
   });
 }
 
+/** seekable 범위 안에서만 분석 길이 확정 (과대 duration으로 seek 연쇄 실패 방지) */
+export function getSeekableEnd(video) {
+  if (!video?.seekable?.length) return null;
+  const end = video.seekable.end(video.seekable.length - 1);
+  return Number.isFinite(end) && end > 0 ? end : null;
+}
+
+/**
+ * 분석에 사용할 안전한 영상 길이(초).
+ * - video.duration 과 seekable.end 중 신뢰 가능한 값 사용
+ * - CHOREO_MAX_DURATION_SEC 상한
+ */
+export async function resolveVideoDuration(video) {
+  if (!video) return 0;
+
+  await waitForVideoEvent(video, 'loadedmetadata');
+  if (!Number.isFinite(video.duration) || video.duration <= 0) {
+    await waitForVideoEvent(video, 'loadeddata', 30000);
+  }
+
+  let duration = Number(video.duration) || 0;
+  const seekEnd = getSeekableEnd(video);
+
+  if (seekEnd != null) {
+    // seekable이 duration보다 약간 길 때만 보정 (무한/비정상 값 방지)
+    if (seekEnd > duration && seekEnd < duration * 1.15 + 5) {
+      duration = seekEnd;
+    }
+    // duration이 0인데 seekable만 있는 경우
+    if (duration <= 0 && seekEnd > 0) {
+      duration = seekEnd;
+    }
+  }
+
+  duration = Math.min(Math.max(duration, 1), CHOREO_MAX_DURATION_SEC);
+
+  // 분석은 항상 0초부터 시작
+  try {
+    await seekVideoTo(video, 0);
+  } catch {
+    /* ignore */
+  }
+
+  return duration;
+}
+
 async function loadBlobIntoVideo(video, blob, onStatus) {
   const objectUrl = URL.createObjectURL(blob);
   onStatus?.('분석용 영상 준비 중...');
@@ -74,7 +121,6 @@ async function loadBlobIntoVideo(video, blob, onStatus) {
   if (!Number.isFinite(video.duration) || video.duration <= 0) {
     await waitForVideoEvent(video, 'loadeddata', 30000);
   }
-  await resolveVideoDuration(video);
   return {
     objectUrl,
     cleanup: () => {
@@ -131,7 +177,6 @@ async function loadProxyStreamIntoVideo(video, videoId, onStatus) {
 async function prepareYoutubeVideo(video, { videoId, onStatus, youtubePlayerRef }) {
   const attempts = [];
 
-  // 1) 탭 녹화 — 사용자 클릭 직후 실행해야 하며, Vercel 서버 우회에 가장 안정적
   if (youtubePlayerRef) {
     try {
       const blob = await recordYoutubeTabVideo({ youtubePlayerRef, onStatus });
@@ -142,7 +187,6 @@ async function prepareYoutubeVideo(video, { videoId, onStatus, youtubePlayerRef 
     }
   }
 
-  // 2) 브라우저 직접 다운로드 (사용자 IP)
   try {
     const blob = await downloadYoutubeVideoBlob(videoId, onStatus);
     return loadBlobIntoVideo(video, blob, onStatus);
@@ -151,7 +195,6 @@ async function prepareYoutubeVideo(video, { videoId, onStatus, youtubePlayerRef 
     console.warn('[prepareYoutubeVideo] client download failed:', err);
   }
 
-  // 3) 서버 프록시 — Vercel 등 데이터센터 IP는 YouTube 봇 차단으로 자주 실패
   try {
     return await loadProxyStreamIntoVideo(video, videoId, onStatus);
   } catch (streamErr) {
@@ -187,7 +230,6 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus, you
     const objectUrl = URL.createObjectURL(file);
     video.src = objectUrl;
     await waitForVideoEvent(video, 'loadeddata');
-    await resolveVideoDuration(video);
     return {
       objectUrl,
       cleanup: () => {
@@ -206,52 +248,9 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus, you
 
 export async function seekVideoTo(video, timeSec) {
   if (!video) return;
-  if (Math.abs(video.currentTime - timeSec) < 0.05 && readyForEvent(video, 'seeked')) return;
-  video.currentTime = timeSec;
+  const seekEnd = getSeekableEnd(video);
+  const clamped = seekEnd != null ? Math.min(timeSec, Math.max(0, seekEnd - 0.04)) : timeSec;
+  if (Math.abs(video.currentTime - clamped) < 0.05 && readyForEvent(video, 'seeked')) return;
+  video.currentTime = clamped;
   await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);
-}
-
-/**
- * 브라우저가 duration을 과소 보고하는 경우 seekable.end 로 보정.
- * (업로드 MP4/WebM에서 40초만 잡히는 문제 방지)
- */
-export async function resolveVideoDuration(video) {
-  if (!video) return 0;
-
-  await waitForVideoEvent(video, 'loadedmetadata');
-  if (!Number.isFinite(video.duration) || video.duration <= 0) {
-    await waitForVideoEvent(video, 'loadeddata', 30000);
-  }
-  if (!Number.isFinite(video.duration) || video.duration <= 0) {
-    await waitForVideoEvent(video, 'canplay', 30000);
-  }
-
-  let duration = Number(video.duration) || 0;
-
-  if (video.seekable?.length) {
-    const seekEnd = video.seekable.end(video.seekable.length - 1);
-    if (Number.isFinite(seekEnd) && seekEnd > duration) {
-      duration = seekEnd;
-    }
-  }
-
-  // 일부 코덱은 끝 구간 seek 후 duration이 갱신됨
-  if (duration > 0 && duration < 120) {
-    try {
-      const probe = Math.min(duration + 30, 600);
-      video.currentTime = probe;
-      await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);
-      if (video.duration > duration) duration = video.duration;
-      if (video.seekable?.length) {
-        const seekEnd = video.seekable.end(video.seekable.length - 1);
-        if (seekEnd > duration) duration = seekEnd;
-      }
-      video.currentTime = 0;
-      await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);
-    } catch {
-      /* probe 실패 시 기존 duration 사용 */
-    }
-  }
-
-  return duration;
 }

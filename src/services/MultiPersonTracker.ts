@@ -1,7 +1,8 @@
 // @ts-nocheck
 import type { JointPoint } from '../types/groupPractice';
-import { seekVideoTo } from '../utils/choreoVideoUtils';
+import { seekVideoTo, getSeekableEnd } from '../utils/choreoVideoUtils';
 import {
+  CHOREO_MAX_DURATION_SEC,
   CHOREO_MAX_OCCLUSION_SEC,
   CHOREO_MIN_PERSON_CONFIDENCE,
 } from '../config/choreoExtractConfig';
@@ -143,8 +144,9 @@ export class MultiPersonTracker {
     ) => { landmarks?: unknown[] } = (d, v) => d.detect(v),
     expectedMemberCount = 5,
   ): Promise<number> {
-    const rawDuration = video.duration || 0;
-    const duration = Math.min(Math.max(rawDuration, 10), 180);
+    const seekEnd = getSeekableEnd(video);
+    const rawDuration = seekEnd ?? video.duration ?? 0;
+    const duration = Math.min(Math.max(rawDuration, 10), CHOREO_MAX_DURATION_SEC);
     if (!duration) return 0;
 
     const counts: number[] = [];

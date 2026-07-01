@@ -7,8 +7,10 @@ function dist2(a: { x: number; y: number }, b: { x: number; y: number }) {
   return dx * dx + dy * dy;
 }
 
-/** 너무 동떨어진 위치는 오매칭으로 간주 (정규화 좌표 기준) */
+/** strict 매칭 임계값 (정규화 좌표) */
 export const MAX_MATCH_DIST2 = 0.35 * 0.35;
+/** fallback: 이 값까지는 최근접 강제 매칭 허용 */
+export const FALLBACK_MATCH_DIST2 = 0.55 * 0.55;
 
 /** 선택 멤버 defaultX/Y에 가장 가까운 트랙 = "내" 트랙 추정 */
 export function identifyUserTrackId(
@@ -42,8 +44,8 @@ export function identifyUserTrackId(
 }
 
 /**
- * 트랙 초기 위치 → AI 멤버 ID greedy 매칭 (선택 멤버 제외).
- * 내 트랙은 identifyUserTrackId로 먼저 식별 후 매칭 풀에서 제외한다.
+ * 트랙 초기 위치 → AI 멤버 ID 매칭 (선택 멤버 제외).
+ * 1) 내 트랙 식별 후 제외  2) X정렬 greedy  3) 미매칭은 fallback 강제 할당
  */
 export function suggestTrackToMemberMap(
   groupId: string,
@@ -56,19 +58,22 @@ export function suggestTrackToMemberMap(
 
   const aiMembers = group.members.filter((m) => m.id !== myMemberId);
   const usedMembers = new Set<string>();
-  const allTracks = Array.from(trackIdToInitialPosition.entries());
+  const usedTracks = new Set<number>();
 
   const myTrackId = identifyUserTrackId(groupId, myMemberId, trackIdToInitialPosition);
 
-  const remainingTracks = allTracks
+  const aiTracks = Array.from(trackIdToInitialPosition.entries())
     .filter(([trackId]) => trackId !== myTrackId)
     .sort(([, a], [, b]) => a.x - b.x);
 
-  remainingTracks.forEach(([trackId, pos]) => {
+  const sortedAiMembers = [...aiMembers].sort((a, b) => a.defaultX - b.defaultX);
+
+  // 1차: X정렬 + 임계값 내 매칭
+  aiTracks.forEach(([trackId, pos]) => {
     let bestMemberId: string | null = null;
     let bestDist = Infinity;
 
-    aiMembers.forEach((member) => {
+    sortedAiMembers.forEach((member) => {
       if (usedMembers.has(member.id)) return;
       const d = dist2(pos, { x: member.defaultX, y: member.defaultY });
       if (d < bestDist) {
@@ -80,19 +85,70 @@ export function suggestTrackToMemberMap(
     if (bestMemberId && bestDist <= MAX_MATCH_DIST2) {
       result.set(trackId, bestMemberId);
       usedMembers.add(bestMemberId);
-    } else if (bestMemberId) {
-      console.warn(
-        `[FormationMatch] trackId=${trackId} ↔ ${bestMemberId} 매칭 거리(${Math.sqrt(bestDist).toFixed(3)})가 ` +
-          `임계값(${Math.sqrt(MAX_MATCH_DIST2).toFixed(2)})을 초과해 매칭을 보류합니다.`,
-      );
+      usedTracks.add(trackId);
+    }
+  });
+
+  // 2차: fallback — 남은 트랙/멤버 최근접 강제 매칭
+  aiTracks.forEach(([trackId, pos]) => {
+    if (usedTracks.has(trackId)) return;
+
+    let bestMemberId: string | null = null;
+    let bestDist = Infinity;
+
+    sortedAiMembers.forEach((member) => {
+      if (usedMembers.has(member.id)) return;
+      const d = dist2(pos, { x: member.defaultX, y: member.defaultY });
+      if (d < bestDist) {
+        bestDist = d;
+        bestMemberId = member.id;
+      }
+    });
+
+    if (bestMemberId && bestDist <= FALLBACK_MATCH_DIST2) {
+      result.set(trackId, bestMemberId);
+      usedMembers.add(bestMemberId);
+      usedTracks.add(trackId);
+      if (bestDist > MAX_MATCH_DIST2) {
+        console.warn(
+          `[FormationMatch] fallback 매칭: trackId=${trackId} → ${bestMemberId} (거리 ${Math.sqrt(bestDist).toFixed(3)})`,
+        );
+      }
+    }
+  });
+
+  // 3차: 거리 제한 없이 남은 트랙/멤버 강제 할당 (0명 추출 방지)
+  aiTracks.forEach(([trackId, pos]) => {
+    if (usedTracks.has(trackId)) return;
+
+    let bestMemberId: string | null = null;
+    let bestDist = Infinity;
+
+    sortedAiMembers.forEach((member) => {
+      if (usedMembers.has(member.id)) return;
+      const d = dist2(pos, { x: member.defaultX, y: member.defaultY });
+      if (d < bestDist) {
+        bestDist = d;
+        bestMemberId = member.id;
+      }
+    });
+
+    if (bestMemberId) {
+      result.set(trackId, bestMemberId);
+      usedMembers.add(bestMemberId);
+      usedTracks.add(trackId);
+      if (bestDist > FALLBACK_MATCH_DIST2) {
+        console.warn(
+          `[FormationMatch] 강제 매칭: trackId=${trackId} → ${bestMemberId} (거리 ${Math.sqrt(bestDist).toFixed(3)})`,
+        );
+      }
     }
   });
 
   const unmatchedMembers = aiMembers.filter((m) => !usedMembers.has(m.id));
   if (unmatchedMembers.length) {
     console.warn(
-      `[FormationMatch] 매칭 실패한 AI 멤버: ${unmatchedMembers.map((m) => m.id).join(', ')} ` +
-        '— 영상에서 해당 멤버가 충분히 인식되지 않았을 수 있습니다.',
+      `[FormationMatch] 매칭 실패한 AI 멤버: ${unmatchedMembers.map((m) => m.id).join(', ')}`,
     );
   }
 

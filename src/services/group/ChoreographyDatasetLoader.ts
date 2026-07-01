@@ -72,7 +72,16 @@ export function skeletonFramesToChoreographyDataset({
 }): ChoreographyDataset {
   const fps = sampleFps || 15;
   return {
-    meta: { groupId, songId, title, formation, durationSec, fps, version: '1' },
+    meta: {
+      groupId,
+      songId,
+      title,
+      formation,
+      durationSec,
+      fps,
+      version: '1',
+      preserveVideoFormation: true,
+    },
     members: memberMeta,
     frames: frames.map((frame) => ({
       timestamp: frame.timestamp,

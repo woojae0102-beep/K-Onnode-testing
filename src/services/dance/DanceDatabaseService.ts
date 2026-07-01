@@ -11,6 +11,7 @@ import type {
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { buildSkeletonFramesFromAnalysis } from '../videoAnalysisUtils';
+import { identifyUserTrackId } from '../formationMatching';
 import { buildFormationTimeline } from './FormationTimelineBuilder';
 import { smoothSkeletonFrames } from '../motion/JointKalmanFilter';
 import { saveCachedChoreo, buildChoreoCacheKey, getCachedChoreo } from '../groupChoreoCache';
@@ -64,12 +65,31 @@ function buildPositionMap(
   };
 }
 
-function buildFormationHole(userMemberId: string, groupId: string): FormationHole {
+function buildFormationHole(
+  userMemberId: string,
+  groupId: string,
+  analysisResult?: AnalysisResult,
+): FormationHole {
   const group = GROUP_DATA[groupId];
   const member = group?.members.find((m) => m.id === userMemberId);
+  let anchor = { x: member?.defaultX ?? 0.5, y: member?.defaultY ?? 0.5, z: 0 };
+
+  if (analysisResult?.trackIdToInitialPosition) {
+    const userTrackId = identifyUserTrackId(
+      groupId,
+      userMemberId,
+      analysisResult.trackIdToInitialPosition,
+    );
+    const videoPos =
+      userTrackId != null ? analysisResult.trackIdToInitialPosition.get(userTrackId) : null;
+    if (videoPos) {
+      anchor = { x: videoPos.x, y: videoPos.y, z: 0 };
+    }
+  }
+
   return {
     memberId: userMemberId,
-    anchor: { x: member?.defaultX ?? 0.5, y: member?.defaultY ?? 0.5, z: 0 },
+    anchor,
     label: member?.nameKr || 'YOU',
     color: member?.color || '#FF1F8E',
   };
@@ -128,6 +148,19 @@ export function buildDanceDatabase({
       userMemberId,
     ),
   );
+
+  const aiMemberCount = (GROUP_DATA[groupId]?.members.length || 1) - 1;
+  const mappedAiCount = new Set(
+    [...trackToMember.values()].filter((id) => id && id !== userMemberId),
+  ).size;
+  if (mappedAiCount < aiMemberCount) {
+    console.warn(
+      `[DanceDatabase] AI 멤버 매칭 ${mappedAiCount}/${aiMemberCount} — 일부 멤버 스켈레톤이 누락될 수 있습니다.`,
+    );
+  }
+  if (!skeletonFrames.length) {
+    throw new Error('스켈레톤 프레임이 생성되지 않았습니다. 멤버 매칭을 확인해 주세요.');
+  }
   const positionMap = buildPositionMap(userMemberId, trackToMember, groupId);
   const formation = buildFormationTimeline({
     groupId,
@@ -159,7 +192,7 @@ export function buildDanceDatabase({
     memberTracks: buildMemberTracks(analysisResult, trackToMember),
     formation,
     positionMap,
-    formationHole: buildFormationHole(userMemberId, groupId),
+    formationHole: buildFormationHole(userMemberId, groupId, analysisResult),
     savedAt: new Date().toISOString(),
   };
 }

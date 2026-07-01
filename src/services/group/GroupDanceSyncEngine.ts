@@ -10,6 +10,7 @@ import { AvatarGroupManager } from './AvatarGroupManager';
 import {
   applyFormationPositioning,
   computeLiveUserAnchor,
+  computeRoot,
   FORMATION_SPREAD_SCALE,
 } from './FormationPositioning';
 
@@ -59,29 +60,62 @@ export class GroupDanceSyncEngine {
     const state = this.manager.getState();
     const frame = findFrameAtTime(this.dataset.frames as any[], elapsedSec);
     const userAnchor = computeLiveUserAnchor(userJoints, userFallbackAnchor);
-
-    const positioned = applyFormationPositioning({
-      frame,
-      userMemberId: state.userMemberId,
-      userAnchor,
-      referenceUserSlot: userFallbackAnchor,
-      aiMemberIds: this.manager.getAiMemberIds(),
-      scale: FORMATION_SPREAD_SCALE,
-    });
-
     const personaById = new Map(state.aiAvatars.map((a) => [a.memberId, a]));
+    const aiMemberIds = this.manager.getAiMemberIds();
 
-    const aiAvatars: AIAvatarInstance[] = positioned.map((p) => {
-      const meta = personaById.get(p.memberId);
-      return {
-        memberId: p.memberId,
-        displayName: meta?.displayName || p.memberId,
-        persona: meta?.persona || { styleId: 'balanced', energy: 0.7, sharpness: 0.7, groove: 0.6, accentColor: '#FF1F8E' },
-        joints: p.joints,
-        worldOffset: p.worldOffset,
-        isEstimated: p.isEstimated ?? false,
-      };
-    });
+    let aiAvatars: AIAvatarInstance[];
+
+    if (this.dataset.meta.preserveVideoFormation && frame?.members?.length) {
+      const byId = new Map(frame.members.map((m) => [m.memberId, m]));
+      aiAvatars = aiMemberIds.map((memberId) => {
+        const memberFrame = byId.get(memberId);
+        const meta = personaById.get(memberId);
+        const root = memberFrame ? computeRoot(memberFrame.joints) : userAnchor;
+        return {
+          memberId,
+          displayName: meta?.displayName || memberId,
+          persona:
+            meta?.persona || {
+              styleId: 'balanced',
+              energy: 0.7,
+              sharpness: 0.7,
+              groove: 0.6,
+              accentColor: '#FF1F8E',
+            },
+          joints: memberFrame?.joints || {},
+          worldOffset: root,
+          isEstimated: memberFrame?.isEstimated ?? !memberFrame,
+        };
+      });
+    } else {
+      const positioned = applyFormationPositioning({
+        frame,
+        userMemberId: state.userMemberId,
+        userAnchor,
+        referenceUserSlot: userFallbackAnchor,
+        aiMemberIds,
+        scale: FORMATION_SPREAD_SCALE,
+      });
+
+      aiAvatars = positioned.map((p) => {
+        const meta = personaById.get(p.memberId);
+        return {
+          memberId: p.memberId,
+          displayName: meta?.displayName || p.memberId,
+          persona:
+            meta?.persona || {
+              styleId: 'balanced',
+              energy: 0.7,
+              sharpness: 0.7,
+              groove: 0.6,
+              accentColor: '#FF1F8E',
+            },
+          joints: p.joints,
+          worldOffset: p.worldOffset,
+          isEstimated: p.isEstimated ?? false,
+        };
+      });
+    }
 
     this.lastSnapshot = {
       timestamp: elapsedSec,
