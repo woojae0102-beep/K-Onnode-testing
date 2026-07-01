@@ -60,6 +60,10 @@ export interface DanceDatabase {
   videoId?: string;
   detectedMemberCount: number;
   durationSec: number;
+  /** 원본 업로드/참조 영상 전체 길이(초) */
+  sourceVideoDurationSec?: number;
+  /** 스켈레톤이 실제 커버하는 길이(초) */
+  skeletonCoverageSec?: number;
   sampleFps: number;
   bpm: DanceBpmMeta;
   skeletonFrames: SkeletonFrameData[];

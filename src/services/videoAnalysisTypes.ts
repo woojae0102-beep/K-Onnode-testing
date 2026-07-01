@@ -10,4 +10,6 @@ export interface AnalysisResult {
   /** 원본 영상 픽셀 크기 */
   videoWidth?: number;
   videoHeight?: number;
+  /** 원본 영상 실제 길이(초) — 연습 타임라인 기준 */
+  sourceVideoDurationSec?: number;
 }

@@ -10,18 +10,17 @@ import {
   saveCachedChoreo,
 } from '../services/groupChoreoCache';
 import {
-  CHOREO_MAX_DURATION_SEC,
   CHOREO_MEMBER_PROBE_SAMPLES,
   CHOREO_POSE_CONFIDENCE,
   CHOREO_POSE_MODEL_URL,
   CHOREO_RETRY_SAMPLE_FPS,
   CHOREO_SAMPLE_FPS,
+  resolveAnalysisDurationSec,
   resolveNumPoses,
 } from '../config/choreoExtractConfig';
-import { prepareAnalysisVideo, seekVideoTo, waitForVideoEvent } from '../utils/choreoVideoUtils';
+import { prepareAnalysisVideo, resolveVideoDuration, seekVideoTo } from '../utils/choreoVideoUtils';
 import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../config/groupChoreoConstants';
 
-const MAX_DURATION_SEC = CHOREO_MAX_DURATION_SEC;
 const AI_INIT_TIMEOUT_MS = 60000;
 
 function withTimeout(promise, ms, message) {
@@ -69,18 +68,15 @@ async function resolveVisionWasm(FilesetResolver) {
 }
 
 async function ensureVideoDimensions(video) {
-  if (video.videoWidth && video.videoHeight) {
-    return { videoWidth: video.videoWidth, videoHeight: video.videoHeight };
+  const duration = await resolveVideoDuration(video);
+  if (!video.videoWidth || !video.videoHeight) {
+    throw new Error('영상 크기를 인식할 수 없습니다. 다른 영상 파일을 사용해 주세요.');
   }
-  await waitForVideoEvent(video, 'loadedmetadata');
-  if (video.videoWidth && video.videoHeight) {
-    return { videoWidth: video.videoWidth, videoHeight: video.videoHeight };
-  }
-  await seekVideoTo(video, 0);
-  if (video.videoWidth && video.videoHeight) {
-    return { videoWidth: video.videoWidth, videoHeight: video.videoHeight };
-  }
-  throw new Error('영상 크기를 인식할 수 없습니다. 다른 영상 파일을 사용해 주세요.');
+  return {
+    videoWidth: video.videoWidth,
+    videoHeight: video.videoHeight,
+    sourceVideoDurationSec: duration,
+  };
 }
 
 async function createPoseDetector(groupMemberCount, onStatus, { lenient = false } = {}) {
@@ -162,9 +158,11 @@ async function runVideoAnalysis({
   const tracker = new MultiPersonTracker();
   tracker.setSampleFps(sampleFps);
 
-  const { videoWidth, videoHeight } = await ensureVideoDimensions(video);
+  const { videoWidth, videoHeight, sourceVideoDurationSec } = await ensureVideoDimensions(video);
   if (import.meta.env?.DEV) {
-    console.debug(`[ChoreoExtract] 영상 크기 ${videoWidth}x${videoHeight} 확인`);
+    console.debug(
+      `[ChoreoExtract] 영상 ${videoWidth}x${videoHeight}, 길이 ${sourceVideoDurationSec.toFixed(1)}초`,
+    );
   }
 
   const { detectFrame } = createOffscreenDetectPipeline(videoWidth, videoHeight);
@@ -179,10 +177,10 @@ async function runVideoAnalysis({
   );
   if (detectedMemberCount === 0) return null;
 
-  const rawDuration = video.duration || 180;
-  const duration = Math.min(Math.max(rawDuration, 10), MAX_DURATION_SEC);
+  const duration = resolveAnalysisDurationSec(sourceVideoDurationSec);
   const sampleInterval = 1 / sampleFps;
   const frames = [];
+  let lastDetectedPeople = [];
 
   for (let t = 0; t < duration; t += sampleInterval) {
     if (abortRef.current) break;
@@ -191,7 +189,18 @@ async function runVideoAnalysis({
     const results = detectFrame(detector, video);
     const timestampMs = Math.round(t * 1000);
     const rawCount = results.landmarks?.length || 0;
-    const trackedPeople = tracker.trackFrame(results.landmarks || [], t, expectedMemberCount);
+    let trackedPeople = tracker.trackFrame(results.landmarks || [], t, expectedMemberCount);
+
+    if (!trackedPeople.length && lastDetectedPeople.length) {
+      trackedPeople = lastDetectedPeople.map((person) => ({
+        ...person,
+        isEstimated: true,
+        lastSeenTimestamp: t,
+      }));
+    }
+    if (trackedPeople.length) {
+      lastDetectedPeople = trackedPeople;
+    }
 
     if (import.meta.env.DEV && rawCount) {
       console.debug(
@@ -240,6 +249,7 @@ async function runVideoAnalysis({
     trackIdToInitialPosition,
     videoWidth,
     videoHeight,
+    sourceVideoDurationSec,
   };
 }
 

@@ -118,7 +118,13 @@ export function ChoreoExtractScreen({
     }
     const frames = await loadFromCache(songId, videoId);
     if (frames?.length) {
-      onComplete(frames, { videoId, durationSec: frames[frames.length - 1]?.timestamp || song?.duration, fromCache: true });
+      onComplete(frames, {
+        videoId,
+        durationSec: danceDb?.durationSec || frames[frames.length - 1]?.timestamp || song?.duration,
+        sourceVideoDurationSec: danceDb?.sourceVideoDurationSec || danceDb?.durationSec,
+        fromCache: true,
+        danceDatabase: danceDb,
+      });
     }
   }, [loadFromCache, loadDanceDatabase, songId, videoId, onComplete, song]);
 
@@ -272,6 +278,7 @@ export function ChoreoExtractScreen({
           onComplete(danceDb.skeletonFrames, {
             videoId: pendingMeta?.videoId || videoId,
             durationSec: danceDb.durationSec,
+            sourceVideoDurationSec: danceDb.sourceVideoDurationSec || danceDb.durationSec,
             danceDatabase: danceDb,
           });
         }}

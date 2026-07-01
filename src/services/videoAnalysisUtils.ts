@@ -1,6 +1,7 @@
 // @ts-nocheck
 import type { SkeletonFrameData } from '../types/groupPractice';
 import type { AnalysisResult } from './videoAnalysisTypes';
+import { fillMemberGapsInSkeletonFrames } from '../utils/skeletonTimelineUtils';
 
 export function jointsToSkeletonJoints(joints: Record<string, { x: number; y: number; z?: number; confidence?: number; visibility?: number }>) {
   const out: Record<string, { x: number; y: number; z: number; visibility?: number }> = {};
@@ -22,8 +23,13 @@ export function buildSkeletonFramesFromAnalysis(
   excludeMemberId: string,
 ): SkeletonFrameData[] {
   const { videoWidth, videoHeight } = analysisResult;
+  const memberIds = [
+    ...new Set(
+      [...trackToMemberMap.values()].filter((id) => id && id !== excludeMemberId),
+    ),
+  ];
 
-  return analysisResult.frames
+  const rawFrames = analysisResult.frames
     .map((frame) => ({
       timestamp: frame.timestamp,
       timestampMs: frame.timestampMs ?? Math.round(frame.timestamp * 1000),
@@ -43,6 +49,8 @@ export function buildSkeletonFramesFromAnalysis(
         .filter(Boolean),
     }))
     .filter((frame) => frame.members.length > 0);
+
+  return fillMemberGapsInSkeletonFrames(rawFrames, memberIds);
 }
 
 export default buildSkeletonFramesFromAnalysis;

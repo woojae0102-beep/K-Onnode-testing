@@ -137,16 +137,22 @@ export function buildDanceDatabase({
     trackToMember,
   });
 
+  const skeletonEnd =
+    skeletonFrames[skeletonFrames.length - 1]?.timestamp ||
+    analysisResult.frames[analysisResult.frames.length - 1]?.timestamp ||
+    0;
+  const sourceVideoDurationSec =
+    analysisResult.sourceVideoDurationSec || skeletonEnd || 0;
+
   return {
     version: '2.0',
     groupId,
     songId,
     videoId,
     detectedMemberCount: analysisResult.detectedMemberCount,
-    durationSec:
-      skeletonFrames[skeletonFrames.length - 1]?.timestamp ||
-      analysisResult.frames[analysisResult.frames.length - 1]?.timestamp ||
-      0,
+    durationSec: Math.max(sourceVideoDurationSec, skeletonEnd),
+    sourceVideoDurationSec,
+    skeletonCoverageSec: skeletonEnd,
     sampleFps,
     bpm: resolveBpm(songId),
     skeletonFrames,

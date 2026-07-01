@@ -64,15 +64,18 @@ export class MultiPersonTracker {
 
   private persistentTracks = new Map<number, PersistentTrack>();
 
-  private readonly MATCH_DISTANCE_THRESHOLD = 0.25;
+  private readonly MATCH_DISTANCE_THRESHOLD = 0.28;
+
+  /** 임계값 초과 시에도 빈 슬롯에 강제 할당할 때 허용하는 최대 거리 */
+  private readonly FORCED_MATCH_DISTANCE = 0.55;
 
   private maxTracksSeen = 0;
 
   private allTrackIdsEver = new Set<number>();
 
-  private sampleFps = 10;
+  private sampleFps = 15;
 
-  private maxMissedFrames = Math.ceil(CHOREO_MAX_OCCLUSION_SEC * 10);
+  private maxMissedFrames = Math.ceil(CHOREO_MAX_OCCLUSION_SEC * 15);
 
   private readonly POSE_KEYS = [
     'left_shoulder',
@@ -85,7 +88,7 @@ export class MultiPersonTracker {
 
   /** 분석 샘플 fps에 맞춰 가려짐 허용 프레임 수 조정 */
   setSampleFps(fps: number) {
-    this.sampleFps = fps || 10;
+    this.sampleFps = fps || 15;
     this.maxMissedFrames = Math.ceil(CHOREO_MAX_OCCLUSION_SEC * this.sampleFps);
   }
 
@@ -159,11 +162,6 @@ export class MultiPersonTracker {
           validCount,
           '/ raw',
           results.landmarks.length,
-          '신뢰도',
-          (results.landmarks as unknown[][]).map((lm) => {
-            const joints = this.extractJoints(lm);
-            return this.calculateConfidence(joints).toFixed(2);
-          }),
         );
       }
 
@@ -181,7 +179,6 @@ export class MultiPersonTracker {
     const mostCommon = parseInt(sorted[0][0], 10);
     const peak = Math.max(...counts);
 
-    /** 목표 정원에 가장 가까운 값 (과소/과다 방지) */
     if (expectedMemberCount > 0) {
       if (peak >= expectedMemberCount) return expectedMemberCount;
       if (mostCommon >= expectedMemberCount - 1) return mostCommon;
@@ -201,50 +198,18 @@ export class MultiPersonTracker {
         confidence: 0,
       }))
       .map((d) => ({ ...d, confidence: this.calculateConfidence(d.joints) }))
-      .filter((d) => d.confidence > CHOREO_MIN_PERSON_CONFIDENCE);
+      .filter((d) => d.confidence > CHOREO_MIN_PERSON_CONFIDENCE)
+      .sort((a, b) => a.centerPos.x - b.centerPos.x);
 
     const matchedTrackIds = new Set<number>();
     const result: TrackedPerson[] = [];
 
-    currentDetections.forEach((detection) => {
-      let bestMatchId: number | null = null;
-      let bestMatchScore = Infinity;
+    const assignDetectionToTrack = (detection, trackId: number, isEstimated: boolean) => {
+      matchedTrackIds.add(trackId);
+      this.allTrackIdsEver.add(trackId);
 
-      this.persistentTracks.forEach((track, trackId) => {
-        if (matchedTrackIds.has(trackId)) return;
-        const score = this.matchScore(detection, trackId, track);
-        if (score < this.MATCH_DISTANCE_THRESHOLD && score < bestMatchScore) {
-          bestMatchScore = score;
-          bestMatchId = trackId;
-        }
-      });
-
-      if (bestMatchId === null) {
-        if (this.persistentTracks.size < expectedMemberCount) {
-          bestMatchId = this.nextTrackId;
-          this.nextTrackId += 1;
-        } else {
-          let oldestMissedId: number | null = null;
-          let maxMissed = -1;
-          this.persistentTracks.forEach((track, trackId) => {
-            if (matchedTrackIds.has(trackId)) return;
-            if (track.consecutiveMissedFrames > maxMissed) {
-              maxMissed = track.consecutiveMissedFrames;
-              oldestMissedId = trackId;
-            }
-          });
-          bestMatchId = oldestMissedId ?? this.nextTrackId;
-          if (oldestMissedId === null) {
-            this.nextTrackId += 1;
-          }
-        }
-      }
-
-      matchedTrackIds.add(bestMatchId);
-      this.allTrackIdsEver.add(bestMatchId);
-
-      this.persistentTracks.set(bestMatchId, {
-        trackId: bestMatchId,
+      this.persistentTracks.set(trackId, {
+        trackId,
         lastKnownPosition: detection.centerPos,
         lastSeenTimestamp: timestamp,
         lastKnownJoints: detection.joints,
@@ -253,39 +218,101 @@ export class MultiPersonTracker {
       });
 
       result.push({
-        trackId: bestMatchId,
+        trackId,
         joints: detection.joints,
         lastSeenTimestamp: timestamp,
         confidence: detection.confidence,
-        isEstimated: false,
+        isEstimated,
       });
+    };
+
+    // 1) X좌표 정렬 기반 안정 매칭 (greedy 순서 의존 완화)
+    currentDetections.forEach((detection) => {
+      let bestMatchId: number | null = null;
+      let bestMatchScore = Infinity;
+
+      const candidateTracks = [...this.persistentTracks.entries()]
+        .filter(([trackId]) => !matchedTrackIds.has(trackId))
+        .sort(
+          ([, a], [, b]) => a.lastKnownPosition.x - b.lastKnownPosition.x,
+        );
+
+      candidateTracks.forEach(([trackId, track]) => {
+        const score = this.matchScore(detection, trackId, track);
+        if (score < this.MATCH_DISTANCE_THRESHOLD && score < bestMatchScore) {
+          bestMatchScore = score;
+          bestMatchId = trackId;
+        }
+      });
+
+      if (bestMatchId !== null) {
+        assignDetectionToTrack(detection, bestMatchId, false);
+        return;
+      }
+
+      if (this.persistentTracks.size < expectedMemberCount) {
+        const newId = this.nextTrackId;
+        this.nextTrackId += 1;
+        assignDetectionToTrack(detection, newId, false);
+        return;
+      }
+
+      // 2) 정원 초과/매칭 실패 — 가장 가까운 미매칭 슬롯에 강제 할당 (트랙 ID 유지)
+      let forcedId: number | null = null;
+      let forcedScore = Infinity;
+      candidateTracks.forEach(([trackId, track]) => {
+        const score = this.matchScore(detection, trackId, track);
+        if (score < forcedScore) {
+          forcedScore = score;
+          forcedId = trackId;
+        }
+      });
+
+      if (forcedId !== null && forcedScore <= this.FORCED_MATCH_DISTANCE) {
+        if (import.meta.env.DEV && forcedScore > this.MATCH_DISTANCE_THRESHOLD) {
+          console.debug(
+            `[Tracker] trackId=${forcedId} 강제 재매칭 (score=${forcedScore.toFixed(3)})`,
+          );
+        }
+        assignDetectionToTrack(detection, forcedId, false);
+        return;
+      }
+
+      if (import.meta.env.DEV) {
+        console.warn(
+          `[Tracker] 감지 ${currentDetections.length}명 중 1명을 기존 슬롯에 매칭하지 못함 (score=${forcedScore.toFixed(3)})`,
+        );
+      }
     });
 
+    // 3) 미매칭 트랙 — 삭제하지 않고 보강 유지 (멤버 영구 소실 방지)
     this.persistentTracks.forEach((track, trackId) => {
       if (matchedTrackIds.has(trackId)) return;
 
       track.consecutiveMissedFrames += 1;
       track.isCurrentlyVisible = false;
 
-      if (track.consecutiveMissedFrames > this.maxMissedFrames) {
-        this.persistentTracks.delete(trackId);
-        return;
-      }
-
       result.push({
         trackId,
         joints: track.lastKnownJoints,
         lastSeenTimestamp: track.lastSeenTimestamp,
-        confidence: 0.2,
+        confidence: Math.max(0.15, 0.5 - track.consecutiveMissedFrames * 0.02),
         isEstimated: true,
       });
     });
 
-    this.maxTracksSeen = Math.max(this.maxTracksSeen, this.allTrackIdsEver.size, result.length);
+    this.maxTracksSeen = Math.max(
+      this.maxTracksSeen,
+      this.allTrackIdsEver.size,
+      this.persistentTracks.size,
+      result.length,
+    );
 
     if (import.meta.env.DEV) {
+      const visible = result.filter((p) => !p.isEstimated).length;
+      const estimated = result.filter((p) => p.isEstimated).length;
       console.debug(
-        `[Tracker] 활성 트랙 수: ${this.persistentTracks.size}, expectedMemberCount: ${expectedMemberCount}`,
+        `[Tracker] 슬롯 ${this.persistentTracks.size} (실감지 ${visible}, 보강 ${estimated}) / 기대 ${expectedMemberCount}`,
       );
     }
 
@@ -297,7 +324,7 @@ export class MultiPersonTracker {
   }
 
   getPeakTrackCount(): number {
-    return Math.max(this.maxTracksSeen, this.allTrackIdsEver.size);
+    return Math.max(this.maxTracksSeen, this.allTrackIdsEver.size, this.persistentTracks.size);
   }
 
   buildInitialPositions(frames: DetectionFrame[], sampleLimit = 30): Map<number, { x: number; y: number }> {
@@ -357,7 +384,6 @@ export class MultiPersonTracker {
     return { x: avgX, y: avgY };
   }
 
-  /** 상체 핵심 관절 기준 — 화면 가장자리 부분 가림 허용 */
   private calculateConfidence(joints: Record<string, JointPosition>): number {
     const coreValues = CORE_JOINTS.map((name) => joints[name]).filter(Boolean);
     if (coreValues.length >= 3) {

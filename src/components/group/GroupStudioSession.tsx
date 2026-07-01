@@ -19,6 +19,7 @@ import {
   buildRenderConfig,
 } from '../../utils/groupSkeletonDraw';
 import { computeAspectFitSize, normalizedToCanvas } from '../../utils/canvasSkeletonUtils';
+import { findFrameAtTime } from '../../utils/skeletonTimelineUtils';
 import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
@@ -55,7 +56,13 @@ export function GroupStudioSession({
 
   const stageCanvasRef = useRef(null);
   const ytPlayerRef = useRef(null);
-  const maxDuration = practiceDuration || skeletonData?.[skeletonData.length - 1]?.timestamp || 180;
+  const skeletonEnd = skeletonData?.[skeletonData.length - 1]?.timestamp || 0;
+  const sourceVideoSec =
+    danceDatabase?.sourceVideoDurationSec
+    || practiceDuration
+    || skeletonEnd
+    || 180;
+  const maxDuration = Math.max(sourceVideoSec, skeletonEnd, practiceDuration || 0);
   const sourceVideoWidth = skeletonData?.[0]?.videoWidth || 1920;
   const sourceVideoHeight = skeletonData?.[0]?.videoHeight || 1080;
   const [sessionPhase, setSessionPhase] = useState('lobby');
@@ -71,6 +78,8 @@ export function GroupStudioSession({
   const slotEnteredRef = useRef(false);
   const endedRef = useRef(false);
   const prevSmoothScoreRef = useRef(100);
+  const [videoPlaybackTime, setVideoPlaybackTime] = useState(0);
+  const [referenceVideoDuration, setReferenceVideoDuration] = useState(0);
 
   const { layoutClass, isMobile } = useTVScreenLayout();
 
@@ -152,6 +161,39 @@ export function GroupStudioSession({
   }, []);
 
   const isPracticing = sessionPhase === 'practicing';
+  /** YouTube 참조 영상 재생 시 스켈레톤을 영상 currentTime에 동기화 */
+  const effectiveTime =
+    referenceYoutubeUrl && isPracticing && isRunning ? videoPlaybackTime : currentTime;
+
+  useEffect(() => {
+    if (!isPracticing || !isRunning || !referenceYoutubeUrl) return undefined;
+    let raf = 0;
+    const syncFromVideo = () => {
+      const t = ytPlayerRef.current?.getCurrentTime?.();
+      const dur = ytPlayerRef.current?.getDuration?.();
+      if (typeof t === 'number' && Number.isFinite(t)) {
+        setVideoPlaybackTime(Math.max(0, t));
+      }
+      if (typeof dur === 'number' && Number.isFinite(dur) && dur > 0) {
+        setReferenceVideoDuration(dur);
+      }
+      raf = requestAnimationFrame(syncFromVideo);
+    };
+    raf = requestAnimationFrame(syncFromVideo);
+    return () => cancelAnimationFrame(raf);
+  }, [isPracticing, isRunning, referenceYoutubeUrl]);
+
+  const effectiveMaxDuration = Math.max(
+    maxDuration,
+    referenceVideoDuration || 0,
+  );
+
+  const practiceEnded =
+    isPracticing
+    && (
+      (referenceYoutubeUrl && isRunning && videoPlaybackTime >= effectiveMaxDuration - 0.35)
+      || (!referenceYoutubeUrl && isFinished)
+    );
 
   const studio = useStudioSession({
     localStream: dance.getStream(),
@@ -287,7 +329,10 @@ export function GroupStudioSession({
     return dx < SLOT_THRESHOLD && dy < SLOT_THRESHOLD;
   }, [dance.poseData, myDefault]);
 
-  const getPracticeFrame = useCallback(() => getCurrentFrame(), [getCurrentFrame]);
+  const getPracticeFrame = useCallback(
+    () => findFrameAtTime(skeletonData || [], effectiveTime),
+    [skeletonData, effectiveTime],
+  );
 
   const finishSession = useCallback(
     async (stats) => {
@@ -340,11 +385,11 @@ export function GroupStudioSession({
     if (!isPracticing || (!isRunning && !isFinished)) return;
 
     const frame = getPracticeFrame();
-    const snapshot = syncDanceStage(currentTime);
+    const snapshot = syncDanceStage(effectiveTime);
     if (snapshot) renderGroupStage(snapshot);
 
     if (dance.poseData && frame) {
-      const accuracy = updateSyncScore(dance.poseData, frame, currentTime);
+      const accuracy = updateSyncScore(dance.poseData, frame, effectiveTime);
       if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
         setShowMissedAlert(true);
       }
@@ -365,8 +410,8 @@ export function GroupStudioSession({
       score: roundedScore,
       formationHole,
       referenceVideoUrl: referenceYoutubeUrl,
-      beatProgress: maxDuration > 0 ? currentTime / maxDuration : 0,
-      currentTime,
+      beatProgress: maxDuration > 0 ? effectiveTime / maxDuration : 0,
+      currentTime: effectiveTime,
       maxDuration,
       bpm: danceDatabase?.bpm?.bpm,
       isPlaying: isRunning,
@@ -384,7 +429,7 @@ export function GroupStudioSession({
     isPracticing,
     isRunning,
     isFinished,
-    currentTime,
+    effectiveTime,
     getPracticeFrame,
     syncDanceStage,
     renderGroupStage,
@@ -404,10 +449,10 @@ export function GroupStudioSession({
   ]);
 
   useEffect(() => {
-    if (isFinished && isPracticing) {
+    if (practiceEnded) {
       finishSession(getFinalStats());
     }
-  }, [isFinished, isPracticing, finishSession, getFinalStats]);
+  }, [practiceEnded, finishSession, getFinalStats]);
 
   const startPracticeAfterCountdown = useCallback(() => {
     setSessionPhase('practicing');
@@ -649,7 +694,7 @@ export function GroupStudioSession({
           <TempoLockIndicator
             isRunning={isRunning}
             currentTime={currentTime}
-            totalDuration={maxDuration}
+            totalDuration={effectiveMaxDuration}
           />
         ) : null}
 

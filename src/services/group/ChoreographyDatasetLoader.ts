@@ -66,11 +66,13 @@ export function skeletonFramesToChoreographyDataset({
   title?: string;
   formation?: ChoreographyDataset['meta']['formation'];
   memberMeta: ChoreographyDataset['members'];
-  frames: Array<{ timestamp: number; members: Array<{ estimatedMemberId: string; joints: Record<string, { x: number; y: number; z?: number }> }> }>;
+  frames: Array<{ timestamp: number; members: Array<{ estimatedMemberId: string; isEstimated?: boolean; joints: Record<string, { x: number; y: number; z?: number; visibility?: number }> }> }>;
   durationSec: number;
+  sampleFps?: number;
 }): ChoreographyDataset {
+  const fps = sampleFps || 15;
   return {
-    meta: { groupId, songId, title, formation, durationSec, fps: 30, version: '1' },
+    meta: { groupId, songId, title, formation, durationSec, fps, version: '1' },
     members: memberMeta,
     frames: frames.map((frame) => ({
       timestamp: frame.timestamp,
@@ -78,6 +80,7 @@ export function skeletonFramesToChoreographyDataset({
         .filter((m) => m.estimatedMemberId)
         .map((m) => ({
           memberId: m.estimatedMemberId,
+          isEstimated: m.isEstimated ?? false,
           joints: Object.fromEntries(
             Object.entries(m.joints || {}).map(([name, j]) => [
               name,

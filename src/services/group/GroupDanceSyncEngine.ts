@@ -1,5 +1,5 @@
 // @ts-nocheck
-import { findNearestFrame } from '../../hooks/useSkeletonExtract';
+import { findFrameAtTime } from '../../utils/skeletonTimelineUtils';
 import type {
   AIAvatarInstance,
   ChoreographyDataset,
@@ -57,7 +57,7 @@ export class GroupDanceSyncEngine {
     userFallbackAnchor,
   }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'>): GroupDanceRenderSnapshot {
     const state = this.manager.getState();
-    const frame = findNearestFrame(this.dataset.frames, elapsedSec);
+    const frame = findFrameAtTime(this.dataset.frames as any[], elapsedSec);
     const userAnchor = computeLiveUserAnchor(userJoints, userFallbackAnchor);
 
     const positioned = applyFormationPositioning({
@@ -79,6 +79,7 @@ export class GroupDanceSyncEngine {
         persona: meta?.persona || { styleId: 'balanced', energy: 0.7, sharpness: 0.7, groove: 0.6, accentColor: '#FF1F8E' },
         joints: p.joints,
         worldOffset: p.worldOffset,
+        isEstimated: p.isEstimated ?? false,
       };
     });
 

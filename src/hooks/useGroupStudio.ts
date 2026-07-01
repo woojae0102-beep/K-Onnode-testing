@@ -41,7 +41,15 @@ export function useGroupStudio() {
         : userVideo?.youtubeUrl || null,
       fromCache: !!meta.fromCache,
     });
-    setPracticeDuration(meta.durationSec || song?.duration || frames?.[frames.length - 1]?.timestamp || 180);
+    setPracticeDuration(
+      meta.sourceVideoDurationSec
+      || meta.danceDatabase?.sourceVideoDurationSec
+      || meta.danceDatabase?.durationSec
+      || meta.durationSec
+      || frames?.[frames.length - 1]?.timestamp
+      || song?.duration
+      || 180,
+    );
     setPhase('practice');
   }, [selectedSongId]);
 

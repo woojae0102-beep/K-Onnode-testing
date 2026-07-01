@@ -74,6 +74,7 @@ async function loadBlobIntoVideo(video, blob, onStatus) {
   if (!Number.isFinite(video.duration) || video.duration <= 0) {
     await waitForVideoEvent(video, 'loadeddata', 30000);
   }
+  await resolveVideoDuration(video);
   return {
     objectUrl,
     cleanup: () => {
@@ -186,6 +187,7 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus, you
     const objectUrl = URL.createObjectURL(file);
     video.src = objectUrl;
     await waitForVideoEvent(video, 'loadeddata');
+    await resolveVideoDuration(video);
     return {
       objectUrl,
       cleanup: () => {
@@ -207,4 +209,49 @@ export async function seekVideoTo(video, timeSec) {
   if (Math.abs(video.currentTime - timeSec) < 0.05 && readyForEvent(video, 'seeked')) return;
   video.currentTime = timeSec;
   await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);
+}
+
+/**
+ * 브라우저가 duration을 과소 보고하는 경우 seekable.end 로 보정.
+ * (업로드 MP4/WebM에서 40초만 잡히는 문제 방지)
+ */
+export async function resolveVideoDuration(video) {
+  if (!video) return 0;
+
+  await waitForVideoEvent(video, 'loadedmetadata');
+  if (!Number.isFinite(video.duration) || video.duration <= 0) {
+    await waitForVideoEvent(video, 'loadeddata', 30000);
+  }
+  if (!Number.isFinite(video.duration) || video.duration <= 0) {
+    await waitForVideoEvent(video, 'canplay', 30000);
+  }
+
+  let duration = Number(video.duration) || 0;
+
+  if (video.seekable?.length) {
+    const seekEnd = video.seekable.end(video.seekable.length - 1);
+    if (Number.isFinite(seekEnd) && seekEnd > duration) {
+      duration = seekEnd;
+    }
+  }
+
+  // 일부 코덱은 끝 구간 seek 후 duration이 갱신됨
+  if (duration > 0 && duration < 120) {
+    try {
+      const probe = Math.min(duration + 30, 600);
+      video.currentTime = probe;
+      await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);
+      if (video.duration > duration) duration = video.duration;
+      if (video.seekable?.length) {
+        const seekEnd = video.seekable.end(video.seekable.length - 1);
+        if (seekEnd > duration) duration = seekEnd;
+      }
+      video.currentTime = 0;
+      await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);
+    } catch {
+      /* probe 실패 시 기존 duration 사용 */
+    }
+  }
+
+  return duration;
 }

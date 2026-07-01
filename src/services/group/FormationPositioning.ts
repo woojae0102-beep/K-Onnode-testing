@@ -26,6 +26,7 @@ export interface PositionedMemberJoints {
   memberId: string;
   joints: Record<string, ChoreographyJoint>;
   worldOffset: StageAnchor;
+  isEstimated?: boolean;
 }
 
 const ROOT_JOINTS = ['left_hip', 'right_hip'];
@@ -61,10 +62,10 @@ export function applyFormationPositioning({
     ? computeRoot(userFrame.joints)
     : referenceUserSlot || userAnchor;
 
-  return aiMemberIds.map((memberId) => {
+    return aiMemberIds.map((memberId) => {
     const memberFrame = byId.get(memberId);
     if (!memberFrame) {
-      return { memberId, joints: {}, worldOffset: userAnchor };
+      return { memberId, joints: {}, worldOffset: userAnchor, isEstimated: true };
     }
 
     const memberRoot = computeRoot(memberFrame.joints);
@@ -90,6 +91,7 @@ export function applyFormationPositioning({
       memberId,
       joints: translateJoints(memberFrame.joints, offset),
       worldOffset: targetRoot,
+      isEstimated: memberFrame.isEstimated ?? false,
     };
   });
 }

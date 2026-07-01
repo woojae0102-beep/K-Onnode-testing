@@ -70,6 +70,7 @@ export function useGroupDanceEngine({
             })),
             frames: skeletonFrames,
             durationSec: practiceDuration,
+            sampleFps: 15,
           });
         } else {
           loaded = await loadChoreographyDataset(groupId, songId);
