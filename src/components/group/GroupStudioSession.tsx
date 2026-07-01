@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
+import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
@@ -20,6 +20,10 @@ import {
 } from '../../utils/groupSkeletonDraw';
 import { computeAspectFitSize, normalizedToCanvas } from '../../utils/canvasSkeletonUtils';
 import { findFrameAtTime } from '../../utils/skeletonTimelineUtils';
+import {
+  normalizeSkeletonFrames,
+  validateSkeletonForPractice,
+} from '../../utils/skeletonDataUtils';
 import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
@@ -56,15 +60,24 @@ export function GroupStudioSession({
 
   const stageCanvasRef = useRef(null);
   const ytPlayerRef = useRef(null);
-  const skeletonEnd = skeletonData?.[skeletonData.length - 1]?.timestamp || 0;
+  const normalizedSkeletonData = useMemo(
+    () => normalizeSkeletonFrames(skeletonData),
+    [skeletonData],
+  );
+
+  const skeletonValidation = useMemo(
+    () => validateSkeletonForPractice(normalizedSkeletonData, myMemberId),
+    [normalizedSkeletonData, myMemberId],
+  );
+  const skeletonEnd = normalizedSkeletonData?.[normalizedSkeletonData.length - 1]?.timestamp || 0;
   const sourceVideoSec =
     danceDatabase?.sourceVideoDurationSec
     || practiceDuration
     || skeletonEnd
     || 180;
   const maxDuration = Math.max(sourceVideoSec, skeletonEnd, practiceDuration || 0);
-  const sourceVideoWidth = skeletonData?.[0]?.videoWidth || 1920;
-  const sourceVideoHeight = skeletonData?.[0]?.videoHeight || 1080;
+  const sourceVideoWidth = normalizedSkeletonData?.[0]?.videoWidth || skeletonData?.[0]?.videoWidth || 1920;
+  const sourceVideoHeight = normalizedSkeletonData?.[0]?.videoHeight || skeletonData?.[0]?.videoHeight || 1080;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
@@ -101,7 +114,7 @@ export function GroupStudioSession({
     startTimeline,
     forceStop,
     getCurrentFrame,
-  } = useIndependentTimeline(skeletonData || [], maxDuration);
+  } = useIndependentTimeline(normalizedSkeletonData || [], maxDuration);
   const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
     myMemberId,
     group?.members || [],
@@ -111,7 +124,7 @@ export function GroupStudioSession({
     groupId,
     songId,
     userMemberId: myMemberId,
-    skeletonFrames: skeletonData,
+    skeletonFrames: normalizedSkeletonData,
     practiceDuration: maxDuration,
   });
   const myDefault = { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5 };
@@ -180,18 +193,8 @@ export function GroupStudioSession({
     }
   }, [currentTime, referenceYoutubeUrl, isPracticing]);
 
-  const countAiMembersInFrame = useCallback(
-    (frame) => {
-      if (!frame?.members?.length) return 0;
-      return frame.members.filter(
-        (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId && m.joints && Object.keys(m.joints).length,
-      ).length;
-    },
-    [myMemberId],
-  );
-
-  const skeletonAiCount = countAiMembersInFrame(skeletonData?.[0]);
-  const hasSkeletonData = Boolean(skeletonData?.length && skeletonAiCount > 0);
+  const hasSkeletonData = skeletonValidation.valid;
+  const skeletonIssue = skeletonValidation.reason || '';
 
   const effectiveMaxDuration = Math.max(
     maxDuration,
@@ -297,12 +300,14 @@ export function GroupStudioSession({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      const logicalW = canvas._logicalWidth ?? canvas.width;
-      const logicalH = canvas._logicalHeight ?? canvas.height;
+      let logicalW = canvas._logicalWidth ?? canvas.width;
+      let logicalH = canvas._logicalHeight ?? canvas.height;
       if (!logicalW || !logicalH) {
         resizeStageCanvas();
-        return;
+        logicalW = canvas._logicalWidth ?? canvas.width ?? 640;
+        logicalH = canvas._logicalHeight ?? canvas.height ?? 360;
       }
+      if (!logicalW || !logicalH) return;
 
       const renderConfig = buildRenderConfig(
         canvas._videoWidth || sourceVideoWidth,
@@ -325,8 +330,8 @@ export function GroupStudioSession({
 
       let aiRendered = 0;
 
-      if (skeletonData?.length) {
-        const frame = findFrameAtTime(skeletonData, timeSec);
+      if (normalizedSkeletonData?.length) {
+        const frame = findFrameAtTime(normalizedSkeletonData, timeSec);
         frame?.members?.forEach((memberData) => {
           if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
           const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
@@ -366,7 +371,7 @@ export function GroupStudioSession({
         drawUserSkeleton(ctx, smoothed, myMember.color, canvas, anchorX, anchorY);
       }
     },
-    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight, skeletonData, resizeStageCanvas],
+    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight, normalizedSkeletonData, resizeStageCanvas],
   );
 
   renderGroupStageRef.current = renderGroupStage;
@@ -388,8 +393,8 @@ export function GroupStudioSession({
   }, [dance.poseData, myDefault]);
 
   const getPracticeFrame = useCallback(
-    () => findFrameAtTime(skeletonData || [], effectiveTime),
-    [skeletonData, effectiveTime],
+    () => findFrameAtTime(normalizedSkeletonData || [], effectiveTime),
+    [normalizedSkeletonData, effectiveTime],
   );
 
   const finishSession = useCallback(
@@ -479,7 +484,7 @@ export function GroupStudioSession({
 
       if (now - lastScoreAt > 120) {
         lastScoreAt = now;
-        const frame = findFrameAtTime(skeletonData || [], t);
+        const frame = findFrameAtTime(normalizedSkeletonData || [], t);
         if (dance.poseData && frame) {
           const accuracy = updateSyncScore(dance.poseData, frame, t);
           if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
@@ -531,7 +536,7 @@ export function GroupStudioSession({
     isRunning,
     isFinished,
     referenceYoutubeUrl,
-    skeletonData,
+    normalizedSkeletonData,
     dance.poseData,
     updateSyncScore,
     groupId,
@@ -789,7 +794,12 @@ export function GroupStudioSession({
               lineHeight: 1.5,
             }}
           >
-            AI 스켈레톤이 표시되지 않습니다. 안무 추출을 다시 진행해 주세요. (2D 보기 권장)
+            {skeletonIssue || 'AI 스켈레톤이 표시되지 않습니다. 안무 추출을 다시 진행해 주세요.'}
+            {!skeletonValidation.valid ? (
+              <span style={{ display: 'block', marginTop: 4, opacity: 0.85 }}>
+                (저장된 프레임 {skeletonValidation.frameCount}개, AI 멤버 {skeletonValidation.aiMemberCount}명)
+              </span>
+            ) : null}
           </div>
         ) : null}
 
@@ -827,7 +837,8 @@ export function GroupStudioSession({
               zIndex: 14,
             }}
           >
-            저장된 스켈레톤 데이터가 비어 있습니다. 뒤로 가서 안무를 다시 추출해 주세요.
+            저장된 스켈레톤 데이터가 비어 있습니다. 「캐시 사용」 말고 안무를 다시 추출해 주세요.
+            {skeletonIssue ? ` (${skeletonIssue})` : ''}
           </div>
         ) : null}
 

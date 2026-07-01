@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { GROUP_DATA } from '../data/groupPracticeData';
+import { normalizePositionMap } from '../utils/skeletonDataUtils';
 
 function dist2(a: { x: number; y: number }, b: { x: number; y: number }) {
   const dx = (a.x || 0) - (b.x || 0);
@@ -16,11 +17,12 @@ export const FALLBACK_MATCH_DIST2 = 0.55 * 0.55;
 export function identifyUserTrackId(
   groupId: string,
   myMemberId: string,
-  trackIdToInitialPosition: Map<number, { x: number; y: number }>,
+  trackIdToInitialPosition: Map<number, { x: number; y: number }> | Record<string, { x: number; y: number }>,
 ): number | null {
   const group = GROUP_DATA[groupId];
   const myMember = group?.members.find((m) => m.id === myMemberId);
-  const allTracks = Array.from(trackIdToInitialPosition.entries());
+  const positions = normalizePositionMap(trackIdToInitialPosition);
+  const allTracks = Array.from(positions.entries());
   if (!myMember || !allTracks.length) return null;
 
   let myTrackId: number | null = null;
@@ -50,19 +52,21 @@ export function identifyUserTrackId(
 export function suggestTrackToMemberMap(
   groupId: string,
   myMemberId: string,
-  trackIdToInitialPosition: Map<number, { x: number; y: number }>,
+  trackIdToInitialPosition: Map<number, { x: number; y: number }> | Record<string, { x: number; y: number }>,
 ): Map<number, string> {
   const group = GROUP_DATA[groupId];
   const result = new Map<number, string>();
   if (!group) return result;
 
+  const positions = normalizePositionMap(trackIdToInitialPosition);
+
   const aiMembers = group.members.filter((m) => m.id !== myMemberId);
   const usedMembers = new Set<string>();
   const usedTracks = new Set<number>();
 
-  const myTrackId = identifyUserTrackId(groupId, myMemberId, trackIdToInitialPosition);
+  const myTrackId = identifyUserTrackId(groupId, myMemberId, positions);
 
-  const aiTracks = Array.from(trackIdToInitialPosition.entries())
+  const aiTracks = Array.from(positions.entries())
     .filter(([trackId]) => trackId !== myTrackId)
     .sort(([, a], [, b]) => a.x - b.x);
 

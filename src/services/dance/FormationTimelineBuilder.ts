@@ -2,6 +2,7 @@
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import type { DetectionFrame } from '../MultiPersonTracker';
 import type { FormationKeyframe, FormationTimeline, FormationSlot } from '../../types/danceDatabase';
+import { normalizeTrackMemberMap, resolveMemberForTrack } from '../../utils/skeletonDataUtils';
 
 function centerOf(joints: Record<string, { x: number; y: number; z?: number }>) {
   const nose = joints.nose;
@@ -27,6 +28,7 @@ export function buildFormationTimeline({
   frames: DetectionFrame[];
   trackToMember: Map<number, string>;
 }): FormationTimeline {
+  const map = normalizeTrackMemberMap(trackToMember);
   const group = GROUP_DATA[groupId];
   const userMember = group?.members.find((m) => m.id === userMemberId);
 
@@ -35,8 +37,8 @@ export function buildFormationTimeline({
     const assignedMemberIds = new Set<string>();
 
     frame.detectedPeople.forEach((person) => {
-      const memberId = trackToMember.get(person.trackId) || null;
-      if (!memberId || memberId === userMemberId) return;
+      const memberId = resolveMemberForTrack(map, person.trackId, userMemberId);
+      if (!memberId) return;
       assignedMemberIds.add(memberId);
       const c = centerOf(person.joints);
       slots.push({

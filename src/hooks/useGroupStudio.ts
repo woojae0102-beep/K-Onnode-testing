@@ -2,6 +2,7 @@
 import { useCallback, useState } from 'react';
 import { getSongById } from '../data/groupStudioSongs';
 import { getSongVideo } from '../services/groupStudioStorage';
+import { normalizeSkeletonFrames, validateSkeletonForPractice } from '../utils/skeletonDataUtils';
 
 export function useGroupStudio() {
   const [phase, setPhase] = useState('home');
@@ -29,7 +30,15 @@ export function useGroupStudio() {
   }, []);
 
   const completeChoreoExtract = useCallback((frames, meta = {}) => {
-    setSkeletonData(frames);
+    const normalized = normalizeSkeletonFrames(frames);
+    const uid = selectedMemberId || meta.danceDatabase?.positionMap?.userMemberId || '';
+    const validation = uid ? validateSkeletonForPractice(normalized, uid) : { valid: normalized.length > 0 };
+    if (!validation.valid) {
+      console.error('[useGroupStudio] invalid skeleton on complete', validation);
+      window.alert(validation.reason || '스켈레톤 데이터가 유효하지 않습니다. 다시 추출해 주세요.');
+      return;
+    }
+    setSkeletonData(normalized);
     setDanceDatabase(meta.danceDatabase || null);
     const song = getSongById(selectedSongId);
     const saved = getSongVideo(selectedSongId);
@@ -51,7 +60,7 @@ export function useGroupStudio() {
       || 180,
     );
     setPhase('practice');
-  }, [selectedSongId]);
+  }, [selectedSongId, selectedMemberId]);
 
   const endSession = useCallback((result, comparison = null) => {
     setSessionResult(result);

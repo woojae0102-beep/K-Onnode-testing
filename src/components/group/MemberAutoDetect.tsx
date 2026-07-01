@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import type { AnalysisResult } from '../../services/videoAnalysisTypes';
 import { identifyUserTrackId, suggestTrackToMemberMap } from '../../services/formationMatching';
+import { normalizePositionMap, normalizeTrackMemberMap } from '../../utils/skeletonDataUtils';
 
 export function MemberAutoDetect({
   groupId,
@@ -25,24 +26,40 @@ export function MemberAutoDetect({
   const [loadingSuggestions, setLoadingSuggestions] = useState(true);
 
   useEffect(() => {
-    const userTrackId = identifyUserTrackId(
-      groupId,
-      myMemberId,
-      analysisResult.trackIdToInitialPosition,
-    );
-    const initialMap = suggestTrackToMemberMap(
-      groupId,
-      myMemberId,
-      analysisResult.trackIdToInitialPosition,
-    );
+    const positions = normalizePositionMap(analysisResult.trackIdToInitialPosition as any);
+    const userTrackId = identifyUserTrackId(groupId, myMemberId, positions);
+    const initialMap = suggestTrackToMemberMap(groupId, myMemberId, positions);
     setMyTrackId(userTrackId);
     setTrackAssignments(initialMap);
     setLoadingSuggestions(false);
   }, [analysisResult, groupId, myMemberId]);
 
+  const buildFullTrackMap = () => {
+    const positions = normalizePositionMap(analysisResult.trackIdToInitialPosition as any);
+    const fullMap = new Map<number, string>();
+    positions.forEach((_pos, trackId) => {
+      const id = Number(trackId);
+      if (id === Number(myTrackId)) {
+        fullMap.set(id, myMemberId);
+        return;
+      }
+      const assigned =
+        trackAssignments.get(id) ??
+        trackAssignments.get(trackId as any) ??
+        trackAssignments.get(String(id) as any);
+      if (assigned) fullMap.set(id, assigned);
+    });
+    return normalizeTrackMemberMap(fullMap);
+  };
+
+  const assignedAiIds = () =>
+    new Set(
+      [...trackAssignments.values()].filter((id) => id && id !== myMemberId),
+    );
+
   if (!group) return null;
 
-  const trackIds = Array.from(analysisResult.trackIdToInitialPosition.keys());
+  const trackIds = Array.from(normalizePositionMap(analysisResult.trackIdToInitialPosition as any).keys());
   const aiMemberCount = group.memberCount - 1;
   const countMismatch =
     trackIds.length < aiMemberCount || detectedCount < aiMemberCount;
@@ -97,7 +114,7 @@ export function MemberAutoDetect({
             const isMyTrack = trackId === myTrackId;
             const assignedMemberId = isMyTrack ? myMemberId : trackAssignments.get(trackId);
             const assignedMember = group.members.find((m) => m.id === assignedMemberId);
-            const pos = analysisResult.trackIdToInitialPosition.get(trackId);
+            const pos = normalizePositionMap(analysisResult.trackIdToInitialPosition as any).get(Number(trackId));
 
             return (
               <div
@@ -139,8 +156,9 @@ export function MemberAutoDetect({
                   onChange={(e) => {
                     if (isMyTrack) return;
                     const newMap = new Map(trackAssignments);
-                    if (e.target.value) newMap.set(trackId, e.target.value);
-                    else newMap.delete(trackId);
+                    const tid = Number(trackId);
+                    if (e.target.value) newMap.set(tid, e.target.value);
+                    else newMap.delete(tid);
                     setTrackAssignments(newMap);
                   }}
                   style={{
@@ -192,13 +210,13 @@ export function MemberAutoDetect({
           </button>
           <button
             type="button"
-            onClick={() => onConfirm(trackAssignments)}
-            disabled={trackAssignments.size < otherMembers.length || loadingSuggestions}
+            onClick={() => onConfirm(buildFullTrackMap())}
+            disabled={assignedAiIds().size < otherMembers.length || loadingSuggestions}
             style={{
               flex: 1,
               padding: '14px',
               background:
-                trackAssignments.size >= otherMembers.length && !loadingSuggestions
+                assignedAiIds().size >= otherMembers.length && !loadingSuggestions
                   ? 'linear-gradient(135deg, #FF1F8E, #6C5CE7)'
                   : 'rgba(255,255,255,0.08)',
               border: 'none',
@@ -207,7 +225,7 @@ export function MemberAutoDetect({
               fontSize: 14,
               fontWeight: 600,
               cursor:
-                trackAssignments.size >= otherMembers.length && !loadingSuggestions
+                assignedAiIds().size >= otherMembers.length && !loadingSuggestions
                   ? 'pointer'
                   : 'not-allowed',
             }}

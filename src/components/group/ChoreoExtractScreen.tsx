@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { getGroupData } from '../../data/groupPracticeData';
 import { useGroupChoreoExtract } from '../../hooks/useGroupChoreoExtract';
+import { normalizeSkeletonFrames, validateSkeletonForPractice } from '../../utils/skeletonDataUtils';
 import { getSongVideo, saveSongVideo } from '../../services/groupStudioStorage';
 import { buildDanceDatabase, saveDanceDatabase, loadDanceDatabase } from '../../services/dance/DanceDatabaseService';
 import MemberAutoDetect from './MemberAutoDetect';
@@ -70,7 +71,8 @@ export function ChoreoExtractScreen({
       return;
     }
     loadFromCache(songId, videoId).then((frames) => {
-      setCacheReady(!!frames?.length);
+      const normalized = normalizeSkeletonFrames(frames);
+      setCacheReady(normalized.length > 0);
     });
   }, [videoId, songId, loadFromCache]);
 
@@ -106,7 +108,7 @@ export function ChoreoExtractScreen({
   }, [song, group, extractAnalysis, songId, videoId, proceedToConfirm]);
 
   const handleUseCache = useCallback(async () => {
-    const danceDb = await loadDanceDatabase(song.groupId, songId, videoId);
+    const danceDb = await loadDanceDatabase(song.groupId, songId, videoId, memberId);
     if (danceDb?.skeletonFrames?.length) {
       onComplete(danceDb.skeletonFrames, {
         videoId,
@@ -116,17 +118,8 @@ export function ChoreoExtractScreen({
       });
       return;
     }
-    const frames = await loadFromCache(songId, videoId);
-    if (frames?.length) {
-      onComplete(frames, {
-        videoId,
-        durationSec: danceDb?.durationSec || frames[frames.length - 1]?.timestamp || song?.duration,
-        sourceVideoDurationSec: danceDb?.sourceVideoDurationSec || danceDb?.durationSec,
-        fromCache: true,
-        danceDatabase: danceDb,
-      });
-    }
-  }, [loadFromCache, loadDanceDatabase, songId, videoId, onComplete, song]);
+    window.alert('유효한 캐시가 없습니다. 안무를 새로 추출해 주세요.');
+  }, [loadDanceDatabase, songId, videoId, memberId, onComplete, song]);
 
   const handleFileChange = useCallback((e) => {
     const file = e.target.files?.[0];
@@ -258,29 +251,34 @@ export function ChoreoExtractScreen({
         myMemberId={memberId}
         analysisResult={pendingAnalysis}
         onConfirm={async (trackToMemberMap) => {
-          const danceDb = buildDanceDatabase({
-            groupId: song.groupId,
-            songId,
-            userMemberId: memberId,
-            analysisResult: pendingAnalysis,
-            trackToMember: trackToMemberMap,
-            videoId: pendingMeta?.videoId || videoId,
-          });
-          await saveDanceDatabase(danceDb);
-          if (videoId) {
-            saveSongVideo(songId, {
-              videoId,
-              youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
-              title: videoTitle,
-              videoType: 'user_youtube',
+          try {
+            const danceDb = buildDanceDatabase({
+              groupId: song.groupId,
+              songId,
+              userMemberId: memberId,
+              analysisResult: pendingAnalysis,
+              trackToMember: trackToMemberMap,
+              videoId: pendingMeta?.videoId || videoId,
             });
+            await saveDanceDatabase(danceDb);
+            if (videoId) {
+              saveSongVideo(songId, {
+                videoId,
+                youtubeUrl: `https://www.youtube.com/watch?v=${videoId}`,
+                title: videoTitle,
+                videoType: 'user_youtube',
+              });
+            }
+            onComplete(danceDb.skeletonFrames, {
+              videoId: pendingMeta?.videoId || videoId,
+              durationSec: danceDb.durationSec,
+              sourceVideoDurationSec: danceDb.sourceVideoDurationSec || danceDb.durationSec,
+              danceDatabase: danceDb,
+            });
+          } catch (err) {
+            console.error('[ChoreoExtract confirm]', err);
+            window.alert(err?.message || '스켈레톤 생성에 실패했습니다. 멤버 매칭을 확인해 주세요.');
           }
-          onComplete(danceDb.skeletonFrames, {
-            videoId: pendingMeta?.videoId || videoId,
-            durationSec: danceDb.durationSec,
-            sourceVideoDurationSec: danceDb.sourceVideoDurationSec || danceDb.durationSec,
-            danceDatabase: danceDb,
-          });
         }}
         onRetry={() => {
           setPhase('upload');
