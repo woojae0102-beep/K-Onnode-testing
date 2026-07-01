@@ -4,6 +4,7 @@ import type { PoseData } from '../types/tv';
 import { computePoseMetrics } from '../utils/poseMetrics';
 import { applyInlineVideoAttributes, buildMobileVideoConstraints } from '../utils/mobileMedia';
 import { useSettingsStore } from '../store/settingsSlice';
+import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../config/groupChoreoConstants';
 import { getOptimizedCanvasContext, syncCanvasToDisplayRect } from '../utils/cameraFrameLoop';
 
 const JOINT_MAP = {
@@ -39,6 +40,26 @@ const CONNECTIONS = [
 
 const DETECT_INTERVAL_MS = 100;
 const STATE_UPDATE_INTERVAL_MS = 250;
+
+async function playVideoWhenReady(video: HTMLVideoElement) {
+  applyInlineVideoAttributes(video);
+  await new Promise<void>((resolve) => {
+    if (video.readyState >= 2) {
+      resolve();
+      return;
+    }
+    video.addEventListener('loadeddata', () => resolve(), { once: true });
+  });
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await video.play();
+      return;
+    } catch (err: any) {
+      if (err?.name !== 'AbortError' || attempt >= 2) throw err;
+      await new Promise((r) => setTimeout(r, 120 * (attempt + 1)));
+    }
+  }
+}
 
 function buildTVVideoConstraints(settings, facingMode = 'user') {
   const base = buildMobileVideoConstraints(settings);
@@ -210,17 +231,19 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
 
       const video = videoRef.current;
       if (video) {
-        applyInlineVideoAttributes(video);
         video.srcObject = stream;
-        await video.play();
+        await playVideoWhenReady(video);
       }
 
       const visionModule = await import('@mediapipe/tasks-vision');
       const { PoseLandmarker, FilesetResolver } = visionModule;
 
-      const vision = await FilesetResolver.forVisionTasks(
-        'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.34/wasm',
-      );
+      let vision;
+      try {
+        vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE);
+      } catch {
+        vision = await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_CDN);
+      }
 
       const createDetector = async (delegate) =>
         PoseLandmarker.createFromOptions(vision, {

@@ -43,7 +43,10 @@ type JointLike = { x: number; y: number; confidence?: number; visibility?: numbe
 
 function jointConfidence(joint: JointLike | undefined): number {
   if (!joint) return 0;
-  return joint.confidence ?? joint.visibility ?? 0;
+  const v = joint.confidence ?? joint.visibility;
+  // 추출된 스켈레톤은 visibility 필드가 없을 수 있음 → 그리기 허용
+  if (v == null || !Number.isFinite(v)) return 1;
+  return v;
 }
 
 /** 원본 영상 비율을 유지한 스켈레톤 그리기 */

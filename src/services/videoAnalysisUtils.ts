@@ -10,7 +10,7 @@ export function jointsToSkeletonJoints(joints: Record<string, { x: number; y: nu
       x: joint.x,
       y: joint.y,
       z: joint.z ?? 0,
-      visibility: joint.visibility ?? joint.confidence,
+      visibility: joint.visibility ?? joint.confidence ?? 1,
     };
   });
   return out;
