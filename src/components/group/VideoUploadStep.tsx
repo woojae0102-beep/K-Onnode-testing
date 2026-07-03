@@ -1,8 +1,9 @@
 // @ts-nocheck
 import React, { useRef, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
-import { useVideoAnalysis } from '../../hooks/useVideoAnalysis';
-import { buildDanceDatabase, saveDanceDatabase } from '../../services/dance/DanceDatabaseService';
+import { useSkeletonExtract } from '../../hooks/useSkeletonExtract';
+import MotionExtractionDebugOverlay from './MotionExtractionDebugOverlay';
+import GroupMotionDebugOverlay from './GroupMotionDebugOverlay';
 import MemberAutoDetect from './MemberAutoDetect';
 
 const ACCEPTED_TYPES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/x-msvideo'];
@@ -17,7 +18,21 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
   const [phase, setPhase] = useState('upload');
   const [localError, setLocalError] = useState('');
 
-  const { analyzeVideo, progress, statusMessage, isAnalyzing, error, cancel } = useVideoAnalysis();
+  const {
+    analyzeFile,
+    finalizeExtraction,
+    progress,
+    step,
+    isExtracting,
+    error,
+    debug,
+    groupMotionDebug,
+    showDebug,
+    cancel,
+    videoRef,
+  } = useSkeletonExtract();
+
+  const songId = `${groupId}-upload`;
 
   if (!group || !member) return null;
 
@@ -39,14 +54,21 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
     setPhase('analyzing');
     setLocalError('');
 
-    try {
-      const result = await analyzeVideo(videoFile);
-      setAnalysisResult(result);
-      setPhase('confirm');
-    } catch (err) {
-      setLocalError(err?.message || '분석에 실패했습니다.');
+    const result = await analyzeFile(videoFile, {
+      groupId,
+      userMemberId: memberId,
+      songId,
+      showDebug: true,
+    });
+
+    if (!result) {
+      setLocalError('Holistic Motion Analysis에 실패했습니다.');
       setPhase('upload');
+      return;
     }
+
+    setAnalysisResult(result);
+    setPhase('confirm');
   };
 
   const handleRetry = () => {
@@ -56,31 +78,29 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
     setLocalError('');
   };
 
-  if (phase === 'confirm' && analysisResult) {
+  if (phase === 'confirm' && analysisResult && videoFile) {
     return (
       <MemberAutoDetect
         groupId={groupId}
         myMemberId={memberId}
         analysisResult={analysisResult}
         onConfirm={async (trackToMemberMap) => {
-          const danceDb = buildDanceDatabase({
+          const result = await finalizeExtraction(videoFile, analysisResult, trackToMemberMap, {
             groupId,
-            songId: `${groupId}-upload`,
             userMemberId: memberId,
-            analysisResult,
-            trackToMember: trackToMemberMap,
+            songId,
           });
-          await saveDanceDatabase(danceDb);
-          const frames = danceDb.skeletonFrames;
-          if (!frames.length) {
+          if (!result?.danceDatabase?.skeletonFrames?.length) {
             setLocalError('매칭된 AI 멤버 데이터가 없습니다. 멤버 매칭을 다시 확인해주세요.');
-            setPhase('upload');
+            setPhase('confirm');
             return;
           }
-          onExtracted(frames, {
+          onExtracted(result.frames, {
             detectedMemberCount: analysisResult.detectedMemberCount,
             trackCount: trackToMemberMap.size,
-            danceDatabase: danceDb,
+            danceDatabase: result.danceDatabase,
+            referenceVideo: result.referenceVideo,
+            fromCache: result.fromCache,
           });
         }}
         onRetry={handleRetry}
@@ -88,7 +108,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
     );
   }
 
-  if (phase === 'analyzing' || isAnalyzing) {
+  if (phase === 'analyzing' || isExtracting) {
     return (
       <div
         style={{
@@ -102,13 +122,30 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
           fontFamily: 'Inter, sans-serif',
         }}
       >
-        <div style={{ width: '100%', maxWidth: 400, textAlign: 'center' }}>
-          <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 12 }}>
-            영상 분석 중
+        <div style={{ width: '100%', maxWidth: 480 }}>
+          <div style={{ textAlign: 'center', marginBottom: 16 }}>
+            <div style={{ fontSize: 18, fontWeight: 700, color: '#fff', marginBottom: 8 }}>
+              K-POP Motion Extraction
+            </div>
+            <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', lineHeight: 1.6 }}>
+              {step}
+            </div>
           </div>
-          <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.55)', marginBottom: 24, lineHeight: 1.6 }}>
-            {statusMessage}
-          </div>
+
+          {previewUrl ? (
+            <div style={{ position: 'relative', marginBottom: 16, borderRadius: 12, overflow: 'hidden' }}>
+              <video
+                ref={videoRef}
+                src={previewUrl}
+                muted
+                playsInline
+                style={{ width: '100%', maxHeight: 280, display: 'block', background: '#000' }}
+              />
+              <MotionExtractionDebugOverlay debug={debug} visible={showDebug} />
+              <GroupMotionDebugOverlay debug={groupMotionDebug} visible={showDebug} />
+            </div>
+          ) : null}
+
           <div
             style={{
               height: 8,
@@ -127,23 +164,26 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
               }}
             />
           </div>
-          <div style={{ fontSize: 24, fontWeight: 800, color: member.color }}>{progress}%</div>
-          <button
-            type="button"
-            onClick={handleRetry}
-            style={{
-              marginTop: 24,
-              padding: '8px 16px',
-              background: 'none',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: 8,
-              color: 'rgba(255,255,255,0.5)',
-              fontSize: 12,
-              cursor: 'pointer',
-            }}
-          >
-            취소
-          </button>
+          <div style={{ textAlign: 'center', fontSize: 24, fontWeight: 800, color: member.color }}>
+            {progress}%
+          </div>
+          <div style={{ textAlign: 'center', marginTop: 16 }}>
+            <button
+              type="button"
+              onClick={handleRetry}
+              style={{
+                padding: '8px 16px',
+                background: 'none',
+                border: '1px solid rgba(255,255,255,0.15)',
+                borderRadius: 8,
+                color: 'rgba(255,255,255,0.5)',
+                fontSize: 12,
+                cursor: 'pointer',
+              }}
+            >
+              취소
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -181,7 +221,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
           <div style={{ fontSize: 13, color: 'rgba(255,255,255,0.5)', lineHeight: 1.6 }}>
             {group.nameKr} · {member.nameKr} 파트 연습용 영상을 올려주세요
             <br />
-            인원 자동 감지 + 멤버 추적으로 AI 아바타 동작을 분리합니다
+            Pose+Hand+Face Holistic 추출 · RVFC GPU · Motion Database 저장
           </div>
         </div>
 
@@ -268,7 +308,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             boxShadow: videoFile ? `0 0 24px ${member.color}40` : 'none',
           }}
         >
-          {videoFile ? '분석 시작 (인원 자동 감지)' : '영상을 먼저 선택하세요'}
+          {videoFile ? 'Holistic Motion Extraction 시작' : '영상을 먼저 선택하세요'}
         </button>
 
         <div
@@ -283,8 +323,8 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             lineHeight: 1.6,
           }}
         >
-          💡 포메이션 변경·가림에도 추적 ID를 유지합니다. 분석 후 멤버 매칭을 직접 확인할 수
-          있습니다. 원본 영상은 저장하지 않습니다.
+          💡 30~60fps RVFC 추출 · Hungarian/Kalman 트래킹 · Hand/Face 포함.
+          분석 후 멤버 매칭 확인 → Motion Database·Reference Video·캐시 자동 저장.
         </div>
       </div>
     </div>

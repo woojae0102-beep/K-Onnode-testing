@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import type { ChoreographyJoint } from '../../types/groupChoreography';
 import { JointKalmanFilter } from '../motion/JointKalmanFilter';
+import { buildAvatarJointsFromMember } from '../../utils/skeleton3DUtils';
 
 /** 실시간 카메라 포즈 스무딩 (인스턴스당 1개) */
 let livePoseFilter: JointKalmanFilter | null = null;
@@ -32,7 +33,11 @@ const BONE_MAP: Record<string, string[]> = {
 };
 
 function jointVec(a: ChoreographyJoint, b: ChoreographyJoint) {
-  return new THREE.Vector3(b.x - a.x, -(b.y - a.y), (b.z ?? 0) - (a.z ?? 0));
+  return new THREE.Vector3(
+    b.x - a.x,
+    -(b.y - a.y),
+    (b.z ?? 0) - (a.z ?? 0),
+  );
 }
 
 function applyBoneRotation(
@@ -55,9 +60,21 @@ function applyBoneRotation(
   bone.quaternion.slerp(quat, 0.85);
 }
 
+function resolveHipRoot(joints: Record<string, ChoreographyJoint>) {
+  const l = joints.left_hip;
+  const r = joints.right_hip;
+  if (l && r) {
+    return new THREE.Vector3(
+      ((l.x + r.x) / 2 - 0.5) * 4,
+      -( ((l.y + r.y) / 2 - 0.5) * 3),
+      ((l.z ?? 0) + (r.z ?? 0)) / 2 * 2,
+    );
+  }
+  return new THREE.Vector3(0, 0, 0);
+}
+
 /**
- * Skeleton 관절 좌표를 humanoid GLB 본 회전에 적용 (기본 리타겟)
- * Foot sliding 완화: 발목 y를 바닥(y=0)에 클램프
+ * Skeleton 관절 좌표를 humanoid GLB 본 회전에 적용 (3D Z축 포함).
  */
 export function applyJointsToSkeleton(
   root: THREE.Object3D,
@@ -82,6 +99,9 @@ export function applyJointsToSkeleton(
     };
   });
 
+  const hipOffset = resolveHipRoot(joints);
+  root.position.lerp(hipOffset, 0.35);
+
   Object.entries(BONE_MAP).forEach(([boneKey, [fromName, toName]]) => {
     const from = normalized[fromName];
     const to = normalized[toName];
@@ -102,16 +122,7 @@ export function normalizedJointsToWorld(
   joints: Record<string, ChoreographyJoint>,
   stageScale = { width: 4, height: 3, depth: 2 },
 ) {
-  const out: Record<string, ChoreographyJoint> = {};
-  Object.entries(joints).forEach(([name, j]) => {
-    out[name] = {
-      x: (j.x - 0.5) * stageScale.width,
-      y: -(j.y - 0.5) * stageScale.height,
-      z: (j.z ?? 0) * stageScale.depth,
-      visibility: j.visibility,
-    };
-  });
-  return out;
+  return buildAvatarJointsFromMember({ joints }, stageScale);
 }
 
 export function smoothLiveJoints(

@@ -19,11 +19,8 @@ import {
   buildRenderConfig,
 } from '../../utils/groupSkeletonDraw';
 import { computeAspectFitSize, normalizedToCanvas } from '../../utils/canvasSkeletonUtils';
-import { findFrameAtTime } from '../../utils/skeletonTimelineUtils';
-import {
-  normalizeSkeletonFrames,
-  validateSkeletonForPractice,
-} from '../../utils/skeletonDataUtils';
+import { findFrameAtTime, findFrameIndexAtTime } from '../../utils/skeletonTimelineUtils';
+import { validateSkeletonForPractice } from '../../utils/skeletonDataUtils';
 import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
@@ -34,24 +31,30 @@ import type { Agency } from '../../types/tv';
 import { AGENCY_COLORS } from '../../types/tv';
 import '../../styles/group-studio.css';
 import '../../styles/studio-mode.css';
+import SnapshotDebugOverlay from './SnapshotDebugOverlay';
+import GroupMotionDebugOverlay from './GroupMotionDebugOverlay';
+import PracticeDebugHUD from './PracticeDebugHUD';
+import { buildGroupMotionDebugFromSession } from '../../utils/groupMotionDebugUtils';
+import { logSnapshotStatus } from '../../utils/snapshotDebugLog';
 
 const GroupDanceStage3D = lazy(() => import('./three/GroupDanceStage3D'));
 
 const SLOT_THRESHOLD = 0.15;
 
 export function GroupStudioSession({
-  songId,
-  groupId,
-  myMemberId,
-  skeletonData,
-  referenceYoutubeUrl = '',
-  practiceDuration = null,
-  danceDatabase = null,
+  practiceSessionData,
+  referenceYoutubeUrl: referenceYoutubeUrlOverride = '',
   agency = 'hybe',
   onEnd,
   onHome,
 }) {
   const { t } = useTranslation();
+  const songId = practiceSessionData.songId;
+  const groupId = practiceSessionData.groupId;
+  const myMemberId = practiceSessionData.userMemberId;
+  const sessionFrames = practiceSessionData.frames;
+  const maxDuration = practiceSessionData.duration;
+  const referenceYoutubeUrl = practiceSessionData.referenceVideo?.youtubeUrl || referenceYoutubeUrlOverride;
   const song = getSongById(songId);
   const group = GROUP_DATA[groupId];
   const myMember = group?.members.find((m) => m.id === myMemberId);
@@ -60,24 +63,16 @@ export function GroupStudioSession({
 
   const stageCanvasRef = useRef(null);
   const ytPlayerRef = useRef(null);
-  const normalizedSkeletonData = useMemo(
-    () => normalizeSkeletonFrames(skeletonData),
-    [skeletonData],
-  );
 
   const skeletonValidation = useMemo(
-    () => validateSkeletonForPractice(normalizedSkeletonData, myMemberId),
-    [normalizedSkeletonData, myMemberId],
+    () => validateSkeletonForPractice(sessionFrames, myMemberId, {
+      skipNormalize: true,
+      expectedDurationSec: maxDuration,
+    }),
+    [sessionFrames, myMemberId, maxDuration],
   );
-  const skeletonEnd = normalizedSkeletonData?.[normalizedSkeletonData.length - 1]?.timestamp || 0;
-  const sourceVideoSec =
-    danceDatabase?.sourceVideoDurationSec
-    || practiceDuration
-    || skeletonEnd
-    || 180;
-  const maxDuration = Math.max(sourceVideoSec, skeletonEnd, practiceDuration || 0);
-  const sourceVideoWidth = normalizedSkeletonData?.[0]?.videoWidth || skeletonData?.[0]?.videoWidth || 1920;
-  const sourceVideoHeight = normalizedSkeletonData?.[0]?.videoHeight || skeletonData?.[0]?.videoHeight || 1080;
+  const sourceVideoWidth = practiceSessionData.videoWidth || sessionFrames?.[0]?.videoWidth || 1920;
+  const sourceVideoHeight = practiceSessionData.videoHeight || sessionFrames?.[0]?.videoHeight || 1080;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
@@ -114,7 +109,7 @@ export function GroupStudioSession({
     startTimeline,
     forceStop,
     getCurrentFrame,
-  } = useIndependentTimeline(normalizedSkeletonData || [], maxDuration);
+  } = useIndependentTimeline(sessionFrames || [], maxDuration);
   const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
     myMemberId,
     group?.members || [],
@@ -124,18 +119,20 @@ export function GroupStudioSession({
     groupId,
     songId,
     userMemberId: myMemberId,
-    skeletonFrames: normalizedSkeletonData,
+    skeletonFrames: sessionFrames,
     practiceDuration: maxDuration,
+    sampleFps: practiceSessionData.fps,
+    totalFrames: practiceSessionData.totalFrames,
   });
   const myDefault = { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5 };
 
-  const formationHole = danceDatabase?.formationHole || {
+  const formationHole = practiceSessionData.formationHole || {
     memberId: myMemberId,
     anchor: { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5, z: 0 },
     label: myMember?.nameKr || 'YOU',
     color: myMember?.color || '#FF1F8E',
   };
-  const aiMemberIds = danceDatabase?.positionMap?.aiMemberIds || otherMembers.map((m) => m.id);
+  const aiMemberIds = practiceSessionData.positionMap?.aiMemberIds || otherMembers.map((m) => m.id);
   const { assets: avatarAssets } = useGroupAvatarAssets(groupId, aiMemberIds);
   const use3DStage = stageViewMode === '3d' && !danceEngine.error;
   const show3DRenderer = use3DStage && !danceEngine.loading;
@@ -147,11 +144,11 @@ export function GroupStudioSession({
   }, [danceEngine.error, stageViewMode]);
 
   useEffect(() => {
-    if (!show3DRenderer || !skeletonData?.length) return;
+    if (!show3DRenderer || !sessionFrames?.length) return;
     if (sessionPhase === 'lobby' || sessionPhase === 'countdown' || sessionPhase === 'waiting_slot') {
       danceEngine.tick(0, null);
     }
-  }, [show3DRenderer, skeletonData, sessionPhase, danceEngine]);
+  }, [show3DRenderer, sessionFrames, sessionPhase, danceEngine]);
 
   useEffect(() => {
     const updateFullscreen = () => {
@@ -196,10 +193,7 @@ export function GroupStudioSession({
   const hasSkeletonData = skeletonValidation.valid;
   const skeletonIssue = skeletonValidation.reason || '';
 
-  const effectiveMaxDuration = Math.max(
-    maxDuration,
-    referenceVideoDuration || 0,
-  );
+  const effectiveMaxDuration = maxDuration;
 
   const practiceEnded =
     isPracticing
@@ -207,6 +201,49 @@ export function GroupStudioSession({
       (referenceYoutubeUrl && isRunning && videoPlaybackTime >= effectiveMaxDuration - 0.35)
       || (!referenceYoutubeUrl && isFinished)
     );
+
+  const debugHudStats = useMemo(() => {
+    const frameIndex =
+      danceSnapshot?.timeline?.frameIndex
+      ?? findFrameIndexAtTime(sessionFrames, effectiveTime);
+    const totalTimelineFrames =
+      danceSnapshot?.timeline?.totalFrames
+      ?? practiceSessionData.totalFrames
+      ?? sessionFrames.length;
+    const frame = danceSnapshot?.frame ?? findFrameAtTime(sessionFrames, effectiveTime);
+    const skeletonCount = frame?.members?.length ?? 0;
+    const aiInFrame = frame?.members?.filter(
+      (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
+    ).length ?? 0;
+    const userSkeletonJoints = dance.poseData?.joints
+      ? Object.keys(dance.poseData.joints).length
+      : 0;
+    const snapshotAiCount = danceSnapshot?.aiAvatars?.filter(
+      (a) => Object.keys(a.joints || {}).length > 0,
+    ).length ?? 0;
+
+    return {
+      frameIndex,
+      totalTimelineFrames,
+      skeletonCount,
+      aiAvatarCount: Math.max(aiInFrame, snapshotAiCount, stageSkeletonCount),
+      userSkeletonJoints,
+      snapshotAiCount,
+    };
+  }, [
+    sessionFrames,
+    effectiveTime,
+    myMemberId,
+    dance.poseData,
+    danceSnapshot,
+    stageSkeletonCount,
+    practiceSessionData.totalFrames,
+  ]);
+
+  const groupMotionDebug = useMemo(() => {
+    const frame = danceSnapshot?.frame ?? findFrameAtTime(sessionFrames, effectiveTime);
+    return buildGroupMotionDebugFromSession(practiceSessionData, frame, effectiveTime);
+  }, [practiceSessionData, danceSnapshot, sessionFrames, effectiveTime]);
 
   const studio = useStudioSession({
     localStream: dance.getStream(),
@@ -330,24 +367,22 @@ export function GroupStudioSession({
 
       let aiRendered = 0;
 
-      if (normalizedSkeletonData?.length) {
-        const frame = findFrameAtTime(normalizedSkeletonData, timeSec);
-        frame?.members?.forEach((memberData) => {
-          if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
-          const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
-          if (!member || !memberData.joints || !Object.keys(memberData.joints).length) return;
-          drawAIAvatar(
-            ctx,
-            memberData.joints,
-            member.color,
-            member.nameKr,
-            canvas,
-            renderConfig,
-            memberData.isEstimated,
-          );
-          aiRendered += 1;
-        });
-      }
+      const frame = snapshot?.frame ?? findFrameAtTime(sessionFrames, timeSec);
+      frame?.members?.forEach((memberData) => {
+        if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
+        const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
+        if (!member || !memberData.joints || !Object.keys(memberData.joints).length) return;
+        drawAIAvatar(
+          ctx,
+          memberData.joints,
+          member.color,
+          member.nameKr,
+          canvas,
+          renderConfig,
+          memberData.isEstimated,
+        );
+        aiRendered += 1;
+      });
 
       if (aiRendered === 0) {
         const aiAvatars = snapshot?.aiAvatars || [];
@@ -371,7 +406,7 @@ export function GroupStudioSession({
         drawUserSkeleton(ctx, smoothed, myMember.color, canvas, anchorX, anchorY);
       }
     },
-    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight, normalizedSkeletonData, resizeStageCanvas],
+    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight, sessionFrames, resizeStageCanvas],
   );
 
   renderGroupStageRef.current = renderGroupStage;
@@ -380,9 +415,19 @@ export function GroupStudioSession({
   useEffect(() => {
     if (show3DRenderer) return;
     if (sessionPhase !== 'lobby' && sessionPhase !== 'waiting_slot') return;
-    const snapshot = syncDanceStage(0);
-    if (snapshot) renderGroupStage(snapshot);
-  }, [show3DRenderer, sessionPhase, syncDanceStage, renderGroupStage]);
+    const snapshot = syncDanceStage(0) || null;
+    logSnapshotStatus(snapshot, `2d-idle-${sessionPhase}`, { loading: danceEngine.loading });
+    setDanceSnapshot(snapshot);
+    renderGroupStage(snapshot);
+  }, [show3DRenderer, sessionPhase, syncDanceStage, renderGroupStage, danceEngine.loading]);
+
+  useEffect(() => {
+    if (!show3DRenderer) return;
+    if (sessionPhase !== 'lobby' && sessionPhase !== 'waiting_slot' && sessionPhase !== 'countdown') return;
+    const snapshot = syncDanceStage(0) || null;
+    logSnapshotStatus(snapshot, `3d-idle-${sessionPhase}`, { loading: danceEngine.loading });
+    setDanceSnapshot(snapshot);
+  }, [show3DRenderer, sessionPhase, syncDanceStage, danceEngine.loading]);
 
   const checkSlotEntry = useCallback(() => {
     if (!dance.poseData?.joints?.nose || slotEnteredRef.current) return false;
@@ -393,8 +438,8 @@ export function GroupStudioSession({
   }, [dance.poseData, myDefault]);
 
   const getPracticeFrame = useCallback(
-    () => findFrameAtTime(normalizedSkeletonData || [], effectiveTime),
-    [normalizedSkeletonData, effectiveTime],
+    () => danceSnapshot?.frame ?? findFrameAtTime(sessionFrames || [], effectiveTime),
+    [danceSnapshot, sessionFrames, effectiveTime],
   );
 
   const finishSession = useCallback(
@@ -480,11 +525,12 @@ export function GroupStudioSession({
       if (now - last3dAt > 100) {
         last3dAt = now;
         setDanceSnapshot(snapshot);
+        logSnapshotStatus(snapshot, 'practice-loop', { loading: danceEngine.loading });
       }
 
       if (now - lastScoreAt > 120) {
         lastScoreAt = now;
-        const frame = findFrameAtTime(normalizedSkeletonData || [], t);
+        const frame = findFrameAtTime(sessionFrames || [], t);
         if (dance.poseData && frame) {
           const accuracy = updateSyncScore(dance.poseData, frame, t);
           if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
@@ -510,7 +556,7 @@ export function GroupStudioSession({
           beatProgress: maxDuration > 0 ? t / maxDuration : 0,
           currentTime: t,
           maxDuration,
-          bpm: danceDatabase?.bpm?.bpm,
+          bpm: song?.bpm,
           isPlaying: isRunning,
           members: group?.members.map((m) => ({
             id: m.id,
@@ -536,7 +582,7 @@ export function GroupStudioSession({
     isRunning,
     isFinished,
     referenceYoutubeUrl,
-    normalizedSkeletonData,
+    sessionFrames,
     dance.poseData,
     updateSyncScore,
     groupId,
@@ -547,7 +593,7 @@ export function GroupStudioSession({
     roundedScore,
     formationHole,
     maxDuration,
-    danceDatabase,
+    danceEngine.loading,
   ]);
 
   useEffect(() => {
@@ -723,7 +769,20 @@ export function GroupStudioSession({
           </div>
         ) : null}
 
-        <div className="group-studio-stage-pane group-studio-stage-panel" style={{ borderColor: `${myMember.color}33` }}>
+        <div className="group-studio-stage-pane group-studio-stage-panel" style={{ position: 'relative', borderColor: `${myMember.color}33` }}>
+        <PracticeDebugHUD
+          frameIndex={debugHudStats.frameIndex}
+          totalFrames={debugHudStats.totalTimelineFrames}
+          duration={maxDuration}
+          skeletonCount={debugHudStats.skeletonCount}
+          aiAvatarCount={debugHudStats.aiAvatarCount}
+          userSkeletonJoints={debugHudStats.userSkeletonJoints}
+          currentTimeline={effectiveTime}
+          snapshotAiCount={debugHudStats.snapshotAiCount}
+          validationReport={practiceSessionData.motionMetadata?.validationReport}
+          interpolatedMemberCount={practiceSessionData.motionMetadata?.pipelineAudit?.interpolatedMemberCount}
+        />
+        <GroupMotionDebugOverlay debug={groupMotionDebug} visible />
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.5)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.stageLabel')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -759,6 +818,9 @@ export function GroupStudioSession({
           >
             <GroupDanceStage3D
               snapshot={danceSnapshot}
+              snapshotLoading={danceEngine.loading}
+              skeletonFrames={sessionFrames}
+              currentTimeSec={danceSnapshot?.currentTime ?? danceSnapshot?.timestamp ?? effectiveTime}
               className="group-studio-stage-3d"
               avatarAssets={avatarAssets}
               formationHole={formationHole}
@@ -766,8 +828,11 @@ export function GroupStudioSession({
             />
           </Suspense>
         ) : (
-          <div className="group-studio-stage-canvas-wrap">
+          <div className="group-studio-stage-canvas-wrap" style={{ position: 'relative' }}>
             <canvas ref={stageCanvasRef} className="group-studio-stage-canvas" />
+            {!show3DRenderer ? (
+              <SnapshotDebugOverlay snapshot={danceSnapshot} loading={danceEngine.loading} />
+            ) : null}
           </div>
         )}
 
@@ -797,7 +862,13 @@ export function GroupStudioSession({
             {skeletonIssue || 'AI 스켈레톤이 표시되지 않습니다. 안무 추출을 다시 진행해 주세요.'}
             {!skeletonValidation.valid ? (
               <span style={{ display: 'block', marginTop: 4, opacity: 0.85 }}>
-                (저장된 프레임 {skeletonValidation.frameCount}개, AI 멤버 {skeletonValidation.aiMemberCount}명)
+                (유효 {skeletonValidation.report.validFrames}/{skeletonValidation.report.totalFrames}프레임
+                {' · '}
+                AI {skeletonValidation.aiMemberCount}명 · 평균 {skeletonValidation.report.memberAverage.toFixed(1)}명/프레임)
+              </span>
+            ) : skeletonValidation.report ? (
+              <span style={{ display: 'block', marginTop: 4, opacity: 0.85 }}>
+                (유효 {Math.round(skeletonValidation.report.validFrameRatio * 100)}% · {skeletonValidation.report.validFrames}/{skeletonValidation.report.totalFrames}프레임)
               </span>
             ) : null}
           </div>

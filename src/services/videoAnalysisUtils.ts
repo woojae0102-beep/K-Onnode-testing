@@ -1,17 +1,27 @@
 // @ts-nocheck
 import type { SkeletonFrameData } from '../types/groupPractice';
 import type { AnalysisResult } from './videoAnalysisTypes';
-import { fillMemberGapsInSkeletonFrames } from '../utils/skeletonTimelineUtils';
-import { normalizeTrackMemberMap, resolveMemberForTrack } from '../utils/skeletonDataUtils';
+import {
+  computeBoundingBoxFromJoints,
+  normalizeTrackMemberMap,
+  resolveMemberForTrack,
+} from '../utils/skeletonDataUtils';
+import {
+  sanitizeHolisticFace,
+  sanitizeHolisticHand,
+} from '../utils/holisticLandmarkUtils';
+import { worldJointsToSkeletonWorldPoints } from '../utils/jointConfidenceFilter';
 
-export function jointsToSkeletonJoints(joints: Record<string, { x: number; y: number; z?: number; confidence?: number; visibility?: number }>) {
-  const out: Record<string, { x: number; y: number; z: number; visibility?: number }> = {};
+export function jointsToSkeletonJoints(joints: Record<string, { x: number; y: number; z?: number; confidence?: number; visibility?: number; presence?: number }>) {
+  const out: Record<string, { x: number; y: number; z: number; visibility?: number; presence?: number; confidence?: number }> = {};
   Object.entries(joints).forEach(([name, joint]) => {
     out[name] = {
       x: joint.x,
       y: joint.y,
       z: joint.z ?? 0,
       visibility: joint.visibility ?? joint.confidence ?? 1,
+      presence: joint.presence,
+      confidence: joint.confidence ?? joint.visibility ?? 1,
     };
   });
   return out;
@@ -42,26 +52,71 @@ export function buildSkeletonFramesFromAnalysis(
   }
 
   const rawFrames = analysisResult.frames
-    .map((frame) => ({
-      timestamp: frame.timestamp,
-      timestampMs: frame.timestampMs ?? Math.round(frame.timestamp * 1000),
-      videoWidth: frame.videoWidth ?? videoWidth,
-      videoHeight: frame.videoHeight ?? videoHeight,
-      members: (frame.detectedPeople || [])
+    .map((frame, frameIndex) => {
+      const members = (frame.detectedPeople || [])
         .map((person) => {
           const memberId = resolveMemberForTrack(map, person.trackId, excludeMemberId);
           if (!memberId) return null;
           const joints = jointsToSkeletonJoints(person.joints || {});
           if (!Object.keys(joints).length) return null;
+          const boundingBox = computeBoundingBoxFromJoints(joints);
+          const worldCoordinates = person.worldJoints && Object.keys(person.worldJoints).length
+            ? worldJointsToSkeletonWorldPoints(person.worldJoints)
+            : undefined;
           return {
             personIndex: Number(person.trackId),
+            trackId: Number(person.trackId),
             estimatedMemberId: memberId,
             isEstimated: person.isEstimated ?? false,
+            confidence: person.confidence,
             joints,
+            boundingBox,
+            worldCoordinates,
+            leftHand: sanitizeHolisticHand(person.leftHand),
+            rightHand: sanitizeHolisticHand(person.rightHand),
+            face: sanitizeHolisticFace(person.face),
           };
         })
-        .filter(Boolean),
-    }))
+        .filter(Boolean);
+
+      const memberTracks = (frame.detectedPeople || []).map((person) => ({
+        trackId: Number(person.trackId),
+        memberId: resolveMemberForTrack(map, person.trackId, excludeMemberId),
+        confidence: person.confidence,
+      }));
+
+      const frameConfidence = memberTracks.length
+        ? memberTracks.reduce((sum, t) => sum + (t.confidence || 0), 0) / memberTracks.length
+        : 0;
+
+      return {
+        timestamp: frame.timestamp,
+        timestampMs: frame.timestampMs ?? Math.round(frame.timestamp * 1000),
+        sourceVideoTime: frame.timestamp,
+        frameIndex,
+        videoWidth: frame.videoWidth ?? videoWidth,
+        videoHeight: frame.videoHeight ?? videoHeight,
+        members,
+        memberTracks,
+        confidence: frameConfidence,
+        boundingBox: members.length
+          ? members.reduce(
+              (acc, m) => {
+                const box = m.boundingBox;
+                if (!box) return acc;
+                if (!acc) return { ...box };
+                return {
+                  minX: Math.min(acc.minX, box.minX),
+                  minY: Math.min(acc.minY, box.minY),
+                  maxX: Math.max(acc.maxX, box.maxX),
+                  maxY: Math.max(acc.maxY, box.maxY),
+                };
+              },
+              null as { minX: number; minY: number; maxX: number; maxY: number } | null,
+            ) ?? undefined
+          : undefined,
+      };
+    })
     .filter((frame) => frame.members.length > 0);
 
   if (!rawFrames.length) {
@@ -74,16 +129,14 @@ export function buildSkeletonFramesFromAnalysis(
     );
   }
 
-  const filled = fillMemberGapsInSkeletonFrames(rawFrames, memberIds);
-
   if (import.meta.env?.DEV) {
-    const mid = filled[Math.floor(filled.length / 2)];
+    const mid = rawFrames[Math.floor(rawFrames.length / 2)];
     console.debug(
-      `[buildSkeletonFrames] ${filled.length}프레임, AI멤버 ${memberIds.length}명, 샘플 프레임 멤버 ${mid?.members?.length ?? 0}명`,
+      `[buildSkeletonFrames] ${rawFrames.length}프레임, AI멤버 ${memberIds.length}명, 샘플 프레임 멤버 ${mid?.members?.length ?? 0}명`,
     );
   }
 
-  return filled;
+  return rawFrames;
 }
 
 export default buildSkeletonFramesFromAnalysis;

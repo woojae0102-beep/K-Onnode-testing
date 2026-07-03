@@ -1,282 +1,31 @@
 // @ts-nocheck
 import { useCallback, useState } from 'react';
 import { getGroupData } from '../data/groupPracticeData';
-import { MultiPersonTracker } from '../services/MultiPersonTracker';
 import { buildSkeletonFramesFromAnalysis } from '../services/videoAnalysisUtils';
 import { suggestTrackToMemberMap } from '../services/formationMatching';
 import {
   buildChoreoCacheKey,
+  buildFileCacheKey,
   getCachedChoreo,
   saveCachedChoreo,
+  isChoreoCacheValid,
+  CHOREO_CACHE_PIPELINE_VERSION,
 } from '../services/groupChoreoCache';
 import {
-  CHOREO_MEMBER_PROBE_SAMPLES,
-  CHOREO_POSE_CONFIDENCE,
-  CHOREO_POSE_MODEL_URL,
-  CHOREO_RETRY_SAMPLE_FPS,
-  CHOREO_SAMPLE_FPS,
-  resolveAnalysisDurationSec,
-  resolveNumPoses,
-} from '../config/choreoExtractConfig';
-import { prepareAnalysisVideo, resolveVideoDuration, seekVideoTo, getSeekableEnd } from '../utils/choreoVideoUtils';
-import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../config/groupChoreoConstants';
-
-const AI_INIT_TIMEOUT_MS = 60000;
-
-function withTimeout(promise, ms, message) {
-  return Promise.race([
-    promise,
-    new Promise((_, reject) => {
-      setTimeout(() => reject(new Error(message)), ms);
-    }),
-  ]);
-}
-
-/** seek 기반 오프라인 분석 — IMAGE+detect (VIDEO+detectForVideo는 seek 타임스탬프 불일치) */
-function detectPoses(detector, source) {
-  return detector.detect(source);
-}
-
-function createOffscreenDetectPipeline(videoWidth, videoHeight) {
-  const offscreenCanvas = document.createElement('canvas');
-  offscreenCanvas.width = videoWidth;
-  offscreenCanvas.height = videoHeight;
-  const offscreenCtx = offscreenCanvas.getContext('2d');
-
-  const detectFrame = (detector, video) => {
-    const vw = video.videoWidth || videoWidth;
-    const vh = video.videoHeight || videoHeight;
-    if (offscreenCtx && vw && vh) {
-      if (offscreenCanvas.width !== vw) offscreenCanvas.width = vw;
-      if (offscreenCanvas.height !== vh) offscreenCanvas.height = vh;
-      offscreenCtx.drawImage(video, 0, 0, vw, vh);
-      return detectPoses(detector, offscreenCanvas);
-    }
-    return detectPoses(detector, video);
-  };
-
-  return { offscreenCanvas, detectFrame };
-}
-
-async function resolveVisionWasm(FilesetResolver) {
-  try {
-    return await FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_BASE);
-  } catch (localErr) {
-    console.warn('[PoseDetector] 로컬 WASM 실패, CDN 폴백', localErr);
-    return FilesetResolver.forVisionTasks(MEDIAPIPE_WASM_CDN);
-  }
-}
-
-async function ensureVideoDimensions(video) {
-  const duration = await resolveVideoDuration(video);
-  if (!video.videoWidth || !video.videoHeight) {
-    throw new Error('영상 크기를 인식할 수 없습니다. 다른 영상 파일을 사용해 주세요.');
-  }
-  return {
-    videoWidth: video.videoWidth,
-    videoHeight: video.videoHeight,
-    sourceVideoDurationSec: duration,
-  };
-}
+  buildReferenceVideoCacheKey,
+  getReferenceVideoObjectUrl,
+  saveReferenceVideo,
+} from '../services/referenceVideoStore';
+import {
+  prepareAnalysisVideo,
+} from '../utils/choreoVideoUtils';
+import {
+  createHolisticMotionDetector,
+  runHolisticVideoAnalysis,
+} from '../services/motion/MotionExtractionEngine';
 
 async function createPoseDetector(groupMemberCount, onStatus, { lenient = false } = {}) {
-  onStatus?.('MediaPipe AI 모듈 로드 중...');
-  const visionModule = await withTimeout(
-    import('@mediapipe/tasks-vision'),
-    AI_INIT_TIMEOUT_MS,
-    'AI 모듈 로드 시간이 초과되었습니다. 네트워크 연결 후 다시 시도해 주세요.',
-  );
-  const { PoseLandmarker, FilesetResolver } = visionModule;
-
-  onStatus?.('AI 모션 분석 엔진 초기화 중...');
-  const vision = await withTimeout(
-    resolveVisionWasm(FilesetResolver),
-    AI_INIT_TIMEOUT_MS,
-    'AI 엔진(WASM) 초기화 시간이 초과되었습니다. 페이지를 새로고침 후 다시 시도해 주세요.',
-  );
-
-  const confidence = lenient ? CHOREO_POSE_CONFIDENCE.lenient : CHOREO_POSE_CONFIDENCE.normal;
-
-  const resolvedNumPoses = resolveNumPoses(groupMemberCount);
-  const numPoses = Math.max(resolvedNumPoses, (Number(groupMemberCount) || 5) + 2);
-
-  console.log(
-    `[PoseDetector] groupMemberCount=${groupMemberCount}, resolveNumPoses()=${resolvedNumPoses}, 최종 numPoses=${numPoses}`,
-  );
-
-  if (resolvedNumPoses < (Number(groupMemberCount) || 5)) {
-    console.error(
-      `[PoseDetector] ⚠️ resolveNumPoses(${groupMemberCount})가 ${resolvedNumPoses}를 반환했습니다. ` +
-        'choreoExtractConfig.ts의 resolveNumPoses 로직을 확인하세요.',
-    );
-  }
-
-  const build = async (delegate) => {
-    onStatus?.(delegate === 'GPU' ? 'GPU AI 모델 로드 중...' : 'CPU AI 모델 로드 중...');
-    return withTimeout(
-      PoseLandmarker.createFromOptions(vision, {
-        baseOptions: {
-          modelAssetPath: CHOREO_POSE_MODEL_URL.lite,
-          delegate,
-        },
-        runningMode: 'IMAGE',
-        numPoses,
-        minPoseDetectionConfidence: confidence.minPoseDetectionConfidence,
-        minPosePresenceConfidence: confidence.minPosePresenceConfidence,
-        minTrackingConfidence: confidence.minTrackingConfidence,
-      }),
-      AI_INIT_TIMEOUT_MS,
-      'AI 포즈 모델 로드 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
-    );
-  };
-
-  try {
-    return await build('GPU');
-  } catch (gpuErr) {
-    console.warn('[createPoseDetector] GPU failed, falling back to CPU', gpuErr);
-    return build('CPU');
-  }
-}
-
-async function runVideoAnalysis({
-  video,
-  groupId,
-  detector,
-  expectedMemberCount,
-  sampleFps,
-  onProgress,
-  onFrameDetected,
-  abortRef,
-}) {
-  const group = getGroupData(groupId);
-  if (!group || !video || !detector) return null;
-
-  console.log(
-    `[ChoreoExtract] groupId=${groupId}, group.memberCount=${group.memberCount}, expectedMemberCount=${expectedMemberCount}`,
-  );
-
-  const tracker = new MultiPersonTracker();
-  tracker.setSampleFps(sampleFps);
-
-  const { videoWidth, videoHeight, sourceVideoDurationSec } = await ensureVideoDimensions(video);
-  if (import.meta.env?.DEV) {
-    console.debug(
-      `[ChoreoExtract] 영상 ${videoWidth}x${videoHeight}, 길이 ${sourceVideoDurationSec.toFixed(1)}초`,
-    );
-  }
-
-  const { detectFrame } = createOffscreenDetectPipeline(videoWidth, videoHeight);
-
-  onProgress?.(5, '영상 속 인원을 파악하고 있습니다...');
-  const detectedMemberCount = await tracker.detectMemberCount(
-    video,
-    detector,
-    CHOREO_MEMBER_PROBE_SAMPLES,
-    detectFrame,
-    expectedMemberCount,
-  );
-  if (detectedMemberCount === 0) return null;
-
-  const duration = resolveAnalysisDurationSec(sourceVideoDurationSec);
-  const seekEnd = getSeekableEnd(video);
-  const analysisDuration =
-    seekEnd != null ? Math.min(duration, seekEnd + 0.02) : duration;
-
-  if (import.meta.env?.DEV) {
-    console.debug(
-      `[ChoreoExtract] 분석 구간: ${analysisDuration.toFixed(1)}초 (원본 ${sourceVideoDurationSec.toFixed(1)}초)`,
-    );
-  }
-
-  try {
-    await seekVideoTo(video, 0);
-  } catch {
-    /* ignore */
-  }
-
-  const sampleInterval = 1 / sampleFps;
-  const frames = [];
-  let lastDetectedPeople = [];
-  let consecutiveSeekFails = 0;
-
-  for (let t = 0; t < analysisDuration; t += sampleInterval) {
-    if (abortRef.current) break;
-
-    try {
-      await seekVideoTo(video, t);
-      consecutiveSeekFails = 0;
-    } catch (seekErr) {
-      consecutiveSeekFails += 1;
-      console.warn(`[ChoreoExtract] seek 실패 t=${t.toFixed(2)}`, seekErr?.message || seekErr);
-      if (consecutiveSeekFails >= 3 || frames.length > 0) break;
-      continue;
-    }
-
-    const results = detectFrame(detector, video);
-    const timestampMs = Math.round(t * 1000);
-    const rawCount = results.landmarks?.length || 0;
-    let trackedPeople = tracker.trackFrame(results.landmarks || [], t, expectedMemberCount);
-
-    if (!trackedPeople.length && lastDetectedPeople.length) {
-      trackedPeople = lastDetectedPeople.map((person) => ({
-        ...person,
-        isEstimated: true,
-        lastSeenTimestamp: t,
-      }));
-    }
-    if (trackedPeople.length) {
-      lastDetectedPeople = trackedPeople;
-    }
-
-    if (import.meta.env.DEV && rawCount) {
-      console.debug(
-        '[진단] 이 프레임에서 감지된 사람 수:',
-        rawCount,
-        '추적:',
-        trackedPeople.filter((p) => !p.isEstimated).length,
-        '보강:',
-        trackedPeople.filter((p) => p.isEstimated).length,
-      );
-    }
-
-    onFrameDetected?.({
-      rawCount,
-      trackedCount: trackedPeople.length,
-      visibleCount: trackedPeople.filter((p) => !p.isEstimated).length,
-      expectedMemberCount,
-    });
-
-    if (trackedPeople.length) {
-      frames.push({
-        timestamp: t,
-        timestampMs,
-        videoWidth,
-        videoHeight,
-        detectedPeople: trackedPeople,
-      });
-    }
-
-    const pct = Math.round((t / analysisDuration) * 100);
-    onProgress?.(pct, `${expectedMemberCount}명 추적 중... ${pct}%`);
-  }
-
-  if (!frames.length) return null;
-
-  const trackIdToInitialPosition = tracker.buildInitialPositions(frames);
-  const peakTrackCount = Math.max(
-    tracker.getPeakTrackCount(),
-    trackIdToInitialPosition.size,
-  );
-
-  return {
-    detectedMemberCount: Math.max(detectedMemberCount, peakTrackCount),
-    peakTrackCount,
-    frames,
-    trackIdToInitialPosition,
-    videoWidth,
-    videoHeight,
-    sourceVideoDurationSec,
-  };
+  return createHolisticMotionDetector(groupMemberCount, onStatus, { lenient });
 }
 
 export function useGroupChoreoExtract() {
@@ -299,7 +48,7 @@ export function useGroupChoreoExtract() {
   const loadFromCache = useCallback(async (songId, videoId) => {
     const cacheKey = buildChoreoCacheKey(songId, videoId);
     const cached = await getCachedChoreo(cacheKey);
-    if (!cached?.frames?.length) return null;
+    if (!cached?.frames?.length || !isChoreoCacheValid(cached)) return null;
     setFromCache(true);
     return cached.frames;
   }, []);
@@ -312,12 +61,12 @@ export function useGroupChoreoExtract() {
       const expected = group.memberCount;
       abortRef.current = false;
 
-      return runVideoAnalysis({
+      return runHolisticVideoAnalysis({
         video,
         groupId,
         detector,
         expectedMemberCount: expected,
-        sampleFps: options.sampleFps || CHOREO_SAMPLE_FPS,
+        sampleFps: options.sampleFps,
         onProgress,
         onFrameDetected: options.onFrameDetected,
         abortRef,
@@ -350,7 +99,7 @@ export function useGroupChoreoExtract() {
       setExpectedMemberCount(expected);
       setInsufficientWarning(null);
 
-      const attempt = async (lenient, sampleFps, label, existingDetector) => {
+      const attempt = async (lenient, label, existingDetector) => {
         onStatus?.(`${label}...`);
         const detector =
           existingDetector || (await createPoseDetector(expected, onStatus, { lenient }));
@@ -362,7 +111,7 @@ export function useGroupChoreoExtract() {
             setProgress(Math.round(15 + pct * 0.8));
             setStep(msg);
           },
-          { sampleFps, onFrameDetected },
+          { onFrameDetected },
         );
         if (!existingDetector) detector.close?.();
         return result;
@@ -370,7 +119,6 @@ export function useGroupChoreoExtract() {
 
       let analysisResult = await attempt(
         false,
-        CHOREO_SAMPLE_FPS,
         `${group.nameKr} 안무 분석`,
         preloadedDetector,
       );
@@ -379,7 +127,7 @@ export function useGroupChoreoExtract() {
         setStep(
           `${expected}명 중 ${analysisResult.peakTrackCount}명만 감지됐습니다. 더 정밀하게 재분석합니다...`,
         );
-        analysisResult = await attempt(true, CHOREO_RETRY_SAMPLE_FPS, '재분석', null);
+        analysisResult = await attempt(true, '재분석', null);
       }
 
       if (!analysisResult) return { ok: false, reason: 'no_detection' };
@@ -415,6 +163,7 @@ export function useGroupChoreoExtract() {
       setExpectedMemberCount(group.memberCount);
 
       let cleanup = () => {};
+      let referenceBlob = null;
 
       try {
         const video = videoRef?.current;
@@ -436,6 +185,7 @@ export function useGroupChoreoExtract() {
 
         const prep = await prepPromise;
         cleanup = prep.cleanup;
+        referenceBlob = prep.blob || file || null;
 
         if (abortRef.current) throw new Error('취소되었습니다.');
 
@@ -460,6 +210,15 @@ export function useGroupChoreoExtract() {
         );
 
         preloadedDetector?.close?.();
+
+        const resolvedVideoId = videoId || (file ? buildFileCacheKey(songId, file).split(':').slice(1).join(':') : null);
+        await persistReferenceVideo({
+          songId,
+          videoId: resolvedVideoId,
+          groupId,
+          blob: referenceBlob,
+          durationSec: video.duration,
+        });
 
         cleanup();
 
@@ -522,12 +281,15 @@ export function useGroupChoreoExtract() {
       setFromCache(false);
       setInsufficientWarning(null);
 
-      if (!skipCache && videoId) {
-        const cached = await loadFromCache(songId, videoId);
-        if (cached) {
+      if (!skipCache) {
+        const cacheVideoId = videoId || (file ? buildFileCacheKey(songId, file) : null);
+        const cacheKey = file ? buildFileCacheKey(songId, file) : buildChoreoCacheKey(songId, videoId);
+        const cached = await getCachedChoreo(cacheKey);
+        if (cached?.frames?.length && isChoreoCacheValid(cached)) {
           setProgress(100);
           setStep('캐시된 안무 데이터를 불러왔습니다.');
-          return cached;
+          setFromCache(true);
+          return cached.frames;
         }
       }
 
@@ -537,6 +299,7 @@ export function useGroupChoreoExtract() {
       setStep('준비 중...');
 
       let cleanup = () => {};
+      let referenceBlob = null;
 
       try {
         const video = videoRef?.current;
@@ -550,6 +313,7 @@ export function useGroupChoreoExtract() {
           youtubePlayerRef,
         });
         cleanup = prep.cleanup;
+        referenceBlob = prep.blob || file || null;
 
         const onFrameDetected = ({ trackedCount, expectedMemberCount: exp }) => {
           setCurrentFrameDetectedCount(trackedCount);
@@ -557,6 +321,15 @@ export function useGroupChoreoExtract() {
         };
 
         const outcome = await analyzeWithRetry(video, groupId, status, onFrameDetected);
+
+        const resolvedVideoId = videoId || (file ? buildFileCacheKey(songId, file).split(':').slice(1).join(':') : null);
+        await persistReferenceVideo({
+          songId,
+          videoId: resolvedVideoId,
+          groupId,
+          blob: referenceBlob,
+          durationSec: video.duration,
+        });
 
         cleanup();
 
@@ -590,7 +363,14 @@ export function useGroupChoreoExtract() {
           throw new Error('스켈레톤 데이터 생성에 실패했습니다.');
         }
 
-        await persistCache(songId, videoId || (file ? `file:${file.name}` : null), frames, groupId, videoId);
+        await persistCache(
+          songId,
+          videoId || (file ? buildFileCacheKey(songId, file) : null),
+          frames,
+          groupId,
+          videoId,
+          file,
+        );
         setProgress(100);
         setStep('안무 추출 완료!');
         setIsExtracting(false);
@@ -622,8 +402,27 @@ export function useGroupChoreoExtract() {
   };
 }
 
-async function persistCache(songId, videoId, frames, groupId, sourceVideoId) {
-  const cacheKey = buildChoreoCacheKey(songId, sourceVideoId || videoId);
+async function persistReferenceVideo({ songId, videoId, groupId, blob, durationSec }) {
+  if (!blob || !songId) return null;
+  const cacheKey = buildReferenceVideoCacheKey(songId, videoId || 'default');
+  await saveReferenceVideo({
+    cacheKey,
+    songId,
+    videoId: videoId || 'default',
+    groupId,
+    mimeType: blob.type || 'video/mp4',
+    sizeBytes: blob.size || 0,
+    durationSec: durationSec || 0,
+    blob,
+  });
+  return cacheKey;
+}
+
+async function persistCache(songId, videoId, frames, groupId, sourceVideoId, file = null) {
+  const cacheKey = file
+    ? buildFileCacheKey(songId, file)
+    : buildChoreoCacheKey(songId, sourceVideoId || videoId);
+  const refKey = buildReferenceVideoCacheKey(songId, sourceVideoId || videoId || 'default');
   await saveCachedChoreo({
     cacheKey,
     songId,
@@ -632,7 +431,18 @@ async function persistCache(songId, videoId, frames, groupId, sourceVideoId) {
     frames,
     frameCount: frames.length,
     durationSec: frames[frames.length - 1]?.timestamp || 0,
+    pipelineVersion: CHOREO_CACHE_PIPELINE_VERSION,
+    referenceVideoKey: refKey,
+    sampleFps: frames.length > 1
+      ? Math.round(1 / ((frames[1]?.timestamp ?? 0) - (frames[0]?.timestamp ?? 0)))
+      : 30,
   });
+}
+
+export async function loadReferenceVideoForPractice(songId, videoId) {
+  const cacheKey = buildReferenceVideoCacheKey(songId, videoId || 'default');
+  const url = await getReferenceVideoObjectUrl(cacheKey);
+  return url ? { blobCacheKey: cacheKey, localPlaybackUrl: url } : null;
 }
 
 export default useGroupChoreoExtract;

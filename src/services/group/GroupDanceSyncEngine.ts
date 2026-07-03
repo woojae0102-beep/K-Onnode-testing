@@ -1,5 +1,9 @@
 // @ts-nocheck
-import { findFrameAtTime } from '../../utils/skeletonTimelineUtils';
+import { findFrameAtTime, findFrameIndexAtTime } from '../../utils/skeletonTimelineUtils';
+import { cloneSkeletonFrameForSnapshot } from '../../utils/snapshotFrameUtils';
+import type { PracticeTimeline } from '../../utils/practiceTimelineUtils';
+import { timeSecToFrameIndex } from '../../utils/practiceTimelineUtils';
+import type { SkeletonFrameData } from '../../types/groupPractice';
 import type {
   AIAvatarInstance,
   ChoreographyDataset,
@@ -13,6 +17,7 @@ import {
   computeRoot,
   FORMATION_SPREAD_SCALE,
 } from './FormationPositioning';
+import { buildAvatarJointsFromMember } from '../../utils/skeleton3DUtils';
 
 export interface GroupDanceSyncInput {
   dataset: ChoreographyDataset;
@@ -22,34 +27,38 @@ export interface GroupDanceSyncInput {
   userFallbackAnchor: { x: number; y: number; z: number };
 }
 
+export interface GroupDanceSyncEngineOptions {
+  /** metadata 포함 원본 스켈레톤 프레임 */
+  sourceFrames?: SkeletonFrameData[];
+  timeline?: PracticeTimeline | null;
+}
+
 /**
  * MediaPipe 사용자 포즈 + AI 안무 프레임을 하나의 렌더 스냅샷으로 동기화합니다.
- *
- * Rendering Strategy:
- * ┌─────────────────────────────────────────────────────────┐
- * │  Timeline Clock (YouTube / avatarSync elapsed)          │
- * │       ↓                                                 │
- * │  ChoreographyDataset.frames → nearest frame @ t         │
- * │       ↓                                                 │
- * │  AvatarGroupManager → AI member IDs (user excluded)     │
- * │       ↓                                                 │
- * │  FormationPositioning → user anchor 기준 AI 재배치       │
- * │       ↓                                                 │
- * │  GroupDanceRenderSnapshot → Three.js / Canvas renderer  │
- * └─────────────────────────────────────────────────────────┘
+ * Snapshot만으로 스테이지 100% 복원 가능하도록 frame/formation/memberTracks/confidence 포함.
  */
 export class GroupDanceSyncEngine {
   private dataset: ChoreographyDataset;
   private manager: AvatarGroupManager;
+  private sourceFrames: SkeletonFrameData[];
+  private timeline: PracticeTimeline | null;
   private lastSnapshot: GroupDanceRenderSnapshot | null = null;
 
-  constructor(dataset: ChoreographyDataset, manager: AvatarGroupManager) {
+  constructor(
+    dataset: ChoreographyDataset,
+    manager: AvatarGroupManager,
+    options: GroupDanceSyncEngineOptions = {},
+  ) {
     this.dataset = dataset;
     this.manager = manager;
+    this.sourceFrames = options.sourceFrames ?? [];
+    this.timeline = options.timeline ?? null;
   }
 
-  updateDataset(dataset: ChoreographyDataset) {
+  updateDataset(dataset: ChoreographyDataset, options: GroupDanceSyncEngineOptions = {}) {
     this.dataset = dataset;
+    if (options.sourceFrames) this.sourceFrames = options.sourceFrames;
+    if (options.timeline !== undefined) this.timeline = options.timeline;
   }
 
   tick({
@@ -59,9 +68,26 @@ export class GroupDanceSyncEngine {
   }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'>): GroupDanceRenderSnapshot {
     const state = this.manager.getState();
     const frame = findFrameAtTime(this.dataset.frames as any[], elapsedSec);
+    const sourceFrameRaw = this.sourceFrames.length
+      ? findFrameAtTime(this.sourceFrames, elapsedSec)
+      : null;
+    const sourceFrame = cloneSkeletonFrameForSnapshot(sourceFrameRaw);
+
+    const timelineMeta = this.resolveTimeline(elapsedSec, sourceFrameRaw);
     const userAnchor = computeLiveUserAnchor(userJoints, userFallbackAnchor);
     const personaById = new Map(state.aiAvatars.map((a) => [a.memberId, a]));
     const aiMemberIds = this.manager.getAiMemberIds();
+    const sourceByMember = new Map(
+      (sourceFrameRaw?.members || []).map((m) => [m.estimatedMemberId, m]),
+    );
+
+    const toAvatarJoints = (memberId: string, fallbackJoints: Record<string, ChoreographyJoint>) => {
+      const src = sourceByMember.get(memberId);
+      const built = buildAvatarJointsFromMember(
+        src ? { joints: src.joints, worldCoordinates: src.worldCoordinates } : { joints: fallbackJoints },
+      );
+      return Object.keys(built).length ? built : fallbackJoints;
+    };
 
     let aiAvatars: AIAvatarInstance[];
 
@@ -82,7 +108,9 @@ export class GroupDanceSyncEngine {
               groove: 0.6,
               accentColor: '#FF1F8E',
             },
-          joints: memberFrame?.joints || {},
+          joints: toAvatarJoints(memberId, memberFrame?.joints || {}),
+          boneRotations: src?.boneRotations,
+          orientation: src?.orientation,
           worldOffset: root,
           isEstimated: memberFrame?.isEstimated ?? !memberFrame,
         };
@@ -110,7 +138,9 @@ export class GroupDanceSyncEngine {
               groove: 0.6,
               accentColor: '#FF1F8E',
             },
-          joints: p.joints,
+          joints: toAvatarJoints(p.memberId, p.joints),
+          boneRotations: sourceByMember.get(p.memberId)?.boneRotations,
+          orientation: sourceByMember.get(p.memberId)?.orientation,
           worldOffset: p.worldOffset,
           isEstimated: p.isEstimated ?? false,
         };
@@ -119,6 +149,17 @@ export class GroupDanceSyncEngine {
 
     this.lastSnapshot = {
       timestamp: elapsedSec,
+      currentTime: elapsedSec,
+      sourceVideoTime: sourceFrame?.sourceVideoTime ?? elapsedSec,
+      bpm: sourceFrame?.bpm ?? this.dataset.meta.bpm,
+      beat: sourceFrame?.beat,
+      beatIndex: sourceFrame?.beatIndex,
+      poseQuality: sourceFrame?.poseQuality,
+      timeline: timelineMeta,
+      frame: sourceFrame,
+      formation: sourceFrame?.formation ?? null,
+      memberTracks: sourceFrame?.memberTracks ? [...sourceFrame.memberTracks] : [],
+      confidence: sourceFrame?.confidence ?? 0,
       userMemberId: state.userMemberId,
       userJoints,
       userAnchor,
@@ -126,6 +167,34 @@ export class GroupDanceSyncEngine {
     };
 
     return this.lastSnapshot;
+  }
+
+  private resolveTimeline(elapsedSec: number, sourceFrame: SkeletonFrameData | null) {
+    if (!this.timeline) {
+      console.warn('[GroupDanceSyncEngine] timeline 미설정 — video.duration 기반 타임라인 필요');
+    }
+
+    const duration = this.timeline?.duration ?? this.dataset.meta.durationSec ?? 0;
+    const fps = this.timeline?.fps ?? this.dataset.meta.fps ?? 30;
+    const totalFrames =
+      this.timeline?.totalFrames
+      ?? Math.max(1, Math.round(duration * fps));
+
+    const frameIndex =
+      sourceFrame?.frameIndex
+      ?? (this.sourceFrames.length
+        ? findFrameIndexAtTime(this.sourceFrames, elapsedSec)
+        : timeSecToFrameIndex(elapsedSec, fps, totalFrames));
+
+    const progress = duration > 0 ? Math.min(1, Math.max(0, elapsedSec / duration)) : 0;
+
+    return {
+      duration,
+      fps,
+      totalFrames,
+      frameIndex,
+      progress,
+    };
   }
 
   getLastSnapshot() {

@@ -3,17 +3,20 @@ import React, { useEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import { useGLTF, Text } from '@react-three/drei';
 import type { PersonaStyle, ChoreographyJoint } from '../../../types/groupChoreography';
-import { applyJointsToSkeleton } from '../../../services/avatar/MotionRetargetingService';
+import { applyAvatarRetarget } from '../../../services/motion/AvatarRetargetEngine';
+import type { BoneQuaternion } from '../../../utils/quaternionInterpolation';
 
 export function AvatarCharacter3D({
   glbUrl,
   joints,
+  boneRotations,
   persona,
   label,
   position = [0, 0, 0] as [number, number, number],
 }: {
   glbUrl: string;
   joints: Record<string, ChoreographyJoint>;
+  boneRotations?: Record<string, BoneQuaternion>;
   persona?: PersonaStyle;
   label?: string;
   position?: [number, number, number];
@@ -32,7 +35,7 @@ export function AvatarCharacter3D({
 
   useFrame(() => {
     if (!groupRef.current || !joints || !Object.keys(joints).length) return;
-    applyJointsToSkeleton(groupRef.current, joints);
+    applyAvatarRetarget(groupRef.current, joints, boneRotations);
   });
 
   const cloned = useMemo(() => scene.clone(true), [scene]);

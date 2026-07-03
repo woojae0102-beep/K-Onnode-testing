@@ -1,5 +1,4 @@
 // @ts-nocheck
-import { CHOREO_MAX_DURATION_SEC } from '../config/choreoExtractConfig';
 
 function waitFor(condition, timeoutMs = 15000, intervalMs = 200) {
   return new Promise((resolve, reject) => {
@@ -27,12 +26,11 @@ function pickRecorderMimeType() {
   return candidates.find((type) => MediaRecorder.isTypeSupported(type)) || '';
 }
 
+/** YouTube 영상 전체 길이로 탭 녹화 — 30/60/120초 등 인위적 상한 없음 */
 export async function recordYoutubeTabVideo({
   youtubePlayerRef,
-  maxDurationSec = CHOREO_MAX_DURATION_SEC,
   onStatus,
 }) {
-  // getDisplayMedia는 버튼 클릭 직후에만 허용됩니다. 플레이어 대기 전에 먼저 호출해야 합니다.
   onStatus?.('탭 공유 창에서 이 페이지 탭을 선택해 주세요. YouTube 영상이 자동 재생·녹화됩니다.');
 
   let displayStream;
@@ -57,11 +55,11 @@ export async function recordYoutubeTabVideo({
     await waitFor(() => youtubePlayerRef?.isReady?.(), 20000);
   }
 
-  const rawDuration = Number(youtubePlayerRef.getDuration?.() || 0);
-  const duration = Math.min(
-    Math.max(rawDuration > 0 ? rawDuration : maxDurationSec, 10),
-    maxDurationSec,
-  );
+  const duration = Number(youtubePlayerRef.getDuration?.() || 0);
+  if (!Number.isFinite(duration) || duration <= 0) {
+    displayStream.getTracks().forEach((track) => track.stop());
+    throw new Error('YouTube 영상 길이를 확인할 수 없습니다. 영상이 로드된 뒤 다시 시도해 주세요.');
+  }
 
   const mimeType = pickRecorderMimeType();
   const recorder = mimeType
@@ -131,6 +129,8 @@ export async function recordYoutubeTabVideo({
         youtubePlayerRef.pause?.();
         recorder.stop();
       }
-    }, (duration + 20) * 1000);
+    }, (duration + 30) * 1000);
   });
 }
+
+export default recordYoutubeTabVideo;

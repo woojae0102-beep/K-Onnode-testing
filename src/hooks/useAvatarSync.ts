@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useRef } from 'react';
-import { findNearestFrame } from './useSkeletonExtract';
+import { findNearestFrame } from '../utils/frameLookupUtils';
 
 export function useAvatarSync(skeletonData) {
   const startTimeRef = useRef(0);

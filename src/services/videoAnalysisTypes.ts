@@ -12,4 +12,8 @@ export interface AnalysisResult {
   videoHeight?: number;
   /** 원본 영상 실제 길이(초) — 연습 타임라인 기준 */
   sourceVideoDurationSec?: number;
+  /** 영상 native FPS (감지 실패 시 null) */
+  sourceVideoNativeFps?: number | null;
+  /** Motion Extraction 샘플 FPS (30~60) */
+  sampleFps?: number;
 }

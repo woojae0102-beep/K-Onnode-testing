@@ -2,7 +2,7 @@
 import { buildProxyVideoUrl } from '../services/groupStudioApi';
 import { downloadYoutubeVideoBlob } from '../services/youtubeClientDownload';
 import { recordYoutubeTabVideo } from '../services/youtubeTabCapture';
-import { CHOREO_MAX_DURATION_SEC } from '../config/choreoExtractConfig';
+import { resolveVideoSampleFps } from '../config/choreoExtractConfig';
 
 export const VIDEO_LOAD_TIMEOUT_MS = 90000;
 export const VIDEO_SEEK_TIMEOUT_MS = 8000;
@@ -75,9 +75,8 @@ export function getSeekableEnd(video) {
 }
 
 /**
- * 분석에 사용할 안전한 영상 길이(초).
- * - video.duration 과 seekable.end 중 신뢰 가능한 값 사용
- * - CHOREO_MAX_DURATION_SEC 상한
+ * 분석에 사용할 영상 길이(초) — video.duration 전체.
+ * 30/60/120/600초 등 인위적 상한 없음.
  */
 export async function resolveVideoDuration(video) {
   if (!video) return 0;
@@ -91,17 +90,17 @@ export async function resolveVideoDuration(video) {
   const seekEnd = getSeekableEnd(video);
 
   if (seekEnd != null) {
-    // seekable이 duration보다 약간 길 때만 보정 (무한/비정상 값 방지)
     if (seekEnd > duration && seekEnd < duration * 1.15 + 5) {
       duration = seekEnd;
     }
-    // duration이 0인데 seekable만 있는 경우
     if (duration <= 0 && seekEnd > 0) {
       duration = seekEnd;
     }
   }
 
-  duration = Math.min(Math.max(duration, 1), CHOREO_MAX_DURATION_SEC);
+  if (!Number.isFinite(duration) || duration <= 0) {
+    throw new Error('영상 길이(video.duration)를 확인할 수 없습니다.');
+  }
 
   // 분석은 항상 0초부터 시작
   try {
@@ -111,6 +110,80 @@ export async function resolveVideoDuration(video) {
   }
 
   return duration;
+}
+
+const RVFC_SAMPLE_MS = 600;
+
+/**
+ * 업로드/캡처 영상의 native FPS 추정.
+ * 1) MediaStream track frameRate  2) data-native-fps 힌트  3) requestVideoFrameCallback 측정
+ */
+export async function detectVideoNativeFps(video) {
+  if (!video) return null;
+
+  const stream = video.srcObject;
+  if (stream && typeof MediaStream !== 'undefined' && stream instanceof MediaStream) {
+    const track = stream.getVideoTracks()[0];
+    const rate = track?.getSettings?.()?.frameRate;
+    if (Number.isFinite(rate) && rate > 0) return rate;
+  }
+
+  const hinted = Number(video.dataset?.nativeFps ?? video.getAttribute?.('data-native-fps'));
+  if (Number.isFinite(hinted) && hinted > 0) return hinted;
+
+  if (typeof video.requestVideoFrameCallback !== 'function') return null;
+
+  const savedTime = video.currentTime;
+  const wasPaused = video.paused;
+  let frameCount = 0;
+
+  try {
+    video.muted = true;
+    video.playsInline = true;
+    await video.play();
+
+    await new Promise((resolve) => {
+      const start = performance.now();
+      const onFrame = () => {
+        frameCount += 1;
+        if (performance.now() - start >= RVFC_SAMPLE_MS) {
+          resolve(true);
+          return;
+        }
+        video.requestVideoFrameCallback(onFrame);
+      };
+      video.requestVideoFrameCallback(onFrame);
+    });
+
+    const measured = frameCount / (RVFC_SAMPLE_MS / 1000);
+    if (Number.isFinite(measured) && measured > 0) return measured;
+  } catch {
+    /* 재생 불가(코덱/정책) 시 null → 기본 30fps */
+  } finally {
+    try {
+      video.pause();
+      video.currentTime = savedTime;
+      if (!wasPaused) await video.play().catch(() => {});
+      else video.pause();
+    } catch {
+      /* ignore */
+    }
+  }
+
+  return null;
+}
+
+/** native FPS 읽기 + 30~60 clamp. 알 수 없으면 30. */
+export async function resolveAnalysisSampleFps(video) {
+  const nativeFps = await detectVideoNativeFps(video);
+  const sampleFps = resolveVideoSampleFps(nativeFps);
+  if (import.meta.env?.DEV) {
+    console.debug('[choreoVideo] sampleFps', {
+      nativeFps: nativeFps ?? 'unknown',
+      sampleFps,
+    });
+  }
+  return { nativeFps, sampleFps };
 }
 
 async function loadBlobIntoVideo(video, blob, onStatus) {
@@ -123,6 +196,7 @@ async function loadBlobIntoVideo(video, blob, onStatus) {
   }
   return {
     objectUrl,
+    blob,
     cleanup: () => {
       URL.revokeObjectURL(objectUrl);
       video.src = '';
@@ -168,6 +242,7 @@ async function loadProxyStreamIntoVideo(video, videoId, onStatus) {
   }
   return {
     objectUrl: null,
+    blob: null,
     cleanup: () => {
       video.src = '';
     },
@@ -232,6 +307,7 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus, you
     await waitForVideoEvent(video, 'loadeddata');
     return {
       objectUrl,
+      blob: file,
       cleanup: () => {
         URL.revokeObjectURL(objectUrl);
         video.src = '';

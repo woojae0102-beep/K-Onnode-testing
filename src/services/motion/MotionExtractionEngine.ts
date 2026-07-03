@@ -1,0 +1,646 @@
+// @ts-nocheck
+/**
+ * K-POP Motion Extraction Engine — Holistic(Pose+Hand+Face) · RVFC · Tracking · Pipeline · Cache
+ * useSkeletonExtract / useGroupChoreoExtract 공용 코어
+ */
+import { getGroupData } from '../../data/groupPracticeData';
+import { MultiPersonTracker } from '../MultiPersonTracker';
+import type { AnalysisResult } from '../videoAnalysisTypes';
+import { suggestTrackToMemberMap } from '../formationMatching';
+import { buildDanceDatabase, saveDanceDatabase } from '../dance/DanceDatabaseService';
+import {
+  buildChoreoCacheKey,
+  buildFileCacheKey,
+  getCachedChoreo,
+  isChoreoCacheValid,
+  CHOREO_CACHE_PIPELINE_VERSION,
+} from '../groupChoreoCache';
+import {
+  buildReferenceVideoCacheKey,
+  getReferenceVideoObjectUrl,
+  saveReferenceVideo,
+} from '../referenceVideoStore';
+import {
+  CHOREO_MEMBER_PROBE_SAMPLES,
+  resolveVideoSampleFps,
+} from '../../config/choreoExtractConfig';
+import {
+  resolveAnalysisSampleFps,
+  resolveVideoDuration,
+  getSeekableEnd,
+} from '../../utils/choreoVideoUtils';
+import { sampleVideoFramesPlayback } from '../../utils/videoFrameSampler';
+import { createMultiLandmarkerDetector } from './MultiLandmarkerDetector';
+import { associateHolisticLandmarksToPeople } from '../../utils/holisticLandmarkUtils';
+import { timeSecToBeat, timeSecToBeatIndex } from '../../utils/frameMetadataUtils';
+import type {
+  MotionExtractionDebugState,
+  MotionExtractionResult,
+  ReferenceVideoMeta,
+} from '../../types/motionExtraction';
+import type { DanceDatabase } from '../../types/danceDatabase';
+
+const AI_INIT_TIMEOUT_MS = 60000;
+
+function withTimeout(promise, ms, message) {
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => {
+      setTimeout(() => reject(new Error(message)), ms);
+    }),
+  ]);
+}
+
+function detectHolistic(detector, source) {
+  return detector.detect(source);
+}
+
+export function createOffscreenDetectPipeline(videoWidth, videoHeight) {
+  const offscreenCanvas = document.createElement('canvas');
+  offscreenCanvas.width = videoWidth;
+  offscreenCanvas.height = videoHeight;
+  const offscreenCtx = offscreenCanvas.getContext('2d');
+
+  const detectFrame = (detector, video) => {
+    const vw = video.videoWidth || videoWidth;
+    const vh = video.videoHeight || videoHeight;
+    if (offscreenCtx && vw && vh) {
+      if (offscreenCanvas.width !== vw) offscreenCanvas.width = vw;
+      if (offscreenCanvas.height !== vh) offscreenCanvas.height = vh;
+      offscreenCtx.drawImage(video, 0, 0, vw, vh);
+      return detectHolistic(detector, offscreenCanvas);
+    }
+    return detectHolistic(detector, video);
+  };
+
+  return { offscreenCanvas, detectFrame };
+}
+
+export async function ensureVideoDimensions(video) {
+  const duration = await resolveVideoDuration(video);
+  if (!video.videoWidth || !video.videoHeight) {
+    throw new Error('영상 크기를 인식할 수 없습니다. 다른 영상 파일을 사용해 주세요.');
+  }
+  const { nativeFps, sampleFps } = await resolveAnalysisSampleFps(video);
+  return {
+    videoWidth: video.videoWidth,
+    videoHeight: video.videoHeight,
+    sourceVideoDurationSec: duration,
+    sourceVideoNativeFps: nativeFps,
+    sampleFps,
+  };
+}
+
+export async function createHolisticMotionDetector(groupMemberCount, onStatus, { lenient = false } = {}) {
+  return withTimeout(
+    createMultiLandmarkerDetector(groupMemberCount, onStatus, { lenient }),
+    AI_INIT_TIMEOUT_MS,
+    'Holistic AI 모델 로드 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
+  );
+}
+
+export interface RunHolisticAnalysisOptions {
+  video: HTMLVideoElement;
+  groupId: string;
+  detector: { detect: (src: unknown) => unknown; close?: () => void };
+  expectedMemberCount: number;
+  sampleFps?: number;
+  bpm?: number;
+  onProgress?: (pct: number, message?: string) => void;
+  onFrameDetected?: (payload: Record<string, unknown>) => void;
+  onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
+  abortRef?: { current: boolean };
+}
+
+/** RVFC 재생 + Holistic detect + Hungarian/Kalman tracking */
+export async function runHolisticVideoAnalysis({
+  video,
+  groupId,
+  detector,
+  expectedMemberCount,
+  sampleFps: sampleFpsOverride,
+  bpm = 120,
+  onProgress,
+  onFrameDetected,
+  onDebug,
+  abortRef,
+}: RunHolisticAnalysisOptions): Promise<AnalysisResult | null> {
+  const group = getGroupData(groupId);
+  if (!group || !video || !detector) return null;
+
+  const { videoWidth, videoHeight, sourceVideoDurationSec, sourceVideoNativeFps, sampleFps: detectedFps } =
+    await ensureVideoDimensions(video);
+  const sampleFps = resolveVideoSampleFps(sampleFpsOverride ?? detectedFps);
+
+  const tracker = new MultiPersonTracker();
+  tracker.setSampleFps(sampleFps);
+  tracker.setBpm(bpm);
+  const { detectFrame } = createOffscreenDetectPipeline(videoWidth, videoHeight);
+
+  onProgress?.(5, 'RVFC GPU 추출 시작...');
+  onDebug?.({ pipelineStage: 'rvfc_playback', sampleFps, nativeFps: sourceVideoNativeFps, expectedMemberCount });
+
+  const duration = sourceVideoDurationSec;
+  if (!duration || duration <= 0) return null;
+
+  const seekEnd = getSeekableEnd(video);
+  const analysisDuration = seekEnd != null ? Math.min(duration, seekEnd + 0.02) : duration;
+  const timelineTotalFrames = Math.max(1, Math.round(analysisDuration * sampleFps));
+
+  const frames = [];
+  let lastDetectedPeople = [];
+  const memberCountSamples: number[] = [];
+  let lastSampleAt = 0;
+  let measuredFps = sampleFps;
+
+  await sampleVideoFramesPlayback({
+    video,
+    sampleFps,
+    maxDuration: analysisDuration,
+    abortRef,
+    onProgress: (pct) => {
+      onProgress?.(Math.max(5, pct), `${expectedMemberCount}명 Holistic 추적 ${pct}%`);
+      onDebug?.({ progress: pct, pipelineStage: 'extracting' });
+    },
+    onSample: async ({ time: t, video: srcVideo }) => {
+      if (abortRef?.current) return;
+
+      const now = performance.now();
+      if (lastSampleAt > 0) {
+        const instant = 1000 / Math.max(1, now - lastSampleAt);
+        measuredFps = measuredFps * 0.85 + instant * 0.15;
+      }
+      lastSampleAt = now;
+
+      const results = detectFrame(detector, srcVideo);
+      if (memberCountSamples.length < CHOREO_MEMBER_PROBE_SAMPLES) {
+        const valid = tracker.countValidPoses(results.landmarks as unknown[]);
+        if (valid > 0) memberCountSamples.push(valid);
+      }
+
+      const timestampMs = Math.round(t * 1000);
+      const rawCount = results.landmarks?.length || 0;
+      let trackedPeople = tracker.trackFrame(
+        results.landmarks || [],
+        results.worldLandmarks || [],
+        t,
+        expectedMemberCount,
+      );
+      trackedPeople = associateHolisticLandmarksToPeople(trackedPeople, results);
+      trackedPeople = tracker.enrichWithHolisticLandmarks(trackedPeople);
+
+      if (!trackedPeople.length && lastDetectedPeople.length) {
+        trackedPeople = lastDetectedPeople.map((person) => ({
+          ...person,
+          isEstimated: true,
+          lastSeenTimestamp: t,
+        }));
+      }
+      if (trackedPeople.length) lastDetectedPeople = trackedPeople;
+
+      const framePeople = trackedPeople.length
+        ? trackedPeople
+        : lastDetectedPeople.map((person) => ({
+            ...person,
+            isEstimated: true,
+            lastSeenTimestamp: t,
+          }));
+
+      const visibleCount = framePeople.filter((p) => !p.isEstimated).length;
+      const estimatedCount = framePeople.filter((p) => p.isEstimated).length;
+      const avgConfidence = framePeople.length
+        ? framePeople.reduce((s, p) => s + (p.confidence || 0), 0) / framePeople.length
+        : 0;
+      const beat = timeSecToBeat(t, bpm);
+      const beatIndex = timeSecToBeatIndex(t, bpm);
+      const timelineFrameIndex = Math.min(timelineTotalFrames - 1, Math.round(t * sampleFps));
+
+      const debugPayload: Partial<MotionExtractionDebugState> = {
+        frameIndex: frames.length,
+        timestamp: t,
+        sourceVideoTime: t,
+        measuredFps,
+        sampleFps,
+        nativeFps: sourceVideoNativeFps,
+        rawPoseCount: rawCount,
+        handCount: results.hands?.length || 0,
+        faceCount: results.faces?.length || 0,
+        trackedCount: framePeople.length,
+        visibleCount,
+        estimatedCount,
+        expectedMemberCount,
+        missingMemberCount: Math.max(0, expectedMemberCount - visibleCount),
+        trackingIds: framePeople.map((p) => p.trackId),
+        avgConfidence,
+        beat,
+        beatIndex,
+        interpolationHold: estimatedCount > 0,
+        timelineDuration: analysisDuration,
+        timelineFrameIndex,
+        timelineTotalFrames,
+        pipelineStage: 'frame_detect',
+      };
+      onDebug?.(debugPayload);
+
+      onFrameDetected?.({
+        rawCount,
+        trackedCount: framePeople.length,
+        visibleCount,
+        expectedMemberCount,
+      });
+
+      frames.push({
+        timestamp: t,
+        timestampMs,
+        sourceVideoTime: t,
+        videoWidth,
+        videoHeight,
+        detectedPeople: framePeople,
+      });
+    },
+  });
+
+  const detectedMemberCount = (() => {
+    if (!memberCountSamples.length) return 0;
+    const frequency: Record<number, number> = {};
+    memberCountSamples.forEach((c) => {
+      frequency[c] = (frequency[c] || 0) + 1;
+    });
+    const sorted = Object.entries(frequency).sort(([, a], [, b]) => b - a);
+    const mostCommon = parseInt(sorted[0][0], 10);
+    const peak = Math.max(...memberCountSamples);
+    if (expectedMemberCount > 0) {
+      if (peak >= expectedMemberCount) return expectedMemberCount;
+      if (mostCommon >= expectedMemberCount - 1) return mostCommon;
+    }
+    return mostCommon;
+  })();
+
+  if (detectedMemberCount === 0 && !frames.length) return null;
+
+  const trackIdToInitialPosition = tracker.buildInitialPositions(frames);
+  const peakTrackCount = Math.max(tracker.getPeakTrackCount(), trackIdToInitialPosition.size);
+
+  onDebug?.({ pipelineStage: 'analysis_complete', progress: 92 });
+
+  return {
+    detectedMemberCount: Math.max(detectedMemberCount, peakTrackCount),
+    peakTrackCount,
+    frames,
+    trackIdToInitialPosition,
+    videoWidth,
+    videoHeight,
+    sourceVideoDurationSec,
+    sourceVideoNativeFps,
+    sampleFps,
+  };
+}
+
+export async function persistReferenceVideoBlob({
+  songId,
+  videoId,
+  groupId,
+  blob,
+  durationSec,
+}: {
+  songId: string;
+  videoId: string;
+  groupId: string;
+  blob: Blob;
+  durationSec: number;
+}): Promise<ReferenceVideoMeta> {
+  const cacheKey = buildReferenceVideoCacheKey(songId, videoId);
+  await saveReferenceVideo({
+    cacheKey,
+    songId,
+    videoId,
+    groupId,
+    mimeType: blob.type || 'video/mp4',
+    sizeBytes: blob.size || 0,
+    durationSec,
+    blob,
+  });
+  const localPlaybackUrl = await getReferenceVideoObjectUrl(cacheKey);
+  return {
+    blobCacheKey: cacheKey,
+    localPlaybackUrl,
+    durationSec,
+    mimeType: blob.type,
+    sizeBytes: blob.size,
+  };
+}
+
+export async function loadReferenceVideoMeta(songId: string, videoId: string): Promise<ReferenceVideoMeta | null> {
+  const cacheKey = buildReferenceVideoCacheKey(songId, videoId);
+  const url = await getReferenceVideoObjectUrl(cacheKey);
+  if (!url) return null;
+  return { blobCacheKey: cacheKey, localPlaybackUrl: url, durationSec: 0 };
+}
+
+export interface AnalyzeFileHolisticOptions {
+  file: File;
+  groupId: string;
+  video?: HTMLVideoElement | null;
+  onStatus?: (msg: string) => void;
+  onProgress?: (pct: number) => void;
+  onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
+  abortRef?: { current: boolean };
+}
+
+/** Phase 1 — Holistic RVFC 분석만 (멤버 매칭 확인 전) */
+export async function analyzeFileHolistic({
+  file,
+  groupId,
+  video: videoEl,
+  onStatus,
+  onProgress,
+  onDebug,
+  abortRef,
+}: AnalyzeFileHolisticOptions): Promise<AnalysisResult> {
+  const group = getGroupData(groupId);
+  if (!group || !file) throw new Error('그룹 또는 영상 파일이 없습니다.');
+
+  const video = videoEl || document.createElement('video');
+  const ownsVideo = !videoEl;
+  video.muted = true;
+  video.playsInline = true;
+  const objectUrl = URL.createObjectURL(file);
+  video.src = objectUrl;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.addEventListener('loadeddata', () => resolve(), { once: true });
+      video.addEventListener('error', () => reject(new Error('영상 로드 실패')), { once: true });
+    });
+
+    onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
+    onDebug?.({ pipelineStage: 'init_models', progress: 5, expectedMemberCount: group.memberCount });
+
+    const detector = await createHolisticMotionDetector(group.memberCount, onStatus);
+    if (abortRef?.current) throw new Error('추출이 취소되었습니다.');
+
+    const analysisResult = await runHolisticVideoAnalysis({
+      video,
+      groupId,
+      detector,
+      expectedMemberCount: group.memberCount,
+      onProgress: (pct, msg) => {
+        onProgress?.(pct);
+        if (msg) onStatus?.(msg);
+      },
+      onDebug,
+      abortRef,
+    });
+
+    detector.close?.();
+
+    if (!analysisResult?.frames?.length) {
+      throw new Error('영상에서 동작을 감지하지 못했습니다. K-POP 안무 영상인지 확인해 주세요.');
+    }
+
+    onDebug?.({ pipelineStage: 'analysis_ready', progress: 90 });
+    onStatus?.('분석 완료 — 멤버 매칭을 확인해 주세요');
+    return analysisResult;
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    if (ownsVideo) video.src = '';
+  }
+}
+
+export interface BuildMotionDatabaseOptions {
+  analysisResult: AnalysisResult;
+  file: File;
+  groupId: string;
+  userMemberId: string;
+  songId: string;
+  trackToMember: Map<number, string> | Record<string | number, string>;
+  onStatus?: (msg: string) => void;
+  onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
+}
+
+/** Phase 2 — 확인된 매칭 → Motion Pipeline → DanceDatabase + Cache + Reference Video */
+export async function buildMotionDatabaseFromAnalysis({
+  analysisResult,
+  file,
+  groupId,
+  userMemberId,
+  songId,
+  trackToMember,
+  onStatus,
+  onDebug,
+}: BuildMotionDatabaseOptions): Promise<MotionExtractionResult> {
+  const fileCacheKey = buildFileCacheKey(songId, file);
+  const videoId = fileCacheKey.split(':').slice(1).join(':');
+
+  onStatus?.('Motion Pipeline v4 처리 중...');
+  onDebug?.({ pipelineStage: 'motion_pipeline', progress: 93 });
+
+  const danceDatabase = buildDanceDatabase({
+    groupId,
+    songId,
+    userMemberId,
+    analysisResult,
+    trackToMember,
+    videoId,
+    sampleFps: analysisResult.sampleFps,
+  });
+
+  if (!danceDatabase.skeletonFrames?.length) {
+    throw new Error('Motion Database 생성 실패 — 멤버 매칭을 확인해 주세요.');
+  }
+
+  const mid = danceDatabase.skeletonFrames[Math.floor(danceDatabase.skeletonFrames.length / 2)];
+  onDebug?.({
+    pipelineStage: 'pipeline_complete',
+    progress: 96,
+    poseQuality: mid?.poseQuality ?? null,
+    beat: mid?.beat ?? null,
+    beatIndex: mid?.beatIndex ?? null,
+    formation: mid?.formation?.slots?.length ? `${mid.formation.slots.length} slots` : null,
+    timelineDuration: danceDatabase.durationSec,
+    timelineTotalFrames: danceDatabase.skeletonFrames.length,
+    trackingIds: mid?.members?.map((m) => m.trackId ?? m.personIndex) ?? [],
+  });
+
+  onStatus?.('Reference Video · Motion Cache 저장...');
+  const referenceVideo = await persistReferenceVideoBlob({
+    songId,
+    videoId,
+    groupId,
+    blob: file,
+    durationSec: analysisResult.sourceVideoDurationSec || danceDatabase.durationSec,
+  });
+
+  await saveDanceDatabase(danceDatabase);
+  onDebug?.({ pipelineStage: 'complete', progress: 100 });
+  onStatus?.('K-POP Motion Extraction 완료');
+
+  return {
+    danceDatabase,
+    frames: danceDatabase.skeletonFrames,
+    analysisResult,
+    fromCache: false,
+    referenceVideo,
+    songId,
+    groupId,
+    userMemberId,
+  };
+}
+
+export interface ExtractMotionDatabaseOptions {
+  file: File;
+  groupId: string;
+  userMemberId: string;
+  songId: string;
+  video?: HTMLVideoElement | null;
+  skipCache?: boolean;
+  onStatus?: (msg: string) => void;
+  onProgress?: (pct: number) => void;
+  onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
+  abortRef?: { current: boolean };
+}
+
+/**
+ * 파일 → Holistic 분석 → GroupMotionPipeline v4 → DanceDatabase + Cache + Reference Video
+ */
+export async function extractMotionDatabase({
+  file,
+  groupId,
+  userMemberId,
+  songId,
+  video: videoEl,
+  skipCache = false,
+  onStatus,
+  onProgress,
+  onDebug,
+  abortRef,
+}: ExtractMotionDatabaseOptions): Promise<MotionExtractionResult> {
+  const group = getGroupData(groupId);
+  if (!group || !file) throw new Error('그룹 또는 영상 파일이 없습니다.');
+
+  const fileCacheKey = buildFileCacheKey(songId, file);
+  const videoId = fileCacheKey.split(':').slice(1).join(':');
+
+  if (!skipCache) {
+    const cached = await getCachedChoreo(fileCacheKey);
+    if (cached?.frames?.length && isChoreoCacheValid(cached)) {
+      onStatus?.('캐시된 Motion Database 로드');
+      onDebug?.({ pipelineStage: 'cache_hit', progress: 100 });
+      const ref = await loadReferenceVideoMeta(songId, videoId);
+      const danceDatabase: DanceDatabase = {
+        version: '2.0',
+        pipelineVersion: cached.pipelineVersion || CHOREO_CACHE_PIPELINE_VERSION,
+        groupId,
+        songId,
+        videoId,
+        detectedMemberCount: cached.frames[0]?.members?.length || group.memberCount,
+        durationSec: cached.durationSec || 0,
+        sourceVideoDurationSec: cached.durationSec || 0,
+        sampleFps: cached.sampleFps ?? 30,
+        bpm: { bpm: cached.bpm ?? 120, estimated: true, source: 'cache' },
+        skeletonFrames: cached.frames,
+        memberTracks: [],
+        formation: {
+          groupId,
+          songId,
+          userMemberId,
+          defaultFormation: 'diamond',
+          keyframes: [],
+        },
+        positionMap: cached.positionMap || {
+          userMemberId,
+          aiMemberIds: [],
+          trackToMember: {},
+          memberToTrack: {},
+        },
+        formationHole: cached.formationHole || {
+          memberId: userMemberId,
+          anchor: { x: 0.5, y: 0.5, z: 0 },
+          label: 'YOU',
+          color: '#FF1F8E',
+        },
+        savedAt: cached.savedAt || '',
+      };
+      return {
+        danceDatabase,
+        frames: cached.frames,
+        analysisResult: {
+          detectedMemberCount: danceDatabase.detectedMemberCount,
+          frames: [],
+          trackIdToInitialPosition: new Map(),
+          sourceVideoDurationSec: cached.durationSec,
+          sampleFps: cached.sampleFps,
+        },
+        fromCache: true,
+        referenceVideo: ref || { blobCacheKey: null, localPlaybackUrl: null, durationSec: 0 },
+        songId,
+        groupId,
+        userMemberId,
+      };
+    }
+  }
+
+  const video = videoEl || document.createElement('video');
+  const ownsVideo = !videoEl;
+  video.muted = true;
+  video.playsInline = true;
+  const objectUrl = URL.createObjectURL(file);
+  video.src = objectUrl;
+
+  try {
+    await new Promise<void>((resolve, reject) => {
+      video.addEventListener('loadeddata', () => resolve(), { once: true });
+      video.addEventListener('error', () => reject(new Error('영상 로드 실패')), { once: true });
+    });
+
+    onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
+    onDebug?.({ pipelineStage: 'init_models', progress: 5 });
+
+    const detector = await createHolisticMotionDetector(group.memberCount, onStatus);
+    if (abortRef?.current) throw new Error('추출이 취소되었습니다.');
+
+    const analysisResult = await runHolisticVideoAnalysis({
+      video,
+      groupId,
+      detector,
+      expectedMemberCount: group.memberCount,
+      onProgress: (pct, msg) => {
+        onProgress?.(pct);
+        if (msg) onStatus?.(msg);
+      },
+      onDebug,
+      abortRef,
+    });
+
+    detector.close?.();
+
+    if (!analysisResult?.frames?.length) {
+      throw new Error('영상에서 동작을 감지하지 못했습니다. K-POP 안무 영상인지 확인해 주세요.');
+    }
+
+    onStatus?.('멤버 트래킹 매칭 · Motion Pipeline...');
+    onDebug?.({ pipelineStage: 'motion_pipeline', progress: 93 });
+
+    const trackToMember = suggestTrackToMemberMap(
+      groupId,
+      userMemberId,
+      analysisResult.trackIdToInitialPosition,
+    );
+
+    return buildMotionDatabaseFromAnalysis({
+      analysisResult,
+      file,
+      groupId,
+      userMemberId,
+      songId,
+      trackToMember,
+      onStatus,
+      onDebug,
+    });
+  } finally {
+    URL.revokeObjectURL(objectUrl);
+    if (ownsVideo) video.src = '';
+  }
+}
+
+export default extractMotionDatabase;

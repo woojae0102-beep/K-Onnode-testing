@@ -1,7 +1,7 @@
 // @ts-nocheck
-import { CHOREO_MAX_DURATION_SEC } from '../config/choreoExtractConfig';
 
 const CLIENT_DOWNLOAD_TIMEOUT_MS = 12000;
+const CLIENT_DOWNLOAD_MAX_TIMEOUT_MS = 45 * 60 * 1000;
 
 function withTimeout(promise, ms, message) {
   return Promise.race([
@@ -58,9 +58,14 @@ export async function downloadYoutubeVideoBlob(videoId, onStatus) {
   }
 
   onStatus?.('YouTube 영상 다운로드 중...');
+  const lengthSec = Number(info.videoDetails?.lengthSeconds || info.playability?.lengthSeconds || 0);
+  const downloadTimeoutMs = Number.isFinite(lengthSec) && lengthSec > 0
+    ? Math.min(CLIENT_DOWNLOAD_MAX_TIMEOUT_MS, Math.max(CLIENT_DOWNLOAD_TIMEOUT_MS, lengthSec * 1000 + 30000))
+    : CLIENT_DOWNLOAD_MAX_TIMEOUT_MS;
+
   const stream = await withTimeout(
     ytdl.downloadFromInfo(info, { format }),
-    Math.max(CLIENT_DOWNLOAD_TIMEOUT_MS, CHOREO_MAX_DURATION_SEC * 1000),
+    downloadTimeoutMs,
     'YouTube 다운로드 시간이 초과되었습니다.',
   );
 

@@ -57,6 +57,7 @@ export class JointKalmanFilter {
         y: f.y.filter(j.y),
         z: f.z.filter(j.z ?? 0),
         visibility: j.visibility,
+        confidence: j.confidence ?? j.visibility,
       };
     });
     return out;
@@ -78,17 +79,21 @@ export function smoothSkeletonFrames(frames: SkeletonFrameData[]): SkeletonFrame
 
   const filtersByMember = new Map<string, JointKalmanFilter>();
 
-  return frames.map((frame) => ({
+      return frames.map((frame) => ({
     ...frame,
     members: frame.members.map((member) => {
-      let filter = filtersByMember.get(member.estimatedMemberId);
+      const key = member.estimatedMemberId ?? `track_${member.trackId}`;
+      let filter = filtersByMember.get(key);
       if (!filter) {
         filter = new JointKalmanFilter();
-        filtersByMember.set(member.estimatedMemberId, filter);
+        filtersByMember.set(key, filter);
       }
       return {
         ...member,
         joints: filter.smoothJoints(member.joints),
+        worldCoordinates: member.worldCoordinates
+          ? filter.smoothJoints(member.worldCoordinates as JointRecord)
+          : member.worldCoordinates,
       };
     }),
   }));

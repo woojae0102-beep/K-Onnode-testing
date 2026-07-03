@@ -1,7 +1,11 @@
 // @ts-nocheck
-const DB_NAME = 'onnode_group_choreo_v1';
+import { MOTION_PIPELINE_VERSION } from './motion/GroupMotionPipeline';
+
+const DB_NAME = 'onnode_group_choreo_v2';
 const DB_VERSION = 1;
 const STORE = 'choreo';
+
+export const CHOREO_CACHE_PIPELINE_VERSION = MOTION_PIPELINE_VERSION;
 
 function openDb() {
   if (typeof indexedDB === 'undefined') return Promise.resolve(null);
@@ -22,6 +26,11 @@ export function buildChoreoCacheKey(songId, videoId) {
   return `${songId}:${videoId || 'default'}`;
 }
 
+export function buildFileCacheKey(songId, file) {
+  if (!file) return buildChoreoCacheKey(songId, 'default');
+  return buildChoreoCacheKey(songId, `file:${file.name}:${file.size}:${file.lastModified}`);
+}
+
 export async function getCachedChoreo(cacheKey) {
   const db = await openDb();
   if (!db) return null;
@@ -40,6 +49,7 @@ export async function saveCachedChoreo(entry) {
     const tx = db.transaction(STORE, 'readwrite');
     tx.objectStore(STORE).put({
       ...entry,
+      pipelineVersion: entry.pipelineVersion || CHOREO_CACHE_PIPELINE_VERSION,
       savedAt: entry.savedAt || new Date().toISOString(),
     });
     tx.oncomplete = () => resolve(true);
@@ -56,4 +66,19 @@ export async function deleteCachedChoreo(cacheKey) {
     tx.oncomplete = () => resolve(true);
     tx.onerror = () => resolve(false);
   });
+}
+
+/** 캐시 유효성 — 파이프라인 버전·프레임 메타데이터·Holistic(손/얼굴) 확인 */
+export function isChoreoCacheValid(entry) {
+  if (!entry?.frames?.length) return false;
+  if (entry.pipelineVersion && entry.pipelineVersion !== CHOREO_CACHE_PIPELINE_VERSION) return false;
+  const sample = entry.frames[Math.floor(entry.frames.length / 2)];
+  const member = sample?.members?.[0];
+  return (
+    sample?.frameIndex != null
+    && sample?.beat != null
+    && sample?.poseQuality != null
+    && sample?.memberTracks != null
+    && (member?.leftHand != null || member?.rightHand != null || member?.face != null)
+  );
 }

@@ -7,6 +7,7 @@ import {
   loadChoreographyDataset,
   skeletonFramesToChoreographyDataset,
 } from '../services/group/ChoreographyDatasetLoader';
+import { computePracticeTimeline } from '../utils/practiceTimelineUtils';
 import type { ChoreographyDataset } from '../types/groupChoreography';
 
 export interface UseGroupDanceEngineOptions {
@@ -15,6 +16,8 @@ export interface UseGroupDanceEngineOptions {
   userMemberId: string;
   skeletonFrames?: any[] | null;
   practiceDuration?: number;
+  sampleFps?: number;
+  totalFrames?: number;
 }
 
 /**
@@ -26,7 +29,9 @@ export function useGroupDanceEngine({
   songId,
   userMemberId,
   skeletonFrames = null,
-  practiceDuration = 180,
+  practiceDuration = 0,
+  sampleFps = 30,
+  totalFrames = 0,
 }: UseGroupDanceEngineOptions) {
   const [dataset, setDataset] = useState<ChoreographyDataset | null>(null);
   const [loading, setLoading] = useState(() => !skeletonFrames?.length);
@@ -49,7 +54,16 @@ export function useGroupDanceEngine({
     }
 
     if (skeletonFrames?.length) {
+      if (!practiceDuration || practiceDuration <= 0) {
+        setError('연습 길이(practiceDuration)가 설정되지 않았습니다.');
+        setLoading(false);
+        return undefined;
+      }
       try {
+        const timeline =
+          computePracticeTimeline(practiceDuration, sampleFps)
+          ?? { duration: practiceDuration, fps: sampleFps, totalFrames: totalFrames || skeletonFrames.length };
+
         const loaded = skeletonFramesToChoreographyDataset({
           groupId,
           songId,
@@ -68,8 +82,8 @@ export function useGroupDanceEngine({
             formationAnchor: { x: m.defaultX, y: m.defaultY, z: 0 },
           })),
           frames: skeletonFrames,
-          durationSec: practiceDuration,
-          sampleFps: 15,
+          durationSec: timeline.duration,
+          sampleFps: timeline.fps,
         });
         setDataset(loaded);
         managerRef.current = new AvatarGroupManager({
@@ -77,7 +91,13 @@ export function useGroupDanceEngine({
           groupMembers: group.members,
           userMemberId,
         });
-        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current);
+        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current, {
+          sourceFrames: skeletonFrames,
+          timeline: {
+            ...timeline,
+            totalFrames: totalFrames > 0 ? totalFrames : timeline.totalFrames,
+          },
+        });
         setError(null);
         setLoading(false);
       } catch (err: any) {
@@ -100,7 +120,10 @@ export function useGroupDanceEngine({
           groupMembers: group.members,
           userMemberId,
         });
-        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current);
+        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current, {
+          sourceFrames: skeletonFrames,
+          timeline: computePracticeTimeline(practiceDuration, sampleFps),
+        });
       } catch (err: any) {
         if (!cancelled) setError(err?.message || String(err));
       } finally {
@@ -111,7 +134,7 @@ export function useGroupDanceEngine({
     return () => {
       cancelled = true;
     };
-  }, [groupId, songId, userMemberId, skeletonFrames, practiceDuration, group]);
+  }, [groupId, songId, userMemberId, skeletonFrames, practiceDuration, sampleFps, totalFrames, group]);
 
   const tick = useCallback(
     (elapsedSec: number, userJoints: Record<string, { x: number; y: number; z?: number }> | null = null) => {

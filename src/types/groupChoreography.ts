@@ -71,13 +71,43 @@ export interface AIAvatarInstance {
   persona: PersonaStyle;
   /** 현재 프레임 관절 (formation 보정 후) */
   joints: Record<string, ChoreographyJoint>;
+  /** 본별 Quaternion — GLB 리타겟 */
+  boneRotations?: Record<string, { x: number; y: number; z: number; w: number }>;
+  /** Body facing */
+  orientation?: { yaw: number; pitch: number; label: string; confidence: number };
   /** 3D 월드 오프셋 (dynamic positioning) */
   worldOffset: { x: number; y: number; z: number };
+  isEstimated?: boolean;
 }
 
-/** 사용자 + AI 아바타 동기화 스냅샷 (렌더러 입력) */
+/** 사용자 + AI 아바타 동기화 스냅샷 (렌더러 입력) — 스테이지 100% 복원용 */
+export interface GroupDanceTimelineSnapshot {
+  /** 연습 타임라인 길이(초) — video.duration */
+  duration: number;
+  fps: number;
+  /** duration × fps */
+  totalFrames: number;
+  /** 현재 프레임 인덱스 */
+  frameIndex: number;
+  /** 0~1 진행률 */
+  progress: number;
+}
+
 export interface GroupDanceRenderSnapshot {
+  /** tick 시각(초) — currentTime과 동일 */
   timestamp: number;
+  currentTime: number;
+  sourceVideoTime?: number;
+  bpm?: number;
+  beat?: number;
+  beatIndex?: number;
+  poseQuality?: number;
+  timeline: GroupDanceTimelineSnapshot;
+  /** findFrameAtTime 결과 — formation/memberTracks/confidence 포함 */
+  frame: import('./groupPractice').SkeletonFrameData | null;
+  formation: import('./danceDatabase').FormationKeyframe | null;
+  memberTracks: import('./groupPractice').SkeletonFrameMemberTrack[];
+  confidence: number;
   userMemberId: string;
   userJoints: Record<string, ChoreographyJoint> | null;
   userAnchor: { x: number; y: number; z: number };

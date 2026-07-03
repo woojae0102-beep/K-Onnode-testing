@@ -8,6 +8,7 @@ import {
   loadChoreographyDataset,
   skeletonFramesToChoreographyDataset,
 } from '../services/group/ChoreographyDatasetLoader';
+import { computePracticeTimeline } from '../../utils/practiceTimelineUtils';
 import type { ChoreographyDataset, GroupDanceRenderSnapshot } from '../types/groupChoreography';
 
 export interface UseGroupDanceStageOptions {
@@ -30,7 +31,7 @@ export function useGroupDanceStage({
   songId,
   userMemberId,
   skeletonFrames = null,
-  practiceDuration = 180,
+  practiceDuration = 0,
   userJoints = null,
   autoStart = false,
 }: UseGroupDanceStageOptions) {
@@ -89,7 +90,12 @@ export function useGroupDanceStage({
           groupMembers: group?.members || [],
           userMemberId,
         });
-        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current);
+        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current, {
+          sourceFrames: skeletonFrames || [],
+          timeline: skeletonFrames?.length
+            ? computePracticeTimeline(practiceDuration, loaded.meta.fps)
+            : computePracticeTimeline(loaded.meta.durationSec, loaded.meta.fps),
+        });
       } catch (err: any) {
         if (!cancelled) setError(err?.message || String(err));
       } finally {

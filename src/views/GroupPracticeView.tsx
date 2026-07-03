@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import { useGroupStudio } from '../hooks/useGroupStudio';
 import { useStudioSession } from '../hooks/useStudioSession';
@@ -14,7 +14,9 @@ import PositionPicker from '../components/group/PositionPicker';
 import GroupStudioSession from '../components/group/GroupStudioSession';
 import ChoreoExtractScreen from '../components/group/ChoreoExtractScreen';
 import PerformanceReport from '../components/group/PerformanceReport';
+import PracticeValidationError from '../components/group/PracticeValidationError';
 import StudioConnectModal from '../components/studio/StudioConnectModal';
+import { validatePracticeData } from '../utils/practiceDataValidation';
 import type { Agency } from '../types/tv';
 import '../styles/group-studio.css';
 import '../styles/studio-mode.css';
@@ -34,16 +36,14 @@ export default function GroupPracticeView({
     phase,
     selectedSongId,
     selectedMemberId,
-    skeletonData,
+    practiceSessionData,
     sessionResult,
     sessionComparison,
-    danceDatabase,
     selectSong,
     startPositionSelect,
     selectPosition,
     completeChoreoExtract,
     practiceVideo,
-    practiceDuration,
     endSession,
     retry,
     goHome,
@@ -162,6 +162,16 @@ export default function GroupPracticeView({
     [agency, user, endSession, selectedSongId, song, groupId],
   );
 
+  const practiceValidation = useMemo(() => {
+    if (phase !== 'practice' || !selectedSongId || !groupId || !selectedMemberId) return null;
+    return validatePracticeData({
+      practiceSessionData,
+      groupId,
+      songId: selectedSongId,
+      userMemberId: selectedMemberId,
+    });
+  }, [phase, practiceSessionData, groupId, selectedSongId, selectedMemberId]);
+
   const handleGoHome = useCallback(async () => {
     document.body.classList.remove('tv-active', 'tv-result-open');
     if (document.fullscreenElement) {
@@ -232,19 +242,26 @@ export default function GroupPracticeView({
           onBack={goBack}
         />
       )}
-      {phase === 'practice' && selectedSongId && groupId && selectedMemberId && skeletonData && (
-        <GroupStudioSession
-          songId={selectedSongId}
-          groupId={groupId}
-          myMemberId={selectedMemberId}
-          skeletonData={skeletonData}
-          referenceYoutubeUrl={practiceVideo?.youtubeUrl}
-          practiceDuration={practiceDuration}
-          danceDatabase={danceDatabase}
-          agency={agency}
-          onEnd={handleEnd}
-          onHome={handleGoHome}
-        />
+      {phase === 'practice' && selectedSongId && groupId && selectedMemberId && practiceValidation && (
+        practiceValidation.valid ? (
+          <GroupStudioSession
+            practiceSessionData={practiceSessionData}
+            referenceYoutubeUrl={
+              practiceSessionData.referenceVideo?.localPlaybackUrl
+              || practiceSessionData.referenceVideo?.youtubeUrl
+              || practiceVideo?.youtubeUrl
+            }
+            agency={agency}
+            onEnd={handleEnd}
+            onHome={handleGoHome}
+          />
+        ) : (
+          <PracticeValidationError
+            validation={practiceValidation}
+            onRetry={goBack}
+            onHome={handleGoHome}
+          />
+        )
       )}
       {phase === 'result' && sessionResult && selectedSongId && selectedMemberId && (
         <PerformanceReport

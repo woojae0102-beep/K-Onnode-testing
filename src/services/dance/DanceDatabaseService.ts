@@ -12,15 +12,21 @@ import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
 import { buildSkeletonFramesFromAnalysis } from '../videoAnalysisUtils';
 import { identifyUserTrackId } from '../formationMatching';
-import { buildFormationTimeline } from './FormationTimelineBuilder';
+import { buildFormationTimeline, analyzeFormationTimeline } from './FormationTimelineBuilder';
 import { smoothSkeletonFrames } from '../motion/JointKalmanFilter';
-import { saveCachedChoreo, buildChoreoCacheKey, getCachedChoreo } from '../groupChoreoCache';
+import {
+  MOTION_PIPELINE_VERSION,
+  runGroupMotionPipeline,
+} from '../motion/GroupMotionPipeline';
+import { saveCachedChoreo, buildChoreoCacheKey, getCachedChoreo, CHOREO_CACHE_PIPELINE_VERSION } from '../groupChoreoCache';
 import {
   normalizeTrackMemberMap,
   normalizePositionMap,
   normalizeSkeletonFrames,
   validateSkeletonForPractice,
 } from '../../utils/skeletonDataUtils';
+import { resolvePracticeDurationSec } from '../../utils/buildPracticeSessionData';
+import { CHOREO_DEFAULT_SAMPLE_FPS } from '../../config/choreoExtractConfig';
 
 const DB_NAME = 'onnode_dance_data_v2';
 const DB_VERSION = 1;
@@ -138,7 +144,7 @@ export function buildDanceDatabase({
   analysisResult,
   trackToMember,
   videoId,
-  sampleFps = 15,
+  sampleFps,
 }: {
   groupId: string;
   songId: string;
@@ -149,17 +155,62 @@ export function buildDanceDatabase({
   sampleFps?: number;
 }): DanceDatabase {
   const normalizedMap = normalizeTrackMemberMap(trackToMember);
+  const extractionFps = sampleFps ?? analysisResult.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS;
 
-  const skeletonFrames = normalizeSkeletonFrames(
-    smoothSkeletonFrames(
-      buildSkeletonFramesFromAnalysis(analysisResult, normalizedMap, userMemberId),
-    ),
+  const rawSkeletonFrames = buildSkeletonFramesFromAnalysis(
+    analysisResult,
+    normalizedMap,
+    userMemberId,
   );
 
-  const validation = validateSkeletonForPractice(skeletonFrames, userMemberId);
-  if (!validation.valid) {
-    throw new Error(validation.reason || '스켈레톤 데이터가 유효하지 않습니다.');
+  const allMemberIds = [
+    userMemberId,
+    ...[...normalizedMap.values()].filter((id) => id && id !== userMemberId),
+  ];
+
+  const positionMap = buildPositionMap(userMemberId, normalizedMap, groupId);
+  const dbMemberTracks = buildMemberTracks(analysisResult, normalizedMap);
+
+  const sourceVideoDurationSec = resolvePracticeDurationSec(
+    analysisResult.sourceVideoDurationSec,
+  );
+  if (!sourceVideoDurationSec) {
+    throw new Error('영상 길이(sourceVideoDurationSec)가 없습니다. 안무를 다시 추출해 주세요.');
   }
+
+  const bpmMeta = resolveBpm(songId);
+
+  const pipeline = runGroupMotionPipeline({
+    rawFrames: smoothSkeletonFrames(rawSkeletonFrames),
+    groupId,
+    songId,
+    userMemberId,
+    allMemberIds,
+    videoDurationSec: sourceVideoDurationSec,
+    fps: extractionFps,
+    bpm: bpmMeta.bpm,
+    trackToMember: Object.fromEntries(
+      [...normalizedMap.entries()].filter(([, id]) => id !== userMemberId),
+    ),
+    memberTracks: dbMemberTracks,
+    applySmoothing: false,
+  });
+
+  const skeletonFrames = pipeline.frames;
+  const timeline = pipeline.timeline;
+  const validation = pipeline.validation;
+
+  const formation = pipeline.formationTimeline ?? analyzeFormationTimeline({
+    groupId,
+    songId,
+    userMemberId,
+    frames: skeletonFrames,
+    trackToMember: normalizedMap,
+  });
+
+  const motionTimelines = pipeline.motionTimelines
+    ? [...pipeline.motionTimelines.values()]
+    : [];
 
   const aiMemberCount = (GROUP_DATA[groupId]?.members.length || 1) - 1;
   const mappedAiCount = new Set(
@@ -177,36 +228,26 @@ export function buildDanceDatabase({
     );
   }
 
-  const positionMap = buildPositionMap(userMemberId, normalizedMap, groupId);
-  const formation = buildFormationTimeline({
-    groupId,
-    songId,
-    userMemberId,
-    frames: analysisResult.frames,
-    trackToMember: normalizedMap,
-  });
-
   const skeletonEnd =
-    skeletonFrames[skeletonFrames.length - 1]?.timestamp ||
-    analysisResult.frames[analysisResult.frames.length - 1]?.timestamp ||
-    0;
-  const sourceVideoDurationSec =
-    analysisResult.sourceVideoDurationSec || skeletonEnd || 0;
+    skeletonFrames[skeletonFrames.length - 1]?.timestamp || 0;
 
   return {
     version: '2.0',
+    pipelineVersion: MOTION_PIPELINE_VERSION,
+    motionPipelineAudit: pipeline.audit,
     groupId,
     songId,
     videoId,
     detectedMemberCount: analysisResult.detectedMemberCount,
-    durationSec: Math.max(sourceVideoDurationSec, skeletonEnd),
-    sourceVideoDurationSec,
+    durationSec: timeline.duration,
+    sourceVideoDurationSec: timeline.duration,
     skeletonCoverageSec: skeletonEnd,
-    sampleFps,
+    sampleFps: timeline.fps,
     bpm: resolveBpm(songId),
     skeletonFrames,
-    memberTracks: buildMemberTracks(analysisResult, normalizedMap),
+    memberTracks: pipeline.memberIdentification?.memberTracks ?? dbMemberTracks,
     formation,
+    motionTimelines,
     positionMap,
     formationHole: buildFormationHole(userMemberId, groupId, analysisResult),
     savedAt: new Date().toISOString(),
@@ -234,9 +275,11 @@ export async function saveDanceDatabase(danceDb: DanceDatabase) {
     frames: danceDb.skeletonFrames,
     frameCount: danceDb.skeletonFrames.length,
     durationSec: danceDb.durationSec,
-    danceDatabaseVersion: '2.0',
+    pipelineVersion: danceDb.pipelineVersion || CHOREO_CACHE_PIPELINE_VERSION,
+    sampleFps: danceDb.sampleFps,
     positionMap: danceDb.positionMap,
     formationHole: danceDb.formationHole,
+    bpm: danceDb.bpm?.bpm,
   });
 
   return packageKey;
@@ -285,11 +328,11 @@ export async function loadDanceDatabase(
       videoId,
       detectedMemberCount: validation.aiMemberCount || normalized[0]?.members?.length || 0,
       durationSec: cached.durationSec || 0,
-      sampleFps: 15,
+      sampleFps: cached.sampleFps ?? 30,
       bpm: resolveBpm(songId),
       skeletonFrames: normalized,
       memberTracks: [],
-      formation: { groupId, songId, userMemberId: uid, defaultFormation: 'diamond', keyframes: [] },
+      formation: { groupId, songId, userMemberId: uid, defaultFormation: 'diamond', segments: [], keyframes: [] },
       positionMap: cached.positionMap || { userMemberId: uid, aiMemberIds: [], trackToMember: {}, memberToTrack: {} },
       formationHole: cached.formationHole || { memberId: uid, anchor: { x: 0.5, y: 0.5, z: 0 }, label: 'YOU', color: '#FF1F8E' },
       savedAt: cached.savedAt || '',

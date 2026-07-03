@@ -60,6 +60,7 @@ export function skeletonFramesToChoreographyDataset({
   memberMeta,
   frames,
   durationSec,
+  sampleFps = 30,
 }: {
   groupId: string;
   songId: string;
@@ -70,7 +71,7 @@ export function skeletonFramesToChoreographyDataset({
   durationSec: number;
   sampleFps?: number;
 }): ChoreographyDataset {
-  const fps = sampleFps || 15;
+  const fps = sampleFps || 30;
   return {
     meta: {
       groupId,
