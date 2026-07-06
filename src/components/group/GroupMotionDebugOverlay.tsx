@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import type { GroupMotionEngineDebugState } from '../../types/groupMotionEngine';
+import { isDevEnvironment } from '../../utils/isDevEnvironment';
 
 const ROW: React.CSSProperties = {
   display: 'flex',
@@ -32,6 +33,7 @@ export function GroupMotionDebugOverlay({
   debug: GroupMotionEngineDebugState | null;
   visible?: boolean;
 }) {
+  if (!isDevEnvironment()) return null;
   if (!visible || !debug) return null;
 
   const coverage = Object.entries(debug.motionTimelineCoverage || {})

@@ -12,13 +12,10 @@ import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { useGroupAvatarAssets } from '../../hooks/useGroupAvatarAssets';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import {
-  drawStageBackground,
-  drawGhostSlot,
-  drawAIAvatar,
-  drawUserSkeleton,
-  buildRenderConfig,
+  renderStageFrame,
 } from '../../utils/groupSkeletonDraw';
-import { computeAspectFitSize, normalizedToCanvas } from '../../utils/canvasSkeletonUtils';
+import { computeAspectFitSize } from '../../utils/canvasSkeletonUtils';
+import { isDevEnvironment } from '../../utils/isDevEnvironment';
 import { findFrameAtTime, findFrameIndexAtTime } from '../../utils/skeletonTimelineUtils';
 import { validateSkeletonForPractice } from '../../utils/skeletonDataUtils';
 import {
@@ -388,68 +385,68 @@ export function GroupStudioSession({
       }
       if (!logicalW || !logicalH) return;
 
-      const renderConfig = buildRenderConfig(
-        canvas._videoWidth || sourceVideoWidth,
-        canvas._videoHeight || sourceVideoHeight,
-        logicalW,
-        logicalH,
-      );
-
-      drawStageBackground(ctx, logicalW, logicalH);
-
       const holeNormX = formationHole?.anchor?.x ?? myMember.defaultX;
       const holeNormY = formationHole?.anchor?.y ?? myMember.defaultY;
-      const holePos = normalizedToCanvas(holeNormX, holeNormY, renderConfig);
+      const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
 
-      if (showGhost && sessionPhase !== 'practicing') {
-        drawGhostSlot(ctx, holePos, formationHole?.color || myMember.color, formationHole?.label || 'YOUR SLOT');
-      } else if (isPracticing) {
-        drawGhostSlot(ctx, holePos, formationHole?.color || myMember.color, formationHole?.label || 'YOU');
-      }
-
-      let aiRendered = 0;
-
+      const aiMembers = [];
       const frame = snapshotFrame(snapshot) ?? findFrameAtTime(sessionFrames, timeSec);
+
       frame?.members?.forEach((memberData) => {
         if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
         const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
         if (!member || !memberData.joints || !Object.keys(memberData.joints).length) return;
-        drawAIAvatar(
-          ctx,
-          memberData.joints,
-          member.color,
-          member.nameKr,
-          canvas,
-          renderConfig,
-          memberData.isEstimated,
-        );
-        aiRendered += 1;
+        aiMembers.push({
+          joints: memberData.joints,
+          color: member.color,
+          name: member.nameKr,
+          isEstimated: memberData.isEstimated,
+        });
       });
 
-      if (aiRendered === 0) {
-        const aiAvatars = snapshotAiAvatars(snapshot);
-        aiAvatars.forEach((avatar) => {
+      if (aiMembers.length === 0) {
+        snapshotAiAvatars(snapshot).forEach((avatar) => {
           const member = group.members.find((m) => m.id === avatar.memberId);
           if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
-          drawAIAvatar(ctx, avatar.joints, member.color, member.nameKr, canvas, renderConfig, avatar.isEstimated);
-          aiRendered += 1;
+          aiMembers.push({
+            joints: avatar.joints,
+            color: member.color,
+            name: member.nameKr,
+            isEstimated: avatar.isEstimated,
+          });
         });
       }
 
+      const aiRendered = aiMembers.length;
       if (aiRendered !== lastSkeletonCountRef.current) {
         lastSkeletonCountRef.current = aiRendered;
         setStageSkeletonCount(aiRendered);
       }
 
-      if (dance.poseData?.joints && (isPracticing || sessionPhase === 'waiting_slot')) {
-        const smoothed = smoothLiveJoints(dance.poseData.joints);
-        const userAnchor = snapshotUserAnchor(snapshot);
-        const anchorX = userAnchor.x ?? myMember.defaultX;
-        const anchorY = userAnchor.y ?? myMember.defaultY;
-        drawUserSkeleton(ctx, smoothed, myMember.color, canvas, anchorX, anchorY);
-      }
+      const userAnchor = snapshotUserAnchor(snapshot);
+      const anchorX = userAnchor.x ?? holeNormX;
+      const anchorY = userAnchor.y ?? holeNormY;
+
+      renderStageFrame(ctx, canvas, {
+        aiMembers,
+        userJoints: showUserPose && dance.poseData?.joints
+          ? smoothLiveJoints(dance.poseData.joints)
+          : null,
+        userColor: myMember.color,
+        userAnchor: { x: anchorX, y: anchorY },
+        ghostAnchor: (showGhost && sessionPhase !== 'practicing') || isPracticing
+          ? {
+              x: holeNormX,
+              y: holeNormY,
+              color: formationHole?.color || myMember.color,
+              label: sessionPhase === 'practicing'
+                ? (formationHole?.label || 'YOU')
+                : (formationHole?.label || 'YOUR SLOT'),
+            }
+          : null,
+      });
     },
-    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sourceVideoWidth, sourceVideoHeight, sessionFrames, resizeStageCanvas],
+    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, sessionFrames, resizeStageCanvas],
   );
 
   renderGroupStageRef.current = renderGroupStage;
@@ -813,19 +810,23 @@ export function GroupStudioSession({
         ) : null}
 
         <div className="group-studio-stage-pane group-studio-stage-panel" style={{ position: 'relative', borderColor: `${myMember.color}33` }}>
-        <PracticeDebugHUD
-          frameIndex={debugHudStats.frameIndex}
-          totalFrames={debugHudStats.totalTimelineFrames}
-          duration={maxDuration}
-          skeletonCount={debugHudStats.skeletonCount}
-          aiAvatarCount={debugHudStats.aiAvatarCount}
-          userSkeletonJoints={debugHudStats.userSkeletonJoints}
-          currentTimeline={effectiveTime}
-          snapshotAiCount={debugHudStats.snapshotAiCount}
-          validationReport={practiceSessionData.motionMetadata?.validationReport}
-          interpolatedMemberCount={practiceSessionData.motionMetadata?.pipelineAudit?.interpolatedMemberCount}
-        />
-        <GroupMotionDebugOverlay debug={groupMotionDebug} visible />
+        {isDevEnvironment() ? (
+          <>
+            <PracticeDebugHUD
+              frameIndex={debugHudStats.frameIndex}
+              totalFrames={debugHudStats.totalTimelineFrames}
+              duration={maxDuration}
+              skeletonCount={debugHudStats.skeletonCount}
+              aiAvatarCount={debugHudStats.aiAvatarCount}
+              userSkeletonJoints={debugHudStats.userSkeletonJoints}
+              currentTimeline={effectiveTime}
+              snapshotAiCount={debugHudStats.snapshotAiCount}
+              validationReport={practiceSessionData.motionMetadata?.validationReport}
+              interpolatedMemberCount={practiceSessionData.motionMetadata?.pipelineAudit?.interpolatedMemberCount}
+            />
+            <GroupMotionDebugOverlay debug={groupMotionDebug} visible />
+          </>
+        ) : null}
         <div style={{ position: 'absolute', top: 0, left: 0, right: 0, padding: '10px 14px', background: 'rgba(0,0,0,0.5)', zIndex: 10, display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
           <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.5)' }}>{t('groupStudio.session.stageLabel')}</span>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -873,7 +874,7 @@ export function GroupStudioSession({
         ) : (
           <div className="group-studio-stage-canvas-wrap" style={{ position: 'relative' }}>
             <canvas ref={stageCanvasRef} className="group-studio-stage-canvas" />
-            {!show3DRenderer ? (
+            {isDevEnvironment() ? (
               <SnapshotDebugOverlay snapshot={danceSnapshot} loading={danceEngine.loading} />
             ) : null}
           </div>
@@ -1054,24 +1055,28 @@ export function GroupStudioSession({
             </div>
             <span style={{ fontWeight: 600, color: myMember.color }}>{myMember.nameKr}</span>
           </div>
-          <div className="group-studio-user-body">
+          <div className="group-studio-user-body group-studio-camera-stack">
             <video
               ref={dance.videoRef}
+              className="group-studio-camera-video"
               autoPlay
               playsInline
               muted
-              style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
             />
             <canvas
               ref={dance.canvasRef}
-              style={{
-                position: 'absolute',
-                inset: 0,
-                width: '100%',
-                height: '100%',
-                transform: 'scaleX(-1)',
-              }}
+              className="group-studio-camera-skeleton-overlay"
             />
+            {!dance.isTracking && sessionPhase !== 'lobby' ? (
+              <div className="group-studio-camera-placeholder">
+                카메라 연결 중...
+              </div>
+            ) : null}
+            {dance.cameraHealth?.error ? (
+              <div className="group-studio-camera-error">
+                {dance.cameraHealth.error}
+              </div>
+            ) : null}
           </div>
           <div className="group-studio-user-score">
             <div

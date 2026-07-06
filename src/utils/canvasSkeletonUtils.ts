@@ -1,6 +1,7 @@
 // @ts-nocheck
 import type { JointPoint } from '../types/groupPractice';
 import { SKELETON_CONNECTIONS } from '../types/groupPractice';
+import type { StageFitContainView } from './stageFitContain';
 
 /** MediaPipe 0~1 정규화 좌표 → Canvas 픽셀 (letterbox/pillarbox 보정) */
 export interface CanvasRenderConfig {
@@ -9,6 +10,20 @@ export interface CanvasRenderConfig {
   canvasWidth: number;
   canvasHeight: number;
 }
+
+export interface SkeletonDrawStyle {
+  boneWidth?: number;
+  jointRadius?: number;
+  glowBlur?: number;
+  labelFont?: string;
+}
+
+const DEFAULT_STYLE: Required<SkeletonDrawStyle> = {
+  boneWidth: 4.5,
+  jointRadius: 6.5,
+  glowBlur: 12,
+  labelFont: 'bold 12px Inter, sans-serif',
+};
 
 export function normalizedToCanvas(
   nx: number,
@@ -44,34 +59,48 @@ type JointLike = { x: number; y: number; confidence?: number; visibility?: numbe
 function jointConfidence(joint: JointLike | undefined): number {
   if (!joint) return 0;
   const v = joint.confidence ?? joint.visibility;
-  // 추출된 스켈레톤은 visibility 필드가 없을 수 있음 → 그리기 허용
   if (v == null || !Number.isFinite(v)) return 1;
   return v;
 }
 
-/** 원본 영상 비율을 유지한 스켈레톤 그리기 */
+function mapJoint(
+  joint: JointLike,
+  view: StageFitContainView | CanvasRenderConfig,
+): { x: number; y: number } {
+  if ('mapPoint' in view && typeof view.mapPoint === 'function') {
+    return view.mapPoint(joint.x, joint.y);
+  }
+  return normalizedToCanvas(joint.x, joint.y, view as CanvasRenderConfig);
+}
+
+/** FitContain view 또는 legacy config로 스켈레톤 그리기 (Glow · AntiAlias · 두꺼운 Bone) */
 export function drawAccurateSkeleton(
   ctx: CanvasRenderingContext2D,
   joints: Record<string, JointLike>,
   color: string,
   memberName: string,
-  config: CanvasRenderConfig,
+  view: StageFitContainView | CanvasRenderConfig,
   isEstimated = false,
+  style: SkeletonDrawStyle = {},
 ) {
+  const s = { ...DEFAULT_STYLE, ...style };
+  const boneWidth = s.boneWidth + (isEstimated ? -1 : 0);
+  const jointRadius = s.jointRadius + (isEstimated ? -1.5 : 0);
+
   ctx.save();
 
   if (isEstimated) {
-    ctx.setLineDash([4, 4]);
-    ctx.globalAlpha = 0.5;
+    ctx.setLineDash([5, 4]);
+    ctx.globalAlpha = 0.55;
   } else {
     ctx.setLineDash([]);
     ctx.globalAlpha = 1;
   }
 
-  ctx.shadowColor = color;
-  ctx.shadowBlur = 8;
-  ctx.strokeStyle = color;
-  ctx.lineWidth = 3;
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
 
   SKELETON_CONNECTIONS.forEach(([startName, endName]) => {
     const startJoint = joints[startName];
@@ -79,9 +108,13 @@ export function drawAccurateSkeleton(
     if (!startJoint || !endJoint) return;
     if (jointConfidence(startJoint) < 0.2 || jointConfidence(endJoint) < 0.2) return;
 
-    const startPx = normalizedToCanvas(startJoint.x, startJoint.y, config);
-    const endPx = normalizedToCanvas(endJoint.x, endJoint.y, config);
+    const startPx = mapJoint(startJoint, view);
+    const endPx = mapJoint(endJoint, view);
 
+    ctx.shadowColor = color;
+    ctx.shadowBlur = s.glowBlur;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = boneWidth;
     ctx.beginPath();
     ctx.moveTo(startPx.x, startPx.y);
     ctx.lineTo(endPx.x, endPx.y);
@@ -90,23 +123,30 @@ export function drawAccurateSkeleton(
 
   Object.values(joints).forEach((joint) => {
     if (!joint || jointConfidence(joint) < 0.2) return;
-    const px = normalizedToCanvas(joint.x, joint.y, config);
+    const px = mapJoint(joint, view);
 
-    ctx.beginPath();
-    ctx.arc(px.x, px.y, 5, 0, Math.PI * 2);
+    ctx.shadowColor = color;
+    ctx.shadowBlur = s.glowBlur * 1.15;
     ctx.fillStyle = color;
-    ctx.shadowBlur = 12;
+    ctx.beginPath();
+    ctx.arc(px.x, px.y, jointRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.shadowBlur = s.glowBlur * 0.5;
+    ctx.fillStyle = 'rgba(255,255,255,0.28)';
+    ctx.beginPath();
+    ctx.arc(px.x, px.y, jointRadius * 0.42, 0, Math.PI * 2);
     ctx.fill();
   });
 
   const nose = joints.nose;
   if (nose && jointConfidence(nose) > 0.2) {
-    const nosePx = normalizedToCanvas(nose.x, nose.y, config);
+    const nosePx = mapJoint(nose, view);
     ctx.shadowBlur = 0;
     ctx.fillStyle = color;
-    ctx.font = 'bold 12px Inter, sans-serif';
+    ctx.font = s.labelFont;
     ctx.textAlign = 'center';
-    ctx.fillText(memberName, nosePx.x, nosePx.y - 16);
+    ctx.fillText(memberName, nosePx.x, nosePx.y - 18);
   }
 
   ctx.restore();

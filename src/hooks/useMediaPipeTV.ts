@@ -6,6 +6,12 @@ import { applyInlineVideoAttributes, buildMobileVideoConstraints } from '../util
 import { useSettingsStore } from '../store/settingsSlice';
 import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../config/groupChoreoConstants';
 import { getOptimizedCanvasContext, syncCanvasToDisplayRect } from '../utils/cameraFrameLoop';
+import {
+  buildCameraCoverView,
+  drawCameraSkeletonOverlay,
+  verifyCameraPipeline,
+  type CameraHealthStatus,
+} from '../utils/cameraOverlayUtils';
 
 const JOINT_MAP = {
   nose: 0,
@@ -72,36 +78,29 @@ function buildTVVideoConstraints(settings, facingMode = 'user') {
   };
 }
 
-function drawSkeletonOnCanvas(canvas, joints, accuracies) {
+function drawSkeletonOnCanvas(canvas, video, joints, accuracies) {
   if (!canvas || !joints) return;
   const ctx = getOptimizedCanvasContext(canvas);
   if (!ctx) return;
 
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  CONNECTIONS.forEach(([start, end]) => {
-    const s = joints[start];
-    const e = joints[end];
-    if (!s || !e) return;
+  const vw = video?.videoWidth || canvas.width;
+  const vh = video?.videoHeight || canvas.height;
+  const view = buildCameraCoverView(vw, vh, canvas.width, canvas.height);
 
-    const accuracy = ((accuracies[start] || 0) + (accuracies[end] || 0)) / 2;
-    const color = accuracy > 80 ? '#00FF88' : accuracy > 60 ? '#FFD700' : '#FF4444';
-
-    ctx.beginPath();
-    ctx.moveTo(s.x * canvas.width, s.y * canvas.height);
-    ctx.lineTo(e.x * canvas.width, e.y * canvas.height);
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 3;
-    ctx.stroke();
-  });
-
-  Object.entries(joints).forEach(([name, joint]) => {
+  const colorForJoint = (name) => {
     const accuracy = accuracies[name] || 0;
-    const color = accuracy > 80 ? '#00FF88' : accuracy > 60 ? '#FFD700' : '#FF4444';
-    ctx.beginPath();
-    ctx.arc(joint.x * canvas.width, joint.y * canvas.height, 5, 0, Math.PI * 2);
-    ctx.fillStyle = color;
-    ctx.fill();
+    if (accuracy > 80) return '#00FF88';
+    if (accuracy > 60) return '#FFD700';
+    return '#FF4444';
+  };
+
+  drawCameraSkeletonOverlay(ctx, joints, view, CONNECTIONS, {
+    boneWidth: 5,
+    jointRadius: 7,
+    glowBlur: 14,
+    colorForJoint,
   });
 }
 
@@ -109,6 +108,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   const settings = useSettingsStore((s) => s.settings);
   const [poseData, setPoseData] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
+  const [cameraHealth, setCameraHealth] = useState<CameraHealthStatus | null>(null);
 
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
@@ -138,7 +138,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       syncCanvasToDisplayRect(canvas);
       const cached = latestPoseRef.current;
       if (cached?.joints) {
-        drawSkeletonOnCanvas(canvas, cached.joints, cached.jointAccuracies);
+        drawSkeletonOnCanvas(canvas, videoRef.current, cached.joints, cached.jointAccuracies);
       }
     });
     resizeObserverRef.current.observe(canvas);
@@ -200,7 +200,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
             };
 
             latestPoseRef.current = nextPose;
-            drawSkeletonOnCanvas(canvas, joints, jointAccuracies);
+            drawSkeletonOnCanvas(canvas, video, joints, jointAccuracies);
 
             if (now - lastStateUpdateAtRef.current >= STATE_UPDATE_INTERVAL_MS) {
               lastStateUpdateAtRef.current = now;
@@ -222,7 +222,12 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   }, [bindCanvasResizeObserver, stopDetectionLoop]);
 
   const startTracking = useCallback(async () => {
+    setCameraHealth(null);
     try {
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error('getUserMedia not supported');
+      }
+
       const stream = await navigator.mediaDevices.getUserMedia({
         video: buildTVVideoConstraints(settings, facingModeRef.current),
         audio: false,
@@ -230,9 +235,19 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       streamRef.current = stream;
 
       const video = videoRef.current;
-      if (video) {
-        video.srcObject = stream;
-        await playVideoWhenReady(video);
+      if (!video) {
+        throw new Error('video element not mounted');
+      }
+
+      video.srcObject = stream;
+      applyInlineVideoAttributes(video);
+      await playVideoWhenReady(video);
+
+      const health = await verifyCameraPipeline(video);
+      setCameraHealth(health);
+
+      if (health.error) {
+        console.warn('[useMediaPipeTV] camera pipeline:', health.error);
       }
 
       setIsTracking(true);
@@ -270,6 +285,14 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       detectTimestampRef.current = 0;
     } catch (err) {
       console.error('카메라 시작 실패:', err);
+      setCameraHealth({
+        getUserMediaOk: false,
+        srcObjectSet: false,
+        videoPlaying: false,
+        videoWidth: 0,
+        videoHeight: 0,
+        error: err?.message || String(err),
+      });
       setIsTracking(false);
     }
   }, [settings, startDetectionLoop]);
@@ -283,6 +306,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
     latestPoseRef.current = null;
     setIsTracking(false);
     setPoseData(null);
+    setCameraHealth(null);
 
     const canvas = canvasRef.current;
     const ctx = canvas ? getOptimizedCanvasContext(canvas) : null;
@@ -306,6 +330,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   return {
     poseData,
     isTracking,
+    cameraHealth,
     startTracking,
     stopTracking,
     switchCamera,

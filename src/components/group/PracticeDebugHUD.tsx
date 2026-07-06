@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React from 'react';
 import type { SkeletonValidationDebugReport } from '../../utils/skeletonDataUtils';
+import { isDevEnvironment } from '../../utils/isDevEnvironment';
 
 export interface PracticeDebugHudProps {
   frameIndex: number;
@@ -40,6 +41,8 @@ export function PracticeDebugHUD({
   validationReport = null,
   interpolatedMemberCount = 0,
 }: PracticeDebugHudProps) {
+  if (!isDevEnvironment()) return null;
+
   const rows: Array<[string, string | number]> = [
     ['Frame', frameIndex >= 0 ? `${frameIndex} / ${totalFrames - 1}` : `— / ${totalFrames}`],
     ['TotalFrames', validationReport?.totalFrames ?? totalFrames],

@@ -7,11 +7,9 @@ import { useGroupSync } from '../../hooks/useGroupSync';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import {
-  drawStageBackground,
-  drawMySpot,
-  drawAIAvatar,
-  drawUserSkeleton,
+  renderStageFrame,
 } from '../../utils/groupSkeletonDraw';
+import { computeAspectFitSize } from '../../utils/canvasSkeletonUtils';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import FormationGuide from './FormationGuide';
 import TempoLockIndicator from './TempoLockIndicator';
@@ -126,8 +124,18 @@ export function GroupStageView({
     const canvas = stageCanvasRef.current;
     if (!canvas?.parentElement) return;
     const rect = canvas.parentElement.getBoundingClientRect();
-    canvas.width = rect.width;
-    canvas.height = rect.height;
+    const parentW = rect.width > 0 ? rect.width : canvas.parentElement.clientWidth || 640;
+    const parentH = rect.height > 0 ? rect.height : canvas.parentElement.clientHeight || 360;
+    const { width: renderW, height: renderH } = computeAspectFitSize(16, 9, parentW, parentH);
+    const dpr = window.devicePixelRatio || 1;
+    canvas.width = Math.round(renderW * dpr);
+    canvas.height = Math.round(renderH * dpr);
+    canvas.style.width = `${renderW}px`;
+    canvas.style.height = `${renderH}px`;
+    canvas._logicalWidth = renderW;
+    canvas._logicalHeight = renderH;
+    const ctx = canvas.getContext('2d');
+    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }, []);
 
   useEffect(() => {
@@ -143,31 +151,30 @@ export function GroupStageView({
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      drawStageBackground(ctx, canvas.width, canvas.height);
-
-      const myPos = {
-        x: myMember.defaultX * canvas.width,
-        y: myMember.defaultY * canvas.height,
-      };
-      drawMySpot(ctx, myPos, myMember.color);
-
+      const aiMembers = [];
       frame?.members?.forEach((memberData) => {
         if (memberData.estimatedMemberId === myMemberId) return;
         const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
-        if (!member) return;
-        drawAIAvatar(ctx, memberData.joints, member.color, member.nameKr, canvas);
+        if (!member || !memberData.joints) return;
+        aiMembers.push({
+          joints: memberData.joints,
+          color: member.color,
+          name: member.nameKr,
+        });
       });
 
-      if (dance.poseData?.joints) {
-        drawUserSkeleton(
-          ctx,
-          dance.poseData.joints,
-          myMember.color,
-          canvas,
-          myMember.defaultX,
-          myMember.defaultY,
-        );
-      }
+      renderStageFrame(ctx, canvas, {
+        aiMembers,
+        userJoints: dance.poseData?.joints || null,
+        userColor: myMember.color,
+        userAnchor: { x: myMember.defaultX, y: myMember.defaultY },
+        ghostAnchor: {
+          x: myMember.defaultX,
+          y: myMember.defaultY,
+          color: myMember.color,
+          label: 'YOU',
+        },
+      });
     },
     [group, myMember, myMemberId, dance.poseData],
   );
@@ -436,29 +443,18 @@ export function GroupStageView({
           </span>
         </div>
 
-        <div style={{ flex: 1, position: 'relative', minHeight: 160 }}>
+        <div style={{ flex: 1, position: 'relative', minHeight: 160 }} className="group-studio-camera-stack">
           <video
             ref={dance.videoRef}
+            className="group-studio-camera-video"
             autoPlay
             playsInline
             muted
-            style={{
-              width: '100%',
-              height: '100%',
-              objectFit: 'cover',
-              transform: 'scaleX(-1)',
-            }}
           />
-          <canvas
-            ref={dance.canvasRef}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              width: '100%',
-              height: '100%',
-              transform: 'scaleX(-1)',
-            }}
-          />
+          <canvas ref={dance.canvasRef} className="group-studio-camera-skeleton-overlay" />
+          {dance.cameraHealth?.error ? (
+            <div className="group-studio-camera-error">{dance.cameraHealth.error}</div>
+          ) : null}
         </div>
 
         <div
@@ -548,7 +544,7 @@ export function GroupStageView({
           </div>
         </div>
 
-        <canvas ref={stageCanvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
+        <canvas ref={stageCanvasRef} className="group-studio-stage-canvas" style={{ display: 'block', margin: '0 auto' }} />
 
         {(isRunning || isFinished) && (
           <TempoLockIndicator
