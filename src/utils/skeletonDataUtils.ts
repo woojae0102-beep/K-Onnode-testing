@@ -8,6 +8,12 @@ import type {
   SkeletonWorldPoint,
 } from '../types/groupPractice';
 import type { FormationKeyframe, MemberTrackMeta } from '../types/danceDatabase';
+import {
+  buildFieldError,
+  logPracticeValidationTable,
+  logValidationFieldErrors,
+  type ValidationFieldError,
+} from './practiceValidationDebug';
 
 /** Map / plain object / JSON 복원 모두 → Map<number, string> */
 export function normalizeTrackMemberMap(
@@ -209,7 +215,10 @@ export function normalizeSkeletonMember(raw: any): SkeletonMemberData | null {
  * 변경 필드: joints/worldCoordinates 숫자 좌표만 Number() 정규화
  */
 export function normalizeSkeletonFrames(frames: SkeletonFrameData[] | null | undefined): SkeletonFrameData[] {
-  if (!frames?.length) return [];
+  if (!normalized.length) {
+    logUndefinedFields('normalizeSkeletonFrames.input', { frames }, ['frames']);
+    return [];
+  }
 
   return frames
     .map((frame, frameIndex) => {
@@ -419,6 +428,8 @@ export interface SkeletonValidationResult {
   sampleMemberCount: number;
   reason?: string;
   report: SkeletonValidationDebugReport;
+  /** Validation 실패 필드 (JSON 로그와 동일 구조) */
+  errors: ValidationFieldError[];
 }
 
 export const SKELETON_MIN_VALID_FRAME_RATIO = 0.8;
@@ -451,6 +462,29 @@ function buildTimelineCoverage(
   return Math.min(1, span / denom);
 }
 
+function failSkeletonValidation(
+  label: string,
+  errors: ValidationFieldError[],
+  partial: Omit<SkeletonValidationResult, 'valid' | 'errors'>,
+): SkeletonValidationResult {
+  logValidationFieldErrors(label, errors);
+  return {
+    valid: false,
+    errors,
+    ...partial,
+  };
+}
+
+function passSkeletonValidation(
+  partial: Omit<SkeletonValidationResult, 'valid' | 'errors'>,
+): SkeletonValidationResult {
+  return {
+    valid: true,
+    errors: [],
+    ...partial,
+  };
+}
+
 /**
  * 연습 가능한 스켈레톤인지 검증 (전체 영상·전체 프레임 순회).
  * ※ 읽기 전용 — 프레임을 수정·삭제하지 않는다.
@@ -463,9 +497,47 @@ export function validateSkeletonForPractice(
     skipNormalize?: boolean;
     minValidRatio?: number;
     expectedDurationSec?: number;
+    logTable?: boolean;
   } = {},
 ): SkeletonValidationResult {
   const minValidRatio = options.minValidRatio ?? SKELETON_MIN_VALID_FRAME_RATIO;
+  const inputErrors: ValidationFieldError[] = [];
+
+  if (!userMemberId || typeof userMemberId !== 'string') {
+    inputErrors.push(
+      buildFieldError('skeleton.userMemberId', 'non-empty string', userMemberId, '사용자 멤버 ID가 없습니다.'),
+    );
+  }
+
+  if (!frames?.length) {
+    inputErrors.push(
+      buildFieldError(
+        'skeleton.frames',
+        'Array(≥1)',
+        frames == null ? undefined : frames.length,
+        '스켈레톤 프레임 배열이 비어 있습니다.',
+      ),
+    );
+  }
+
+  if (inputErrors.length) {
+    return failSkeletonValidation('validateSkeletonForPractice', inputErrors, {
+      frameCount: frames?.length ?? 0,
+      aiMemberIds: [],
+      aiMemberCount: 0,
+      sampleMemberCount: 0,
+      reason: inputErrors.map((e) => e.message || e.missingField).join('; '),
+      report: {
+        totalFrames: 0,
+        validFrames: 0,
+        invalidFrames: 0,
+        memberAverage: 0,
+        timelineCoverage: 0,
+        validFrameRatio: 0,
+      },
+    });
+  }
+
   const normalized = options.skipNormalize
     ? (frames ?? [])
     : normalizeSkeletonFrames(frames);
@@ -480,15 +552,22 @@ export function validateSkeletonForPractice(
   };
 
   if (!normalized.length) {
-    return {
-      valid: false,
+    const errors = [
+      buildFieldError(
+        'skeleton.frames',
+        'Array(≥1) after normalize',
+        normalized.length,
+        '정규화 후 유효 프레임이 없습니다.',
+      ),
+    ];
+    return failSkeletonValidation('validateSkeletonForPractice', errors, {
       frameCount: 0,
       aiMemberIds: [],
       aiMemberCount: 0,
       sampleMemberCount: 0,
       reason: '스켈레톤 프레임이 비어 있습니다.',
       report: emptyReport,
-    };
+    });
   }
 
   const aiIds = new Set<string>();
@@ -527,53 +606,88 @@ export function validateSkeletonForPractice(
     validFrameRatio,
   };
 
-  if (import.meta.env?.DEV) {
+  const ratioOk = validFrameRatio >= minValidRatio;
+
+  if (import.meta.env?.DEV || options.logTable) {
     console.debug('[validateSkeletonForPractice] report', report, {
       aiMemberIds: [...aiIds],
       maxAllowedInvalid: SKELETON_MAX_ALLOWED_INVALID_FRAMES,
     });
   }
 
+  if (options.logTable) {
+    logPracticeValidationTable(
+      {
+        frameCount: totalFrames,
+        timelineLength: options.expectedDurationSec ?? normalized[normalized.length - 1]?.timestamp ?? 0,
+        memberCount: Math.round(memberAverage * 10) / 10,
+        snapshot: 'n/a (skeleton pass)',
+        video: options.expectedDurationSec ?? 'unknown',
+        motion: `aiIds=${aiIds.size}`,
+        formation: 'n/a',
+        metadata: `valid=${validFrames}/${totalFrames}`,
+        confidence: String(Math.round(validFrameRatio * 1000) / 1000),
+      },
+      {
+        stage: 'validateSkeletonForPractice',
+        valid: ratioOk && aiIds.size > 0,
+      },
+    );
+  }
+
   if (aiIds.size === 0) {
-    return {
-      valid: false,
+    const errors = [
+      buildFieldError(
+        'skeleton.aiMemberIds',
+        'Set(≥1)',
+        0,
+        '전체 영상에서 AI 멤버 스켈레톤이 한 번도 감지되지 않았습니다.',
+      ),
+    ];
+    return failSkeletonValidation('validateSkeletonForPractice', errors, {
       frameCount: totalFrames,
       aiMemberIds: [],
       aiMemberCount: 0,
       sampleMemberCount: Math.round(memberAverage * 10) / 10,
-      reason: '전체 영상에서 AI 멤버 스켈레톤이 한 번도 감지되지 않았습니다.',
+      reason: errors[0].message,
       report,
-    };
+    });
   }
-
-  const ratioOk = validFrameRatio >= minValidRatio;
 
   if (!ratioOk) {
     const pct = Math.round(validFrameRatio * 100);
     const needPct = Math.round(minValidRatio * 100);
-    return {
-      valid: false,
+    const errors = [
+      buildFieldError(
+        'skeleton.validFrameRatio',
+        `≥ ${minValidRatio} (${needPct}%)`,
+        validFrameRatio,
+        `유효 프레임 비율 부족 (${pct}% < ${needPct}%). ${validFrames}/${totalFrames}프레임.`,
+      ),
+      buildFieldError(
+        'skeleton.validFrames',
+        `≥ ${Math.ceil(totalFrames * minValidRatio)}`,
+        validFrames,
+        `인식 실패 ${invalidFrames}프레임`,
+      ),
+    ];
+    return failSkeletonValidation('validateSkeletonForPractice', errors, {
       frameCount: totalFrames,
       aiMemberIds: [...aiIds],
       aiMemberCount: aiIds.size,
       sampleMemberCount: Math.round(memberAverage * 10) / 10,
-      reason: `유효 프레임 비율 부족 (${pct}% < ${needPct}%). ${validFrames}/${totalFrames}프레임에 AI 스켈레톤 있음. (인식 실패 ${invalidFrames}프레임, 허용 ~${SKELETON_MAX_ALLOWED_INVALID_FRAMES}프레임 또는 ${needPctFallback(minValidRatio)}%)`,
+      reason: errors[0].message,
       report,
-    };
+    });
   }
 
-  return {
-    valid: true,
+  return passSkeletonValidation({
     frameCount: totalFrames,
     aiMemberIds: [...aiIds],
     aiMemberCount: aiIds.size,
     sampleMemberCount: Math.round(memberAverage * 10) / 10,
     report,
-  };
-}
-
-function needPctFallback(minValidRatio: number): number {
-  return Math.round((1 - minValidRatio) * 100);
+  });
 }
 
 export function countAiSkeletonsAtTime(

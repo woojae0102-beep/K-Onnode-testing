@@ -10,6 +10,7 @@ import path from 'node:path';
 // CommonJS handlers under ./api/, the same files Vercel uses in production.
 // This lets the local dev server hit the live YouTube API instead of mocks.
 const __require = createRequire(import.meta.url);
+const pkg = __require('./package.json');
 function devApiPlugin() {
   return {
     name: 'dev-api',
@@ -302,6 +303,9 @@ export default defineConfig(({ mode }) => {
   build: {
     target: 'es2020',
     sourcemap: false,
+  },
+  define: {
+    __ONNODE_BUILD__: JSON.stringify(`${pkg.version}-${Date.now()}`),
   },
   };
 });

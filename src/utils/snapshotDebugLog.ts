@@ -1,34 +1,30 @@
 // @ts-nocheck
-import type { GroupDanceRenderSnapshot } from '../types/groupChoreography';
+import type { PracticeMotionSnapshot } from '../types/motionSnapshot';
+import {
+  isPracticeMotionSnapshotComplete,
+  snapshotAiAvatars,
+  snapshotConfidence,
+  snapshotCurrentTime,
+  snapshotFrame,
+  snapshotMemberTracks,
+} from './motionSnapshotUtils';
 
-/** Snapshot만으로 스테이지 복원에 필요한 필드가 모두 있는지 */
+/** @deprecated isPracticeMotionSnapshotComplete 사용 */
 export function isGroupDanceSnapshotComplete(
-  snapshot: GroupDanceRenderSnapshot | null | undefined,
+  snapshot: PracticeMotionSnapshot | null | undefined,
 ): boolean {
-  if (!snapshot) return false;
-  if (!Number.isFinite(snapshot.currentTime) && !Number.isFinite(snapshot.timestamp)) return false;
-  if (!snapshot.timeline) return false;
-  if (!Number.isFinite(snapshot.timeline.duration) || snapshot.timeline.duration <= 0) return false;
-  if (!Number.isFinite(snapshot.timeline.fps) || snapshot.timeline.fps <= 0) return false;
-  if (!Number.isFinite(snapshot.timeline.totalFrames) || snapshot.timeline.totalFrames <= 0) return false;
-  if (!snapshot.frame) return false;
-  if (!Array.isArray(snapshot.memberTracks)) return false;
-  if (!Number.isFinite(snapshot.confidence)) return false;
-  if (!snapshot.aiAvatars?.length) return false;
-  const aiWithJoints = snapshot.aiAvatars.filter((a) => Object.keys(a.joints || {}).length > 0).length;
-  return aiWithJoints > 0;
+  return isPracticeMotionSnapshotComplete(snapshot);
 }
 
 let lastLogKey = '';
 
-/** snapshot 생성/실패 상태를 콘솔에 출력 (동일 상태 중복 로그 방지) */
 export function logSnapshotStatus(
-  snapshot: GroupDanceRenderSnapshot | null,
+  snapshot: PracticeMotionSnapshot | null,
   context: string,
   { loading = false } = {},
 ) {
   const key = snapshot
-    ? `${context}:${snapshot.currentTime}:${snapshot.timeline?.frameIndex}:${snapshot.aiAvatars?.length ?? 0}:${Boolean(snapshot.frame)}:${snapshot.memberTracks?.length ?? 0}`
+    ? `${context}:${snapshotCurrentTime(snapshot)}:${snapshot.timeline?.frameIndex}:${snapshotAiAvatars(snapshot).length}:${Boolean(snapshotFrame(snapshot))}:${snapshotMemberTracks(snapshot).length}`
     : `${context}:null:${loading}`;
 
   if (key === lastLogKey) return;
@@ -36,15 +32,21 @@ export function logSnapshotStatus(
 
   if (snapshot) {
     console.debug(`[Snapshot] ${context} OK`, {
-      currentTime: snapshot.currentTime,
+      videoDuration: snapshot.videoDuration,
+      frameCount: snapshot.frameCount,
+      fps: snapshot.fps,
+      currentTime: snapshotCurrentTime(snapshot),
       frameIndex: snapshot.timeline?.frameIndex,
       totalFrames: snapshot.timeline?.totalFrames,
-      aiCount: snapshot.aiAvatars?.length ?? 0,
-      hasFrame: Boolean(snapshot.frame),
+      aiCount: snapshotAiAvatars(snapshot).length,
+      memberCount: snapshot.members?.length ?? 0,
+      hasFrame: Boolean(snapshotFrame(snapshot)),
       hasFormation: Boolean(snapshot.formation),
-      memberTracks: snapshot.memberTracks?.length ?? 0,
-      confidence: snapshot.confidence,
-      complete: isGroupDanceSnapshotComplete(snapshot),
+      memberTracks: snapshotMemberTracks(snapshot).length,
+      confidence: snapshotConfidence(snapshot),
+      referenceVideo: snapshot.referenceVideo ? 'present' : 'none',
+      generatedAt: snapshot.generatedAt,
+      complete: isPracticeMotionSnapshotComplete(snapshot),
     });
   } else {
     console.warn(

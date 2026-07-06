@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { GROUP_DATA } from '../../data/groupPracticeData';
+import { GROUP_DATA } from '../data/groupPracticeData';
 import { useAvatarSync } from './useAvatarSync';
 import { AvatarGroupManager } from '../services/group/AvatarGroupManager';
 import { GroupDanceSyncEngine } from '../services/group/GroupDanceSyncEngine';
@@ -8,37 +8,39 @@ import {
   loadChoreographyDataset,
   skeletonFramesToChoreographyDataset,
 } from '../services/group/ChoreographyDatasetLoader';
-import { computePracticeTimeline } from '../../utils/practiceTimelineUtils';
-import type { ChoreographyDataset, GroupDanceRenderSnapshot } from '../types/groupChoreography';
+import { computePracticeTimeline } from '../utils/practiceTimelineUtils';
+import type { ChoreographyDataset } from '../types/groupChoreography';
+import type { ReferenceVideoMeta } from '../types/practiceSession';
+import type { PracticeMotionSnapshot } from '../types/motionSnapshot';
+import { assemblePracticeMotionSnapshot } from '../utils/motionSnapshotUtils';
 
 export interface UseGroupDanceStageOptions {
   groupId: string;
   songId: string;
   userMemberId: string;
-  /** 기존 MediaPipe 추출 skeleton frames (없으면 JSON dataset 로드) */
   skeletonFrames?: any[] | null;
   practiceDuration?: number;
-  /** 외부 MediaPipe pose joints (useMediaPipeTV.poseData.joints) */
+  referenceVideo?: ReferenceVideoMeta | null;
+  sourceVideoDurationSec?: number | null;
   userJoints?: Record<string, { x: number; y: number; z?: number; visibility?: number }> | null;
   autoStart?: boolean;
 }
 
-/**
- * Dataset 로드 → AvatarGroupManager → SyncEngine → RenderSnapshot 파이프라인
- */
 export function useGroupDanceStage({
   groupId,
   songId,
   userMemberId,
   skeletonFrames = null,
   practiceDuration = 0,
+  referenceVideo = null,
+  sourceVideoDurationSec = null,
   userJoints = null,
   autoStart = false,
 }: UseGroupDanceStageOptions) {
   const [dataset, setDataset] = useState<ChoreographyDataset | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [snapshot, setSnapshot] = useState<GroupDanceRenderSnapshot | null>(null);
+  const [snapshot, setSnapshot] = useState<PracticeMotionSnapshot | null>(null);
 
   const avatarSync = useAvatarSync(skeletonFrames);
   const syncEngineRef = useRef<GroupDanceSyncEngine | null>(null);
@@ -114,13 +116,26 @@ export function useGroupDanceStage({
   const tick = useCallback(() => {
     const engine = syncEngineRef.current;
     if (!engine) return;
-    const next = engine.tick({
-      elapsedSec: avatarSync.getElapsed(),
+    const elapsedSec = avatarSync.getElapsed();
+    const tickResult = engine.tick({
+      elapsedSec,
       userJoints: userJoints as any,
       userFallbackAnchor,
     });
+    const next = assemblePracticeMotionSnapshot(
+      {
+        groupId,
+        songId,
+        userMemberId,
+        videoDuration: sourceVideoDurationSec ?? practiceDuration,
+        frameCount: skeletonFrames?.length ?? tickResult.timeline.totalFrames,
+        fps: tickResult.timeline.fps,
+        referenceVideo: referenceVideo ?? null,
+      },
+      tickResult,
+    );
     setSnapshot(next);
-  }, [avatarSync, userJoints, userFallbackAnchor]);
+  }, [avatarSync, userJoints, userFallbackAnchor, groupId, songId, userMemberId, sourceVideoDurationSec, practiceDuration, skeletonFrames, referenceVideo]);
 
   useEffect(() => {
     const loop = () => {

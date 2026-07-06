@@ -21,6 +21,17 @@ import {
 import { computeAspectFitSize, normalizedToCanvas } from '../../utils/canvasSkeletonUtils';
 import { findFrameAtTime, findFrameIndexAtTime } from '../../utils/skeletonTimelineUtils';
 import { validateSkeletonForPractice } from '../../utils/skeletonDataUtils';
+import {
+  formatReferenceVideoStatus,
+  logPracticeValidationTable,
+  logUndefinedFields,
+} from '../../utils/practiceValidationDebug';
+import {
+  snapshotAiAvatars,
+  snapshotCurrentTime,
+  snapshotFrame,
+  snapshotUserAnchor,
+} from '../../utils/motionSnapshotUtils';
 import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
@@ -68,9 +79,38 @@ export function GroupStudioSession({
     () => validateSkeletonForPractice(sessionFrames, myMemberId, {
       skipNormalize: true,
       expectedDurationSec: maxDuration,
+      logTable: true,
     }),
     [sessionFrames, myMemberId, maxDuration],
   );
+
+  useEffect(() => {
+    logUndefinedFields('GroupStudioSession.practiceSessionData', practiceSessionData as any, [
+      'frames',
+      'duration',
+      'fps',
+      'referenceVideo',
+      'motionMetadata',
+      'formationTimeline',
+      'memberTracks',
+    ]);
+    logPracticeValidationTable(
+      {
+        frameCount: sessionFrames?.length ?? 0,
+        timelineLength: maxDuration,
+        memberCount: skeletonValidation.sampleMemberCount ?? 0,
+        snapshot: 'runtime',
+        video: formatReferenceVideoStatus(practiceSessionData.referenceVideo as any),
+        motion: practiceSessionData.motionMetadata ? 'present' : 'missing',
+        formation: `${practiceSessionData.formationTimeline?.keyframes?.length ?? 0} keyframes`,
+        metadata: `tracks=${practiceSessionData.memberTracks?.length ?? 0}`,
+        confidence: skeletonValidation.report?.validFrameRatio != null
+          ? String(Math.round(skeletonValidation.report.validFrameRatio * 1000) / 1000)
+          : 'n/a',
+      },
+      { stage: 'GroupStudioSession.mount', skeletonValid: skeletonValidation.valid },
+    );
+  }, [practiceSessionData, sessionFrames, maxDuration, skeletonValidation]);
   const sourceVideoWidth = practiceSessionData.videoWidth || sessionFrames?.[0]?.videoWidth || 1920;
   const sourceVideoHeight = practiceSessionData.videoHeight || sessionFrames?.[0]?.videoHeight || 1080;
   const [sessionPhase, setSessionPhase] = useState('lobby');
@@ -123,6 +163,8 @@ export function GroupStudioSession({
     practiceDuration: maxDuration,
     sampleFps: practiceSessionData.fps,
     totalFrames: practiceSessionData.totalFrames,
+    referenceVideo: practiceSessionData.referenceVideo ?? null,
+    sourceVideoDurationSec: practiceSessionData.sourceVideoDurationSec ?? maxDuration,
   });
   const myDefault = { x: myMember?.defaultX ?? 0.5, y: myMember?.defaultY ?? 0.5 };
 
@@ -210,7 +252,7 @@ export function GroupStudioSession({
       danceSnapshot?.timeline?.totalFrames
       ?? practiceSessionData.totalFrames
       ?? sessionFrames.length;
-    const frame = danceSnapshot?.frame ?? findFrameAtTime(sessionFrames, effectiveTime);
+    const frame = snapshotFrame(danceSnapshot) ?? findFrameAtTime(sessionFrames, effectiveTime);
     const skeletonCount = frame?.members?.length ?? 0;
     const aiInFrame = frame?.members?.filter(
       (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
@@ -218,7 +260,7 @@ export function GroupStudioSession({
     const userSkeletonJoints = dance.poseData?.joints
       ? Object.keys(dance.poseData.joints).length
       : 0;
-    const snapshotAiCount = danceSnapshot?.aiAvatars?.filter(
+    const snapshotAiCount = snapshotAiAvatars(danceSnapshot).filter(
       (a) => Object.keys(a.joints || {}).length > 0,
     ).length ?? 0;
 
@@ -241,7 +283,7 @@ export function GroupStudioSession({
   ]);
 
   const groupMotionDebug = useMemo(() => {
-    const frame = danceSnapshot?.frame ?? findFrameAtTime(sessionFrames, effectiveTime);
+    const frame = snapshotFrame(danceSnapshot) ?? findFrameAtTime(sessionFrames, effectiveTime);
     return buildGroupMotionDebugFromSession(practiceSessionData, frame, effectiveTime);
   }, [practiceSessionData, danceSnapshot, sessionFrames, effectiveTime]);
 
@@ -367,7 +409,7 @@ export function GroupStudioSession({
 
       let aiRendered = 0;
 
-      const frame = snapshot?.frame ?? findFrameAtTime(sessionFrames, timeSec);
+      const frame = snapshotFrame(snapshot) ?? findFrameAtTime(sessionFrames, timeSec);
       frame?.members?.forEach((memberData) => {
         if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
         const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
@@ -385,7 +427,7 @@ export function GroupStudioSession({
       });
 
       if (aiRendered === 0) {
-        const aiAvatars = snapshot?.aiAvatars || [];
+        const aiAvatars = snapshotAiAvatars(snapshot);
         aiAvatars.forEach((avatar) => {
           const member = group.members.find((m) => m.id === avatar.memberId);
           if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
@@ -401,8 +443,9 @@ export function GroupStudioSession({
 
       if (dance.poseData?.joints && (isPracticing || sessionPhase === 'waiting_slot')) {
         const smoothed = smoothLiveJoints(dance.poseData.joints);
-        const anchorX = snapshot?.userAnchor?.x ?? myMember.defaultX;
-        const anchorY = snapshot?.userAnchor?.y ?? myMember.defaultY;
+        const userAnchor = snapshotUserAnchor(snapshot);
+        const anchorX = userAnchor.x ?? myMember.defaultX;
+        const anchorY = userAnchor.y ?? myMember.defaultY;
         drawUserSkeleton(ctx, smoothed, myMember.color, canvas, anchorX, anchorY);
       }
     },
@@ -438,7 +481,7 @@ export function GroupStudioSession({
   }, [dance.poseData, myDefault]);
 
   const getPracticeFrame = useCallback(
-    () => danceSnapshot?.frame ?? findFrameAtTime(sessionFrames || [], effectiveTime),
+    () => snapshotFrame(danceSnapshot) ?? findFrameAtTime(sessionFrames || [], effectiveTime),
     [danceSnapshot, sessionFrames, effectiveTime],
   );
 
@@ -820,7 +863,7 @@ export function GroupStudioSession({
               snapshot={danceSnapshot}
               snapshotLoading={danceEngine.loading}
               skeletonFrames={sessionFrames}
-              currentTimeSec={danceSnapshot?.currentTime ?? danceSnapshot?.timestamp ?? effectiveTime}
+              currentTimeSec={snapshotCurrentTime(danceSnapshot) || effectiveTime}
               className="group-studio-stage-3d"
               avatarAssets={avatarAssets}
               formationHole={formationHole}

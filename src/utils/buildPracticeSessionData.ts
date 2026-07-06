@@ -14,6 +14,7 @@ import {
   auditSkeletonPipeline,
   validateSkeletonForPractice,
 } from './skeletonDataUtils';
+import { logUndefinedFields } from './practiceValidationDebug';
 import {
   MOTION_PIPELINE_VERSION,
   runGroupMotionPipeline,
@@ -89,6 +90,11 @@ export function buildPracticeSessionData({
     ?? null;
   const duration = resolvePracticeDurationSec(videoDuration);
   if (!duration || duration <= 0) {
+    logUndefinedFields('buildPracticeSessionData.duration', {
+      sourceVideoDurationSec,
+      videoDuration,
+      duration,
+    }, ['duration', 'sourceVideoDurationSec']);
     console.error('[buildPracticeSessionData] invalid video duration', { videoDuration });
     return null;
   }

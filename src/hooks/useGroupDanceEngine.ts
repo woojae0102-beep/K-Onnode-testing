@@ -9,6 +9,9 @@ import {
 } from '../services/group/ChoreographyDatasetLoader';
 import { computePracticeTimeline } from '../utils/practiceTimelineUtils';
 import type { ChoreographyDataset } from '../types/groupChoreography';
+import type { ReferenceVideoMeta } from '../types/practiceSession';
+import type { PracticeMotionSnapshot } from '../types/motionSnapshot';
+import { assemblePracticeMotionSnapshot } from '../utils/motionSnapshotUtils';
 
 export interface UseGroupDanceEngineOptions {
   groupId: string;
@@ -18,6 +21,8 @@ export interface UseGroupDanceEngineOptions {
   practiceDuration?: number;
   sampleFps?: number;
   totalFrames?: number;
+  referenceVideo?: ReferenceVideoMeta | null;
+  sourceVideoDurationSec?: number | null;
 }
 
 /**
@@ -32,6 +37,8 @@ export function useGroupDanceEngine({
   practiceDuration = 0,
   sampleFps = 30,
   totalFrames = 0,
+  referenceVideo = null,
+  sourceVideoDurationSec = null,
 }: UseGroupDanceEngineOptions) {
   const [dataset, setDataset] = useState<ChoreographyDataset | null>(null);
   const [loading, setLoading] = useState(() => !skeletonFrames?.length);
@@ -137,16 +144,28 @@ export function useGroupDanceEngine({
   }, [groupId, songId, userMemberId, skeletonFrames, practiceDuration, sampleFps, totalFrames, group]);
 
   const tick = useCallback(
-    (elapsedSec: number, userJoints: Record<string, { x: number; y: number; z?: number }> | null = null) => {
+    (elapsedSec: number, userJoints: Record<string, { x: number; y: number; z?: number }> | null = null): PracticeMotionSnapshot | null => {
       const engine = syncEngineRef.current;
       if (!engine) return null;
-      return engine.tick({
+      const tickResult = engine.tick({
         elapsedSec,
         userJoints,
         userFallbackAnchor,
       });
+      return assemblePracticeMotionSnapshot(
+        {
+          groupId,
+          songId,
+          userMemberId,
+          videoDuration: sourceVideoDurationSec ?? practiceDuration,
+          frameCount: totalFrames || skeletonFrames?.length || tickResult.timeline.totalFrames,
+          fps: sampleFps || tickResult.timeline.fps,
+          referenceVideo: referenceVideo ?? null,
+        },
+        tickResult,
+      );
     },
-    [userFallbackAnchor],
+    [userFallbackAnchor, groupId, songId, userMemberId, sourceVideoDurationSec, practiceDuration, totalFrames, skeletonFrames, sampleFps, referenceVideo],
   );
 
   return {

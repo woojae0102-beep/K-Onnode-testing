@@ -1,6 +1,12 @@
 // @ts-nocheck
-import type { GroupDanceRenderSnapshot } from '../types/groupChoreography';
+import type { PracticeMotionSnapshot } from '../types/motionSnapshot';
 import type { SkeletonFrameData } from '../types/groupPractice';
+import {
+  snapshotAiAvatars,
+  snapshotCurrentTime,
+  snapshotFrame,
+  snapshotUserJoints,
+} from './motionSnapshotUtils';
 import { findFrameAtTime, findFrameIndexAtTime } from './skeletonTimelineUtils';
 
 export interface StageAiDebugInfo {
@@ -16,28 +22,29 @@ export interface StageAiDebugInfo {
 }
 
 export function buildStageAiDebugInfo(
-  snapshot: GroupDanceRenderSnapshot | null,
+  snapshot: PracticeMotionSnapshot | null,
   skeletonFrames: SkeletonFrameData[] = [],
   currentTimeSec?: number,
 ): StageAiDebugInfo {
-  const aiList = snapshot?.aiAvatars || [];
-  const time = currentTimeSec ?? snapshot?.currentTime ?? snapshot?.timestamp ?? 0;
+  const aiList = snapshotAiAvatars(snapshot);
+  const time = currentTimeSec ?? snapshotCurrentTime(snapshot);
   const frameNumber = snapshot?.timeline?.frameIndex ?? findFrameIndexAtTime(skeletonFrames, time);
-  const frame = snapshot?.frame ?? findFrameAtTime(skeletonFrames, time);
+  const frame = snapshotFrame(snapshot) ?? findFrameAtTime(skeletonFrames, time);
   const perAvatarJoints = aiList.map((avatar) => ({
     memberId: avatar.memberId,
     displayName: avatar.displayName || avatar.memberId,
     jointCount: Object.keys(avatar.joints || {}).length,
   }));
   const jointCount = perAvatarJoints.reduce((sum, row) => sum + row.jointCount, 0);
-  const userJointCount = snapshot?.userJoints ? Object.keys(snapshot.userJoints).length : 0;
+  const userJoints = snapshotUserJoints(snapshot);
+  const userJointCount = userJoints ? Object.keys(userJoints).length : 0;
 
   return {
     aiAvatarCount: aiList.length,
     frameNumber,
     totalFrames: snapshot?.timeline?.totalFrames ?? skeletonFrames.length,
     currentTime: time,
-    memberCount: frame?.members?.length ?? 0,
+    memberCount: frame?.members?.length ?? snapshot?.members?.length ?? 0,
     jointCount,
     userJointCount,
     perAvatarJoints,
@@ -48,7 +55,7 @@ export function buildStageAiDebugInfo(
 let lastAiDebugKey = '';
 
 export function logAiStageDebug(
-  snapshot: GroupDanceRenderSnapshot | null,
+  snapshot: PracticeMotionSnapshot | null,
   skeletonFrames: SkeletonFrameData[] = [],
   context = 'GroupDanceStage3D',
   currentTimeSec?: number,
@@ -90,3 +97,5 @@ export function logAiStageDebug(
 export function resetStageAiDebugLog() {
   lastAiDebugKey = '';
 }
+
+export default buildStageAiDebugInfo;

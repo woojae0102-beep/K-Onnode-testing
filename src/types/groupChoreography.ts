@@ -93,23 +93,6 @@ export interface GroupDanceTimelineSnapshot {
   progress: number;
 }
 
-export interface GroupDanceRenderSnapshot {
-  /** tick 시각(초) — currentTime과 동일 */
-  timestamp: number;
-  currentTime: number;
-  sourceVideoTime?: number;
-  bpm?: number;
-  beat?: number;
-  beatIndex?: number;
-  poseQuality?: number;
-  timeline: GroupDanceTimelineSnapshot;
-  /** findFrameAtTime 결과 — formation/memberTracks/confidence 포함 */
-  frame: import('./groupPractice').SkeletonFrameData | null;
-  formation: import('./danceDatabase').FormationKeyframe | null;
-  memberTracks: import('./groupPractice').SkeletonFrameMemberTrack[];
-  confidence: number;
-  userMemberId: string;
-  userJoints: Record<string, ChoreographyJoint> | null;
-  userAnchor: { x: number; y: number; z: number };
-  aiAvatars: AIAvatarInstance[];
-}
+/** @deprecated PracticeMotionSnapshot (src/types/motionSnapshot.ts) 사용 */
+export type { PracticeMotionSnapshot as GroupDanceRenderSnapshot } from './motionSnapshot';
+export type { SyncEngineTickResult } from './motionSnapshot';

@@ -8,8 +8,8 @@ import type {
   AIAvatarInstance,
   ChoreographyDataset,
   ChoreographyJoint,
-  GroupDanceRenderSnapshot,
 } from '../../types/groupChoreography';
+import type { SyncEngineTickResult } from '../../types/motionSnapshot';
 import { AvatarGroupManager } from './AvatarGroupManager';
 import {
   applyFormationPositioning,
@@ -42,7 +42,7 @@ export class GroupDanceSyncEngine {
   private manager: AvatarGroupManager;
   private sourceFrames: SkeletonFrameData[];
   private timeline: PracticeTimeline | null;
-  private lastSnapshot: GroupDanceRenderSnapshot | null = null;
+  private lastSnapshot: SyncEngineTickResult | null = null;
 
   constructor(
     dataset: ChoreographyDataset,
@@ -65,7 +65,7 @@ export class GroupDanceSyncEngine {
     elapsedSec,
     userJoints,
     userFallbackAnchor,
-  }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'>): GroupDanceRenderSnapshot {
+  }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'>): SyncEngineTickResult {
     const state = this.manager.getState();
     const frame = findFrameAtTime(this.dataset.frames as any[], elapsedSec);
     const sourceFrameRaw = this.sourceFrames.length
@@ -82,9 +82,11 @@ export class GroupDanceSyncEngine {
     );
 
     const toAvatarJoints = (memberId: string, fallbackJoints: Record<string, ChoreographyJoint>) => {
-      const src = sourceByMember.get(memberId);
+      const sourceMember = sourceByMember.get(memberId);
       const built = buildAvatarJointsFromMember(
-        src ? { joints: src.joints, worldCoordinates: src.worldCoordinates } : { joints: fallbackJoints },
+        sourceMember
+          ? { joints: sourceMember.joints, worldCoordinates: sourceMember.worldCoordinates }
+          : { joints: fallbackJoints },
       );
       return Object.keys(built).length ? built : fallbackJoints;
     };

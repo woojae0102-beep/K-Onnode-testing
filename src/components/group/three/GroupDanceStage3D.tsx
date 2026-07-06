@@ -2,7 +2,15 @@
 import React, { Suspense, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
 import { Grid, OrbitControls, PerspectiveCamera, ContactShadows } from '@react-three/drei';
-import type { GroupDanceRenderSnapshot } from '../../../types/groupChoreography';
+import type { PracticeMotionSnapshot } from '../../../types/motionSnapshot';
+import type { ChoreographyJoint } from '../../../types/groupChoreography';
+import {
+  snapshotAiAvatars,
+  snapshotCurrentTime,
+  snapshotFrame,
+  snapshotUserAnchor,
+  snapshotUserJoints,
+} from '../../../utils/motionSnapshotUtils';
 import type { FormationHole } from '../../../types/danceDatabase';
 import type { SkeletonFrameData } from '../../../types/groupPractice';
 import { SkeletonAvatar3D } from './SkeletonAvatar3D';
@@ -54,7 +62,7 @@ export function GroupDanceStage3D({
   skeletonFrames = [],
   currentTimeSec,
 }: {
-  snapshot: GroupDanceRenderSnapshot | null;
+  snapshot: PracticeMotionSnapshot | null;
   className?: string;
   showGrid?: boolean;
   avatarAssets?: Record<string, { glbUrl?: string }>;
@@ -64,9 +72,9 @@ export function GroupDanceStage3D({
   skeletonFrames?: SkeletonFrameData[];
   currentTimeSec?: number;
 }) {
-  const aiList = snapshot?.aiAvatars || [];
+  const aiList = snapshotAiAvatars(snapshot);
   const aiDebugInfo = useMemo(
-    () => buildStageAiDebugInfo(snapshot, snapshot?.frame ? [snapshot.frame] : skeletonFrames, currentTimeSec ?? snapshot?.currentTime ?? snapshot?.timestamp),
+    () => buildStageAiDebugInfo(snapshot, snapshotFrame(snapshot) ? [snapshotFrame(snapshot)] : skeletonFrames, currentTimeSec ?? snapshotCurrentTime(snapshot)),
     [snapshot, skeletonFrames, currentTimeSec],
   );
 
@@ -75,7 +83,7 @@ export function GroupDanceStage3D({
   }, [snapshot, snapshotLoading]);
 
   useEffect(() => {
-    logAiStageDebug(snapshot, skeletonFrames, 'GroupDanceStage3D', currentTimeSec ?? snapshot?.timestamp);
+    logAiStageDebug(snapshot, skeletonFrames, 'GroupDanceStage3D', currentTimeSec ?? snapshotCurrentTime(snapshot));
   }, [snapshot, skeletonFrames, currentTimeSec]);
 
   return (
@@ -114,17 +122,20 @@ export function GroupDanceStage3D({
 
           <FormationHoleMarker hole={formationHole} />
 
-          {snapshot?.userJoints ? (
-            countJoints(snapshot.userJoints) > 0 ? (
+          {(() => {
+            const userJoints = snapshotUserJoints(snapshot);
+            const userAnchor = snapshotUserAnchor(snapshot);
+            if (!userJoints) return null;
+            return countJoints(userJoints) > 0 ? (
               <SkeletonAvatar3D
-                joints={translateUserJointsToAnchor(snapshot.userJoints, snapshot.userAnchor)}
+                joints={translateUserJointsToAnchor(userJoints, userAnchor)}
                 persona={{ styleId: 'user', energy: 1, sharpness: 1, groove: 1, accentColor: '#FFFFFF', lineScale: 1.2 }}
                 lineWidth={useCharacterAvatars ? 2.5 : 3}
               />
             ) : (
-              <EmptyJointsMarker memberId="user" label="USER" worldOffset={snapshot.userAnchor} />
-            )
-          ) : null}
+              <EmptyJointsMarker memberId="user" label="USER" worldOffset={userAnchor} />
+            );
+          })()}
 
           {aiList.map((avatar) => {
             const jointCount = countJoints(avatar.joints);
@@ -174,8 +185,8 @@ export function GroupDanceStage3D({
 }
 
 function translateUserJointsToAnchor(
-  joints: GroupDanceRenderSnapshot['userJoints'],
-  anchor: GroupDanceRenderSnapshot['userAnchor'],
+  joints: Record<string, ChoreographyJoint>,
+  anchor: { x: number; y: number; z: number },
 ) {
   if (!joints) return {};
   const nose = joints.nose;

@@ -17,6 +17,7 @@ import PerformanceReport from '../components/group/PerformanceReport';
 import PracticeValidationError from '../components/group/PracticeValidationError';
 import StudioConnectModal from '../components/studio/StudioConnectModal';
 import { validatePracticeData } from '../utils/practiceDataValidation';
+import { logRecoverableErrors } from '../utils/practiceValidationDebug';
 import type { Agency } from '../types/tv';
 import '../styles/group-studio.css';
 import '../styles/studio-mode.css';
@@ -171,6 +172,16 @@ export default function GroupPracticeView({
       userMemberId: selectedMemberId,
     });
   }, [phase, practiceSessionData, groupId, selectedSongId, selectedMemberId]);
+
+  useEffect(() => {
+    if (!practiceValidation) return;
+    if (practiceValidation.recoverableErrors?.length) {
+      logRecoverableErrors('GroupPracticeView', practiceValidation.recoverableErrors);
+    }
+    if (practiceValidation.valid && practiceValidation.warnings?.length) {
+      console.warn('[GroupPracticeView] practice validation warnings (non-blocking)', practiceValidation.warnings);
+    }
+  }, [practiceValidation]);
 
   const handleGoHome = useCallback(async () => {
     document.body.classList.remove('tv-active', 'tv-result-open');

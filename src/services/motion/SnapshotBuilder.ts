@@ -1,15 +1,20 @@
 // @ts-nocheck
 /**
- * Snapshot Builder — 연습 런타임 스테이지 스냅샷 생성.
- * GroupDanceSyncEngine 래퍼. Motion Pipeline 이후 Practice 단계에서 호출.
+ * Snapshot Builder — Practice Motion Snapshot 통일 스키마 생성.
+ * src 필드 사용 금지. referenceVideo는 referenceVideo 객체 내부만.
  */
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { AvatarGroupManager } from '../group/AvatarGroupManager';
 import { GroupDanceSyncEngine } from '../group/GroupDanceSyncEngine';
 import { skeletonFramesToChoreographyDataset } from '../group/ChoreographyDatasetLoader';
-import type { GroupDanceRenderSnapshot } from '../../types/groupChoreography';
+import type { PracticeMotionSnapshot } from '../../types/motionSnapshot';
 import type { PracticeSessionData } from '../../types/practiceSession';
-import { isGroupDanceSnapshotComplete } from '../../utils/snapshotDebugLog';
+import {
+  assemblePracticeMotionSnapshot,
+  isPracticeMotionSnapshotComplete,
+  snapshotContextFromSession,
+} from '../../utils/motionSnapshotUtils';
+import { logUndefinedFields } from '../../utils/practiceValidationDebug';
 
 export interface BuildMotionSnapshotInput {
   session: PracticeSessionData;
@@ -18,18 +23,31 @@ export interface BuildMotionSnapshotInput {
 }
 
 export interface BuildMotionSnapshotResult {
-  snapshot: GroupDanceRenderSnapshot;
+  snapshot: PracticeMotionSnapshot;
   complete: boolean;
 }
 
-/** PracticeSessionData → GroupDanceRenderSnapshot (메타데이터 포함) */
+/** PracticeSessionData → PracticeMotionSnapshot */
 export function buildMotionSnapshot({
   session,
   elapsedSec = 0,
   userJoints = null,
 }: BuildMotionSnapshotInput): BuildMotionSnapshotResult {
   const group = GROUP_DATA[session.groupId];
-  if (!group) throw new Error('그룹 데이터를 찾을 수 없습니다.');
+  logUndefinedFields('buildMotionSnapshot.session', session as any, [
+    'groupId',
+    'songId',
+    'userMemberId',
+    'frames',
+    'duration',
+    'fps',
+    'referenceVideo',
+  ]);
+
+  if (!group) {
+    logUndefinedFields('buildMotionSnapshot.group', { groupId: session.groupId }, ['group']);
+    throw new Error('그룹 데이터를 찾을 수 없습니다.');
+  }
 
   const myMember = group.members.find((m) => m.id === session.userMemberId);
   const userFallbackAnchor = {
@@ -75,15 +93,18 @@ export function buildMotionSnapshot({
     },
   });
 
-  const snapshot = engine.tick({
+  const tickResult = engine.tick({
     elapsedSec,
     userJoints,
     userFallbackAnchor,
   });
 
+  const context = snapshotContextFromSession(session);
+  const snapshot = assemblePracticeMotionSnapshot(context, tickResult);
+
   return {
     snapshot,
-    complete: isGroupDanceSnapshotComplete(snapshot),
+    complete: isPracticeMotionSnapshotComplete(snapshot),
   };
 }
 

@@ -2,6 +2,8 @@
 import React from 'react';
 import type { PracticeValidationResult } from '../../utils/practiceDataValidation';
 
+declare const __ONNODE_BUILD__: string;
+
 const FIELD_LABELS: Record<string, string> = {
   'skeletonData.frames': '스켈레톤 프레임',
   frameCount: '프레임 수',
@@ -13,7 +15,7 @@ const FIELD_LABELS: Record<string, string> = {
   videoDuration: '영상 길이',
   fps: 'FPS',
   practiceDuration: '연습 길이',
-  snapshot: '스냅샷',
+  referenceVideo: '참조 영상',
 };
 
 export function PracticeValidationError({
@@ -25,7 +27,8 @@ export function PracticeValidationError({
   onRetry: () => void;
   onHome?: () => void;
 }) {
-  const { issues, metrics } = validation;
+  const { issues, warnings = [], metrics } = validation;
+  const buildId = typeof __ONNODE_BUILD__ !== 'undefined' ? __ONNODE_BUILD__ : 'dev';
 
   return (
     <div className="group-studio">
@@ -70,6 +73,31 @@ export function PracticeValidationError({
           </ul>
         </div>
 
+        {warnings.length > 0 ? (
+          <div
+            style={{
+              padding: '14px 16px',
+              background: 'rgba(255,200,80,0.08)',
+              border: '1px solid rgba(255,200,80,0.3)',
+              borderRadius: 14,
+              marginBottom: 16,
+            }}
+          >
+            <div style={{ color: '#FFD080', fontWeight: 700, fontSize: 14, marginBottom: 10 }}>
+              경고 ({warnings.length}개) — 연습 차단 사유 아님
+            </div>
+            <ul style={{ margin: 0, padding: '0 0 0 18px', color: 'rgba(255,255,255,0.75)', fontSize: 13, lineHeight: 1.7 }}>
+              {warnings.map((issue, index) => (
+                <li key={`${issue.field}-${index}`} style={{ marginBottom: 6 }}>
+                  <strong>{FIELD_LABELS[issue.field] || issue.field}</strong>
+                  {' — '}
+                  {issue.message}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+
         <div
           style={{
             padding: '14px 16px',
@@ -92,6 +120,9 @@ export function PracticeValidationError({
             연습 길이: {metrics.practiceDuration != null ? `${metrics.practiceDuration.toFixed(1)}초` : '없음'}
             {' · '}
             스냅샷: {metrics.snapshotOk ? '생성 가능' : '생성 불가'}
+          </div>
+          <div style={{ marginTop: 6, fontSize: 11, color: 'rgba(255,255,255,0.35)' }}>
+            빌드: {buildId}
           </div>
         </div>
 

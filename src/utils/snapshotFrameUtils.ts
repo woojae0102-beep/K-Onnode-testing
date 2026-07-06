@@ -7,6 +7,12 @@ function cloneMember(member: SkeletonMemberData): SkeletonMemberData {
     joints: { ...member.joints },
     worldCoordinates: member.worldCoordinates ? { ...member.worldCoordinates } : undefined,
     boundingBox: member.boundingBox ? { ...member.boundingBox } : undefined,
+    orientation: member.orientation,
+    boneRotations: member.boneRotations
+      ? Object.fromEntries(
+          Object.entries(member.boneRotations).map(([name, q]) => [name, { ...q }]),
+        )
+      : undefined,
   };
 }
 
