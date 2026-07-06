@@ -144,13 +144,18 @@ export function useGroupDanceEngine({
   }, [groupId, songId, userMemberId, skeletonFrames, practiceDuration, sampleFps, totalFrames, group]);
 
   const tick = useCallback(
-    (elapsedSec: number, userJoints: Record<string, { x: number; y: number; z?: number }> | null = null): PracticeMotionSnapshot | null => {
+    (
+      elapsedSec: number,
+      userJoints: Record<string, { x: number; y: number; z?: number }> | null = null,
+      sourceFrameOverride: import('../types/groupPractice').SkeletonFrameData | null = null,
+    ): PracticeMotionSnapshot | null => {
       const engine = syncEngineRef.current;
       if (!engine) return null;
       const tickResult = engine.tick({
         elapsedSec,
         userJoints,
         userFallbackAnchor,
+        sourceFrameOverride,
       });
       return assemblePracticeMotionSnapshot(
         {

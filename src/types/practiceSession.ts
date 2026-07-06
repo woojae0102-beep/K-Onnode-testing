@@ -7,6 +7,7 @@ import type {
 } from './danceDatabase';
 import type { SkeletonFrameData } from './groupPractice';
 import type { SkeletonValidationDebugReport } from '../utils/skeletonDataUtils';
+import type { SkeletonRenderTimeline } from '../services/rendering/SkeletonTimelineBuilder';
 import type { PracticeTimeline } from '../utils/practiceTimelineUtils';
 
 export interface StageScale {
@@ -98,4 +99,6 @@ export interface PracticeSessionData {
   detectedMemberCount?: number;
   videoWidth?: number;
   videoHeight?: number;
+  /** 60fps 렌더 타임라인 — Practice는 frames[frameIndex] 직접 접근 */
+  renderTimeline?: SkeletonRenderTimeline;
 }

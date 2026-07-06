@@ -5,14 +5,31 @@ import {
   normalizedToCanvas,
 } from './canvasSkeletonUtils';
 import {
-  buildStageFitContainView,
-  mapLiveJointsToStageAnchor,
-  type StageFitContainView,
-} from './stageFitContain';
+  buildSkeletonRenderTransform,
+  type SkeletonRenderTransform,
+} from './SkeletonRenderTransform';
 
 export { normalizedToCanvas, drawAccurateSkeleton, buildRenderConfig };
 export type { CanvasRenderConfig } from './canvasSkeletonUtils';
-export type { StageFitContainView } from './stageFitContain';
+export type { SkeletonRenderTransform as StageFitContainView } from './SkeletonRenderTransform';
+
+function mapLiveJointsToStageAnchor(
+  joints: Record<string, { x: number; y: number }>,
+  anchorX: number,
+  anchorY: number,
+  spreadX = 0.22,
+  spreadY = 0.32,
+) {
+  const out: Record<string, { x: number; y: number }> = {};
+  Object.entries(joints).forEach(([name, joint]) => {
+    if (!joint) return;
+    out[name] = {
+      x: anchorX + (joint.x - 0.5) * spreadX,
+      y: anchorY + (joint.y - 0.5) * spreadY,
+    };
+  });
+  return out;
+}
 
 export function drawStageBackground(ctx, width, height) {
   ctx.fillStyle = '#0a0a14';
@@ -96,7 +113,7 @@ export function drawAIAvatar(
   color,
   memberName,
   canvas,
-  view: StageFitContainView | null = null,
+  view: SkeletonRenderTransform | null = null,
   isEstimated = false,
 ) {
   const logicalW = canvas._logicalWidth ?? canvas.width;
@@ -181,9 +198,9 @@ export function renderStageFrame(
     ));
   }
 
-  const view = buildStageFitContainView(jointSets, logicalW, logicalH, {
+  const view = buildSkeletonRenderTransform(jointSets, logicalW, logicalH, {
     extraPoints,
-    paddingRatio: 0.1,
+    paddingRatio: 0.12,
   });
 
   if (input.ghostAnchor) {

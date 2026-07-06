@@ -20,6 +20,8 @@ import {
   runGroupMotionPipeline,
 } from '../services/motion/GroupMotionPipeline';
 import { summarizePoseQuality } from './frameMetadataUtils';
+import { buildSkeletonRenderTimeline } from '../services/rendering/SkeletonTimelineBuilder';
+import { PRACTICE_RENDER_FPS } from '../config/practiceRenderConfig';
 
 const DURATION_TOLERANCE_SEC = 0.5;
 
@@ -127,6 +129,9 @@ export function buildPracticeSessionData({
   const normalized = pipeline.frames;
   const timeline = pipeline.timeline;
   const validation = pipeline.validation;
+  const renderTimeline = buildSkeletonRenderTimeline(normalized, duration, PRACTICE_RENDER_FPS);
+  const practiceFps = PRACTICE_RENDER_FPS;
+  const practiceTotalFrames = renderTimeline.totalFrames;
   const lastFrameTimestamp = normalized[normalized.length - 1]?.timestamp ?? 0;
   const extractedFrameCount = pipeline.extractedFrameCount;
   const videoWidth = normalized[0]?.videoWidth ?? 1920;
@@ -137,8 +142,9 @@ export function buildPracticeSessionData({
   return {
     frames: normalized,
     duration: timeline.duration,
-    fps: timeline.fps,
-    totalFrames: timeline.totalFrames,
+    fps: practiceFps,
+    totalFrames: practiceTotalFrames,
+    renderTimeline,
     extractedFrameCount,
     formationTimeline,
     memberTracks,
@@ -166,7 +172,7 @@ export function buildPracticeSessionData({
       videoHeight,
       sampleFps: timeline.fps,
       extractedFrameCount,
-      timeline,
+      timeline: { ...timeline, fps: practiceFps, totalFrames: practiceTotalFrames },
       builtAt: new Date().toISOString(),
       pipelineAudit: auditSkeletonPipeline(rawFrames, normalized, userMemberId),
       validationReport: validation.report,

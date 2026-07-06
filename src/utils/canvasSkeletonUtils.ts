@@ -1,7 +1,7 @@
 // @ts-nocheck
 import type { JointPoint } from '../types/groupPractice';
 import { SKELETON_CONNECTIONS } from '../types/groupPractice';
-import type { StageFitContainView } from './stageFitContain';
+import type { SkeletonRenderTransform } from './SkeletonRenderTransform';
 
 /** MediaPipe 0~1 정규화 좌표 → Canvas 픽셀 (letterbox/pillarbox 보정) */
 export interface CanvasRenderConfig {
@@ -64,8 +64,8 @@ function jointConfidence(joint: JointLike | undefined): number {
 }
 
 function mapJoint(
-  joint: JointLike,
-  view: StageFitContainView | CanvasRenderConfig,
+  joint: { x: number; y: number },
+  view: SkeletonRenderTransform | CanvasRenderConfig,
 ): { x: number; y: number } {
   if ('mapPoint' in view && typeof view.mapPoint === 'function') {
     return view.mapPoint(joint.x, joint.y);
@@ -79,7 +79,7 @@ export function drawAccurateSkeleton(
   joints: Record<string, JointLike>,
   color: string,
   memberName: string,
-  view: StageFitContainView | CanvasRenderConfig,
+  view: SkeletonRenderTransform | CanvasRenderConfig,
   isEstimated = false,
   style: SkeletonDrawStyle = {},
 ) {

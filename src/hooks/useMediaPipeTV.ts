@@ -250,9 +250,6 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
         console.warn('[useMediaPipeTV] camera pipeline:', health.error);
       }
 
-      setIsTracking(true);
-      startDetectionLoop();
-
       const visionModule = await import('@mediapipe/tasks-vision');
       const { PoseLandmarker, FilesetResolver } = visionModule;
 
@@ -283,6 +280,9 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       latestPoseRef.current = null;
       lastStateUpdateAtRef.current = 0;
       detectTimestampRef.current = 0;
+
+      setIsTracking(true);
+      startDetectionLoop();
     } catch (err) {
       console.error('카메라 시작 실패:', err);
       setCameraHealth({

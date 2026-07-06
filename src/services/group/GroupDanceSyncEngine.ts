@@ -65,12 +65,16 @@ export class GroupDanceSyncEngine {
     elapsedSec,
     userJoints,
     userFallbackAnchor,
-  }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'>): SyncEngineTickResult {
+    sourceFrameOverride = null,
+  }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'> & {
+    sourceFrameOverride?: SkeletonFrameData | null;
+  }): SyncEngineTickResult {
     const state = this.manager.getState();
-    const frame = findFrameAtTime(this.dataset.frames as any[], elapsedSec);
-    const sourceFrameRaw = this.sourceFrames.length
-      ? findFrameAtTime(this.sourceFrames, elapsedSec)
-      : null;
+    const sourceFrameRaw = sourceFrameOverride
+      ?? (this.sourceFrames.length ? findFrameAtTime(this.sourceFrames, elapsedSec) : null);
+    const frame = sourceFrameOverride
+      ? sourceFrameOverride
+      : findFrameAtTime(this.dataset.frames as any[], elapsedSec);
     const sourceFrame = cloneSkeletonFrameForSnapshot(sourceFrameRaw);
 
     const timelineMeta = this.resolveTimeline(elapsedSec, sourceFrameRaw);
