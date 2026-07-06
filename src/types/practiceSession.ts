@@ -5,6 +5,7 @@ import type {
   MemberTrackMeta,
   PositionMap,
 } from './danceDatabase';
+import type { SkeletonFrameData } from './groupPractice';
 import type { SkeletonValidationDebugReport } from '../utils/skeletonDataUtils';
 import type { PracticeTimeline } from '../utils/practiceTimelineUtils';
 

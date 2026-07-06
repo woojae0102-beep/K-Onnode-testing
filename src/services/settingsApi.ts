@@ -1,4 +1,4 @@
-async function request(url: string, options: RequestInit = {}) {
+async function request(url: string, options: globalThis.RequestInit = {}) {
   const res = await fetch(url, {
     headers: { 'Content-Type': 'application/json', ...(options.headers || {}) },
     ...options,

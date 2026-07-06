@@ -11,6 +11,7 @@ import type { FormationKeyframe, MemberTrackMeta } from '../types/danceDatabase'
 import {
   buildFieldError,
   logPracticeValidationTable,
+  logUndefinedFields,
   logValidationFieldErrors,
   type ValidationFieldError,
 } from './practiceValidationDebug';
@@ -215,7 +216,7 @@ export function normalizeSkeletonMember(raw: any): SkeletonMemberData | null {
  * 변경 필드: joints/worldCoordinates 숫자 좌표만 Number() 정규화
  */
 export function normalizeSkeletonFrames(frames: SkeletonFrameData[] | null | undefined): SkeletonFrameData[] {
-  if (!normalized.length) {
+  if (!frames?.length) {
     logUndefinedFields('normalizeSkeletonFrames.input', { frames }, ['frames']);
     return [];
   }

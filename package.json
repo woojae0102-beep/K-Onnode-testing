@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "lint": "eslint src --quiet",
+    "build": "npm run lint && vite build",
     "preview": "vite preview",
     "scheduler:social": "node scripts/social-token-scheduler.cjs",
     "scheduler:knowledge": "node scripts/trainer-knowledge-scheduler.cjs",
@@ -43,13 +44,17 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@vite-pwa/assets-generator": "^1.0.2",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "eslint": "^10.6.0",
+    "globals": "^17.7.0",
     "postcss": "^8.4.49",
     "tailwindcss": "^3.4.16",
     "tailwindcss-animate": "^1.0.7",
+    "typescript-eslint": "^8.62.1",
     "vite": "^6.0.3",
     "vite-plugin-pwa": "^1.2.0"
   }
