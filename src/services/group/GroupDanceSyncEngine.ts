@@ -95,6 +95,7 @@ export class GroupDanceSyncEngine {
       const byId = new Map(frame.members.map((m) => [m.memberId, m]));
       aiAvatars = aiMemberIds.map((memberId) => {
         const memberFrame = byId.get(memberId);
+        const sourceMember = sourceByMember.get(memberId);
         const meta = personaById.get(memberId);
         const root = memberFrame ? computeRoot(memberFrame.joints) : userAnchor;
         return {
@@ -109,8 +110,8 @@ export class GroupDanceSyncEngine {
               accentColor: '#FF1F8E',
             },
           joints: toAvatarJoints(memberId, memberFrame?.joints || {}),
-          boneRotations: src?.boneRotations,
-          orientation: src?.orientation,
+          boneRotations: sourceMember?.boneRotations,
+          orientation: sourceMember?.orientation,
           worldOffset: root,
           isEstimated: memberFrame?.isEstimated ?? !memberFrame,
         };
