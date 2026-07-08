@@ -6,21 +6,20 @@ import { getSongById } from '../../data/groupStudioSongs';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
 import { usePracticeClock } from '../../hooks/usePracticeClock';
 import { PRACTICE_RENDER_FPS } from '../../config/practiceRenderConfig';
+import { useGroupStageFrame } from '../../hooks/useGroupStageFrame';
 import {
-  buildSkeletonRenderTimeline,
-  getRenderTimelineFrame,
-} from '../../services/rendering/SkeletonTimelineBuilder';
+  findFrameIndexByTimestamp,
+  isPracticePlaybackFinished,
+} from '../../services/practice/PracticePlayer';
+import { buildStageRenderInput } from '../../utils/stageRenderInputBuilder';
 import CameraPreviewStack from './CameraPreviewStack';
+import GroupDanceStage2D from './GroupDanceStage2D';
 import { useGroupSync } from '../../hooks/useGroupSync';
 import { useGroupDanceEngine } from '../../hooks/useGroupDanceEngine';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { useGroupAvatarAssets } from '../../hooks/useGroupAvatarAssets';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
-import {
-  renderStageFrame,
-} from '../../utils/groupSkeletonDraw';
-import { computeAspectFitSize } from '../../utils/canvasSkeletonUtils';
 import { isDevEnvironment } from '../../utils/isDevEnvironment';
 import { validateSkeletonForPractice } from '../../utils/skeletonDataUtils';
 import {
@@ -74,7 +73,7 @@ export function GroupStudioSession({
   const otherMembers = group?.members.filter((m) => m.id !== myMemberId) || [];
   const agencyColor = AGENCY_COLORS[agency as Agency] || '#FF1F8E';
 
-  const stageCanvasRef = useRef(null);
+  const stage2DRef = useRef(null);
   const ytPlayerRef = useRef(null);
 
   const skeletonValidation = useMemo(
@@ -113,16 +112,8 @@ export function GroupStudioSession({
       { stage: 'GroupStudioSession.mount', skeletonValid: skeletonValidation.valid },
     );
   }, [practiceSessionData, sessionFrames, maxDuration, skeletonValidation]);
-  const sourceVideoWidth = practiceSessionData.videoWidth || sessionFrames?.[0]?.videoWidth || 1920;
-  const sourceVideoHeight = practiceSessionData.videoHeight || sessionFrames?.[0]?.videoHeight || 1080;
 
-  const renderTimeline = useMemo(() => {
-    if (practiceSessionData.renderTimeline?.frames?.length) {
-      return practiceSessionData.renderTimeline;
-    }
-    if (!sessionFrames?.length || !maxDuration) return null;
-    return buildSkeletonRenderTimeline(sessionFrames, maxDuration, PRACTICE_RENDER_FPS);
-  }, [practiceSessionData.renderTimeline, sessionFrames, maxDuration]);
+  const renderTimeline = practiceSessionData.renderTimeline ?? null;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
@@ -158,7 +149,6 @@ export function GroupStudioSession({
   const practiceClock = usePracticeClock({
     durationSec: maxDuration,
     fps: practiceSessionData.fps || PRACTICE_RENDER_FPS,
-    coverageEndSec: renderTimeline?.coverageEndSec ?? maxDuration,
     externalTimeSec: useYoutubeClock ? videoPlaybackTime : null,
     externalRunning: useYoutubeClock,
   });
@@ -169,10 +159,17 @@ export function GroupStudioSession({
   const startTimeline = practiceClock.start;
   const forceStop = practiceClock.forceStop;
 
+  const stageFrame = useGroupStageFrame({
+    sourceFrames: sessionFrames,
+    timeSec: currentTime,
+    sourceVideoDurationSec: practiceSessionData.sourceVideoDurationSec ?? maxDuration,
+    renderTimeline,
+    sessionKey: `${groupId}:${songId}:${myMemberId}`,
+  });
+
   const getTimelineFrame = useCallback(
-    (frameIndex = practiceClock.currentFrameIndex) =>
-      getRenderTimelineFrame(renderTimeline, frameIndex),
-    [renderTimeline, practiceClock.currentFrameIndex],
+    (timeSec = practiceClock.currentTime) => stageFrame.resolveAt(timeSec),
+    [stageFrame.resolveAt, practiceClock.currentTime],
   );
   const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
     myMemberId,
@@ -257,14 +254,15 @@ export function GroupStudioSession({
 
   const effectiveMaxDuration = maxDuration;
 
-  const practiceEnded = isPracticing && (practiceClock.isFinished || (
-    referenceYoutubeUrl && isRunning && videoPlaybackTime >= effectiveMaxDuration - 0.35
-  ));
+  const practiceEnded = isPracticing && (
+    practiceClock.isFinished
+    || isPracticePlaybackFinished(currentTime, maxDuration)
+    || (referenceYoutubeUrl && isRunning && isPracticePlaybackFinished(videoPlaybackTime, maxDuration))
+  );
 
   const debugHudStats = useMemo(() => {
-    const frameIndex = practiceClock.currentFrameIndex;
-    const totalTimelineFrames = renderTimeline?.totalFrames ?? practiceSessionData.totalFrames ?? 0;
-    const frame = snapshotFrame(danceSnapshot) ?? getTimelineFrame(frameIndex);
+    const frameIndex = findFrameIndexByTimestamp(sessionFrames, practiceClock.currentTime);
+    const frame = snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentTime);
     const skeletonCount = frame?.members?.length ?? 0;
     const aiInFrame = frame?.members?.filter(
       (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
@@ -278,26 +276,26 @@ export function GroupStudioSession({
 
     return {
       frameIndex,
-      totalTimelineFrames,
+      totalTimelineFrames: sessionFrames?.length ?? 0,
       skeletonCount,
       aiAvatarCount: Math.max(aiInFrame, snapshotAiCount, stageSkeletonCount),
       userSkeletonJoints,
       snapshotAiCount,
     };
   }, [
-    practiceClock.currentFrameIndex,
-    renderTimeline,
+    practiceClock.currentTime,
+    sessionFrames,
+    getTimelineFrame,
     myMemberId,
     dance.poseData,
     danceSnapshot,
     stageSkeletonCount,
-    practiceSessionData.totalFrames,
   ]);
 
   const groupMotionDebug = useMemo(() => {
-    const frame = snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentFrameIndex);
+    const frame = snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentTime);
     return buildGroupMotionDebugFromSession(practiceSessionData, frame, effectiveTime);
-  }, [practiceSessionData, danceSnapshot, getTimelineFrame, practiceClock.currentFrameIndex, effectiveTime]);
+  }, [practiceSessionData, danceSnapshot, getTimelineFrame, practiceClock.currentTime, effectiveTime]);
 
   const studio = useStudioSession({
     localStream: dance.getStream(),
@@ -331,50 +329,9 @@ export function GroupStudioSession({
     isPlaying: isPracticing && isRunning,
   });
 
-  const resizeStageCanvas = useCallback(() => {
-    const canvas = stageCanvasRef.current;
-    if (!canvas?.parentElement) return;
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const parentW = rect.width > 0 ? rect.width : canvas.parentElement.clientWidth || 640;
-    const parentH = rect.height > 0 ? rect.height : canvas.parentElement.clientHeight || 360;
-    const { width: renderW, height: renderH } = computeAspectFitSize(
-      sourceVideoWidth,
-      sourceVideoHeight,
-      parentW,
-      parentH,
-    );
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(renderW * dpr);
-    canvas.height = Math.round(renderH * dpr);
-    canvas.style.width = `${renderW}px`;
-    canvas.style.height = `${renderH}px`;
-    canvas._logicalWidth = renderW;
-    canvas._logicalHeight = renderH;
-    canvas._videoWidth = sourceVideoWidth;
-    canvas._videoHeight = sourceVideoHeight;
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }, [sourceVideoWidth, sourceVideoHeight]);
-
-  useEffect(() => {
-    resizeStageCanvas();
-    window.addEventListener('resize', resizeStageCanvas);
-    const canvas = stageCanvasRef.current;
-    const parent = canvas?.parentElement;
-    let ro: ResizeObserver | null = null;
-    if (parent && typeof ResizeObserver !== 'undefined') {
-      ro = new ResizeObserver(() => resizeStageCanvas());
-      ro.observe(parent);
-    }
-    return () => {
-      window.removeEventListener('resize', resizeStageCanvas);
-      ro?.disconnect();
-    };
-  }, [resizeStageCanvas, isMobile]);
-
   const syncDanceStage = useCallback(
-    (elapsedSec, frameIndex = Math.round(elapsedSec * (practiceSessionData.fps || PRACTICE_RENDER_FPS))) => {
-      const timelineFrame = getRenderTimelineFrame(renderTimeline, frameIndex);
+    (elapsedSec) => {
+      const timelineFrame = stageFrame.resolveAt(elapsedSec);
       const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
       return danceEngine.tick(
         elapsedSec,
@@ -382,91 +339,65 @@ export function GroupStudioSession({
         timelineFrame,
       );
     },
-    [danceEngine.tick, isPracticing, sessionPhase, dance.poseData, renderTimeline, practiceSessionData.fps],
+    [danceEngine.tick, isPracticing, sessionPhase, dance.poseData, stageFrame.resolveAt],
   );
 
   const renderGroupStage = useCallback(
-    (snapshot, timeSec = practiceTimeRef.current, frameIndex) => {
+    (snapshot, timeSec = practiceTimeRef.current) => {
       if (show3DRenderer) return;
-      const canvas = stageCanvasRef.current;
-      if (!canvas || !myMember) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!myMember) return;
 
-      let logicalW = canvas._logicalWidth ?? canvas.width;
-      let logicalH = canvas._logicalHeight ?? canvas.height;
-      if (!logicalW || !logicalH) {
-        resizeStageCanvas();
-        logicalW = canvas._logicalWidth ?? canvas.width ?? 640;
-        logicalH = canvas._logicalHeight ?? canvas.height ?? 360;
-      }
-      if (!logicalW || !logicalH) return;
-
-      const holeNormX = formationHole?.anchor?.x ?? myMember.defaultX;
-      const holeNormY = formationHole?.anchor?.y ?? myMember.defaultY;
       const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
-
-      const idx = frameIndex ?? Math.round(timeSec * (practiceSessionData.fps || PRACTICE_RENDER_FPS));
-      const timelineFrame = getRenderTimelineFrame(renderTimeline, idx);
-      const aiMembers = [];
-
+      const timelineFrame = stageFrame.resolveAt(timeSec);
       const frame = snapshotFrame(snapshot) ?? timelineFrame;
 
-      frame?.members?.forEach((memberData) => {
-        if (!memberData.estimatedMemberId || memberData.estimatedMemberId === myMemberId) return;
-        const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
-        if (!member || !memberData.joints || !Object.keys(memberData.joints).length) return;
-        aiMembers.push({
-          joints: memberData.joints,
-          color: member.color,
-          name: member.nameKr,
-          isEstimated: memberData.isEstimated,
-        });
-      });
+      const aiRendered = frame?.members?.filter(
+        (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
+      ).length ?? snapshotAiAvatars(snapshot).length;
 
-      if (aiMembers.length === 0) {
-        snapshotAiAvatars(snapshot).forEach((avatar) => {
-          const member = group.members.find((m) => m.id === avatar.memberId);
-          if (!member || !avatar.joints || !Object.keys(avatar.joints).length) return;
-          aiMembers.push({
-            joints: avatar.joints,
-            color: member.color,
-            name: member.nameKr,
-            isEstimated: avatar.isEstimated,
-          });
-        });
-      }
-
-      const aiRendered = aiMembers.length;
       if (aiRendered !== lastSkeletonCountRef.current) {
         lastSkeletonCountRef.current = aiRendered;
         setStageSkeletonCount(aiRendered);
       }
 
       const userAnchor = snapshotUserAnchor(snapshot);
-      const anchorX = userAnchor.x ?? holeNormX;
-      const anchorY = userAnchor.y ?? holeNormY;
-
-      renderStageFrame(ctx, canvas, {
-        aiMembers,
+      const renderInput = buildStageRenderInput({
+        frame,
+        groupId,
+        myMemberId,
+        timeSec,
+        formationTimeline: practiceSessionData.formationTimeline ?? null,
+        formationHole,
         userJoints: showUserPose && dance.poseData?.joints
           ? smoothLiveJoints(dance.poseData.joints)
           : null,
         userColor: myMember.color,
-        userAnchor: { x: anchorX, y: anchorY },
-        ghostAnchor: (showGhost && sessionPhase !== 'practicing') || isPracticing
-          ? {
-              x: holeNormX,
-              y: holeNormY,
-              color: formationHole?.color || myMember.color,
-              label: sessionPhase === 'practicing'
-                ? (formationHole?.label || 'YOU')
-                : (formationHole?.label || 'YOUR SLOT'),
-            }
+        userAnchor: userAnchor
+          ? { x: userAnchor.x, y: userAnchor.y }
           : null,
+        showUserPose,
+        showGhost: (showGhost && sessionPhase !== 'practicing') || isPracticing,
+        ghostLabel: sessionPhase === 'practicing'
+          ? (formationHole?.label || 'YOU')
+          : (formationHole?.label || 'YOUR SLOT'),
+        snapshotAiMembers: snapshotAiAvatars(snapshot),
       });
+
+      stage2DRef.current?.draw(renderInput);
     },
-    [group, myMember, myMemberId, dance.poseData, showGhost, sessionPhase, isPracticing, show3DRenderer, formationHole, renderTimeline, practiceSessionData.fps, resizeStageCanvas],
+    [
+      groupId,
+      myMember,
+      myMemberId,
+      dance.poseData,
+      showGhost,
+      sessionPhase,
+      isPracticing,
+      show3DRenderer,
+      formationHole,
+      stageFrame.resolveAt,
+      practiceSessionData.formationTimeline,
+    ],
   );
 
   renderGroupStageRef.current = renderGroupStage;
@@ -498,8 +429,8 @@ export function GroupStudioSession({
   }, [dance.poseData, myDefault]);
 
   const getPracticeFrame = useCallback(
-    () => snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentFrameIndex),
-    [danceSnapshot, getTimelineFrame, practiceClock.currentFrameIndex],
+    () => snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentTime),
+    [danceSnapshot, getTimelineFrame, practiceClock.currentTime],
   );
 
   const finishSession = useCallback(
@@ -579,11 +510,10 @@ export function GroupStudioSession({
 
       const clock = practiceClockRef.current;
       const t = clock.currentTime;
-      const frameIndex = clock.currentFrameIndex;
       practiceTimeRef.current = t;
 
-      const snapshot = syncDanceStageRef.current?.(t, frameIndex) || null;
-      renderGroupStageRef.current?.(snapshot, t, frameIndex);
+      const snapshot = syncDanceStageRef.current?.(t) || null;
+      renderGroupStageRef.current?.(snapshot, t);
 
       const now = performance.now();
       if (now - last3dAt > 100) {
@@ -594,7 +524,7 @@ export function GroupStudioSession({
 
       if (now - lastScoreAt > 120) {
         lastScoreAt = now;
-        const frame = getRenderTimelineFrame(renderTimeline, frameIndex);
+        const frame = stageFrame.resolveAt(t);
         if (dance.poseData && frame) {
           const accuracy = updateSyncScore(dance.poseData, frame, t);
           if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
@@ -616,6 +546,7 @@ export function GroupStudioSession({
           danceSnapshot: snapshot,
           score: roundedScore,
           formationHole,
+          formationTimeline: practiceSessionData.formationTimeline ?? null,
           referenceVideoUrl: referenceYoutubeUrl,
           beatProgress: maxDuration > 0 ? t / maxDuration : 0,
           currentTime: t,
@@ -646,7 +577,7 @@ export function GroupStudioSession({
     isRunning,
     isFinished,
     referenceYoutubeUrl,
-    renderTimeline,
+    stageFrame.resolveAt,
     dance.poseData,
     updateSyncScore,
     groupId,
@@ -897,7 +828,7 @@ export function GroupStudioSession({
           </Suspense>
         ) : (
           <div className="group-studio-stage-canvas-wrap" style={{ position: 'relative' }}>
-            <canvas ref={stageCanvasRef} className="group-studio-stage-canvas" />
+            <GroupDanceStage2D ref={stage2DRef} />
             {isDevEnvironment() ? (
               <SnapshotDebugOverlay snapshot={danceSnapshot} loading={danceEngine.loading} />
             ) : null}
@@ -1086,6 +1017,7 @@ export function GroupStudioSession({
               isTracking={dance.isTracking}
               cameraError={dance.cameraHealth?.error}
               showPlaceholder={sessionPhase !== 'lobby'}
+              fitMode={dance.fitMode}
             />
           </div>
           <div className="group-studio-user-score">

@@ -104,6 +104,8 @@ export interface GroupMotionPipelineInput {
   formationKeyframes?: FormationKeyframe[];
   applySmoothing?: boolean;
   skipPostProcess?: boolean;
+  /** 추출 단계: 보간·타임라인 리그리드 없이 원본 프레임 유지 */
+  preserveExtractionFrames?: boolean;
 }
 
 export interface GroupMotionPipelineResult {
@@ -150,6 +152,7 @@ export function runGroupMotionPipeline({
   formationKeyframes: inputFormationKeyframes = [],
   applySmoothing = false,
   skipPostProcess = false,
+  preserveExtractionFrames = false,
 }: GroupMotionPipelineInput): GroupMotionPipelineResult {
   let formationKeyframes = [...inputFormationKeyframes];
   let memberTracks = [...inputMemberTracks];
@@ -171,7 +174,7 @@ export function runGroupMotionPipeline({
     throw new Error('[GroupMotionPipeline] 입력 프레임이 비어 있습니다.');
   }
 
-  const duration = resolvePracticeDurationSec(videoDurationSec);
+  const duration = resolvePracticeDurationSec(videoDurationSec, rawFrames);
   if (!duration) {
     throw new Error('[GroupMotionPipeline] video.duration가 유효하지 않습니다.');
   }
@@ -213,9 +216,13 @@ export function runGroupMotionPipeline({
   stage(audit, 'normalize', true, { inputFrames: rawFrames.length, outputFrames: frames.length });
   if (!frames.length) throw new Error('[GroupMotionPipeline] normalize 후 프레임 없음');
 
-  // [2] confidence
-  frames = interpolateLowConfidenceJoints(frames);
-  stage(audit, 'confidence', true, { outputFrames: frames.length });
+  // [2] confidence — 추출 단계는 원본 관절 유지 (보간은 렌더링에서)
+  if (preserveExtractionFrames) {
+    stage(audit, 'confidence', false, { error: 'preserveExtractionFrames' });
+  } else {
+    frames = interpolateLowConfidenceJoints(frames);
+    stage(audit, 'confidence', true, { outputFrames: frames.length });
+  }
 
   // [3] smooth
   if (applySmoothing) {
@@ -234,13 +241,17 @@ export function runGroupMotionPipeline({
   });
   stage(audit, 'tracking', true, { outputFrames: frames.length });
 
-  // [5] interpolation
-  const beforeInterp = countInterpolatedMembers(frames);
-  frames = interpolateSkeletonFrameGaps(frames, allMemberIds);
-  stage(audit, 'interpolation', true, {
-    interpolatedMembers: Math.max(0, countInterpolatedMembers(frames) - beforeInterp),
-    outputFrames: frames.length,
-  });
+  // [5] interpolation — 추출 단계 스킵 (렌더링에서 수행)
+  if (preserveExtractionFrames) {
+    stage(audit, 'interpolation', false, { error: 'preserveExtractionFrames' });
+  } else {
+    const beforeInterp = countInterpolatedMembers(frames);
+    frames = interpolateSkeletonFrameGaps(frames, allMemberIds);
+    stage(audit, 'interpolation', true, {
+      interpolatedMembers: Math.max(0, countInterpolatedMembers(frames) - beforeInterp),
+      outputFrames: frames.length,
+    });
+  }
 
   if (groupId && allMemberIds.length > 1) {
     const trackMap = trackToMember instanceof Map
@@ -321,9 +332,13 @@ export function runGroupMotionPipeline({
   frames = attachSessionMetadataToFrames(frames, { memberTracks, formationKeyframes });
   stage(audit, 'formation', true, { outputFrames: frames.length });
 
-  // [12] timeline grid
-  frames = normalizeFrameTimestampsToFpsGrid(frames, timeline.fps);
-  stage(audit, 'timeline', true, { outputFrames: frames.length });
+  // [12] timeline grid — 추출 단계는 30fps 그리드 timestamp 유지
+  if (preserveExtractionFrames) {
+    stage(audit, 'timeline', false, { error: 'preserveExtractionFrames' });
+  } else {
+    frames = normalizeFrameTimestampsToFpsGrid(frames, timeline.fps);
+    stage(audit, 'timeline', true, { outputFrames: frames.length });
+  }
 
   // [13] metadata
   frames = enrichSkeletonFrameMetadata(frames, {

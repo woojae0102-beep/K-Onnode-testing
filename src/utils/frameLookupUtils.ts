@@ -1,11 +1,18 @@
 // @ts-nocheck
+/**
+ * @deprecated findNearestFrame 제거 — PracticePlayer.findFrameIndexByTimestamp 사용.
+ */
 import type { SkeletonFrameData } from '../types/groupPractice';
+import {
+  findFrameIndexByTimestamp,
+  resolvePracticeFrameAtTime,
+} from '../services/practice/PracticePlayer';
 
+/** @deprecated resolvePracticeFrameAtTime 사용 */
 export function findNearestFrame(frames: SkeletonFrameData[] | null | undefined, time: number) {
-  if (!frames?.length) return null;
-  return frames.reduce((nearest, frame) =>
-    Math.abs(frame.timestamp - time) < Math.abs(nearest.timestamp - time) ? frame : nearest,
-  );
+  return resolvePracticeFrameAtTime(frames, time);
 }
 
-export default findNearestFrame;
+export { findFrameIndexByTimestamp, resolvePracticeFrameAtTime };
+
+export default resolvePracticeFrameAtTime;

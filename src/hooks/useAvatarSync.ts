@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { useCallback, useRef } from 'react';
-import { findNearestFrame } from '../utils/frameLookupUtils';
+import { resolvePracticeFrameAtTime } from '../utils/skeletonTimelineUtils';
 
 export function useAvatarSync(skeletonData) {
   const startTimeRef = useRef(0);
@@ -33,7 +33,7 @@ export function useAvatarSync(skeletonData) {
   }, []);
 
   const getCurrentFrame = useCallback(() => {
-    return findNearestFrame(skeletonData, getElapsed());
+    return resolvePracticeFrameAtTime(skeletonData, getElapsed());
   }, [skeletonData, getElapsed]);
 
   return {

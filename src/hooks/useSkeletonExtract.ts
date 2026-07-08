@@ -12,6 +12,7 @@ import {
   type MotionExtractionDebugState,
   type MotionExtractionResult,
 } from '../types/motionExtraction';
+import { CHOREO_DEFAULT_SAMPLE_FPS } from '../config/choreoExtractConfig';
 import {
   extractMotionDatabase,
   analyzeFileHolistic,
@@ -335,7 +336,7 @@ export function useSkeletonExtract() {
           userMemberId: memberId,
           analysisResult,
           trackToMember,
-          sampleFps: analysisResult.sampleFps,
+          sampleFps: CHOREO_DEFAULT_SAMPLE_FPS,
         });
 
         await saveDanceDatabase(danceDatabase);
@@ -362,6 +363,11 @@ export function useSkeletonExtract() {
           danceDatabase,
           frames: danceDatabase.skeletonFrames,
           skeletonFrames: danceDatabase.skeletonFrames,
+          skeletonData: danceDatabase.skeletonData ?? {
+            fps: CHOREO_DEFAULT_SAMPLE_FPS,
+            duration: danceDatabase.durationSec,
+            frameCount: danceDatabase.skeletonFrames.length,
+          },
           analysisResult,
           fromCache: false,
           referenceVideo,

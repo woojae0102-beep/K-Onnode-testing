@@ -2,6 +2,7 @@
 import type {
   JointPoint,
   SkeletonBoundingBox,
+  SkeletonData,
   SkeletonFrameData,
   SkeletonFrameMemberTrack,
   SkeletonMemberData,
@@ -719,6 +720,19 @@ export function countAiSkeletonsAtTime(
 
 function countAiInFrame(frame: SkeletonFrameData, userMemberId: string): number {
   return countAiInPracticeFrame(frame, userMemberId);
+}
+
+/** 추출·저장용 SkeletonData 메타 (fps · duration · frameCount) */
+export function buildSkeletonData(
+  frames: SkeletonFrameData[],
+  fps: number,
+  durationSec: number,
+): SkeletonData {
+  return {
+    fps,
+    duration: durationSec,
+    frameCount: frames.length,
+  };
 }
 
 export default normalizeSkeletonFrames;

@@ -7,9 +7,10 @@ import { useSettingsStore } from '../store/settingsSlice';
 import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../config/groupChoreoConstants';
 import { getOptimizedCanvasContext, syncCanvasToDisplayRect } from '../utils/cameraFrameLoop';
 import {
-  buildCameraCoverView,
+  buildCameraFitView,
   drawCameraSkeletonOverlay,
   verifyCameraPipeline,
+  type CameraFitMode,
   type CameraHealthStatus,
 } from '../utils/cameraOverlayUtils';
 
@@ -78,7 +79,7 @@ function buildTVVideoConstraints(settings, facingMode = 'user') {
   };
 }
 
-function drawSkeletonOnCanvas(canvas, video, joints, accuracies) {
+function drawSkeletonOnCanvas(canvas, video, joints, accuracies, fitMode: CameraFitMode = 'contain') {
   if (!canvas || !joints) return;
   const ctx = getOptimizedCanvasContext(canvas);
   if (!ctx) return;
@@ -87,7 +88,7 @@ function drawSkeletonOnCanvas(canvas, video, joints, accuracies) {
 
   const vw = video?.videoWidth || canvas.width;
   const vh = video?.videoHeight || canvas.height;
-  const view = buildCameraCoverView(vw, vh, canvas.width, canvas.height);
+  const view = buildCameraFitView(fitMode, vw, vh, canvas.width, canvas.height);
 
   const colorForJoint = (name) => {
     const accuracy = accuracies[name] || 0;
@@ -104,7 +105,13 @@ function drawSkeletonOnCanvas(canvas, video, joints, accuracies) {
   });
 }
 
-export function useMediaPipeTV(agencyColor = '#FF1F8E') {
+export interface UseMediaPipeTVOptions {
+  /** 연습 모드 기본값 contain — 몸 잘림 방지, letterbox 허용 */
+  fitMode?: CameraFitMode;
+}
+
+export function useMediaPipeTV(agencyColor = '#FF1F8E', options: UseMediaPipeTVOptions = {}) {
+  const fitMode: CameraFitMode = options.fitMode ?? 'contain';
   const settings = useSettingsStore((s) => s.settings);
   const [poseData, setPoseData] = useState(null);
   const [isTracking, setIsTracking] = useState(false);
@@ -118,6 +125,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   const detectTimerRef = useRef(0);
   const resizeObserverRef = useRef(null);
   const agencyColorRef = useRef(agencyColor);
+  const fitModeRef = useRef(fitMode);
   const latestPoseRef = useRef(null);
   const lastStateUpdateAtRef = useRef(0);
   const isDetectingRef = useRef(false);
@@ -126,6 +134,10 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
   useEffect(() => {
     agencyColorRef.current = agencyColor;
   }, [agencyColor]);
+
+  useEffect(() => {
+    fitModeRef.current = fitMode;
+  }, [fitMode]);
 
   const bindCanvasResizeObserver = useCallback(() => {
     const canvas = canvasRef.current;
@@ -138,7 +150,13 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
       syncCanvasToDisplayRect(canvas);
       const cached = latestPoseRef.current;
       if (cached?.joints) {
-        drawSkeletonOnCanvas(canvas, videoRef.current, cached.joints, cached.jointAccuracies);
+        drawSkeletonOnCanvas(
+          canvas,
+          videoRef.current,
+          cached.joints,
+          cached.jointAccuracies,
+          fitModeRef.current,
+        );
       }
     });
     resizeObserverRef.current.observe(canvas);
@@ -200,7 +218,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
             };
 
             latestPoseRef.current = nextPose;
-            drawSkeletonOnCanvas(canvas, video, joints, jointAccuracies);
+            drawSkeletonOnCanvas(canvas, video, joints, jointAccuracies, fitModeRef.current);
 
             if (now - lastStateUpdateAtRef.current >= STATE_UPDATE_INTERVAL_MS) {
               lastStateUpdateAtRef.current = now;
@@ -337,6 +355,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E') {
     videoRef,
     canvasRef,
     getStream,
+    fitMode,
   };
 }
 

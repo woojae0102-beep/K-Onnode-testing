@@ -1,5 +1,6 @@
 // @ts-nocheck
-import type { SkeletonFrameData } from '../types/groupPractice';
+import type { SkeletonFrameData } from './groupPractice';
+import { CHOREO_DEFAULT_SAMPLE_FPS } from '../config/choreoExtractConfig';
 import type { AnalysisResult } from './videoAnalysisTypes';
 import {
   computeBoundingBoxFromJoints,
@@ -51,6 +52,8 @@ export function buildSkeletonFramesFromAnalysis(
     return [];
   }
 
+  const extractionFps = analysisResult.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS;
+
   const rawFrames = analysisResult.frames
     .map((frame, frameIndex) => {
       const members = (frame.detectedPeople || [])
@@ -89,10 +92,13 @@ export function buildSkeletonFramesFromAnalysis(
         ? memberTracks.reduce((sum, t) => sum + (t.confidence || 0), 0) / memberTracks.length
         : 0;
 
+      const gridTimestamp = frameIndex / extractionFps;
+      const sourceVideoTime = frame.sourceVideoTime ?? frame.timestamp;
+
       return {
-        timestamp: frame.timestamp,
-        timestampMs: frame.timestampMs ?? Math.round(frame.timestamp * 1000),
-        sourceVideoTime: frame.timestamp,
+        timestamp: gridTimestamp,
+        timestampMs: Math.round(gridTimestamp * 1000),
+        sourceVideoTime,
         frameIndex,
         videoWidth: frame.videoWidth ?? videoWidth,
         videoHeight: frame.videoHeight ?? videoHeight,

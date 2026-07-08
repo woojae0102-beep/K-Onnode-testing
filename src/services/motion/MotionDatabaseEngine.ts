@@ -4,7 +4,7 @@
  * 선택 멤버 복사 금지: 리사 Motion / 제니 Motion / 로제 Motion 각각 독립 트랙.
  */
 import type { SkeletonFrameData, SkeletonMemberData } from '../../types/groupPractice';
-import { findNearestFrame } from '../../utils/frameLookupUtils';
+import { resolvePracticeFrameAtTime } from '../../utils/skeletonTimelineUtils';
 import { synthesizeFormationMembersForFrames } from '../motion/MemberMotionRetargeting';
 import type { FormationRetargetContext } from '../motion/MemberMotionRetargeting';
 
@@ -223,7 +223,7 @@ export function resolveMembersFromStoredMotionDatabase(
   groupMemberIds: string[],
   userMemberId: string,
 ): SkeletonMemberData[] {
-  const dbFrame = findNearestFrame(skeletonFrames, frame.timestamp);
+  const dbFrame = resolvePracticeFrameAtTime(skeletonFrames, frame.timestamp);
   if (!dbFrame?.members?.length) return frame.members || [];
 
   const byId = new Map(

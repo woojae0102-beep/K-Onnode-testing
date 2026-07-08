@@ -47,6 +47,21 @@ body.tv-active.tv-result-open {
   pointer-events: none;
 }
 
+/* 연습 카메라 — contain + letterbox */
+.tv-camera-viewport {
+  width: 100%;
+  height: 100%;
+  background: #0a0a14;
+}
+
+.tv-camera-viewport--contain video {
+  object-fit: contain;
+}
+
+.tv-camera-viewport--cover video {
+  object-fit: cover;
+}
+
 /* ── 트레이닝 화면 ── */
 .tv-training-screen {
   width: 100%;

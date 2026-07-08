@@ -1,6 +1,7 @@
 // @ts-nocheck
 import React, { memo } from 'react';
 import type { PoseData } from '../../types/tv';
+import type { CameraFitMode } from '../../utils/cameraOverlayUtils';
 
 const TVCameraViewport = memo(function TVCameraViewport({
   isTracking,
@@ -8,26 +9,33 @@ const TVCameraViewport = memo(function TVCameraViewport({
   canvasRef,
   onStartTracking,
   agencyColor,
+  fitMode = 'contain',
 }: {
   isTracking: boolean;
   videoRef: React.RefObject<HTMLVideoElement>;
   canvasRef: React.RefObject<HTMLCanvasElement>;
   onStartTracking: () => void;
   agencyColor: string;
+  fitMode?: CameraFitMode;
 }) {
+  const fitClass = fitMode === 'cover' ? 'tv-camera-viewport--cover' : 'tv-camera-viewport--contain';
+
   return (
-    <>
+    <div className={`tv-camera-viewport ${fitClass}`} style={{ position: 'absolute', inset: 0 }}>
       <video
         ref={videoRef}
         autoPlay
         playsInline
         muted
         style={{
+          position: 'absolute',
+          inset: 0,
           width: '100%',
           height: '100%',
-          objectFit: 'cover',
+          objectFit: fitMode,
           transform: 'scaleX(-1) translateZ(0)',
           backfaceVisibility: 'hidden',
+          background: '#0a0a14',
         }}
       />
       <canvas
@@ -88,7 +96,7 @@ const TVCameraViewport = memo(function TVCameraViewport({
           </button>
         </div>
       ) : null}
-    </>
+    </div>
   );
 });
 
@@ -144,6 +152,7 @@ export function UserCameraPanel({
   canvasRef = null,
   showJointBadges = true,
   embedded = false,
+  fitMode = 'contain',
 }: {
   mode?: 'dance' | 'vocal';
   poseData: PoseData | null;
@@ -160,6 +169,7 @@ export function UserCameraPanel({
   canvasRef?: React.RefObject<HTMLCanvasElement> | null;
   showJointBadges?: boolean;
   embedded?: boolean;
+  fitMode?: CameraFitMode;
 }) {
   const isVocal = mode === 'vocal';
 
@@ -173,6 +183,7 @@ export function UserCameraPanel({
               canvasRef={canvasRef}
               onStartTracking={onStartTracking}
               agencyColor={agencyColor}
+              fitMode={fitMode}
             />
             {isTracking && showJointBadges ? <JointAccuracyBadges poseData={poseData} /> : null}
           </>

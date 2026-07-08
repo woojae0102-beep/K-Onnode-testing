@@ -48,6 +48,8 @@ export interface DetectionFrame {
   timestamp: number;
   /** MediaPipe/재생 동기화용 ms 타임스탬프 */
   timestampMs?: number;
+  /** RVFC 원본 영상 시각(초) — timestamp(30fps 그리드)와 분리 */
+  sourceVideoTime?: number;
   /** 분석 당시 원본 영상 픽셀 크기 (좌표 변환용) */
   videoWidth?: number;
   videoHeight?: number;

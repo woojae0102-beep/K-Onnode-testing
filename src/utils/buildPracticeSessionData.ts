@@ -22,19 +22,23 @@ import {
 import { summarizePoseQuality } from './frameMetadataUtils';
 import { buildSkeletonRenderTimeline } from '../services/rendering/SkeletonTimelineBuilder';
 import { PRACTICE_RENDER_FPS } from '../config/practiceRenderConfig';
+import {
+  resolvePracticeVideoDuration,
+  resolveSkeletonLastTimestamp,
+} from '../services/practice/PracticePlayer';
 
 const DURATION_TOLERANCE_SEC = 0.5;
 
 /**
- * 연습 타임라인 길이 — HTMLVideoElement.duration만 사용.
- * lastFrameTimestamp / song.duration / 180 폴백 금지.
+ * 연습 타임라인 길이 — videoDuration = Timeline Duration.
+ * HTMLVideoElement.duration 우선; skeleton 마지막 timestamp와 동기화.
  */
 export function resolvePracticeDurationSec(
   sourceVideoDurationSec: number | null | undefined,
+  frames?: import('../types/groupPractice').SkeletonFrameData[] | null,
 ): number | null {
-  const video = Number(sourceVideoDurationSec);
-  if (Number.isFinite(video) && video > 0) return video;
-  return null;
+  const duration = resolvePracticeVideoDuration(frames ?? [], sourceVideoDurationSec);
+  return duration > 0 ? duration : null;
 }
 
 export function practiceDurationsMatch(a: number, b: number): boolean {
@@ -90,7 +94,7 @@ export function buildPracticeSessionData({
     sourceVideoDurationSec
     ?? danceDatabase?.sourceVideoDurationSec
     ?? null;
-  const duration = resolvePracticeDurationSec(videoDuration);
+  const duration = resolvePracticeDurationSec(videoDuration, rawFrames);
   if (!duration || duration <= 0) {
     logUndefinedFields('buildPracticeSessionData.duration', {
       sourceVideoDurationSec,
@@ -132,7 +136,7 @@ export function buildPracticeSessionData({
   const renderTimeline = buildSkeletonRenderTimeline(normalized, duration, PRACTICE_RENDER_FPS);
   const practiceFps = PRACTICE_RENDER_FPS;
   const practiceTotalFrames = renderTimeline.totalFrames;
-  const lastFrameTimestamp = normalized[normalized.length - 1]?.timestamp ?? 0;
+  const lastFrameTimestamp = resolveSkeletonLastTimestamp(normalized);
   const extractedFrameCount = pipeline.extractedFrameCount;
   const videoWidth = normalized[0]?.videoWidth ?? 1920;
   const videoHeight = normalized[0]?.videoHeight ?? 1080;

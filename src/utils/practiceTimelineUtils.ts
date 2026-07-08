@@ -10,8 +10,8 @@ export interface PracticeTimeline {
 }
 
 /**
- * 연습 타임라인: Video.duration → FPS → Frame
- * lastFrameTimestamp / song.duration / 180 폴백 사용 금지.
+ * 연습 타임라인: videoDuration = Timeline Duration.
+ * duration은 PracticePlayer.resolvePracticeVideoDuration 으로 산출.
  */
 export function computePracticeTimeline(
   videoDurationSec: number | null | undefined,

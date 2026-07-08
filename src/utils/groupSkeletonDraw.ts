@@ -1,17 +1,34 @@
 // @ts-nocheck
 import {
-  buildRenderConfig,
   drawAccurateSkeleton,
-  normalizedToCanvas,
 } from './canvasSkeletonUtils';
 import {
+  applyTransformToJoints,
   buildSkeletonRenderTransform,
   type SkeletonRenderTransform,
 } from './SkeletonRenderTransform';
+import { PRACTICE_RENDER_PADDING } from '../config/practiceRenderConfig';
+import type { FormationKeyframe, FormationTimeline } from '../types/danceDatabase';
+import type { SkeletonMemberData } from '../types/groupPractice';
+import { applySkeletonFormationPipeline } from '../services/rendering/SkeletonFormationRender';
 
-export { normalizedToCanvas, drawAccurateSkeleton, buildRenderConfig };
-export type { CanvasRenderConfig } from './canvasSkeletonUtils';
-export type { SkeletonRenderTransform as StageFitContainView } from './SkeletonRenderTransform';
+export interface StageCanvasLogicalSize {
+  width: number;
+  height: number;
+}
+
+export type { SkeletonRenderTransform };
+
+export interface StageFormationContext {
+  groupId: string;
+  userMemberId: string;
+  timestamp?: number;
+  formationTimeline?: FormationTimeline | null;
+  frameFormation?: FormationKeyframe | null;
+  referenceUserSlot?: { x: number; y: number; z?: number };
+  frameMembers?: SkeletonMemberData[];
+  scale?: number;
+}
 
 function mapLiveJointsToStageAnchor(
   joints: Record<string, { x: number; y: number }>,
@@ -79,85 +96,39 @@ export function drawGhostSlot(ctx, pos, color, label = 'YOUR SLOT') {
   ctx.restore();
 }
 
-export function drawMySpot(ctx, pos, color) {
-  ctx.setLineDash([5, 5]);
-  ctx.strokeStyle = `${color}66`;
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.arc(pos.x, pos.y, 40, 0, Math.PI * 2);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  ctx.fillStyle = `${color}88`;
-  ctx.font = 'bold 12px Inter, sans-serif';
-  ctx.textAlign = 'center';
-  ctx.fillText('YOU', pos.x, pos.y + 4);
-
-  const gradient = ctx.createRadialGradient(pos.x, pos.y, 0, pos.x, pos.y, 60);
-  gradient.addColorStop(0, `${color}20`);
-  gradient.addColorStop(1, 'transparent');
-  ctx.fillStyle = gradient;
-  ctx.beginPath();
-  ctx.arc(pos.x, pos.y, 60, 0, Math.PI * 2);
-  ctx.fill();
-}
-
-export function drawGhostSlotNormalized(ctx, anchorX, anchorY, color, label, view) {
-  const pos = view.mapPoint(anchorX, anchorY);
+function drawGhostSlotWithTransform(
+  ctx,
+  anchorX: number,
+  anchorY: number,
+  color: string,
+  label: string,
+  transform: SkeletonRenderTransform,
+) {
+  const pos = transform.mapPoint(anchorX, anchorY);
   drawGhostSlot(ctx, pos, color, label);
 }
 
-export function drawAIAvatar(
+/** Transform된 canvas 좌표로 스켈레톤 그리기 — normalized 직접 출력 금지 */
+function drawSkeletonWithTransform(
   ctx,
-  joints,
-  color,
-  memberName,
-  canvas,
-  view: SkeletonRenderTransform | null = null,
+  joints: Record<string, { x: number; y: number }>,
+  color: string,
+  memberName: string,
+  transform: SkeletonRenderTransform,
   isEstimated = false,
+  style = {},
 ) {
-  const logicalW = canvas._logicalWidth ?? canvas.width;
-  const logicalH = canvas._logicalHeight ?? canvas.height;
-
-  const renderView =
-    view ||
-    buildRenderConfig(
-      canvas._videoWidth || logicalW,
-      canvas._videoHeight || logicalH,
-      logicalW,
-      logicalH,
-    );
-
-  drawAccurateSkeleton(ctx, joints, color, memberName, renderView, isEstimated, {
-    boneWidth: 5,
-    jointRadius: 7,
-    glowBlur: 14,
-  });
-}
-
-export function drawUserSkeleton(ctx, joints, color, canvas, anchorX, anchorY, view = null) {
-  const logicalW = canvas._logicalWidth ?? canvas.width;
-  const logicalH = canvas._logicalHeight ?? canvas.height;
-
-  const stageJoints = mapLiveJointsToStageAnchor(joints, anchorX, anchorY);
-  const renderView =
-    view ||
-    buildRenderConfig(
-      canvas._videoWidth || logicalW,
-      canvas._videoHeight || logicalH,
-      logicalW,
-      logicalH,
-    );
-
-  drawAccurateSkeleton(ctx, stageJoints, color, 'YOU', renderView, false, {
-    boneWidth: 5.5,
-    jointRadius: 7.5,
-    glowBlur: 16,
-  });
+  const canvasJoints = applyTransformToJoints(joints, transform);
+  drawAccurateSkeleton(ctx, canvasJoints, color, memberName, {
+    mapPoint: (x, y) => ({ x, y }),
+    canvasWidth: transform.canvasWidth,
+    canvasHeight: transform.canvasHeight,
+  } as SkeletonRenderTransform, isEstimated, style);
 }
 
 export interface StageFrameRenderInput {
   aiMembers: Array<{
+    memberId?: string;
     joints: Record<string, { x: number; y: number }>;
     color: string;
     name: string;
@@ -167,21 +138,88 @@ export interface StageFrameRenderInput {
   userColor?: string;
   userAnchor?: { x: number; y: number };
   ghostAnchor?: { x: number; y: number; color: string; label: string } | null;
+  formation?: StageFormationContext | null;
 }
 
-/** Stage 렌더: BBox → Padding → Auto Scale/Center → FitContain → Canvas Render */
+function applyFormationToMembers(
+  aiMembers: StageFrameRenderInput['aiMembers'],
+  formation: StageFormationContext | null | undefined,
+  userAnchor: { x: number; y: number } | undefined,
+): StageFrameRenderInput['aiMembers'] {
+  if (!formation?.groupId || !formation.userMemberId || !userAnchor) {
+    return aiMembers;
+  }
+
+  const positioned = applySkeletonFormationPipeline({
+    members: aiMembers
+      .filter((m) => m.joints && Object.keys(m.joints).length)
+      .map((m) => ({
+        memberId: m.memberId || m.name,
+        joints: m.joints,
+        isEstimated: m.isEstimated,
+      })),
+    groupId: formation.groupId,
+    userMemberId: formation.userMemberId,
+    userAnchor: { x: userAnchor.x, y: userAnchor.y, z: 0 },
+    timestamp: formation.timestamp ?? 0,
+    formationTimeline: formation.formationTimeline,
+    frameFormation: formation.frameFormation,
+    referenceUserSlot: formation.referenceUserSlot,
+    frameMembers: formation.frameMembers,
+    scale: formation.scale,
+  });
+
+  const byId = new Map(positioned.map((p) => [p.memberId, p]));
+  return aiMembers.map((m) => {
+    const key = m.memberId || m.name;
+    const placed = byId.get(key);
+    if (!placed) return m;
+    return { ...m, joints: placed.joints };
+  });
+}
+
+/**
+ * GroupDanceStage2D / SkeletonRenderer / GroupStageCanvas 공통 렌더 파이프라인.
+ * logicalSize가 있으면 ResizeObserver 경로 사용, 없으면 canvas 부모 동기화 fallback.
+ */
 export function renderStageFrame(
   ctx: CanvasRenderingContext2D,
   canvas: HTMLCanvasElement,
   input: StageFrameRenderInput,
-) {
-  const logicalW = canvas._logicalWidth ?? canvas.width;
-  const logicalH = canvas._logicalHeight ?? canvas.height;
+  logicalSize?: StageCanvasLogicalSize | null,
+): SkeletonRenderTransform | null {
+  let logicalW = logicalSize?.width ?? 0;
+  let logicalH = logicalSize?.height ?? 0;
+
+  if (!logicalW || !logicalH) {
+    const parent = canvas.parentElement;
+    if (!parent) return null;
+    const rect = parent.getBoundingClientRect();
+    logicalW = Math.max(1, Math.round(rect.width > 0 ? rect.width : parent.clientWidth));
+    logicalH = Math.max(1, Math.round(rect.height > 0 ? rect.height : parent.clientHeight));
+    const dpr = window.devicePixelRatio || 1;
+    const pixelW = Math.round(logicalW * dpr);
+    const pixelH = Math.round(logicalH * dpr);
+    if (canvas.width !== pixelW || canvas.height !== pixelH) {
+      canvas.width = pixelW;
+      canvas.height = pixelH;
+    }
+    canvas.style.width = `${logicalW}px`;
+    canvas.style.height = `${logicalH}px`;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+
   if (!logicalW || !logicalH) return null;
 
   drawStageBackground(ctx, logicalW, logicalH);
 
-  const jointSets = input.aiMembers.map((m) => m.joints).filter(Boolean);
+  const aiMembers = applyFormationToMembers(
+    input.aiMembers,
+    input.formation,
+    input.userAnchor,
+  );
+
+  const jointSets = aiMembers.map((m) => m.joints).filter(Boolean);
   const extraPoints: Array<{ x: number; y: number }> = [];
 
   if (input.ghostAnchor) {
@@ -190,7 +228,9 @@ export function renderStageFrame(
   if (input.userAnchor) {
     extraPoints.push({ x: input.userAnchor.x, y: input.userAnchor.y });
   }
-  if (input.userJoints && input.userAnchor) {
+
+  const showUserPose = Boolean(input.userJoints && input.userAnchor);
+  if (showUserPose) {
     jointSets.push(mapLiveJointsToStageAnchor(
       input.userJoints,
       input.userAnchor.x,
@@ -198,38 +238,79 @@ export function renderStageFrame(
     ));
   }
 
-  const view = buildSkeletonRenderTransform(jointSets, logicalW, logicalH, {
+  const transform = buildSkeletonRenderTransform(jointSets, logicalW, logicalH, {
     extraPoints,
-    paddingRatio: 0.12,
+    paddingRatio: PRACTICE_RENDER_PADDING,
   });
 
   if (input.ghostAnchor) {
-    drawGhostSlotNormalized(
+    drawGhostSlotWithTransform(
       ctx,
       input.ghostAnchor.x,
       input.ghostAnchor.y,
       input.ghostAnchor.color,
       input.ghostAnchor.label,
-      view,
+      transform,
     );
   }
 
-  input.aiMembers.forEach((member) => {
+  aiMembers.forEach((member) => {
     if (!member.joints || !Object.keys(member.joints).length) return;
-    drawAIAvatar(ctx, member.joints, member.color, member.name, canvas, view, member.isEstimated);
+    drawSkeletonWithTransform(
+      ctx,
+      member.joints,
+      member.color,
+      member.name,
+      transform,
+      member.isEstimated,
+      { boneWidth: 5, jointRadius: 7, glowBlur: 14 },
+    );
   });
 
-  if (input.userJoints && input.userColor && input.userAnchor) {
-    drawUserSkeleton(
-      ctx,
+  if (showUserPose && input.userColor && input.userAnchor) {
+    const stageJoints = mapLiveJointsToStageAnchor(
       input.userJoints,
-      input.userColor,
-      canvas,
       input.userAnchor.x,
       input.userAnchor.y,
-      view,
+    );
+    drawSkeletonWithTransform(
+      ctx,
+      stageJoints,
+      input.userColor,
+      'YOU',
+      transform,
+      false,
+      { boneWidth: 5.5, jointRadius: 7.5, glowBlur: 16 },
     );
   }
 
-  return view;
+  return transform;
 }
+
+/** 단일 AI 아바타 — 동일 Auto Fit 파이프라인 */
+export function drawAIAvatar(
+  ctx,
+  joints,
+  color,
+  memberName,
+  canvas,
+  isEstimated = false,
+  logicalSize?: StageCanvasLogicalSize | null,
+) {
+  let logicalW = logicalSize?.width ?? 0;
+  let logicalH = logicalSize?.height ?? 0;
+  if (!logicalW || !logicalH) {
+    const parent = canvas?.parentElement;
+    if (!parent) return;
+    logicalW = Math.max(1, parent.clientWidth);
+    logicalH = Math.max(1, parent.clientHeight);
+  }
+  if (!logicalW || !logicalH || !joints) return;
+
+  const transform = buildSkeletonRenderTransform([joints], logicalW, logicalH, {
+    paddingRatio: PRACTICE_RENDER_PADDING,
+  });
+  drawSkeletonWithTransform(ctx, joints, color, memberName, transform, isEstimated);
+}
+
+export default renderStageFrame;

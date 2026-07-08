@@ -21,8 +21,8 @@ import {
   saveReferenceVideo,
 } from '../referenceVideoStore';
 import {
+  CHOREO_DEFAULT_SAMPLE_FPS,
   CHOREO_MEMBER_PROBE_SAMPLES,
-  resolveVideoSampleFps,
 } from '../../config/choreoExtractConfig';
 import {
   resolveAnalysisSampleFps,
@@ -33,6 +33,7 @@ import { sampleVideoFramesPlayback } from '../../utils/videoFrameSampler';
 import { createMultiLandmarkerDetector } from './MultiLandmarkerDetector';
 import { associateHolisticLandmarksToPeople } from '../../utils/holisticLandmarkUtils';
 import { timeSecToBeat, timeSecToBeatIndex } from '../../utils/frameMetadataUtils';
+import { buildSkeletonData } from '../../utils/skeletonDataUtils';
 import type {
   MotionExtractionDebugState,
   MotionExtractionResult,
@@ -81,13 +82,13 @@ export async function ensureVideoDimensions(video) {
   if (!video.videoWidth || !video.videoHeight) {
     throw new Error('영상 크기를 인식할 수 없습니다. 다른 영상 파일을 사용해 주세요.');
   }
-  const { nativeFps, sampleFps } = await resolveAnalysisSampleFps(video);
+  const { nativeFps } = await resolveAnalysisSampleFps(video);
   return {
     videoWidth: video.videoWidth,
     videoHeight: video.videoHeight,
     sourceVideoDurationSec: duration,
     sourceVideoNativeFps: nativeFps,
-    sampleFps,
+    sampleFps: CHOREO_DEFAULT_SAMPLE_FPS,
   };
 }
 
@@ -128,9 +129,9 @@ export async function runHolisticVideoAnalysis({
   const group = getGroupData(groupId);
   if (!group || !video || !detector) return null;
 
-  const { videoWidth, videoHeight, sourceVideoDurationSec, sourceVideoNativeFps, sampleFps: detectedFps } =
+  const { videoWidth, videoHeight, sourceVideoDurationSec, sourceVideoNativeFps } =
     await ensureVideoDimensions(video);
-  const sampleFps = resolveVideoSampleFps(sampleFpsOverride ?? detectedFps);
+  const sampleFps = CHOREO_DEFAULT_SAMPLE_FPS;
 
   const tracker = new MultiPersonTracker();
   tracker.setSampleFps(sampleFps);
@@ -178,7 +179,9 @@ export async function runHolisticVideoAnalysis({
         if (valid > 0) memberCountSamples.push(valid);
       }
 
-      const timestampMs = Math.round(t * 1000);
+      const frameIndex = frames.length;
+      const gridTimestamp = frameIndex / sampleFps;
+      const timestampMs = Math.round(gridTimestamp * 1000);
       const rawCount = results.landmarks?.length || 0;
       let trackedPeople = tracker.trackFrame(
         results.landmarks || [],
@@ -216,8 +219,8 @@ export async function runHolisticVideoAnalysis({
       const timelineFrameIndex = Math.min(timelineTotalFrames - 1, Math.round(t * sampleFps));
 
       const debugPayload: Partial<MotionExtractionDebugState> = {
-        frameIndex: frames.length,
-        timestamp: t,
+        frameIndex,
+        timestamp: gridTimestamp,
         sourceVideoTime: t,
         measuredFps,
         sampleFps,
@@ -250,7 +253,7 @@ export async function runHolisticVideoAnalysis({
       });
 
       frames.push({
-        timestamp: t,
+        timestamp: gridTimestamp,
         timestampMs,
         sourceVideoTime: t,
         videoWidth,
@@ -478,6 +481,11 @@ export async function buildMotionDatabaseFromAnalysis({
   return {
     danceDatabase,
     frames: danceDatabase.skeletonFrames,
+    skeletonData: danceDatabase.skeletonData ?? buildSkeletonData(
+      danceDatabase.skeletonFrames,
+      CHOREO_DEFAULT_SAMPLE_FPS,
+      danceDatabase.durationSec,
+    ),
     analysisResult,
     fromCache: false,
     referenceVideo,
@@ -536,7 +544,12 @@ export async function extractMotionDatabase({
         detectedMemberCount: cached.frames[0]?.members?.length || group.memberCount,
         durationSec: cached.durationSec || 0,
         sourceVideoDurationSec: cached.durationSec || 0,
-        sampleFps: cached.sampleFps ?? 30,
+        sampleFps: cached.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS,
+        skeletonData: cached.skeletonData ?? buildSkeletonData(
+          cached.frames,
+          cached.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS,
+          cached.durationSec || 0,
+        ),
         bpm: { bpm: cached.bpm ?? 120, estimated: true, source: 'cache' },
         skeletonFrames: cached.frames,
         memberTracks: [],
@@ -564,6 +577,7 @@ export async function extractMotionDatabase({
       return {
         danceDatabase,
         frames: cached.frames,
+        skeletonData: danceDatabase.skeletonData!,
         analysisResult: {
           detectedMemberCount: danceDatabase.detectedMemberCount,
           frames: [],

@@ -13,7 +13,6 @@ import { getSongById } from '../../data/groupStudioSongs';
 import { buildSkeletonFramesFromAnalysis } from '../videoAnalysisUtils';
 import { identifyUserTrackId } from '../formationMatching';
 import { buildFormationTimeline, analyzeFormationTimeline } from './FormationTimelineBuilder';
-import { smoothSkeletonFrames } from '../motion/JointKalmanFilter';
 import {
   MOTION_PIPELINE_VERSION,
   runGroupMotionPipeline,
@@ -24,6 +23,7 @@ import {
   normalizePositionMap,
   normalizeSkeletonFrames,
   validateSkeletonForPractice,
+  buildSkeletonData,
 } from '../../utils/skeletonDataUtils';
 import { resolvePracticeDurationSec } from '../../utils/buildPracticeSessionData';
 import { CHOREO_DEFAULT_SAMPLE_FPS } from '../../config/choreoExtractConfig';
@@ -155,7 +155,7 @@ export function buildDanceDatabase({
   sampleFps?: number;
 }): DanceDatabase {
   const normalizedMap = normalizeTrackMemberMap(trackToMember);
-  const extractionFps = sampleFps ?? analysisResult.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS;
+  const extractionFps = CHOREO_DEFAULT_SAMPLE_FPS;
 
   const rawSkeletonFrames = buildSkeletonFramesFromAnalysis(
     analysisResult,
@@ -173,6 +173,7 @@ export function buildDanceDatabase({
 
   const sourceVideoDurationSec = resolvePracticeDurationSec(
     analysisResult.sourceVideoDurationSec,
+    rawSkeletonFrames,
   );
   if (!sourceVideoDurationSec) {
     throw new Error('영상 길이(sourceVideoDurationSec)가 없습니다. 안무를 다시 추출해 주세요.');
@@ -181,7 +182,7 @@ export function buildDanceDatabase({
   const bpmMeta = resolveBpm(songId);
 
   const pipeline = runGroupMotionPipeline({
-    rawFrames: smoothSkeletonFrames(rawSkeletonFrames),
+    rawFrames: rawSkeletonFrames,
     groupId,
     songId,
     userMemberId,
@@ -194,6 +195,7 @@ export function buildDanceDatabase({
     ),
     memberTracks: dbMemberTracks,
     applySmoothing: false,
+    preserveExtractionFrames: true,
   });
 
   const skeletonFrames = pipeline.frames;
@@ -231,6 +233,8 @@ export function buildDanceDatabase({
   const skeletonEnd =
     skeletonFrames[skeletonFrames.length - 1]?.timestamp || 0;
 
+  const skeletonData = buildSkeletonData(skeletonFrames, extractionFps, timeline.duration);
+
   return {
     version: '2.0',
     pipelineVersion: MOTION_PIPELINE_VERSION,
@@ -242,7 +246,8 @@ export function buildDanceDatabase({
     durationSec: timeline.duration,
     sourceVideoDurationSec: timeline.duration,
     skeletonCoverageSec: skeletonEnd,
-    sampleFps: timeline.fps,
+    sampleFps: extractionFps,
+    skeletonData,
     bpm: resolveBpm(songId),
     skeletonFrames,
     memberTracks: pipeline.memberIdentification?.memberTracks ?? dbMemberTracks,
@@ -277,6 +282,7 @@ export async function saveDanceDatabase(danceDb: DanceDatabase) {
     durationSec: danceDb.durationSec,
     pipelineVersion: danceDb.pipelineVersion || CHOREO_CACHE_PIPELINE_VERSION,
     sampleFps: danceDb.sampleFps,
+    skeletonData: danceDb.skeletonData,
     positionMap: danceDb.positionMap,
     formationHole: danceDb.formationHole,
     bpm: danceDb.bpm?.bpm,
@@ -328,7 +334,12 @@ export async function loadDanceDatabase(
       videoId,
       detectedMemberCount: validation.aiMemberCount || normalized[0]?.members?.length || 0,
       durationSec: cached.durationSec || 0,
-      sampleFps: cached.sampleFps ?? 30,
+      sampleFps: cached.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS,
+      skeletonData: cached.skeletonData ?? buildSkeletonData(
+        normalized,
+        cached.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS,
+        cached.durationSec || 0,
+      ),
       bpm: resolveBpm(songId),
       skeletonFrames: normalized,
       memberTracks: [],

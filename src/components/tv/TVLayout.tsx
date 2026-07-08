@@ -811,6 +811,8 @@ export function TVLayout({
 
               showJointBadges={false}
 
+              fitMode={dance.fitMode}
+
             />
 
           </div>

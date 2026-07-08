@@ -1,11 +1,13 @@
 // @ts-nocheck
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { PRACTICE_RENDER_FPS } from '../config/practiceRenderConfig';
+import { isPracticePlaybackFinished } from '../services/practice/PracticePlayer';
 
 export interface PracticeClockOptions {
+  /** videoDuration = Timeline Duration (초) */
   durationSec: number;
   fps?: number;
-  /** 스켈레톤 coverage 끝 — 이후 Freeze 대신 종료 */
+  /** @deprecated coverage 기준 조기 종료 금지 */
   coverageEndSec?: number;
   /** YouTube 등 외부 시간 주입 (null이면 자체 RAF) */
   externalTimeSec?: number | null;
@@ -13,12 +15,12 @@ export interface PracticeClockOptions {
 }
 
 /**
- * PracticeClock — Video / Skeleton / Timer / Animation 단일 시간축.
+ * PracticeClock — Skeleton Timestamp / videoDuration 단일 시간축.
+ * 종료: currentTime >= videoDuration (frameCount 기준 종료 금지)
  */
 export function usePracticeClock({
   durationSec,
   fps = PRACTICE_RENDER_FPS,
-  coverageEndSec,
   externalTimeSec = null,
   externalRunning = false,
 }: PracticeClockOptions) {
@@ -28,16 +30,7 @@ export function usePracticeClock({
 
   const startAtRef = useRef<number | null>(null);
   const rafRef = useRef(0);
-  const duration = Math.max(0, Number(durationSec) || 0);
-  const effectiveEnd = Math.min(
-    duration,
-    coverageEndSec != null && coverageEndSec > 0 ? coverageEndSec : duration,
-  );
-
-  const currentFrameIndex = Math.min(
-    Math.max(0, Math.round(currentTime * fps)),
-    Math.max(0, Math.round(duration * fps) - 1),
-  );
+  const videoDuration = Math.max(0, Number(durationSec) || 0);
 
   const stopLoop = useCallback(() => {
     cancelAnimationFrame(rafRef.current);
@@ -46,10 +39,10 @@ export function usePracticeClock({
 
   const finish = useCallback(() => {
     stopLoop();
-    setCurrentTime(effectiveEnd);
+    setCurrentTime(videoDuration);
     setIsRunning(false);
     setIsFinished(true);
-  }, [effectiveEnd, stopLoop]);
+  }, [videoDuration, stopLoop]);
 
   const start = useCallback(() => {
     if (externalTimeSec != null) {
@@ -64,7 +57,7 @@ export function usePracticeClock({
     const tick = () => {
       if (startAtRef.current == null) return;
       const elapsed = (performance.now() - startAtRef.current) / 1000;
-      if (elapsed >= effectiveEnd - 0.02) {
+      if (isPracticePlaybackFinished(elapsed, videoDuration)) {
         finish();
         return;
       }
@@ -72,7 +65,7 @@ export function usePracticeClock({
       rafRef.current = requestAnimationFrame(tick);
     };
     rafRef.current = requestAnimationFrame(tick);
-  }, [externalTimeSec, effectiveEnd, finish]);
+  }, [externalTimeSec, videoDuration, finish]);
 
   const forceStop = useCallback(() => {
     stopLoop();
@@ -92,22 +85,24 @@ export function usePracticeClock({
     if (externalTimeSec == null || !externalRunning) return;
     const t = Math.max(0, externalTimeSec);
     setCurrentTime(t);
-    if (t >= effectiveEnd - 0.02) {
+    if (isPracticePlaybackFinished(t, videoDuration)) {
       finish();
     }
-  }, [externalTimeSec, externalRunning, effectiveEnd, finish]);
+  }, [externalTimeSec, externalRunning, videoDuration, finish]);
 
   useEffect(() => () => stopLoop(), [stopLoop]);
+
+  const currentFrameIndex = Math.max(0, Math.round(currentTime * fps));
 
   return {
     currentTime,
     currentFrameIndex,
     fps,
-    duration,
-    effectiveEnd,
+    duration: videoDuration,
+    videoDuration,
     isRunning,
     isFinished,
-    progress: duration > 0 ? currentTime / duration : 0,
+    progress: videoDuration > 0 ? Math.min(1, currentTime / videoDuration) : 0,
     start,
     forceStop,
     reset,

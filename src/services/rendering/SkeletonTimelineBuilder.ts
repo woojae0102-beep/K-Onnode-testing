@@ -7,6 +7,10 @@
 import type { JointPoint, SkeletonFrameData, SkeletonMemberData } from '../../types/groupPractice';
 import { PRACTICE_RENDER_FPS } from '../../config/practiceRenderConfig';
 import { logSkeletonRenderVerification } from '../../utils/skeletonRenderVerify';
+import {
+  resolvePracticeFrameAtTime,
+  resolveSkeletonLastTimestamp,
+} from '../practice/PracticePlayer';
 
 export interface SkeletonRenderTimeline {
   fps: number;
@@ -93,8 +97,11 @@ function findSourceSegment(
   if (timeSec <= first.timestamp) {
     return { prev: first, next: first, ratio: 0 };
   }
-  if (timeSec >= last.timestamp) {
+  if (timeSec > last.timestamp) {
     return null;
+  }
+  if (timeSec >= last.timestamp) {
+    return { prev: last, next: last, ratio: 1 };
   }
 
   let lo = 0;
@@ -148,9 +155,7 @@ export function buildSkeletonRenderTimeline(
   const duration = Math.max(0, Number(durationSec) || 0);
   const fps = Math.max(1, targetFps);
   const totalFrames = Math.max(1, Math.round(duration * fps));
-  const coverageEndSec = sourceFrames.length
-    ? sourceFrames[sourceFrames.length - 1].timestamp
-    : 0;
+  const coverageEndSec = resolveSkeletonLastTimestamp(sourceFrames);
 
   const span = sourceFrames.length > 1
     ? sourceFrames[sourceFrames.length - 1].timestamp - sourceFrames[0].timestamp
@@ -180,14 +185,23 @@ export function buildSkeletonRenderTimeline(
   return timeline;
 }
 
-/** frameIndex → frame (범위 밖 null) */
+/** @deprecated frameIndex 접근 — getPracticeFrameAtTime(timeSec) 사용 */
 export function getRenderTimelineFrame(
   timeline: SkeletonRenderTimeline | null | undefined,
   frameIndex: number,
 ): SkeletonFrameData | null {
   if (!timeline?.frames?.length) return null;
-  const idx = Math.max(0, Math.min(timeline.totalFrames - 1, Math.floor(frameIndex)));
+  const idx = Math.max(0, Math.floor(frameIndex));
+  if (idx >= timeline.totalFrames) return null;
   return timeline.frames[idx] ?? null;
+}
+
+/** Practice 재생 — Skeleton Timestamp Binary Search (frameIndex 금지) */
+export function getPracticeFrameAtTime(
+  sourceFrames: SkeletonFrameData[],
+  timeSec: number,
+): SkeletonFrameData | null {
+  return resolvePracticeFrameAtTime(sourceFrames, timeSec);
 }
 
 export default buildSkeletonRenderTimeline;

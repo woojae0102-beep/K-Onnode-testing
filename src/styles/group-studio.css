@@ -75,17 +75,33 @@
   width: 100%;
   background: #0a0a14;
   display: flex;
-  align-items: center;
-  justify-content: center;
+  align-items: stretch;
+  justify-content: stretch;
   overflow: hidden;
 }
 
+.group-dance-stage-2d,
+.group-stage-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  min-width: 0;
+  display: flex;
+  align-items: stretch;
+  justify-content: stretch;
+  overflow: hidden;
+}
+
+.group-dance-stage-2d-canvas,
 .group-studio-stage-canvas,
 .group-studio-skeleton-layer {
   display: block;
+  width: 100%;
+  height: 100%;
   max-width: 100%;
   max-height: 100%;
-  object-fit: contain;
   pointer-events: none;
 }
 
@@ -99,6 +115,11 @@
   overflow: hidden;
   background: #000;
   min-height: 160px;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .group-studio-camera-video {
@@ -106,10 +127,19 @@
   inset: 0;
   width: 100%;
   height: 100%;
-  object-fit: cover;
   transform: scaleX(-1);
   z-index: 1;
   background: #0a0a14;
+}
+
+/* 연습 모드 — contain: 비율 유지, letterbox, 몸 잘림 방지 */
+.group-studio-camera-stack--contain .group-studio-camera-video {
+  object-fit: contain;
+}
+
+/* 비연습/레거시 — cover */
+.group-studio-camera-stack--cover .group-studio-camera-video {
+  object-fit: cover;
 }
 
 .group-studio-camera-skeleton-overlay {

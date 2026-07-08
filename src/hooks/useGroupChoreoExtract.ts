@@ -17,8 +17,10 @@ import {
   saveReferenceVideo,
 } from '../services/referenceVideoStore';
 import {
-  prepareAnalysisVideo,
-} from '../utils/choreoVideoUtils';
+  CHOREO_DEFAULT_SAMPLE_FPS,
+} from '../config/choreoExtractConfig';
+import { buildSkeletonData } from '../utils/skeletonDataUtils';
+import { prepareAnalysisVideo } from '../utils/choreoVideoUtils';
 import {
   createHolisticMotionDetector,
   runHolisticVideoAnalysis,
@@ -370,6 +372,7 @@ export function useGroupChoreoExtract() {
           groupId,
           videoId,
           file,
+          outcome.analysisResult.sourceVideoDurationSec,
         );
         setProgress(100);
         setStep('안무 추출 완료!');
@@ -418,11 +421,25 @@ async function persistReferenceVideo({ songId, videoId, groupId, blob, durationS
   return cacheKey;
 }
 
-async function persistCache(songId, videoId, frames, groupId, sourceVideoId, file = null) {
+async function persistCache(
+  songId,
+  videoId,
+  frames,
+  groupId,
+  sourceVideoId,
+  file = null,
+  durationSec = 0,
+) {
   const cacheKey = file
     ? buildFileCacheKey(songId, file)
     : buildChoreoCacheKey(songId, sourceVideoId || videoId);
   const refKey = buildReferenceVideoCacheKey(songId, sourceVideoId || videoId || 'default');
+  const fps = CHOREO_DEFAULT_SAMPLE_FPS;
+  const duration = durationSec > 0
+    ? durationSec
+    : frames.length > 0
+      ? (frames[frames.length - 1].frameIndex ?? frames.length - 1) / fps + 1 / fps
+      : 0;
   await saveCachedChoreo({
     cacheKey,
     songId,
@@ -430,12 +447,11 @@ async function persistCache(songId, videoId, frames, groupId, sourceVideoId, fil
     groupId,
     frames,
     frameCount: frames.length,
-    durationSec: frames[frames.length - 1]?.timestamp || 0,
+    durationSec: duration,
     pipelineVersion: CHOREO_CACHE_PIPELINE_VERSION,
     referenceVideoKey: refKey,
-    sampleFps: frames.length > 1
-      ? Math.round(1 / ((frames[1]?.timestamp ?? 0) - (frames[0]?.timestamp ?? 0)))
-      : 30,
+    sampleFps: fps,
+    skeletonData: buildSkeletonData(frames, fps, duration),
   });
 }
 

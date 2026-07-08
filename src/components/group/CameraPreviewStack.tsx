@@ -1,9 +1,11 @@
 // @ts-nocheck
 import React from 'react';
+import type { CameraFitMode } from '../../utils/cameraOverlayUtils';
 
 /**
  * Camera Layer Stack
  * Video → Skeleton Overlay → (Feedback는 부모 UI Layer)
+ * 연습 모드: object-fit contain + letterbox
  */
 export default function CameraPreviewStack({
   videoRef,
@@ -12,10 +14,15 @@ export default function CameraPreviewStack({
   cameraError = null,
   showPlaceholder = false,
   placeholderText = '카메라 연결 중...',
+  fitMode = 'contain',
   className = '',
 }) {
+  const fitClass = fitMode === 'cover'
+    ? 'group-studio-camera-stack--cover'
+    : 'group-studio-camera-stack--contain';
+
   return (
-    <div className={`group-studio-camera-stack ${className}`.trim()}>
+    <div className={`group-studio-camera-stack ${fitClass} ${className}`.trim()}>
       <video
         ref={videoRef}
         className="group-studio-camera-video"

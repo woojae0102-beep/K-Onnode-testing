@@ -1,4 +1,8 @@
 // @ts-nocheck
+/**
+ * @deprecated GroupStudioSession + GroupStageCanvas 사용.
+ * 라우팅에 연결되지 않은 레거시 프로토타입 UI.
+ */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
@@ -6,10 +10,7 @@ import { useIndependentTimeline } from '../../hooks/useIndependentTimeline';
 import { useGroupSync } from '../../hooks/useGroupSync';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
-import {
-  renderStageFrame,
-} from '../../utils/groupSkeletonDraw';
-import { computeAspectFitSize } from '../../utils/canvasSkeletonUtils';
+import GroupDanceStage2D from './GroupDanceStage2D';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import FormationGuide from './FormationGuide';
 import TempoLockIndicator from './TempoLockIndicator';
@@ -50,7 +51,7 @@ export function GroupStageView({
     group?.members || [],
   );
 
-  const stageCanvasRef = useRef(null);
+  const stage2DRef = useRef(null);
   const [hasStarted, setHasStarted] = useState(false);
   const [showMissedAlert, setShowMissedAlert] = useState(false);
   const [studioModalOpen, setStudioModalOpen] = useState(false);
@@ -120,36 +121,9 @@ export function GroupStageView({
     }
   }, []);
 
-  const resizeStageCanvas = useCallback(() => {
-    const canvas = stageCanvasRef.current;
-    if (!canvas?.parentElement) return;
-    const rect = canvas.parentElement.getBoundingClientRect();
-    const parentW = rect.width > 0 ? rect.width : canvas.parentElement.clientWidth || 640;
-    const parentH = rect.height > 0 ? rect.height : canvas.parentElement.clientHeight || 360;
-    const { width: renderW, height: renderH } = computeAspectFitSize(16, 9, parentW, parentH);
-    const dpr = window.devicePixelRatio || 1;
-    canvas.width = Math.round(renderW * dpr);
-    canvas.height = Math.round(renderH * dpr);
-    canvas.style.width = `${renderW}px`;
-    canvas.style.height = `${renderH}px`;
-    canvas._logicalWidth = renderW;
-    canvas._logicalHeight = renderH;
-    const ctx = canvas.getContext('2d');
-    if (ctx) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-  }, []);
-
-  useEffect(() => {
-    resizeStageCanvas();
-    window.addEventListener('resize', resizeStageCanvas);
-    return () => window.removeEventListener('resize', resizeStageCanvas);
-  }, [resizeStageCanvas, isMobile]);
-
   const renderGroupStage = useCallback(
     (frame) => {
-      const canvas = stageCanvasRef.current;
-      if (!canvas || !myMember) return;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
+      if (!myMember) return;
 
       const aiMembers = [];
       frame?.members?.forEach((memberData) => {
@@ -157,17 +131,31 @@ export function GroupStageView({
         const member = group.members.find((m) => m.id === memberData.estimatedMemberId);
         if (!member || !memberData.joints) return;
         aiMembers.push({
+          memberId: memberData.estimatedMemberId,
           joints: memberData.joints,
           color: member.color,
           name: member.nameKr,
+          isEstimated: memberData.isEstimated,
         });
       });
 
-      renderStageFrame(ctx, canvas, {
+      stage2DRef.current?.draw({
         aiMembers,
         userJoints: dance.poseData?.joints || null,
         userColor: myMember.color,
         userAnchor: { x: myMember.defaultX, y: myMember.defaultY },
+        formation: {
+          groupId,
+          userMemberId: myMemberId,
+          timestamp: currentTime,
+          frameFormation: frame?.formation ?? null,
+          referenceUserSlot: {
+            x: myMember.defaultX,
+            y: myMember.defaultY,
+            z: 0,
+          },
+          frameMembers: frame?.members,
+        },
         ghostAnchor: {
           x: myMember.defaultX,
           y: myMember.defaultY,
@@ -176,7 +164,7 @@ export function GroupStageView({
         },
       });
     },
-    [group, myMember, myMemberId, dance.poseData],
+    [group, groupId, myMember, myMemberId, dance.poseData, currentTime],
   );
 
   const finishSession = useCallback(
@@ -443,7 +431,7 @@ export function GroupStageView({
           </span>
         </div>
 
-        <div style={{ flex: 1, position: 'relative', minHeight: 160 }} className="group-studio-camera-stack">
+        <div style={{ flex: 1, position: 'relative', minHeight: 160 }} className="group-studio-camera-stack group-studio-camera-stack--contain">
           <video
             ref={dance.videoRef}
             className="group-studio-camera-video"
@@ -544,7 +532,9 @@ export function GroupStageView({
           </div>
         </div>
 
-        <canvas ref={stageCanvasRef} className="group-studio-stage-canvas" style={{ display: 'block', margin: '0 auto' }} />
+        <div className="group-studio-stage-canvas-wrap" style={{ flex: 1, minHeight: 0 }}>
+          <GroupDanceStage2D ref={stage2DRef} />
+        </div>
 
         {(isRunning || isFinished) && (
           <TempoLockIndicator

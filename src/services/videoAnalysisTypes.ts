@@ -14,6 +14,6 @@ export interface AnalysisResult {
   sourceVideoDurationSec?: number;
   /** 영상 native FPS (감지 실패 시 null) */
   sourceVideoNativeFps?: number | null;
-  /** Motion Extraction 샘플 FPS (30~60) */
+  /** Motion Extraction 샘플 FPS — 추출 고정 30 */
   sampleFps?: number;
 }

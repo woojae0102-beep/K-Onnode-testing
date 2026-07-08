@@ -71,6 +71,13 @@ export interface SkeletonMemberData {
   boneRotations?: Record<string, BoneQuaternion>;
 }
 
+/** 추출 스켈레톤 시퀀스 메타 — fps · duration · frameCount */
+export interface SkeletonData {
+  fps: number;
+  duration: number;
+  frameCount: number;
+}
+
 export interface SkeletonFrameData {
   timestamp: number;
   timestampMs?: number;

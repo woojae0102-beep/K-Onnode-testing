@@ -1,7 +1,8 @@
 // @ts-nocheck
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SkeletonFrameData } from '../types/groupPractice';
-import { findFrameAtTime } from '../utils/skeletonTimelineUtils';
+import { resolvePracticeFrameAtTime } from '../utils/skeletonTimelineUtils';
+import { isPracticePlaybackFinished } from '../services/practice/PracticePlayer';
 
 export function useIndependentTimeline(
   skeletonData: SkeletonFrameData[],
@@ -26,7 +27,7 @@ export function useIndependentTimeline(
 
       const elapsed = (performance.now() - startTimestampRef.current) / 1000;
 
-      if (elapsed >= totalDuration) {
+      if (isPracticePlaybackFinished(elapsed, totalDuration)) {
         setCurrentTime(totalDuration);
         setIsRunning(false);
         setIsFinished(true);
@@ -46,7 +47,7 @@ export function useIndependentTimeline(
   }, []);
 
   const getCurrentFrame = useCallback((): SkeletonFrameData | null => {
-    return findFrameAtTime(skeletonData, currentTime);
+    return resolvePracticeFrameAtTime(skeletonData, currentTime);
   }, [currentTime, skeletonData]);
 
   useEffect(

@@ -1,12 +1,59 @@
 // @ts-nocheck
 /**
- * Camera panel — video object-fit:cover 기준 Skeleton Overlay 좌표 변환.
+ * Camera panel — video object-fit 기준 Skeleton Overlay 좌표 변환.
+ * 연습 모드: contain (letterbox, 몸 잘림 방지)
  * Video → Skeleton Overlay → Feedback (canvas는 video 위 레이어)
  */
 
 import type { StageFitContainView } from './stageFitContain';
 
+export type CameraFitMode = 'contain' | 'cover';
+
 type JointLike = { x: number; y: number; visibility?: number; confidence?: number };
+
+/** object-fit: contain — MediaPipe 0~1 좌표 → letterbox 내 display canvas pixel */
+export function buildCameraContainView(
+  videoWidth: number,
+  videoHeight: number,
+  displayWidth: number,
+  displayHeight: number,
+): StageFitContainView {
+  const vw = Math.max(1, videoWidth);
+  const vh = Math.max(1, videoHeight);
+  const dw = Math.max(1, displayWidth);
+  const dh = Math.max(1, displayHeight);
+
+  const videoAspect = vw / vh;
+  const displayAspect = dw / dh;
+
+  let drawW: number;
+  let drawH: number;
+  if (videoAspect > displayAspect) {
+    drawW = dw;
+    drawH = dw / videoAspect;
+  } else {
+    drawH = dh;
+    drawW = dh * videoAspect;
+  }
+
+  const offsetX = (dw - drawW) / 2;
+  const offsetY = (dh - drawH) / 2;
+
+  const mapPoint = (nx: number, ny: number) => ({
+    x: offsetX + nx * drawW,
+    y: offsetY + ny * drawH,
+  });
+
+  return {
+    canvasWidth: dw,
+    canvasHeight: dh,
+    mapPoint,
+    bbox: { minX: 0, minY: 0, maxX: 1, maxY: 1 },
+    scale: drawW / vw,
+    offsetX,
+    offsetY,
+  };
+}
 
 /** object-fit: cover — MediaPipe 0~1 좌표 → display canvas pixel */
 export function buildCameraCoverView(
@@ -50,6 +97,19 @@ export function buildCameraCoverView(
     offsetX: 0,
     offsetY: 0,
   };
+}
+
+/** video object-fit 모드에 맞는 Overlay Transform */
+export function buildCameraFitView(
+  fitMode: CameraFitMode,
+  videoWidth: number,
+  videoHeight: number,
+  displayWidth: number,
+  displayHeight: number,
+): StageFitContainView {
+  return fitMode === 'cover'
+    ? buildCameraCoverView(videoWidth, videoHeight, displayWidth, displayHeight)
+    : buildCameraContainView(videoWidth, videoHeight, displayWidth, displayHeight);
 }
 
 export interface CameraHealthStatus {
@@ -175,4 +235,4 @@ export function drawCameraSkeletonOverlay(
   ctx.restore();
 }
 
-export default buildCameraCoverView;
+export default buildCameraContainView;

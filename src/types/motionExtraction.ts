@@ -1,6 +1,6 @@
 // @ts-nocheck
 import type { DanceDatabase } from './danceDatabase';
-import type { SkeletonFrameData } from './groupPractice';
+import type { SkeletonData, SkeletonFrameData } from './groupPractice';
 import type { AnalysisResult } from '../services/videoAnalysisTypes';
 
 /** 실시간 추출 디버그 — Debug Overlay / 콘솔 출력용 */
@@ -46,6 +46,8 @@ export interface ReferenceVideoMeta {
 export interface MotionExtractionResult {
   danceDatabase: DanceDatabase;
   frames: SkeletonFrameData[];
+  /** 추출 스켈레톤 메타 — fps · duration · frameCount */
+  skeletonData: SkeletonData;
   analysisResult: AnalysisResult;
   fromCache: boolean;
   referenceVideo: ReferenceVideoMeta;

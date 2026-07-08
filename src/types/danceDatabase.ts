@@ -1,5 +1,5 @@
 // @ts-nocheck
-import type { SkeletonFrameData } from './groupPractice';
+import type { SkeletonFrameData, SkeletonData } from './groupPractice';
 
 /** danceData/group/{groupId}/{songId}/ 스키마 */
 
@@ -99,6 +99,8 @@ export interface DanceDatabase {
   /** 스켈레톤이 실제 커버하는 길이(초) */
   skeletonCoverageSec?: number;
   sampleFps: number;
+  /** 추출 스켈레톤 메타 — fps · duration · frameCount */
+  skeletonData?: SkeletonData;
   bpm: DanceBpmMeta;
   skeletonFrames: SkeletonFrameData[];
   memberTracks: MemberTrackMeta[];

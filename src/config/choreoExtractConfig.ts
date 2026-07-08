@@ -4,10 +4,12 @@
 /** 트래커: 가려짐 유지 시간(초) — 추적 슬롯을 삭제하지 않고 보강 유지 */
 export const CHOREO_MAX_OCCLUSION_SEC = 12;
 
-/** Motion Extraction 샘플 FPS — 영상 원본 우선, clamp [30, 60], 미확인 시 30 */
+/** Motion Extraction 샘플 FPS — 추출 단계 고정 30fps (timestamp = frameIndex / 30) */
 export const CHOREO_MIN_SAMPLE_FPS = 30;
 export const CHOREO_MAX_SAMPLE_FPS = 60;
 export const CHOREO_DEFAULT_SAMPLE_FPS = 30;
+/** @deprecated 추출은 항상 CHOREO_DEFAULT_SAMPLE_FPS(30) 사용 */
+export const CHOREO_EXTRACTION_SAMPLE_FPS = CHOREO_DEFAULT_SAMPLE_FPS;
 
 /** @deprecated CHOREO_DEFAULT_SAMPLE_FPS 사용 */
 export const CHOREO_SAMPLE_FPS = CHOREO_DEFAULT_SAMPLE_FPS;

@@ -53,45 +53,82 @@ export function interpolateSkeletonFrame(
   };
 }
 
-/** 이진 탐색 + memberId 보간 — 고fps 추출 데이터를 부드럽게 재생 */
-export function findFrameAtTime(frames: SkeletonFrameData[], time: number): SkeletonFrameData | null {
-  if (!frames?.length) return null;
-  if (time <= frames[0].timestamp) return frames[0];
-  const last = frames[frames.length - 1];
-  if (time >= last.timestamp) return last;
-
-  let lo = 0;
-  let hi = frames.length - 1;
-  while (lo < hi - 1) {
-    const mid = Math.floor((lo + hi) / 2);
-    if (frames[mid].timestamp <= time) lo = mid;
-    else hi = mid;
-  }
-
-  const prev = frames[lo];
-  const next = frames[hi];
-  const delta = next.timestamp - prev.timestamp;
-  if (delta <= 1e-6) return prev;
-
-  const ratio = (time - prev.timestamp) / delta;
-  return interpolateSkeletonFrame(prev, next, ratio);
-}
-
-/** findFrameAtTime과 동일 시점의 프레임 인덱스 (디버그용) */
-export function findFrameIndexAtTime(frames: SkeletonFrameData[], time: number): number {
+/**
+ * Binary Search — timestamp 배열에서 timeSec 구간 시작 인덱스.
+ * 마지막 timestamp 초과 시 -1 (freeze 금지).
+ */
+export function findFrameIndexByTimestamp(
+  frames: SkeletonFrameData[] | null | undefined,
+  timeSec: number,
+): number {
   if (!frames?.length) return -1;
-  if (time <= frames[0].timestamp) return 0;
+
+  const t = Number(timeSec);
+  if (!Number.isFinite(t)) return -1;
+
+  const first = frames[0];
   const lastIdx = frames.length - 1;
-  if (time >= frames[lastIdx].timestamp) return lastIdx;
+  const last = frames[lastIdx];
+
+  if (t < first.timestamp) return 0;
+  if (t > last.timestamp) return -1;
+  if (t === last.timestamp) return lastIdx;
 
   let lo = 0;
   let hi = lastIdx;
   while (lo < hi - 1) {
     const mid = Math.floor((lo + hi) / 2);
-    if (frames[mid].timestamp <= time) lo = mid;
+    if (frames[mid].timestamp <= t) lo = mid;
     else hi = mid;
   }
   return lo;
+}
+
+/**
+ * Practice 프레임 — Binary Search + 보간. 마지막 skeleton 이후 null (freeze 금지).
+ */
+export function resolvePracticeFrameAtTime(
+  frames: SkeletonFrameData[] | null | undefined,
+  timeSec: number,
+): SkeletonFrameData | null {
+  if (!frames?.length) return null;
+
+  const t = Math.max(0, Number(timeSec));
+  if (!Number.isFinite(t)) return null;
+
+  const first = frames[0];
+  const last = frames[frames.length - 1];
+
+  if (t < first.timestamp) return null;
+  if (t > last.timestamp) return null;
+
+  if (t <= first.timestamp) {
+    return { ...first, timestamp: t, timestampMs: Math.round(t * 1000) };
+  }
+
+  const lo = findFrameIndexByTimestamp(frames, t);
+  if (lo < 0) return null;
+
+  const prev = frames[lo];
+  const next = frames[lo + 1] ?? prev;
+
+  if (prev === next || next.timestamp <= prev.timestamp) {
+    return { ...prev, timestamp: t, timestampMs: Math.round(t * 1000) };
+  }
+
+  const delta = next.timestamp - prev.timestamp;
+  const ratio = Math.min(1, Math.max(0, (t - prev.timestamp) / delta));
+  return interpolateSkeletonFrame(prev, next, ratio);
+}
+
+/** findFrameAtTime — resolvePracticeFrameAtTime 별칭 */
+export function findFrameAtTime(frames: SkeletonFrameData[], time: number): SkeletonFrameData | null {
+  return resolvePracticeFrameAtTime(frames, time);
+}
+
+/** findFrameAtTime과 동일 시점의 프레임 인덱스 — 마지막 초과 시 -1 */
+export function findFrameIndexAtTime(frames: SkeletonFrameData[], time: number): number {
+  return findFrameIndexByTimestamp(frames, time);
 }
 
 /** 프레임마다 모든 AI 멤버가 항상 존재하도록 forward-fill (트랙 일시 소실 대비) */
