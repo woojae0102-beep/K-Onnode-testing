@@ -77,7 +77,13 @@ export class GroupDanceSyncEngine {
       : findFrameAtTime(this.dataset.frames as any[], elapsedSec);
     const sourceFrame = cloneSkeletonFrameForSnapshot(sourceFrameRaw);
 
-    const timelineMeta = this.resolveTimeline(elapsedSec, sourceFrameRaw);
+    let frameIndexOverride;
+    if (sourceFrameOverride && this.sourceFrames.length) {
+      const idx = this.sourceFrames.indexOf(sourceFrameRaw);
+      if (idx >= 0) frameIndexOverride = idx;
+    }
+
+    const timelineMeta = this.resolveTimeline(elapsedSec, sourceFrameRaw, frameIndexOverride);
     const userAnchor = computeLiveUserAnchor(userJoints, userFallbackAnchor);
     const personaById = new Map(state.aiAvatars.map((a) => [a.memberId, a]));
     const aiMemberIds = this.manager.getAiMemberIds();
@@ -176,7 +182,11 @@ export class GroupDanceSyncEngine {
     return this.lastSnapshot;
   }
 
-  private resolveTimeline(elapsedSec: number, sourceFrame: SkeletonFrameData | null) {
+  private resolveTimeline(
+    elapsedSec: number,
+    sourceFrame: SkeletonFrameData | null,
+    frameIndexOverride?: number,
+  ) {
     if (!this.timeline) {
       console.warn('[GroupDanceSyncEngine] timeline 미설정 — video.duration 기반 타임라인 필요');
     }
@@ -188,10 +198,12 @@ export class GroupDanceSyncEngine {
       ?? Math.max(1, Math.round(duration * fps));
 
     const frameIndex =
-      sourceFrame?.frameIndex
-      ?? (this.sourceFrames.length
-        ? findFrameIndexAtTime(this.sourceFrames, elapsedSec)
-        : timeSecToFrameIndex(elapsedSec, fps, totalFrames));
+      frameIndexOverride != null && frameIndexOverride >= 0
+        ? frameIndexOverride
+        : (sourceFrame?.frameIndex
+          ?? (this.sourceFrames.length
+            ? findFrameIndexAtTime(this.sourceFrames, elapsedSec)
+            : timeSecToFrameIndex(elapsedSec, fps, totalFrames)));
 
     const progress = duration > 0 ? Math.min(1, Math.max(0, elapsedSec / duration)) : 0;
 

@@ -12,7 +12,6 @@ import {
   buildSkeletonRenderTransform,
   type SkeletonRenderTransform,
 } from '../../utils/SkeletonRenderTransform';
-import { logReferenceFrameBeforeRender } from '../../utils/referenceFrameRenderDebug';
 
 export interface GroupStudioRendererOptions {
   memberColorMap?: Record<string, { color: string; name: string }>;
@@ -20,6 +19,7 @@ export interface GroupStudioRendererOptions {
   focusMemberId?: string;
   /** referenceFrames[frameIndex] — 디버그 로그용 */
   frameIndex?: number;
+  currentTimeSec?: number;
   logicalSize?: { width: number; height: number } | null;
 }
 
@@ -158,10 +158,6 @@ export function renderGroupStudioFrame(
   options: GroupStudioRendererOptions = {},
 ): SkeletonRenderTransform | null {
   if (!frame?.members?.length) return null;
-
-  logReferenceFrameBeforeRender(frame, options.frameIndex ?? -1, {
-    focusMemberId: options.focusMemberId,
-  });
 
   const size = syncCanvasLogicalSize(ctx, canvas, options.logicalSize);
   if (!size) return null;

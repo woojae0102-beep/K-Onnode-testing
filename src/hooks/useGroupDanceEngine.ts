@@ -163,7 +163,7 @@ export function useGroupDanceEngine({
           songId,
           userMemberId,
           videoDuration: sourceVideoDurationSec ?? practiceDuration,
-          frameCount: totalFrames || skeletonFrames?.length || tickResult.timeline.totalFrames,
+          frameCount: skeletonFrames?.length || totalFrames || tickResult.timeline.totalFrames,
           fps: sampleFps || tickResult.timeline.fps,
           referenceVideo: referenceVideo ?? null,
         },

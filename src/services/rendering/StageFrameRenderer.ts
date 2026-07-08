@@ -24,6 +24,8 @@ export {
 export {
   resolveReferenceFrameIndex,
   resolveReferenceFrameAtTime,
+  resolveReferenceFramesFps,
+  resolveReferenceTimelineCoverage,
 } from '../../utils/referenceFrameUtils';
 
 export {

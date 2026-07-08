@@ -30,6 +30,7 @@ export interface GroupStageCanvasHandle {
     frame: SkeletonFrameData | null | undefined,
     options?: GroupStudioRendererOptions,
   ) => SkeletonRenderTransform | null;
+  clearReferenceFrame: () => void;
   resize: () => { width: number; height: number };
 }
 
@@ -73,14 +74,25 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
         memberColorMap: options.memberColorMap ?? memberColorMap,
         focusMemberId: options.focusMemberId ?? focusMemberId,
         frameIndex: options.frameIndex,
+        currentTimeSec: options.currentTimeSec,
         logicalSize: size,
       });
     }, [resizeCanvas, memberColorMap, focusMemberId]);
 
+    const clearReferenceFrame = useCallback(() => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      lastFrameRef.current = null;
+    }, []);
+
     useImperativeHandle(ref, () => ({
       drawReferenceFrame,
+      clearReferenceFrame,
       resize: resizeCanvas,
-    }), [drawReferenceFrame, resizeCanvas]);
+    }), [drawReferenceFrame, clearReferenceFrame, resizeCanvas]);
 
     useEffect(() => {
       resizeCanvas();

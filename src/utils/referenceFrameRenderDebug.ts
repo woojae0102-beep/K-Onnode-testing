@@ -1,6 +1,5 @@
 // @ts-nocheck
 import type { SkeletonFrameData, SkeletonMemberData } from '../types/groupPractice';
-import { isDevEnvironment } from './isDevEnvironment';
 
 let lastLoggedFrameIndex = -1;
 
@@ -16,10 +15,20 @@ function jointsObjectId(joints: Record<string, unknown> | null | undefined): str
 export function logReferenceFrameBeforeRender(
   frame: SkeletonFrameData | null | undefined,
   frameIndex: number,
-  options: { focusMemberId?: string; force?: boolean } = {},
+  options: {
+    focusMemberId?: string;
+    currentTimeSec?: number;
+    force?: boolean;
+  } = {},
 ): void {
-  if (!isDevEnvironment()) return;
-  if (!frame?.members?.length) return;
+  if (!frame?.members?.length) {
+    console.warn('[ReferenceFrameRender] 프레임 없음 — 렌더 스킵', {
+      frameIndex,
+      currentTimeSec: options.currentTimeSec ?? null,
+      focusMemberId: options.focusMemberId ?? null,
+    });
+    return;
+  }
 
   if (!options.force && frameIndex === lastLoggedFrameIndex) return;
   lastLoggedFrameIndex = frameIndex;
@@ -39,6 +48,7 @@ export function logReferenceFrameBeforeRender(
     trackIds,
     jointCount,
     timestamp: frame.timestamp,
+    currentTimeSec: options.currentTimeSec ?? null,
     focusMemberId: options.focusMemberId ?? null,
   });
 

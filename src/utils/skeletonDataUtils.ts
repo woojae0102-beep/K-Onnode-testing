@@ -499,6 +499,7 @@ export function validateSkeletonForPractice(
     skipNormalize?: boolean;
     minValidRatio?: number;
     expectedDurationSec?: number;
+    minTimelineCoverage?: number;
     logTable?: boolean;
   } = {},
 ): SkeletonValidationResult {
@@ -598,6 +599,7 @@ export function validateSkeletonForPractice(
   const validFrameRatio = totalFrames > 0 ? validFrames / totalFrames : 0;
   const memberAverage = totalFrames > 0 ? aiMemberSum / totalFrames : 0;
   const timelineCoverage = buildTimelineCoverage(normalized, options.expectedDurationSec);
+  const minTimelineCoverage = options.minTimelineCoverage ?? 0.85;
 
   const report: SkeletonValidationDebugReport = {
     totalFrames,
@@ -650,6 +652,28 @@ export function validateSkeletonForPractice(
       frameCount: totalFrames,
       aiMemberIds: [],
       aiMemberCount: 0,
+      sampleMemberCount: Math.round(memberAverage * 10) / 10,
+      reason: errors[0].message,
+      report,
+    });
+  }
+
+  if (timelineCoverage < minTimelineCoverage) {
+    const pct = Math.round(timelineCoverage * 100);
+    const needPct = Math.round(minTimelineCoverage * 100);
+    const lastTs = normalized[normalized.length - 1]?.timestamp ?? 0;
+    const errors = [
+      buildFieldError(
+        'skeleton.timelineCoverage',
+        `≥ ${minTimelineCoverage} (${needPct}%)`,
+        timelineCoverage,
+        `스켈레톤 타임라인 커버리지 부족 (${pct}% < ${needPct}%). 마지막 timestamp ${lastTs.toFixed(1)}s — 안무 재추출이 필요합니다.`,
+      ),
+    ];
+    return failSkeletonValidation('validateSkeletonForPractice', errors, {
+      frameCount: totalFrames,
+      aiMemberIds: [...aiIds],
+      aiMemberCount: aiIds.size,
       sampleMemberCount: Math.round(memberAverage * 10) / 10,
       reason: errors[0].message,
       report,

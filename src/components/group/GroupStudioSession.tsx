@@ -10,7 +10,10 @@ import { usePracticeClock } from '../../hooks/usePracticeClock';
 import {
   resolveReferenceFrameAtTime,
   resolveReferenceFrameIndex,
+  resolveReferenceFramesFps,
+  resolveReferenceTimelineCoverage,
 } from '../../utils/referenceFrameUtils';
+import { logReferenceFrameBeforeRender } from '../../utils/referenceFrameRenderDebug';
 import CameraPreviewStack from './CameraPreviewStack';
 import GroupDanceStage2D from './GroupDanceStage2D';
 import { useGroupSync } from '../../hooks/useGroupSync';
@@ -62,8 +65,12 @@ export function GroupStudioSession({
   const myMemberId = practiceSessionData.userMemberId;
   const sessionFrames = practiceSessionData.frames;
   const referenceFrames = practiceSessionData.referenceFrames ?? sessionFrames;
-  const referenceFps = practiceSessionData.motionMetadata?.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS;
   const maxDuration = practiceSessionData.duration;
+  const referenceFps = resolveReferenceFramesFps(
+    referenceFrames,
+    practiceSessionData.motionMetadata?.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS,
+  );
+  const referenceTimelineCoverage = resolveReferenceTimelineCoverage(referenceFrames, maxDuration);
   const referenceYoutubeUrl = practiceSessionData.referenceVideo?.youtubeUrl || referenceYoutubeUrlOverride;
   const song = getSongById(songId);
   const group = GROUP_DATA[groupId];
@@ -239,8 +246,22 @@ export function GroupStudioSession({
     practiceTimeRef.current = currentTime;
   }, [currentTime]);
 
-  const hasSkeletonData = skeletonValidation.valid;
-  const skeletonIssue = skeletonValidation.reason || '';
+  useEffect(() => {
+    if (referenceTimelineCoverage >= 0.85) return;
+    console.warn('[GroupStudioSession] 스켈레톤 타임라인 커버리지 부족 — 안무 재추출 필요', {
+      coverage: referenceTimelineCoverage,
+      frameCount: referenceFrames?.length ?? 0,
+      videoDuration: maxDuration,
+      lastTimestamp: referenceFrames?.[referenceFrames.length - 1]?.timestamp ?? 0,
+      referenceFps,
+    });
+  }, [referenceTimelineCoverage, referenceFrames, maxDuration, referenceFps]);
+
+  const hasSkeletonData = skeletonValidation.valid && referenceTimelineCoverage >= 0.85;
+  const skeletonIssue = skeletonValidation.reason
+    || (referenceTimelineCoverage < 0.85
+      ? `스켈레톤이 영상의 ${Math.round(referenceTimelineCoverage * 100)}%만 커버합니다. 안무를 다시 추출해 주세요.`
+      : '');
 
   const effectiveMaxDuration = maxDuration;
 
@@ -337,14 +358,25 @@ export function GroupStudioSession({
     (currentTimeSec = practiceClock.currentTime) => {
       if (show3DRenderer || !myMember) return;
 
-      const frame = getReferenceFrame(currentTimeSec);
-      if (!frame) return;
-
       const frameIndex = resolveReferenceFrameIndex(
         referenceFrames,
         currentTimeSec,
         referenceFps,
       );
+      const frame = getReferenceFrame(currentTimeSec);
+
+      logReferenceFrameBeforeRender(frame, frameIndex, {
+        focusMemberId: myMemberId,
+        currentTimeSec,
+        force: frameIndex < 0,
+      });
+
+      if (!frame) {
+        lastSkeletonCountRef.current = 0;
+        setStageSkeletonCount(0);
+        stage2DRef.current?.clearReferenceFrame?.();
+        return;
+      }
 
       const aiRendered = frame.members?.filter(
         (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
@@ -358,6 +390,7 @@ export function GroupStudioSession({
       stage2DRef.current?.drawReferenceFrame(frame, {
         focusMemberId: myMemberId,
         frameIndex,
+        currentTimeSec,
       });
     },
     [myMember, myMemberId, show3DRenderer, getReferenceFrame, practiceClock.currentTime, referenceFrames, referenceFps],
@@ -978,7 +1011,7 @@ export function GroupStudioSession({
               skeletonCanvasRef={dance.canvasRef}
               isTracking={dance.isTracking}
               cameraError={dance.cameraHealth?.error}
-              showPlaceholder={sessionPhase !== 'lobby'}
+              showPlaceholder={!dance.isTracking && sessionPhase !== 'lobby'}
               fitMode={dance.fitMode}
             />
           </div>
