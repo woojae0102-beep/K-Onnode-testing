@@ -4,26 +4,30 @@ import type { SkeletonFrameData } from '../../types/groupPractice';
 import GroupStageCanvas, {
   type GroupStageCanvasHandle,
 } from './GroupStageCanvas';
-import type { StageFrameRenderInput } from '../../utils/groupSkeletonDraw';
+import type { GroupStudioRendererOptions } from '../../services/rendering/GroupStudioRenderer';
 import type { SkeletonRenderTransform } from '../../utils/SkeletonRenderTransform';
 
 export interface GroupDanceStage2DProps {
-  frame?: SkeletonFrameData | null;
+  groupId?: string;
+  excludeMemberId?: string;
   className?: string;
 }
 
 export interface GroupDanceStage2DHandle {
-  draw: (input: StageFrameRenderInput) => SkeletonRenderTransform | null;
+  drawReferenceFrame: (
+    frame: SkeletonFrameData | null | undefined,
+    options?: GroupStudioRendererOptions,
+  ) => SkeletonRenderTransform | null;
   resize: () => { width: number; height: number };
 }
 
-/** GroupStageCanvas imperative API — Session 하위 호환 */
 const GroupDanceStage2D = forwardRef<GroupDanceStage2DHandle, GroupDanceStage2DProps>(
-  function GroupDanceStage2D({ frame = null, className = '' }, ref) {
+  function GroupDanceStage2D({ groupId = '', excludeMemberId = '', className = '' }, ref) {
     return (
       <GroupStageCanvas
         ref={ref as React.Ref<GroupStageCanvasHandle>}
-        frame={frame}
+        groupId={groupId}
+        excludeMemberId={excludeMemberId}
         className={className}
       />
     );

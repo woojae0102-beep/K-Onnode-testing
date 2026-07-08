@@ -4,79 +4,88 @@ import React, {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
 } from 'react';
 import type { SkeletonFrameData } from '../../types/groupPractice';
+import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useStageCanvasResize } from '../../hooks/useStageCanvasResize';
 import {
-  renderStageFrame,
-  type StageFrameRenderInput,
-} from '../../utils/groupSkeletonDraw';
+  renderGroupStudioFrame,
+  type GroupStudioRendererOptions,
+} from '../../services/rendering/GroupStudioRenderer';
 import type { SkeletonRenderTransform } from '../../utils/SkeletonRenderTransform';
 
 export interface GroupStageCanvasProps {
-  /** 선언형 — props 변경 시 자동 draw */
-  renderInput?: StageFrameRenderInput | null;
-  frame?: SkeletonFrameData | null;
+  /** referenceFrames[currentFrame] — 렌더러 유일 입력 */
+  referenceFrame?: SkeletonFrameData | null;
+  groupId?: string;
+  excludeMemberId?: string;
   className?: string;
   canvasClassName?: string;
 }
 
 export interface GroupStageCanvasHandle {
-  draw: (input: StageFrameRenderInput) => SkeletonRenderTransform | null;
+  drawReferenceFrame: (
+    frame: SkeletonFrameData | null | undefined,
+    options?: GroupStudioRendererOptions,
+  ) => SkeletonRenderTransform | null;
   resize: () => { width: number; height: number };
 }
 
 /**
- * Group Studio 통합 Stage Canvas — Session / TV / 미러 공용.
- * ResizeObserver(부모 추적) + BBox Auto Fit + Formation 파이프라인.
+ * Group Studio Stage Canvas — referenceFrames[currentFrame]만 렌더.
  */
 const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProps>(
   function GroupStageCanvas({
-    renderInput = null,
-    frame = null,
+    referenceFrame = null,
+    groupId = '',
+    excludeMemberId = '',
     className = '',
     canvasClassName = 'group-dance-stage-2d-canvas group-studio-stage-canvas',
   }, ref) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
-    const { resizeCanvas, logicalSizeRef } = useStageCanvasResize(canvasRef);
-    const lastInputRef = useRef<StageFrameRenderInput | null>(null);
+    const { resizeCanvas } = useStageCanvasResize(canvasRef);
+    const lastFrameRef = useRef<SkeletonFrameData | null>(null);
 
-    const draw = useCallback((input: StageFrameRenderInput) => {
+    const memberColorMap = useMemo(() => {
+      const group = GROUP_DATA[groupId];
+      const map: Record<string, { color: string; name: string }> = {};
+      group?.members.forEach((m) => {
+        map[m.id] = { color: m.color, name: m.nameKr };
+      });
+      return map;
+    }, [groupId]);
+
+    const drawReferenceFrame = useCallback((
+      frame: SkeletonFrameData | null | undefined,
+      options: GroupStudioRendererOptions = {},
+    ) => {
       const canvas = canvasRef.current;
-      if (!canvas) return null;
+      if (!canvas || !frame) return null;
       const ctx = canvas.getContext('2d');
       if (!ctx) return null;
 
       const size = resizeCanvas();
-      lastInputRef.current = input;
+      lastFrameRef.current = frame;
 
-      let members = input.aiMembers;
-      if (!members.length && frame?.members?.length) {
-        members = frame.members
-          .filter((m) => m.estimatedMemberId && m.joints && Object.keys(m.joints).length)
-          .map((m) => ({
-            memberId: m.estimatedMemberId,
-            joints: m.joints,
-            color: '#FF1F8E',
-            name: m.estimatedMemberId,
-            isEstimated: m.isEstimated,
-          }));
-      }
-
-      return renderStageFrame(ctx, canvas, { ...input, aiMembers: members }, size);
-    }, [frame, resizeCanvas]);
+      return renderGroupStudioFrame(ctx, canvas, frame, {
+        memberColorMap: options.memberColorMap ?? memberColorMap,
+        excludeMemberId: options.excludeMemberId ?? excludeMemberId,
+        logicalSize: size,
+      });
+    }, [resizeCanvas, memberColorMap, excludeMemberId]);
 
     useImperativeHandle(ref, () => ({
-      draw,
+      drawReferenceFrame,
       resize: resizeCanvas,
-    }), [draw, resizeCanvas]);
+    }), [drawReferenceFrame, resizeCanvas]);
 
     useEffect(() => {
       resizeCanvas();
-      const input = renderInput || lastInputRef.current;
-      if (input) draw(input);
-    }, [resizeCanvas, draw, renderInput]);
+      const frame = referenceFrame || lastFrameRef.current;
+      if (frame) drawReferenceFrame(frame);
+    }, [resizeCanvas, drawReferenceFrame, referenceFrame]);
 
     return (
       <div className={`group-dance-stage-2d group-stage-canvas ${className}`.trim()}>

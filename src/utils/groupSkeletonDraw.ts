@@ -287,6 +287,12 @@ export function renderStageFrame(
   return transform;
 }
 
+export interface ReferenceFrameRenderOptions {
+  memberColorMap?: Record<string, { color: string; name: string }>;
+  excludeMemberId?: string;
+  logicalSize?: StageCanvasLogicalSize | null;
+}
+
 /** 단일 AI 아바타 — 동일 Auto Fit 파이프라인 */
 export function drawAIAvatar(
   ctx,

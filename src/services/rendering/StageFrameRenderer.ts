@@ -11,7 +11,15 @@ export {
   type StageFrameRenderInput,
   type StageFormationContext,
   type StageCanvasLogicalSize,
+  type ReferenceFrameRenderOptions,
 } from '../../utils/groupSkeletonDraw';
+
+export {
+  renderGroupStudioFrame,
+  cloneMemberJointsForRender,
+  assertDistinctMemberJoints,
+  type GroupStudioRendererOptions,
+} from './GroupStudioRenderer';
 
 export {
   buildSkeletonRenderTransform,
@@ -23,5 +31,5 @@ export {
 export { applySkeletonFormationPipeline } from './SkeletonFormationRender';
 export { StageMotionEngine, getSharedStageMotionEngine } from './StageMotionEngine';
 
-import { renderStageFrame } from '../../utils/groupSkeletonDraw';
-export default renderStageFrame;
+import { renderGroupStudioFrame } from './GroupStudioRenderer';
+export default renderGroupStudioFrame;

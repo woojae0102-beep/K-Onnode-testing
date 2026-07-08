@@ -74,6 +74,8 @@ export interface MotionMetadata {
  */
 export interface PracticeSessionData {
   frames: SkeletonFrameData[];
+  /** 추출 원본 스켈레톤 — 렌더러는 referenceFrames[currentFrame]만 사용 */
+  referenceFrames: SkeletonFrameData[];
   /** 연습 타임라인 길이(초) — sourceVideoDurationSec와 동일 */
   duration: number;
   fps: number;

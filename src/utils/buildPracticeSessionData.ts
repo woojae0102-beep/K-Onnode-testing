@@ -145,6 +145,7 @@ export function buildPracticeSessionData({
 
   return {
     frames: normalized,
+    referenceFrames: normalized,
     duration: timeline.duration,
     fps: practiceFps,
     totalFrames: practiceTotalFrames,

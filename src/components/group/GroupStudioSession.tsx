@@ -6,12 +6,11 @@ import { getSongById } from '../../data/groupStudioSongs';
 import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
 import { usePracticeClock } from '../../hooks/usePracticeClock';
 import { PRACTICE_RENDER_FPS } from '../../config/practiceRenderConfig';
-import { useGroupStageFrame } from '../../hooks/useGroupStageFrame';
 import {
   findFrameIndexByTimestamp,
   isPracticePlaybackFinished,
 } from '../../services/practice/PracticePlayer';
-import { buildStageRenderInput } from '../../utils/stageRenderInputBuilder';
+import { resolveReferenceFrameAtTime } from '../../utils/referenceFrameUtils';
 import CameraPreviewStack from './CameraPreviewStack';
 import GroupDanceStage2D from './GroupDanceStage2D';
 import { useGroupSync } from '../../hooks/useGroupSync';
@@ -28,12 +27,9 @@ import {
   logUndefinedFields,
 } from '../../utils/practiceValidationDebug';
 import {
-  snapshotAiAvatars,
   snapshotCurrentTime,
-  snapshotFrame,
-  snapshotUserAnchor,
 } from '../../utils/motionSnapshotUtils';
-import { smoothLiveJoints, resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
+import { resetLivePoseKalmanFilter } from '../../services/avatar/MotionRetargetingService';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import CountdownOverlay from './CountdownOverlay';
 import TempoLockIndicator from './TempoLockIndicator';
@@ -65,6 +61,7 @@ export function GroupStudioSession({
   const groupId = practiceSessionData.groupId;
   const myMemberId = practiceSessionData.userMemberId;
   const sessionFrames = practiceSessionData.frames;
+  const referenceFrames = practiceSessionData.referenceFrames ?? sessionFrames;
   const maxDuration = practiceSessionData.duration;
   const referenceYoutubeUrl = practiceSessionData.referenceVideo?.youtubeUrl || referenceYoutubeUrlOverride;
   const song = getSongById(songId);
@@ -113,7 +110,6 @@ export function GroupStudioSession({
     );
   }, [practiceSessionData, sessionFrames, maxDuration, skeletonValidation]);
 
-  const renderTimeline = practiceSessionData.renderTimeline ?? null;
   const [sessionPhase, setSessionPhase] = useState('lobby');
   const [countdown, setCountdown] = useState(null);
   const [showGhost, setShowGhost] = useState(true);
@@ -159,17 +155,9 @@ export function GroupStudioSession({
   const startTimeline = practiceClock.start;
   const forceStop = practiceClock.forceStop;
 
-  const stageFrame = useGroupStageFrame({
-    sourceFrames: sessionFrames,
-    timeSec: currentTime,
-    sourceVideoDurationSec: practiceSessionData.sourceVideoDurationSec ?? maxDuration,
-    renderTimeline,
-    sessionKey: `${groupId}:${songId}:${myMemberId}`,
-  });
-
-  const getTimelineFrame = useCallback(
-    (timeSec = practiceClock.currentTime) => stageFrame.resolveAt(timeSec),
-    [stageFrame.resolveAt, practiceClock.currentTime],
+  const getReferenceFrame = useCallback(
+    (timeSec = practiceClock.currentTime) => resolveReferenceFrameAtTime(referenceFrames, timeSec),
+    [referenceFrames, practiceClock.currentTime],
   );
   const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
     myMemberId,
@@ -261,8 +249,8 @@ export function GroupStudioSession({
   );
 
   const debugHudStats = useMemo(() => {
-    const frameIndex = findFrameIndexByTimestamp(sessionFrames, practiceClock.currentTime);
-    const frame = snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentTime);
+    const frameIndex = findFrameIndexByTimestamp(referenceFrames, practiceClock.currentTime);
+    const frame = getReferenceFrame(practiceClock.currentTime);
     const skeletonCount = frame?.members?.length ?? 0;
     const aiInFrame = frame?.members?.filter(
       (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
@@ -270,32 +258,28 @@ export function GroupStudioSession({
     const userSkeletonJoints = dance.poseData?.joints
       ? Object.keys(dance.poseData.joints).length
       : 0;
-    const snapshotAiCount = snapshotAiAvatars(danceSnapshot).filter(
-      (a) => Object.keys(a.joints || {}).length > 0,
-    ).length ?? 0;
 
     return {
       frameIndex,
-      totalTimelineFrames: sessionFrames?.length ?? 0,
+      totalTimelineFrames: referenceFrames?.length ?? 0,
       skeletonCount,
-      aiAvatarCount: Math.max(aiInFrame, snapshotAiCount, stageSkeletonCount),
+      aiAvatarCount: Math.max(aiInFrame, stageSkeletonCount),
       userSkeletonJoints,
-      snapshotAiCount,
+      snapshotAiCount: 0,
     };
   }, [
     practiceClock.currentTime,
-    sessionFrames,
-    getTimelineFrame,
+    referenceFrames,
+    getReferenceFrame,
     myMemberId,
     dance.poseData,
-    danceSnapshot,
     stageSkeletonCount,
   ]);
 
   const groupMotionDebug = useMemo(() => {
-    const frame = snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentTime);
+    const frame = getReferenceFrame(practiceClock.currentTime);
     return buildGroupMotionDebugFromSession(practiceSessionData, frame, effectiveTime);
-  }, [practiceSessionData, danceSnapshot, getTimelineFrame, practiceClock.currentTime, effectiveTime]);
+  }, [practiceSessionData, getReferenceFrame, practiceClock.currentTime, effectiveTime]);
 
   const studio = useStudioSession({
     localStream: dance.getStream(),
@@ -331,7 +315,7 @@ export function GroupStudioSession({
 
   const syncDanceStage = useCallback(
     (elapsedSec) => {
-      const timelineFrame = stageFrame.resolveAt(elapsedSec);
+      const timelineFrame = getReferenceFrame(elapsedSec);
       const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
       return danceEngine.tick(
         elapsedSec,
@@ -339,65 +323,28 @@ export function GroupStudioSession({
         timelineFrame,
       );
     },
-    [danceEngine.tick, isPracticing, sessionPhase, dance.poseData, stageFrame.resolveAt],
+    [danceEngine.tick, isPracticing, sessionPhase, dance.poseData, getReferenceFrame],
   );
 
   const renderGroupStage = useCallback(
-    (snapshot, timeSec = practiceTimeRef.current) => {
-      if (show3DRenderer) return;
-      if (!myMember) return;
+    (timeSec = practiceTimeRef.current) => {
+      if (show3DRenderer || !myMember) return;
 
-      const showUserPose = isPracticing || sessionPhase === 'waiting_slot';
-      const timelineFrame = stageFrame.resolveAt(timeSec);
-      const frame = snapshotFrame(snapshot) ?? timelineFrame;
+      const frame = getReferenceFrame(timeSec);
+      if (!frame) return;
 
-      const aiRendered = frame?.members?.filter(
+      const aiRendered = frame.members?.filter(
         (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
-      ).length ?? snapshotAiAvatars(snapshot).length;
+      ).length ?? 0;
 
       if (aiRendered !== lastSkeletonCountRef.current) {
         lastSkeletonCountRef.current = aiRendered;
         setStageSkeletonCount(aiRendered);
       }
 
-      const userAnchor = snapshotUserAnchor(snapshot);
-      const renderInput = buildStageRenderInput({
-        frame,
-        groupId,
-        myMemberId,
-        timeSec,
-        formationTimeline: practiceSessionData.formationTimeline ?? null,
-        formationHole,
-        userJoints: showUserPose && dance.poseData?.joints
-          ? smoothLiveJoints(dance.poseData.joints)
-          : null,
-        userColor: myMember.color,
-        userAnchor: userAnchor
-          ? { x: userAnchor.x, y: userAnchor.y }
-          : null,
-        showUserPose,
-        showGhost: (showGhost && sessionPhase !== 'practicing') || isPracticing,
-        ghostLabel: sessionPhase === 'practicing'
-          ? (formationHole?.label || 'YOU')
-          : (formationHole?.label || 'YOUR SLOT'),
-        snapshotAiMembers: snapshotAiAvatars(snapshot),
-      });
-
-      stage2DRef.current?.draw(renderInput);
+      stage2DRef.current?.drawReferenceFrame(frame, { excludeMemberId: myMemberId });
     },
-    [
-      groupId,
-      myMember,
-      myMemberId,
-      dance.poseData,
-      showGhost,
-      sessionPhase,
-      isPracticing,
-      show3DRenderer,
-      formationHole,
-      stageFrame.resolveAt,
-      practiceSessionData.formationTimeline,
-    ],
+    [myMember, myMemberId, show3DRenderer, getReferenceFrame],
   );
 
   renderGroupStageRef.current = renderGroupStage;
@@ -409,8 +356,8 @@ export function GroupStudioSession({
     const snapshot = syncDanceStage(0) || null;
     logSnapshotStatus(snapshot, `2d-idle-${sessionPhase}`, { loading: danceEngine.loading });
     setDanceSnapshot(snapshot);
-    renderGroupStage(snapshot);
-  }, [show3DRenderer, sessionPhase, syncDanceStage, renderGroupStage, danceEngine.loading]);
+    renderGroupStage(0);
+  }, [show3DRenderer, sessionPhase, renderGroupStage]);
 
   useEffect(() => {
     if (!show3DRenderer) return;
@@ -429,8 +376,8 @@ export function GroupStudioSession({
   }, [dance.poseData, myDefault]);
 
   const getPracticeFrame = useCallback(
-    () => snapshotFrame(danceSnapshot) ?? getTimelineFrame(practiceClock.currentTime),
-    [danceSnapshot, getTimelineFrame, practiceClock.currentTime],
+    () => getReferenceFrame(practiceClock.currentTime),
+    [getReferenceFrame, practiceClock.currentTime],
   );
 
   const finishSession = useCallback(
@@ -513,7 +460,7 @@ export function GroupStudioSession({
       practiceTimeRef.current = t;
 
       const snapshot = syncDanceStageRef.current?.(t) || null;
-      renderGroupStageRef.current?.(snapshot, t);
+      renderGroupStageRef.current?.(t);
 
       const now = performance.now();
       if (now - last3dAt > 100) {
@@ -524,7 +471,7 @@ export function GroupStudioSession({
 
       if (now - lastScoreAt > 120) {
         lastScoreAt = now;
-        const frame = stageFrame.resolveAt(t);
+        const frame = getReferenceFrame(t);
         if (dance.poseData && frame) {
           const accuracy = updateSyncScore(dance.poseData, frame, t);
           if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
@@ -577,7 +524,7 @@ export function GroupStudioSession({
     isRunning,
     isFinished,
     referenceYoutubeUrl,
-    stageFrame.resolveAt,
+    getReferenceFrame,
     dance.poseData,
     updateSyncScore,
     groupId,
@@ -628,8 +575,7 @@ export function GroupStudioSession({
   }, [startPracticeAfterCountdown]);
 
   const waitingLoop = useCallback(() => {
-    const snapshot = syncDanceStage(0);
-    if (snapshot) renderGroupStage(snapshot);
+    renderGroupStage(0);
 
     if (sessionPhase === 'waiting_slot' && checkSlotEntry()) {
       runCountdown();
@@ -639,7 +585,7 @@ export function GroupStudioSession({
     if (sessionPhase === 'waiting_slot' || sessionPhase === 'lobby') {
       animFrameRef.current = requestAnimationFrame(waitingLoop);
     }
-  }, [renderGroupStage, sessionPhase, checkSlotEntry, runCountdown, syncDanceStage]);
+  }, [renderGroupStage, sessionPhase, checkSlotEntry, runCountdown]);
 
   const enterStudio = useCallback(async () => {
     resetLivePoseKalmanFilter();
@@ -828,7 +774,7 @@ export function GroupStudioSession({
           </Suspense>
         ) : (
           <div className="group-studio-stage-canvas-wrap" style={{ position: 'relative' }}>
-            <GroupDanceStage2D ref={stage2DRef} />
+            <GroupDanceStage2D ref={stage2DRef} groupId={groupId} excludeMemberId={myMemberId} />
             {isDevEnvironment() ? (
               <SnapshotDebugOverlay snapshot={danceSnapshot} loading={danceEngine.loading} />
             ) : null}
