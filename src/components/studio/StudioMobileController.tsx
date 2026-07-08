@@ -1,5 +1,7 @@
 // @ts-nocheck
 import React from 'react';
+import CameraPreviewStack from '../group/CameraPreviewStack';
+import '../../styles/group-studio.css';
 
 export default function StudioMobileController({
   mode = 'dance',
@@ -23,16 +25,13 @@ export default function StudioMobileController({
     <div className="studio-mobile-controller">
       <div className="studio-mobile-camera-wrap">
         {isDance ? (
-          <>
-            <video
-              ref={videoRef}
-              autoPlay
-              playsInline
-              muted
-              className="studio-mobile-video"
-            />
-            <canvas ref={canvasRef} className="studio-mobile-canvas" />
-          </>
+          <CameraPreviewStack
+            videoRef={videoRef}
+            skeletonCanvasRef={canvasRef}
+            isTracking={isTracking}
+            fitMode="contain"
+            className="studio-mobile-camera-stack"
+          />
         ) : (
           <div className="studio-mobile-vocal">
             <div className="studio-mobile-vocal-ring" style={{ borderColor: agencyColor }} />

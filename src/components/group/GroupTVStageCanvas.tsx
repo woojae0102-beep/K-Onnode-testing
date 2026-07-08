@@ -15,7 +15,7 @@ export default function GroupTVStageCanvas({ groupStage, className = '' }) {
       <GroupStageCanvas
         referenceFrame={referenceFrame}
         groupId={groupId}
-        excludeMemberId={myMemberId}
+        focusMemberId={myMemberId}
         canvasClassName="group-dance-stage-2d-canvas group-studio-skeleton-layer"
       />
     </div>

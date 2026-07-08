@@ -15,11 +15,21 @@ export {
 } from '../../utils/groupSkeletonDraw';
 
 export {
-  renderGroupStudioFrame,
+  filterVisibleStageMembers,
   cloneMemberJointsForRender,
   assertDistinctMemberJoints,
   type GroupStudioRendererOptions,
 } from './GroupStudioRenderer';
+
+export {
+  resolveReferenceFrameIndex,
+  resolveReferenceFrameAtTime,
+} from '../../utils/referenceFrameUtils';
+
+export {
+  logReferenceFrameBeforeRender,
+  resetReferenceFrameRenderDebug,
+} from '../../utils/referenceFrameRenderDebug';
 
 export {
   buildSkeletonRenderTransform,

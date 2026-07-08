@@ -6,7 +6,7 @@ import GroupStageCanvas from './GroupStageCanvas';
 export interface SkeletonRendererProps {
   referenceFrame?: SkeletonFrameData | null;
   groupId?: string;
-  excludeMemberId?: string;
+  focusMemberId?: string;
   className?: string;
 }
 
@@ -16,7 +16,7 @@ export interface SkeletonRendererProps {
 export default function SkeletonRenderer({
   referenceFrame = null,
   groupId = '',
-  excludeMemberId = '',
+  focusMemberId = '',
   className = '',
 }: SkeletonRendererProps) {
   const frame = useMemo(() => referenceFrame, [referenceFrame]);
@@ -27,7 +27,7 @@ export default function SkeletonRenderer({
       canvasClassName="group-dance-stage-2d-canvas group-studio-skeleton-layer"
       referenceFrame={frame}
       groupId={groupId}
-      excludeMemberId={excludeMemberId}
+      focusMemberId={focusMemberId}
     />
   );
 }

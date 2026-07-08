@@ -220,39 +220,10 @@ export function renderStageFrame(
   );
 
   const jointSets = aiMembers.map((m) => m.joints).filter(Boolean);
-  const extraPoints: Array<{ x: number; y: number }> = [];
-
-  if (input.ghostAnchor) {
-    extraPoints.push({ x: input.ghostAnchor.x, y: input.ghostAnchor.y });
-  }
-  if (input.userAnchor) {
-    extraPoints.push({ x: input.userAnchor.x, y: input.userAnchor.y });
-  }
-
-  const showUserPose = Boolean(input.userJoints && input.userAnchor);
-  if (showUserPose) {
-    jointSets.push(mapLiveJointsToStageAnchor(
-      input.userJoints,
-      input.userAnchor.x,
-      input.userAnchor.y,
-    ));
-  }
 
   const transform = buildSkeletonRenderTransform(jointSets, logicalW, logicalH, {
-    extraPoints,
     paddingRatio: PRACTICE_RENDER_PADDING,
   });
-
-  if (input.ghostAnchor) {
-    drawGhostSlotWithTransform(
-      ctx,
-      input.ghostAnchor.x,
-      input.ghostAnchor.y,
-      input.ghostAnchor.color,
-      input.ghostAnchor.label,
-      transform,
-    );
-  }
 
   aiMembers.forEach((member) => {
     if (!member.joints || !Object.keys(member.joints).length) return;
@@ -267,29 +238,12 @@ export function renderStageFrame(
     );
   });
 
-  if (showUserPose && input.userColor && input.userAnchor) {
-    const stageJoints = mapLiveJointsToStageAnchor(
-      input.userJoints,
-      input.userAnchor.x,
-      input.userAnchor.y,
-    );
-    drawSkeletonWithTransform(
-      ctx,
-      stageJoints,
-      input.userColor,
-      'YOU',
-      transform,
-      false,
-      { boneWidth: 5.5, jointRadius: 7.5, glowBlur: 16 },
-    );
-  }
-
   return transform;
 }
 
 export interface ReferenceFrameRenderOptions {
   memberColorMap?: Record<string, { color: string; name: string }>;
-  excludeMemberId?: string;
+  focusMemberId?: string;
   logicalSize?: StageCanvasLogicalSize | null;
 }
 

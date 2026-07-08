@@ -84,6 +84,7 @@ function drawSkeletonOnCanvas(canvas, video, joints, accuracies, fitMode: Camera
   const ctx = getOptimizedCanvasContext(canvas);
   if (!ctx) return;
 
+  // Overlay only — video 프레임은 <video>에 표시, canvas에 drawImage 금지
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   const vw = video?.videoWidth || canvas.width;
@@ -146,7 +147,9 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E', options: UseMediaPipeTVO
     resizeObserverRef.current?.disconnect();
     syncCanvasToDisplayRect(canvas);
 
-    resizeObserverRef.current = new ResizeObserver(() => {
+    const stackEl = canvas.parentElement;
+
+    const redrawOverlay = () => {
       syncCanvasToDisplayRect(canvas);
       const cached = latestPoseRef.current;
       if (cached?.joints) {
@@ -158,8 +161,10 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E', options: UseMediaPipeTVO
           fitModeRef.current,
         );
       }
-    });
-    resizeObserverRef.current.observe(canvas);
+    };
+
+    resizeObserverRef.current = new ResizeObserver(redrawOverlay);
+    resizeObserverRef.current.observe(stackEl || canvas);
   }, []);
 
   const stopDetectionLoop = useCallback(() => {
@@ -254,7 +259,17 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E', options: UseMediaPipeTVO
 
       const video = videoRef.current;
       if (!video) {
-        throw new Error('video element not mounted');
+        throw new Error('video element not mounted — CameraPreviewStack required');
+      }
+
+      if (import.meta.env?.DEV) {
+        const stack = video.parentElement;
+        const overlay = canvasRef.current;
+        if (!stack?.querySelector('video') || !overlay) {
+          console.warn(
+            '[useMediaPipeTV] Camera layer stack invalid — video + overlay canvas required',
+          );
+        }
       }
 
       video.srcObject = stream;

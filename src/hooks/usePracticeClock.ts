@@ -92,7 +92,7 @@ export function usePracticeClock({
 
   useEffect(() => () => stopLoop(), [stopLoop]);
 
-  const currentFrameIndex = Math.max(0, Math.round(currentTime * fps));
+  const currentFrameIndex = Math.max(0, Math.floor(currentTime * fps));
 
   return {
     currentTime,

@@ -10,6 +10,7 @@ import { useIndependentTimeline } from '../../hooks/useIndependentTimeline';
 import { useGroupSync } from '../../hooks/useGroupSync';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
+import CameraPreviewStack from './CameraPreviewStack';
 import GroupDanceStage2D from './GroupDanceStage2D';
 import StudioConnectModal from '../studio/StudioConnectModal';
 import FormationGuide from './FormationGuide';
@@ -431,18 +432,14 @@ export function GroupStageView({
           </span>
         </div>
 
-        <div style={{ flex: 1, position: 'relative', minHeight: 160 }} className="group-studio-camera-stack group-studio-camera-stack--contain">
-          <video
-            ref={dance.videoRef}
-            className="group-studio-camera-video"
-            autoPlay
-            playsInline
-            muted
+        <div style={{ flex: 1, position: 'relative', minHeight: 160 }}>
+          <CameraPreviewStack
+            videoRef={dance.videoRef}
+            skeletonCanvasRef={dance.canvasRef}
+            isTracking={dance.isTracking}
+            cameraError={dance.cameraHealth?.error}
+            fitMode={dance.fitMode}
           />
-          <canvas ref={dance.canvasRef} className="group-studio-camera-skeleton-overlay" />
-          {dance.cameraHealth?.error ? (
-            <div className="group-studio-camera-error">{dance.cameraHealth.error}</div>
-          ) : null}
         </div>
 
         <div

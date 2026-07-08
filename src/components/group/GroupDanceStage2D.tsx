@@ -9,7 +9,7 @@ import type { SkeletonRenderTransform } from '../../utils/SkeletonRenderTransfor
 
 export interface GroupDanceStage2DProps {
   groupId?: string;
-  excludeMemberId?: string;
+  focusMemberId?: string;
   className?: string;
 }
 
@@ -22,12 +22,12 @@ export interface GroupDanceStage2DHandle {
 }
 
 const GroupDanceStage2D = forwardRef<GroupDanceStage2DHandle, GroupDanceStage2DProps>(
-  function GroupDanceStage2D({ groupId = '', excludeMemberId = '', className = '' }, ref) {
+  function GroupDanceStage2D({ groupId = '', focusMemberId = '', className = '' }, ref) {
     return (
       <GroupStageCanvas
         ref={ref as React.Ref<GroupStageCanvasHandle>}
         groupId={groupId}
-        excludeMemberId={excludeMemberId}
+        focusMemberId={focusMemberId}
         className={className}
       />
     );

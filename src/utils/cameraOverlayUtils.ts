@@ -1,8 +1,11 @@
 // @ts-nocheck
 /**
  * Camera panel — video object-fit 기준 Skeleton Overlay 좌표 변환.
- * 연습 모드: contain (letterbox, 몸 잘림 방지)
- * Video → Skeleton Overlay → Feedback (canvas는 video 위 레이어)
+ *
+ * 레이어 스택 (Canvas 단독 출력 금지):
+ *   Video (autoplay · playsInline · muted)
+ *     ↓
+ *   Skeleton Overlay Canvas — 비디오 프레임을 그리지 않음
  */
 
 import type { StageFitContainView } from './stageFitContain';

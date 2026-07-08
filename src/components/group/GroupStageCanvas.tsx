@@ -20,7 +20,7 @@ export interface GroupStageCanvasProps {
   /** referenceFrames[currentFrame] — 렌더러 유일 입력 */
   referenceFrame?: SkeletonFrameData | null;
   groupId?: string;
-  excludeMemberId?: string;
+  focusMemberId?: string;
   className?: string;
   canvasClassName?: string;
 }
@@ -40,7 +40,7 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
   function GroupStageCanvas({
     referenceFrame = null,
     groupId = '',
-    excludeMemberId = '',
+    focusMemberId = '',
     className = '',
     canvasClassName = 'group-dance-stage-2d-canvas group-studio-stage-canvas',
   }, ref) {
@@ -71,10 +71,11 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
 
       return renderGroupStudioFrame(ctx, canvas, frame, {
         memberColorMap: options.memberColorMap ?? memberColorMap,
-        excludeMemberId: options.excludeMemberId ?? excludeMemberId,
+        focusMemberId: options.focusMemberId ?? focusMemberId,
+        frameIndex: options.frameIndex,
         logicalSize: size,
       });
-    }, [resizeCanvas, memberColorMap, excludeMemberId]);
+    }, [resizeCanvas, memberColorMap, focusMemberId]);
 
     useImperativeHandle(ref, () => ({
       drawReferenceFrame,

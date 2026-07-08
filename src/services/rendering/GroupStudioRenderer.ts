@@ -2,20 +2,26 @@
 /**
  * Group Studio Renderer — referenceFrames[currentFrame] 전용.
  *
- * - member.joints 그대로 렌더 (defaultX/defaultY 오프셋 금지)
- * - members[0] pose 공유 금지 — 멤버별 joints 참조 분리 검증
- * - formation / demo / fallback / samplePose 금지
+ * currentFrame = Math.floor(currentTime * fps)
+ * elapsedTime / animationTime / demoAnimation / timestamp 보간 금지.
  */
 import type { JointPoint, SkeletonFrameData, SkeletonMemberData } from '../../types/groupPractice';
 import { PRACTICE_RENDER_PADDING } from '../../config/practiceRenderConfig';
-import {
-  drawAccurateSkeleton,
-} from '../../utils/canvasSkeletonUtils';
+import { drawAccurateSkeleton } from '../../utils/canvasSkeletonUtils';
 import {
   buildSkeletonRenderTransform,
   type SkeletonRenderTransform,
 } from '../../utils/SkeletonRenderTransform';
-import { PRACTICE_RENDER_PADDING } from '../../config/practiceRenderConfig';
+import { logReferenceFrameBeforeRender } from '../../utils/referenceFrameRenderDebug';
+
+export interface GroupStudioRendererOptions {
+  memberColorMap?: Record<string, { color: string; name: string }>;
+  /** 연습자가 선택한 멤버 — Stage에서 제외 */
+  focusMemberId?: string;
+  /** referenceFrames[frameIndex] — 디버그 로그용 */
+  frameIndex?: number;
+  logicalSize?: { width: number; height: number } | null;
+}
 
 function drawStageBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
   ctx.fillStyle = '#0a0a14';
@@ -37,10 +43,19 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-export interface GroupStudioRendererOptions {
-  memberColorMap?: Record<string, { color: string; name: string }>;
-  excludeMemberId?: string;
-  logicalSize?: { width: number; height: number } | null;
+/** Stage visible members — focusMemberId 제외, joints 있는 멤버만 */
+export function filterVisibleStageMembers(
+  members: SkeletonMemberData[] | null | undefined,
+  focusMemberId?: string,
+): SkeletonMemberData[] {
+  if (!members?.length) return [];
+
+  return members.filter((member) => {
+    if (!member.joints || !Object.keys(member.joints).length) return false;
+    const memberId = member.estimatedMemberId;
+    if (focusMemberId && memberId === focusMemberId) return false;
+    return true;
+  });
 }
 
 /** 렌더용 joints 얕은 복사 — 공유 참조·변형 격리 */
@@ -133,8 +148,8 @@ function drawMemberSkeleton(
 }
 
 /**
- * referenceFrames[currentFrame] 렌더.
- * 각 member는 member.joints만 사용 — defaultX/defaultY 가산 없음.
+ * referenceFrames[currentFrame] — visibleMembers만 렌더.
+ * User Skeleton / YOU / live pose 금지.
  */
 export function renderGroupStudioFrame(
   ctx: CanvasRenderingContext2D,
@@ -144,31 +159,28 @@ export function renderGroupStudioFrame(
 ): SkeletonRenderTransform | null {
   if (!frame?.members?.length) return null;
 
+  logReferenceFrameBeforeRender(frame, options.frameIndex ?? -1, {
+    focusMemberId: options.focusMemberId,
+  });
+
   const size = syncCanvasLogicalSize(ctx, canvas, options.logicalSize);
   if (!size) return null;
 
   const { width: logicalW, height: logicalH } = size;
   drawStageBackground(ctx, logicalW, logicalH);
 
-  const membersToDraw = frame.members.filter((member) => {
-    if (!member.joints || !Object.keys(member.joints).length) return false;
-    if (options.excludeMemberId && member.estimatedMemberId === options.excludeMemberId) {
-      return false;
-    }
-    return true;
-  });
+  const visibleMembers = filterVisibleStageMembers(frame.members, options.focusMemberId);
+  if (!visibleMembers.length) return null;
 
-  if (!membersToDraw.length) return null;
+  assertDistinctMemberJoints(visibleMembers);
 
-  assertDistinctMemberJoints(membersToDraw);
-
-  const isolatedJoints = membersToDraw.map((member) => cloneMemberJointsForRender(member.joints));
+  const isolatedJoints = visibleMembers.map((member) => cloneMemberJointsForRender(member.joints));
 
   const transform = buildSkeletonRenderTransform(isolatedJoints, logicalW, logicalH, {
     paddingRatio: PRACTICE_RENDER_PADDING,
   });
 
-  membersToDraw.forEach((member, index) => {
+  visibleMembers.forEach((member, index) => {
     const memberId = member.estimatedMemberId || String(member.trackId ?? '');
     const meta = options.memberColorMap?.[memberId];
     const joints = isolatedJoints[index];
