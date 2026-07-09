@@ -453,7 +453,6 @@ export async function runHolisticVideoAnalysis({
     const peak = Math.max(...memberCountSamples);
     if (expectedMemberCount > 0) {
       if (peak >= expectedMemberCount) return expectedMemberCount;
-      if (mostCommon >= expectedMemberCount - 1) return mostCommon;
     }
     return mostCommon;
   })();
@@ -482,6 +481,25 @@ export async function runHolisticVideoAnalysis({
 
   const trackIdToInitialPosition = tracker.buildInitialPositions(frames);
   const peakTrackCount = Math.max(tracker.getPeakTrackCount(), trackIdToInitialPosition.size);
+  const observedTrackCount = Math.max(detectedMemberCount, peakTrackCount, trackIdToInitialPosition.size);
+
+  console.table({
+    'Motion Member Count': {
+      expectedMemberCount,
+      detectedMemberCount,
+      peakTrackCount,
+      mappedTrackPositions: trackIdToInitialPosition.size,
+      observedTrackCount,
+    },
+  });
+
+  if (expectedMemberCount > 0 && observedTrackCount < expectedMemberCount) {
+    throw new Error(
+      `Motion Extraction 멤버 수 부족: expected=${expectedMemberCount}, `
+      + `observed=${observedTrackCount}, detected=${detectedMemberCount}, `
+      + `peakTrack=${peakTrackCount}, mappedTracks=${trackIdToInitialPosition.size}`,
+    );
+  }
 
   onDebug?.({ pipelineStage: 'analysis_complete', progress: 92 });
   logPerfStats(perfStats, 'Motion Extraction', {
@@ -493,7 +511,7 @@ export async function runHolisticVideoAnalysis({
   });
 
   return {
-    detectedMemberCount: Math.max(detectedMemberCount, peakTrackCount),
+    detectedMemberCount: observedTrackCount,
     peakTrackCount,
     frames,
     trackIdToInitialPosition,

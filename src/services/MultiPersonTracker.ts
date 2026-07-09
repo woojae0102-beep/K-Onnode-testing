@@ -242,7 +242,6 @@ export class MultiPersonTracker {
 
     if (expectedMemberCount > 0) {
       if (peak >= expectedMemberCount) return expectedMemberCount;
-      if (mostCommon >= expectedMemberCount - 1) return mostCommon;
     }
     return mostCommon;
   }
@@ -561,15 +560,16 @@ export class MultiPersonTracker {
     return Math.max(this.maxTracksSeen, this.allTrackIdsEver.size, this.persistentTracks.size);
   }
 
-  buildInitialPositions(frames: DetectionFrame[], sampleLimit = 30): Map<number, { x: number; y: number }> {
+  buildInitialPositions(frames: DetectionFrame[], sampleLimit = 60): Map<number, { x: number; y: number }> {
     const trackPositions = new Map<number, { x: number; y: number; count: number }>();
 
-    frames.slice(0, Math.min(sampleLimit, frames.length)).forEach((frame) => {
+    frames.forEach((frame) => {
       frame.detectedPeople.forEach((person) => {
         if (person.isEstimated) return;
         const nose = person.joints.nose;
         if (!nose) return;
         const existing = trackPositions.get(person.trackId) || { x: 0, y: 0, count: 0 };
+        if (existing.count >= sampleLimit) return;
         trackPositions.set(person.trackId, {
           x: existing.x + nose.x,
           y: existing.y + nose.y,

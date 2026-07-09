@@ -203,6 +203,7 @@ export function runGroupMotionPipeline({
     const validation = validateSkeletonForPractice(frames, userMemberId, {
       skipNormalize: true,
       expectedDurationSec: duration,
+      expectedAiMemberCount: allMemberIds.filter((id) => id && id !== userMemberId).length,
     });
     const coverageReport = calculateTimelineCoverage(frames, duration);
     audit.outputFrameCount = frames.length;
@@ -369,6 +370,7 @@ export function runGroupMotionPipeline({
   const validation = validateSkeletonForPractice(frames, userMemberId, {
     skipNormalize: true,
     expectedDurationSec: duration,
+    expectedAiMemberCount: allMemberIds.filter((id) => id && id !== userMemberId).length,
   });
   stage(audit, 'validate', true, { error: validation.valid ? undefined : validation.reason });
 

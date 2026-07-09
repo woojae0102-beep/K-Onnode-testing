@@ -526,6 +526,7 @@ export function validateSkeletonForPractice(
     skipNormalize?: boolean;
     minValidRatio?: number;
     expectedDurationSec?: number;
+    expectedAiMemberCount?: number;
     minTimelineCoverage?: number;
     logTable?: boolean;
   } = {},
@@ -680,6 +681,30 @@ export function validateSkeletonForPractice(
       frameCount: totalFrames,
       aiMemberIds: [],
       aiMemberCount: 0,
+      sampleMemberCount: Math.round(memberAverage * 10) / 10,
+      reason: errors[0].message,
+      report,
+    });
+  }
+
+  const expectedAiMemberCount = Number(options.expectedAiMemberCount);
+  if (
+    Number.isFinite(expectedAiMemberCount)
+    && expectedAiMemberCount > 0
+    && aiIds.size < expectedAiMemberCount
+  ) {
+    const errors = [
+      buildFieldError(
+        'skeleton.aiMemberIds',
+        `Set(≥${expectedAiMemberCount})`,
+        aiIds.size,
+        `AI 멤버 스켈레톤 수 부족 (${aiIds.size}/${expectedAiMemberCount}). 전체 멤버가 보이는 영상으로 다시 추출해 주세요.`,
+      ),
+    ];
+    return failSkeletonValidation('validateSkeletonForPractice', errors, {
+      frameCount: totalFrames,
+      aiMemberIds: [...aiIds],
+      aiMemberCount: aiIds.size,
       sampleMemberCount: Math.round(memberAverage * 10) / 10,
       reason: errors[0].message,
       report,

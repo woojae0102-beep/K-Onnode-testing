@@ -97,7 +97,7 @@ export function useGroupChoreoExtract() {
       if (!group) return null;
 
       const expected = group.memberCount;
-      const minTracksRequired = Math.max(2, expected - 1);
+      const minTracksRequired = expected;
       setExpectedMemberCount(expected);
       setInsufficientWarning(null);
 
@@ -119,16 +119,26 @@ export function useGroupChoreoExtract() {
         return result;
       };
 
-      let analysisResult = await attempt(
-        false,
-        `${group.nameKr} 안무 분석`,
-        preloadedDetector,
-      );
+      let analysisResult = null;
+      let firstAttemptError = null;
+      try {
+        analysisResult = await attempt(
+          false,
+          `${group.nameKr} 안무 분석`,
+          preloadedDetector,
+        );
+      } catch (err) {
+        firstAttemptError = err;
+        console.warn('[useGroupChoreoExtract] 1차 분석 실패 — lenient 재분석 시도', err);
+      }
 
       if (analysisResult && analysisResult.peakTrackCount < minTracksRequired && !abortRef.current) {
         setStep(
           `${expected}명 중 ${analysisResult.peakTrackCount}명만 감지됐습니다. 더 정밀하게 재분석합니다...`,
         );
+        analysisResult = await attempt(true, '재분석', null);
+      } else if (!analysisResult && firstAttemptError && !abortRef.current) {
+        setStep('멤버 수가 부족해 더 관대한 조건으로 재분석합니다...');
         analysisResult = await attempt(true, '재분석', null);
       }
 

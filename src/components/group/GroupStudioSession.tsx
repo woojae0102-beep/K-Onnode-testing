@@ -93,9 +93,10 @@ export function GroupStudioSession({
     () => validateSkeletonForPractice(sessionFrames, myMemberId, {
       skipNormalize: true,
       expectedDurationSec: maxDuration,
+      expectedAiMemberCount: Math.max(0, (group?.members.length ?? 1) - 1),
       logTable: true,
     }),
-    [sessionFrames, myMemberId, maxDuration],
+    [sessionFrames, myMemberId, maxDuration, group],
   );
 
   useEffect(() => {

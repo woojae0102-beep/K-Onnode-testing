@@ -4,6 +4,7 @@ import {
   calculateTimelineCoverage,
   SKELETON_MIN_TIMELINE_COVERAGE,
 } from '../utils/skeletonDataUtils';
+import { GROUP_DATA } from '../data/groupPracticeData';
 
 const DB_NAME = 'onnode_group_choreo_v2';
 const DB_VERSION = 1;
@@ -71,6 +72,13 @@ export async function saveCachedChoreo(entry) {
         + `coverage=${Math.round(report.coverage * 100)}%)`,
       );
     }
+    const memberReport = calculateCacheMemberCoverage(entry);
+    if (!memberReport.valid) {
+      throw new Error(
+        `ChoreoCache 저장 차단: AI 멤버 수 부족 `
+        + `(${memberReport.actualAiCount}/${memberReport.expectedAiCount})`,
+      );
+    }
   }
   return new Promise((resolve) => {
     const tx = db.transaction(STORE, 'readwrite');
@@ -112,6 +120,36 @@ function logCacheCoverage(label, entry, cacheValid) {
   return report;
 }
 
+function calculateCacheMemberCoverage(entry) {
+  const group = GROUP_DATA[entry?.groupId];
+  const userMemberId = entry?.positionMap?.userMemberId ?? entry?.formationHole?.memberId ?? '';
+  if (!group) {
+    return { valid: true, expectedAiCount: 0, actualAiCount: 0 };
+  }
+
+  const aiIds = new Set();
+  (entry.frames || []).forEach((frame) => {
+    (frame.members || []).forEach((member) => {
+      const id = member.estimatedMemberId;
+      if (
+        id
+        && (!userMemberId || id !== userMemberId)
+        && member.joints
+        && Object.keys(member.joints).length
+      ) {
+        aiIds.add(id);
+      }
+    });
+  });
+
+  const expectedAiCount = Math.max(0, group.members.length - 1);
+  return {
+    valid: aiIds.size >= expectedAiCount,
+    expectedAiCount,
+    actualAiCount: aiIds.size,
+  };
+}
+
 /** 캐시 유효성 — 파이프라인 버전·프레임 메타데이터·Holistic(손/얼굴)·Timeline Coverage 확인 */
 export function isChoreoCacheValid(entry) {
   if (!entry?.frames?.length) return false;
@@ -127,6 +165,15 @@ export function isChoreoCacheValid(entry) {
       firstTimestamp: coverageReport.firstTimestamp,
       lastTimestamp: coverageReport.lastTimestamp,
       coverage: coverageReport.coverage,
+    });
+    return false;
+  }
+  const memberReport = calculateCacheMemberCoverage(entry);
+  if (!memberReport.valid) {
+    console.warn('[ChoreoCache] AI 멤버 부족 캐시 무효화', {
+      cacheKey: entry.cacheKey,
+      expectedAiCount: memberReport.expectedAiCount,
+      actualAiCount: memberReport.actualAiCount,
     });
     return false;
   }

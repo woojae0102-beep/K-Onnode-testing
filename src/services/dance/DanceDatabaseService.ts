@@ -223,9 +223,19 @@ export function buildDanceDatabase({
   const mappedAiCount = new Set(
     [...normalizedMap.values()].filter((id) => id && id !== userMemberId),
   ).size;
+  const expectedTotalMemberCount = GROUP_DATA[groupId]?.members.length || analysisResult.detectedMemberCount || 0;
+  if (expectedTotalMemberCount > 0 && analysisResult.detectedMemberCount < expectedTotalMemberCount) {
+    throw new Error(
+      `Motion Database 생성 차단: 추출 멤버 수 부족 `
+      + `(${analysisResult.detectedMemberCount}/${expectedTotalMemberCount}). `
+      + '전체 멤버가 보이는 영상으로 다시 추출해 주세요.',
+    );
+  }
   if (mappedAiCount < aiMemberCount) {
-    console.warn(
-      `[DanceDatabase] AI 멤버 매칭 ${mappedAiCount}/${aiMemberCount} — 일부 멤버 스켈레톤이 누락될 수 있습니다.`,
+    throw new Error(
+      `Motion Database 생성 차단: AI 멤버 매칭 부족 `
+      + `(${mappedAiCount}/${aiMemberCount}). `
+      + '트랙→멤버 매칭을 확인하거나 전체 멤버가 보이는 영상으로 다시 추출해 주세요.',
     );
   }
 
@@ -346,10 +356,12 @@ export async function loadDanceDatabase(
     if (stored?.skeletonFrames?.length) {
       const normalized = normalizeSkeletonFrames(stored.skeletonFrames);
       const uid = userMemberId || stored.positionMap?.userMemberId || '';
+      const expectedAiMemberCount = Math.max(0, (GROUP_DATA[groupId]?.members.length ?? 1) - 1);
       const validation = uid
         ? validateSkeletonForPractice(normalized, uid, {
           skipNormalize: true,
           expectedDurationSec: stored.durationSec,
+          expectedAiMemberCount,
         })
         : { valid: normalized.length > 0 };
       if (validation.valid) {
@@ -370,10 +382,12 @@ export async function loadDanceDatabase(
   if (cached?.frames?.length) {
     const normalized = normalizeSkeletonFrames(cached.frames);
     const uid = userMemberId || cached.positionMap?.userMemberId || '';
+    const expectedAiMemberCount = Math.max(0, (GROUP_DATA[groupId]?.members.length ?? 1) - 1);
     const validation = uid
       ? validateSkeletonForPractice(normalized, uid, {
         skipNormalize: true,
         expectedDurationSec: cached.durationSec,
+        expectedAiMemberCount,
       })
       : { valid: normalized.length > 0 };
     if (!validation.valid) {
