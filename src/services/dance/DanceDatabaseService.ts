@@ -24,6 +24,8 @@ import {
   normalizeSkeletonFrames,
   validateSkeletonForPractice,
   buildSkeletonData,
+  calculateTimelineCoverage,
+  SKELETON_MIN_TIMELINE_COVERAGE,
 } from '../../utils/skeletonDataUtils';
 import { resolvePracticeDurationSec } from '../../utils/buildPracticeSessionData';
 import {
@@ -233,8 +235,30 @@ export function buildDanceDatabase({
     );
   }
 
-  const skeletonEnd =
-    skeletonFrames[skeletonFrames.length - 1]?.timestamp || 0;
+  const coverageReport = calculateTimelineCoverage(skeletonFrames, timeline.duration);
+  const skeletonEnd = coverageReport.lastTimestamp;
+
+  console.table({
+    'DanceDatabase Coverage': {
+      videoDuration: timeline.duration,
+      analysisDuration: timeline.duration,
+      frameCount: coverageReport.frameCount,
+      firstTimestamp: coverageReport.firstTimestamp,
+      lastTimestamp: coverageReport.lastTimestamp,
+      coverage: coverageReport.coverage,
+      cacheUsed: false,
+      cacheValid: false,
+    },
+  });
+
+  if (coverageReport.coverage < SKELETON_MIN_TIMELINE_COVERAGE) {
+    throw new Error(
+      `DanceDatabase 저장 차단: coverage 부족 `
+      + `(duration=${timeline.duration.toFixed(2)}s, `
+      + `lastTimestamp=${coverageReport.lastTimestamp.toFixed(2)}s, `
+      + `coverage=${Math.round(coverageReport.coverage * 100)}%)`,
+    );
+  }
 
   const skeletonData = buildSkeletonData(skeletonFrames, extractionFps, timeline.duration);
 
@@ -263,6 +287,16 @@ export function buildDanceDatabase({
 }
 
 export async function saveDanceDatabase(danceDb: DanceDatabase) {
+  const coverageReport = calculateTimelineCoverage(danceDb.skeletonFrames, danceDb.durationSec);
+  if (coverageReport.coverage < SKELETON_MIN_TIMELINE_COVERAGE) {
+    throw new Error(
+      `DanceDatabase 저장 차단: coverage 부족 `
+      + `(duration=${Number(danceDb.durationSec || 0).toFixed(2)}s, `
+      + `lastTimestamp=${coverageReport.lastTimestamp.toFixed(2)}s, `
+      + `coverage=${Math.round(coverageReport.coverage * 100)}%)`,
+    );
+  }
+
   const packageKey = buildDancePackageKey(danceDb.groupId, danceDb.songId, danceDb.videoId);
   const db = await openDb();
   if (db) {
@@ -312,11 +346,22 @@ export async function loadDanceDatabase(
     if (stored?.skeletonFrames?.length) {
       const normalized = normalizeSkeletonFrames(stored.skeletonFrames);
       const uid = userMemberId || stored.positionMap?.userMemberId || '';
-      const validation = uid ? validateSkeletonForPractice(normalized, uid) : { valid: normalized.length > 0 };
+      const validation = uid
+        ? validateSkeletonForPractice(normalized, uid, {
+          skipNormalize: true,
+          expectedDurationSec: stored.durationSec,
+        })
+        : { valid: normalized.length > 0 };
       if (validation.valid) {
         return { ...stored, skeletonFrames: normalized } as DanceDatabase;
       }
       console.warn('[loadDanceDatabase] 저장된 패키지가 유효하지 않음 — 무시합니다.', validation.reason);
+      await new Promise((resolve) => {
+        const tx = db.transaction(STORE, 'readwrite');
+        tx.objectStore(STORE).delete(packageKey);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => resolve(false);
+      });
     }
   }
 
@@ -325,7 +370,12 @@ export async function loadDanceDatabase(
   if (cached?.frames?.length) {
     const normalized = normalizeSkeletonFrames(cached.frames);
     const uid = userMemberId || cached.positionMap?.userMemberId || '';
-    const validation = uid ? validateSkeletonForPractice(normalized, uid) : { valid: normalized.length > 0 };
+    const validation = uid
+      ? validateSkeletonForPractice(normalized, uid, {
+        skipNormalize: true,
+        expectedDurationSec: cached.durationSec,
+      })
+      : { valid: normalized.length > 0 };
     if (!validation.valid) {
       console.warn('[loadDanceDatabase] 캐시가 유효하지 않음 — 무시합니다.', validation.reason);
       return null;

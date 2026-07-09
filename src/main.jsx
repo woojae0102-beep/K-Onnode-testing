@@ -8,9 +8,14 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { SocialAuthProvider } from './contexts/SocialAuthContext';
 import { firebaseInitError } from './firebase';
 import { parseTVCodeFromUrl } from './utils/tvConnect';
+import { cleanupInvalidChoreoCache } from './services/groupChoreoCache';
 import './index.css';
 import './i18n.ts';
 import './store/languageStore.ts';
+
+cleanupInvalidChoreoCache().catch((err) => {
+  console.warn('[ChoreoCache] 앱 시작 캐시 정리 실패', err);
+});
 
 function FullScreenLoader({ message = '' }) {
   return (

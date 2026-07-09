@@ -436,6 +436,7 @@ export interface SkeletonValidationResult {
 
 export const SKELETON_MIN_VALID_FRAME_RATIO = 0.8;
 export const SKELETON_MAX_ALLOWED_INVALID_FRAMES = 10;
+export const SKELETON_MIN_TIMELINE_COVERAGE = 0.85;
 
 function countAiInPracticeFrame(frame: SkeletonFrameData, userMemberId: string): number {
   return frame.members.filter(
@@ -451,17 +452,43 @@ function isPracticeFrameValid(frame: SkeletonFrameData, userMemberId: string): b
   return countAiInPracticeFrame(frame, userMemberId) >= 1;
 }
 
-function buildTimelineCoverage(
-  frames: SkeletonFrameData[],
-  expectedDurationSec?: number,
-): number {
-  if (!frames.length) return 0;
-  const first = frames[0]?.timestamp ?? 0;
-  const last = frames[frames.length - 1]?.timestamp ?? 0;
-  const span = Math.max(0, last - first);
-  const expected = Number(expectedDurationSec);
-  const denom = Number.isFinite(expected) && expected > 0 ? expected : last || span || 1;
-  return Math.min(1, span / denom);
+export interface TimelineCoverageReport {
+  duration: number;
+  frameCount: number;
+  firstTimestamp: number;
+  lastTimestamp: number;
+  coverage: number;
+}
+
+function frameTimelineTimestamp(frame: SkeletonFrameData | null | undefined): number {
+  const sourceVideoTime = Number(frame?.sourceVideoTime);
+  if (Number.isFinite(sourceVideoTime) && sourceVideoTime >= 0) return sourceVideoTime;
+  const timestamp = Number(frame?.timestamp);
+  return Number.isFinite(timestamp) && timestamp >= 0 ? timestamp : 0;
+}
+
+export function calculateTimelineCoverage(
+  frames: SkeletonFrameData[] | null | undefined,
+  durationSec?: number | null,
+): TimelineCoverageReport {
+  const list = frames ?? [];
+  const firstTimestamp = list.length ? frameTimelineTimestamp(list[0]) : 0;
+  const lastTimestamp = list.length ? frameTimelineTimestamp(list[list.length - 1]) : 0;
+  const rawDuration = Number(durationSec);
+  const duration = Number.isFinite(rawDuration) && rawDuration > 0
+    ? rawDuration
+    : Math.max(lastTimestamp, 0);
+  const coverage = duration > 0
+    ? Math.min(1, Math.max(0, lastTimestamp) / duration)
+    : 0;
+
+  return {
+    duration,
+    frameCount: list.length,
+    firstTimestamp,
+    lastTimestamp,
+    coverage,
+  };
 }
 
 function failSkeletonValidation(
@@ -598,8 +625,9 @@ export function validateSkeletonForPractice(
   const totalFrames = normalized.length;
   const validFrameRatio = totalFrames > 0 ? validFrames / totalFrames : 0;
   const memberAverage = totalFrames > 0 ? aiMemberSum / totalFrames : 0;
-  const timelineCoverage = buildTimelineCoverage(normalized, options.expectedDurationSec);
-  const minTimelineCoverage = options.minTimelineCoverage ?? 0.85;
+  const timelineCoverageReport = calculateTimelineCoverage(normalized, options.expectedDurationSec);
+  const timelineCoverage = timelineCoverageReport.coverage;
+  const minTimelineCoverage = options.minTimelineCoverage ?? SKELETON_MIN_TIMELINE_COVERAGE;
 
   const report: SkeletonValidationDebugReport = {
     totalFrames,
@@ -661,7 +689,7 @@ export function validateSkeletonForPractice(
   if (timelineCoverage < minTimelineCoverage) {
     const pct = Math.round(timelineCoverage * 100);
     const needPct = Math.round(minTimelineCoverage * 100);
-    const lastTs = normalized[normalized.length - 1]?.timestamp ?? 0;
+    const lastTs = timelineCoverageReport.lastTimestamp;
     const errors = [
       buildFieldError(
         'skeleton.timelineCoverage',

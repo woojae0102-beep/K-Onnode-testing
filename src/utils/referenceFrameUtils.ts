@@ -1,5 +1,6 @@
 // @ts-nocheck
 import type { SkeletonFrameData } from '../types/groupPractice';
+import { calculateTimelineCoverage } from './skeletonDataUtils';
 
 /**
  * referenceFrames 그리드 FPS — (frameCount-1) / duration
@@ -27,13 +28,7 @@ export function resolveReferenceTimelineCoverage(
   referenceFrames: SkeletonFrameData[] | null | undefined,
   videoDurationSec?: number | null,
 ): number {
-  if (!referenceFrames?.length) return 0;
-  const first = referenceFrames[0]?.timestamp ?? 0;
-  const last = referenceFrames[referenceFrames.length - 1]?.timestamp ?? 0;
-  const span = Math.max(0, last - first);
-  const expected = Number(videoDurationSec);
-  const denom = Number.isFinite(expected) && expected > 0 ? expected : last || span || 1;
-  return Math.min(1, span / denom);
+  return calculateTimelineCoverage(referenceFrames, videoDurationSec).coverage;
 }
 
 /**

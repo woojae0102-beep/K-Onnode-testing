@@ -31,7 +31,9 @@ import {
 import { resolvePracticeDurationSec } from '../../utils/buildPracticeSessionData';
 import {
   attachSessionMetadataToFrames,
+  calculateTimelineCoverage,
   normalizeSkeletonFrames,
+  SKELETON_MIN_TIMELINE_COVERAGE,
   validateSkeletonForPractice,
   type SkeletonValidationResult,
 } from '../../utils/skeletonDataUtils';
@@ -202,8 +204,21 @@ export function runGroupMotionPipeline({
       skipNormalize: true,
       expectedDurationSec: duration,
     });
+    const coverageReport = calculateTimelineCoverage(frames, duration);
     audit.outputFrameCount = frames.length;
     audit.interpolatedMemberCount = countInterpolatedMembers(frames);
+    if (
+      !validation.valid
+      || coverageReport.coverage < SKELETON_MIN_TIMELINE_COVERAGE
+    ) {
+      throw new Error(
+        validation.reason
+        || `[GroupMotionPipeline] skipPostProcess coverage 부족 `
+          + `(duration=${duration.toFixed(2)}s, `
+          + `lastTimestamp=${coverageReport.lastTimestamp.toFixed(2)}s, `
+          + `coverage=${Math.round(coverageReport.coverage * 100)}%)`,
+      );
+    }
     return { frames, timeline, extractedFrameCount: frames.length, validation, audit };
   }
 

@@ -26,7 +26,10 @@ import { useTVRecorder } from '../../hooks/useTVRecorder';
 import { useGroupAvatarAssets } from '../../hooks/useGroupAvatarAssets';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import { isDevEnvironment } from '../../utils/isDevEnvironment';
-import { validateSkeletonForPractice } from '../../utils/skeletonDataUtils';
+import {
+  SKELETON_MIN_TIMELINE_COVERAGE,
+  validateSkeletonForPractice,
+} from '../../utils/skeletonDataUtils';
 import {
   formatReferenceVideoStatus,
   logPracticeValidationTable,
@@ -252,7 +255,7 @@ export function GroupStudioSession({
   }, [currentTime]);
 
   useEffect(() => {
-    if (referenceTimelineCoverage >= 0.85) return;
+    if (referenceTimelineCoverage >= SKELETON_MIN_TIMELINE_COVERAGE) return;
     console.warn('[GroupStudioSession] 스켈레톤 타임라인 커버리지 부족 — 안무 재추출 필요', {
       coverage: referenceTimelineCoverage,
       frameCount: referenceFrames?.length ?? 0,
@@ -264,7 +267,7 @@ export function GroupStudioSession({
 
   const hasSkeletonData = skeletonValidation.valid;
   const skeletonIssue = skeletonValidation.reason
-    || (referenceTimelineCoverage < 0.85
+    || (referenceTimelineCoverage < SKELETON_MIN_TIMELINE_COVERAGE
       ? `스켈레톤 타임라인 커버리지 ${Math.round(referenceTimelineCoverage * 100)}% — referenceFrames.length=${referenceFrames?.length ?? 0}`
       : '');
 

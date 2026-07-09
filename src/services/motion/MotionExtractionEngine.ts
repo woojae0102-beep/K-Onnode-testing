@@ -35,7 +35,11 @@ import { sampleVideoFramesPlayback } from '../../utils/videoFrameSampler';
 import { createMultiLandmarkerDetector } from './MultiLandmarkerDetector';
 import { associateHolisticLandmarksToPeople } from '../../utils/holisticLandmarkUtils';
 import { timeSecToBeat, timeSecToBeatIndex } from '../../utils/frameMetadataUtils';
-import { buildSkeletonData } from '../../utils/skeletonDataUtils';
+import {
+  buildSkeletonData,
+  calculateTimelineCoverage,
+  SKELETON_MIN_TIMELINE_COVERAGE,
+} from '../../utils/skeletonDataUtils';
 import type {
   MotionExtractionDebugState,
   MotionExtractionResult,
@@ -156,6 +160,21 @@ function logPerfStats(stats, label, extra = {}) {
       Frames: stats.sampledFrames,
       'Avg/Frame': `${(stats.totalMs / frames).toFixed(2)}ms`,
       ...extra,
+    },
+  });
+}
+
+function logCoverageTable(label, payload) {
+  console.table({
+    [label]: {
+      videoDuration: payload.videoDuration,
+      analysisDuration: payload.analysisDuration,
+      frameCount: payload.frameCount,
+      firstTimestamp: payload.firstTimestamp,
+      lastTimestamp: payload.lastTimestamp,
+      coverage: payload.coverage,
+      cacheUsed: payload.cacheUsed,
+      cacheValid: payload.cacheValid,
     },
   });
 }
@@ -441,6 +460,26 @@ export async function runHolisticVideoAnalysis({
 
   if (detectedMemberCount === 0 && !frames.length) return null;
 
+  const coverageReport = calculateTimelineCoverage(frames, analysisDuration);
+  logCoverageTable('Motion Extraction Coverage', {
+    videoDuration: sourceVideoDurationSec,
+    analysisDuration,
+    frameCount: coverageReport.frameCount,
+    firstTimestamp: coverageReport.firstTimestamp,
+    lastTimestamp: coverageReport.lastTimestamp,
+    coverage: coverageReport.coverage,
+    cacheUsed: false,
+    cacheValid: false,
+  });
+
+  if (coverageReport.coverage < SKELETON_MIN_TIMELINE_COVERAGE) {
+    throw new Error(
+      `Motion Extraction coverage 부족: analysisDuration=${analysisDuration.toFixed(2)}s, `
+      + `lastTimestamp=${coverageReport.lastTimestamp.toFixed(2)}s, `
+      + `coverage=${Math.round(coverageReport.coverage * 100)}%`,
+    );
+  }
+
   const trackIdToInitialPosition = tracker.buildInitialPositions(frames);
   const peakTrackCount = Math.max(tracker.getPeakTrackCount(), trackIdToInitialPosition.size);
 
@@ -719,6 +758,17 @@ export async function extractMotionDatabase({
   if (!skipCache) {
     const cached = await getCachedChoreo(fileCacheKey);
     if (cached?.frames?.length && isChoreoCacheValid(cached)) {
+      const coverageReport = calculateTimelineCoverage(cached.frames, cached.durationSec);
+      logCoverageTable('Motion Cache Coverage', {
+        videoDuration: cached.durationSec,
+        analysisDuration: cached.durationSec,
+        frameCount: coverageReport.frameCount,
+        firstTimestamp: coverageReport.firstTimestamp,
+        lastTimestamp: coverageReport.lastTimestamp,
+        coverage: coverageReport.coverage,
+        cacheUsed: true,
+        cacheValid: true,
+      });
       onStatus?.('캐시된 Motion Database 로드');
       onDebug?.({ pipelineStage: 'cache_hit', progress: 100 });
       const ref = await loadReferenceVideoMeta(songId, videoId);
