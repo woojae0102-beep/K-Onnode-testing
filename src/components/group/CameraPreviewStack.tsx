@@ -1,10 +1,11 @@
 // @ts-nocheck
-import React, { forwardRef } from 'react';
+import React, { forwardRef, useEffect } from 'react';
 import type { CameraFitMode } from '../../utils/cameraOverlayUtils';
 
 export interface CameraPreviewStackProps {
   /** getUserMedia 스트림이 연결되는 비디오 (항상 1번 레이어) */
   videoRef: React.RefObject<HTMLVideoElement | null>;
+  stream?: MediaStream | null;
   /** 스켈레톤 오버레이 전용 — 비디오 프레임을 그리지 않음 */
   skeletonCanvasRef: React.RefObject<HTMLCanvasElement | null>;
   isTracking?: boolean;
@@ -28,6 +29,7 @@ export interface CameraPreviewStackProps {
 const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
   function CameraPreviewStack({
     videoRef,
+    stream = null,
     skeletonCanvasRef,
     isTracking = false,
     cameraError = null,
@@ -40,6 +42,35 @@ const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
     const fitClass = fitMode === 'cover'
       ? 'group-studio-camera-stack--cover'
       : 'group-studio-camera-stack--contain';
+
+    useEffect(() => {
+      const video = videoRef.current;
+      if (!video) return undefined;
+
+      if (stream && video.srcObject !== stream) {
+        video.srcObject = stream;
+      } else if (!stream && video.srcObject) {
+        video.srcObject = null;
+      }
+
+      if (stream) {
+        const playPromise = video.play?.();
+        if (playPromise?.catch) playPromise.catch(() => {});
+      }
+
+      return () => {
+        if (video.srcObject === stream) {
+          video.srcObject = null;
+        }
+      };
+    }, [videoRef, stream]);
+
+    useEffect(() => {
+      const canvas = skeletonCanvasRef.current;
+      const ctx = canvas?.getContext('2d');
+      if (!canvas || !ctx) return;
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+    }, [skeletonCanvasRef, stream, isTracking]);
 
     return (
       <div

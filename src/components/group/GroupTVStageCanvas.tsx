@@ -6,6 +6,8 @@ export default function GroupTVStageCanvas({ groupStage, className = '' }) {
   const myMemberId = groupStage?.myMemberId;
   const groupId = groupStage?.groupId;
   const referenceFrame = groupStage?.currentFrame ?? null;
+  const formationTimeline = groupStage?.formationTimeline ?? null;
+  const formationHole = groupStage?.formationHole ?? null;
 
   return (
     <div
@@ -16,6 +18,8 @@ export default function GroupTVStageCanvas({ groupStage, className = '' }) {
         referenceFrame={referenceFrame}
         groupId={groupId}
         focusMemberId={myMemberId}
+        formationTimeline={formationTimeline}
+        formationHole={formationHole}
         canvasClassName="group-dance-stage-2d-canvas group-studio-skeleton-layer"
       />
     </div>

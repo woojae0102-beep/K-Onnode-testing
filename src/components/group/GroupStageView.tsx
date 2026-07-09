@@ -436,6 +436,7 @@ export function GroupStageView({
           <CameraPreviewStack
             videoRef={dance.videoRef}
             skeletonCanvasRef={dance.canvasRef}
+            stream={dance.getStream()}
             isTracking={dance.isTracking}
             cameraError={dance.cameraHealth?.error}
             fitMode={dance.fitMode}

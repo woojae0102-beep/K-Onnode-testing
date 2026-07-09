@@ -10,6 +10,7 @@ export default function StudioMobileController({
   agencyColor = '#FF1F8E',
   isConnected = false,
   videoRef = null,
+  stream = null,
   canvasRef = null,
   onStart,
   onStop,
@@ -27,6 +28,7 @@ export default function StudioMobileController({
         {isDance ? (
           <CameraPreviewStack
             videoRef={videoRef}
+            stream={stream}
             skeletonCanvasRef={canvasRef}
             isTracking={isTracking}
             fitMode="contain"

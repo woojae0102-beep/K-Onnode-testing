@@ -755,6 +755,8 @@ export function TVLayout({
 
           videoRef={isDance ? dance.videoRef : null}
 
+          stream={isDance ? dance.getStream() : null}
+
           canvasRef={isDance ? dance.canvasRef : null}
 
           onStart={handleStartTracking}

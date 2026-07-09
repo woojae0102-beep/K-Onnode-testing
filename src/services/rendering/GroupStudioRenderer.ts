@@ -1,9 +1,10 @@
 // @ts-nocheck
 /**
- * Group Studio Renderer — referenceFrames[currentFrame] 전용.
+ * Group Studio Renderer — referenceFrames[currentFrame] 전용 Stage Renderer.
  *
- * currentFrame = Math.floor(currentTime * fps)
- * elapsedTime / animationTime / demoAnimation / timestamp 보간 금지.
+ * - frame.members.forEach — member.joints 개별 사용 (members[0] 공유 금지)
+ * - focusMemberId(사용자) Stage 제외 — Webcam 전용
+ * - demo / idle / fallback pose 금지
  */
 import type { JointPoint, SkeletonFrameData, SkeletonMemberData } from '../../types/groupPractice';
 import { PRACTICE_RENDER_PADDING } from '../../config/practiceRenderConfig';
@@ -12,15 +13,17 @@ import {
   buildSkeletonRenderTransform,
   type SkeletonRenderTransform,
 } from '../../utils/SkeletonRenderTransform';
+import { logGroupStudioRenderFrame } from '../../utils/groupStudioRenderReport';
+import type { FormationHole, FormationTimeline } from '../../types/danceDatabase';
 
 export interface GroupStudioRendererOptions {
   memberColorMap?: Record<string, { color: string; name: string }>;
-  /** 연습자가 선택한 멤버 — Stage에서 제외 */
   focusMemberId?: string;
-  /** referenceFrames[frameIndex] — 디버그 로그용 */
   frameIndex?: number;
   currentTimeSec?: number;
   logicalSize?: { width: number; height: number } | null;
+  formationTimeline?: FormationTimeline | null;
+  formationHole?: FormationHole | null;
 }
 
 function drawStageBackground(ctx: CanvasRenderingContext2D, width: number, height: number) {
@@ -43,22 +46,30 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-/** Stage visible members — focusMemberId 제외, joints 있는 멤버만 */
+/** Stage AI members — focusMemberId(사용자) 제외 */
 export function filterVisibleStageMembers(
   members: SkeletonMemberData[] | null | undefined,
   focusMemberId?: string,
 ): SkeletonMemberData[] {
   if (!members?.length) return [];
+  const focusId = focusMemberId != null && focusMemberId !== ''
+    ? String(focusMemberId)
+    : '';
 
   return members.filter((member) => {
     if (!member.joints || !Object.keys(member.joints).length) return false;
-    const memberId = member.estimatedMemberId;
-    if (focusMemberId && memberId === focusMemberId) return false;
+    const memberId = member.estimatedMemberId != null ? String(member.estimatedMemberId) : '';
+    const label = member.label != null ? String(member.label).trim().toUpperCase() : '';
+    const name = member.name != null ? String(member.name).trim().toUpperCase() : '';
+
+    if (focusId && memberId && memberId === focusId) return false;
+    if (focusId && String(member.trackId ?? '') === focusId) return false;
+    if (member.isEstimated === false && focusId && !memberId) return false;
+    if (label === 'YOU' || name === 'YOU') return false;
     return true;
   });
 }
 
-/** 렌더용 joints 얕은 복사 — 공유 참조·변형 격리 */
 export function cloneMemberJointsForRender(
   joints: Record<string, JointPoint> | null | undefined,
 ): Record<string, JointPoint> {
@@ -71,9 +82,30 @@ export function cloneMemberJointsForRender(
   return out;
 }
 
-/** DEV — 멤버 간 joints 객체 공유 감지 */
+/** shared reference 격리 — member 단위 deep clone */
+export function cloneMemberForRender(member: SkeletonMemberData): SkeletonMemberData {
+  return {
+    ...member,
+    joints: cloneMemberJointsForRender(member.joints),
+  };
+}
+
+export function isolateMembersForRender(members: SkeletonMemberData[]): SkeletonMemberData[] {
+  const cloned = members.map(cloneMemberForRender);
+
+  for (let i = 0; i < cloned.length; i += 1) {
+    for (let j = i + 1; j < cloned.length; j += 1) {
+      if (cloned[i].joints === cloned[j].joints) {
+        cloned[j] = cloneMemberForRender(cloned[j]);
+      }
+    }
+  }
+
+  return cloned;
+}
+
 export function assertDistinctMemberJoints(members: SkeletonMemberData[]): void {
-  if (!import.meta.env?.DEV || members.length < 2) return;
+  if (members.length < 2) return;
 
   for (let i = 0; i < members.length; i += 1) {
     for (let j = i + 1; j < members.length; j += 1) {
@@ -81,7 +113,7 @@ export function assertDistinctMemberJoints(members: SkeletonMemberData[]): void 
       const b = members[j];
       if (a.joints && b.joints && a.joints === b.joints) {
         console.error(
-          '[GroupStudioRenderer] members share the same joints object — render bug',
+          '[GroupStudioRenderer] members share joints object — deep clone applied',
           {
             memberA: a.estimatedMemberId ?? a.trackId,
             memberB: b.estimatedMemberId ?? b.trackId,
@@ -148,8 +180,7 @@ function drawMemberSkeleton(
 }
 
 /**
- * referenceFrames[currentFrame] — visibleMembers만 렌더.
- * User Skeleton / YOU / live pose 금지.
+ * referenceFrames[currentFrame] — AI members only.
  */
 export function renderGroupStudioFrame(
   ctx: CanvasRenderingContext2D,
@@ -165,12 +196,14 @@ export function renderGroupStudioFrame(
   const { width: logicalW, height: logicalH } = size;
   drawStageBackground(ctx, logicalW, logicalH);
 
-  const visibleMembers = filterVisibleStageMembers(frame.members, options.focusMemberId);
+  const visibleMembers = isolateMembersForRender(
+    filterVisibleStageMembers(frame.members, options.focusMemberId),
+  );
   if (!visibleMembers.length) return null;
 
   assertDistinctMemberJoints(visibleMembers);
 
-  const isolatedJoints = visibleMembers.map((member) => cloneMemberJointsForRender(member.joints));
+  const isolatedJoints = visibleMembers.map((member) => member.joints);
 
   const transform = buildSkeletonRenderTransform(isolatedJoints, logicalW, logicalH, {
     paddingRatio: PRACTICE_RENDER_PADDING,
@@ -180,6 +213,12 @@ export function renderGroupStudioFrame(
     const memberId = member.estimatedMemberId || String(member.trackId ?? '');
     const meta = options.memberColorMap?.[memberId];
     const joints = isolatedJoints[index];
+    const label = meta?.name || memberId || 'AI';
+
+    if (
+      String(label).toUpperCase() === 'YOU'
+      || (options.focusMemberId && String(memberId) === String(options.focusMemberId))
+    ) return;
 
     drawMemberSkeleton(
       ctx,
@@ -187,8 +226,17 @@ export function renderGroupStudioFrame(
       joints,
       transform,
       meta?.color || '#FF1F8E',
-      meta?.name || memberId || 'AI',
+      label,
     );
+  });
+
+  logGroupStudioRenderFrame({
+    frame,
+    frameIndex: options.frameIndex ?? -1,
+    currentTimeSec: options.currentTimeSec ?? frame.timestamp ?? 0,
+    focusMemberId: options.focusMemberId,
+    transform,
+    visibleMemberCount: visibleMembers.length,
   });
 
   return transform;
