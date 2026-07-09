@@ -29,7 +29,7 @@ export interface CameraPreviewStackProps {
 const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
   function CameraPreviewStack({
     videoRef,
-    stream = null,
+    stream,
     skeletonCanvasRef,
     isTracking = false,
     cameraError = null,
@@ -49,7 +49,7 @@ const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
 
       if (stream && video.srcObject !== stream) {
         video.srcObject = stream;
-      } else if (!stream && video.srcObject) {
+      } else if (stream === null && video.srcObject) {
         video.srcObject = null;
       }
 

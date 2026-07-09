@@ -7,18 +7,26 @@
  * - demo / idle / fallback pose 금지
  */
 import type { JointPoint, SkeletonFrameData, SkeletonMemberData } from '../../types/groupPractice';
-import { PRACTICE_RENDER_PADDING } from '../../config/practiceRenderConfig';
+import { GROUP_DATA } from '../../data/groupPracticeData';
 import { drawAccurateSkeleton } from '../../utils/canvasSkeletonUtils';
 import {
-  buildSkeletonRenderTransform,
   type SkeletonRenderTransform,
 } from '../../utils/SkeletonRenderTransform';
 import { logGroupStudioRenderFrame } from '../../utils/groupStudioRenderReport';
 import type { FormationHole, FormationTimeline } from '../../types/danceDatabase';
+import {
+  applyJointOffset,
+  computeMemberHipCenter,
+  resolveMemberDefaultFormation,
+  resolveTimelinePosition,
+  type StageAnchor,
+} from './SkeletonFormationRender';
 
 export interface GroupStudioRendererOptions {
+  groupId?: string;
   memberColorMap?: Record<string, { color: string; name: string }>;
   focusMemberId?: string;
+  userMemberId?: string;
   frameIndex?: number;
   currentTimeSec?: number;
   logicalSize?: { width: number; height: number } | null;
@@ -50,21 +58,34 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, width: number, heigh
 export function filterVisibleStageMembers(
   members: SkeletonMemberData[] | null | undefined,
   focusMemberId?: string,
+  userMemberId?: string,
 ): SkeletonMemberData[] {
   if (!members?.length) return [];
   const focusId = focusMemberId != null && focusMemberId !== ''
     ? String(focusMemberId)
     : '';
+  const userId = userMemberId != null && userMemberId !== ''
+    ? String(userMemberId)
+    : focusId;
 
   return members.filter((member) => {
     if (!member.joints || !Object.keys(member.joints).length) return false;
-    const memberId = member.estimatedMemberId != null ? String(member.estimatedMemberId) : '';
+    const memberIds = [
+      member.id,
+      member.memberId,
+      member.estimatedMemberId,
+      member.trackId,
+      member.personIndex,
+    ]
+      .filter((id) => id != null && id !== '')
+      .map((id) => String(id));
     const label = member.label != null ? String(member.label).trim().toUpperCase() : '';
     const name = member.name != null ? String(member.name).trim().toUpperCase() : '';
 
-    if (focusId && memberId && memberId === focusId) return false;
-    if (focusId && String(member.trackId ?? '') === focusId) return false;
-    if (member.isEstimated === false && focusId && !memberId) return false;
+    if (focusId && memberIds.includes(focusId)) return false;
+    if (userId && memberIds.includes(userId)) return false;
+    if (member.isUser || member.isSelf || member.isYou) return false;
+    if (member.isEstimated === false && (focusId || userId) && !memberIds.length) return false;
     if (label === 'YOU' || name === 'YOU') return false;
     return true;
   });
@@ -122,6 +143,111 @@ export function assertDistinctMemberJoints(members: SkeletonMemberData[]): void 
       }
     }
   }
+}
+
+function resolveMemberId(member: SkeletonMemberData): string {
+  return String(member.memberId ?? member.id ?? member.estimatedMemberId ?? member.trackId ?? '');
+}
+
+function isUserStageMember(member: SkeletonMemberData, options: GroupStudioRendererOptions): boolean {
+  const memberId = resolveMemberId(member);
+  const focusId = options.focusMemberId != null ? String(options.focusMemberId) : '';
+  const userId = options.userMemberId != null ? String(options.userMemberId) : focusId;
+  const label = String(member.label ?? '').trim().toUpperCase();
+  const name = String(member.name ?? '').trim().toUpperCase();
+  return Boolean(
+    (focusId && memberId === focusId)
+      || (userId && memberId === userId)
+      || member.isUser
+      || member.isSelf
+      || member.isYou
+      || label === 'YOU'
+      || name === 'YOU',
+  );
+}
+
+function resolveFrameFormationSlot(
+  frame: SkeletonFrameData,
+  memberId: string,
+): StageAnchor | null {
+  const slot = frame.formation?.slots?.find((s) => String(s.memberId) === String(memberId));
+  if (!slot) return null;
+  return { x: slot.x, y: slot.y, z: slot.z ?? 0 };
+}
+
+function resolveRenderAnchor(
+  member: SkeletonMemberData,
+  frame: SkeletonFrameData,
+  options: GroupStudioRendererOptions,
+): StageAnchor | null {
+  if (member.stageAnchor) {
+    return {
+      x: member.stageAnchor.x,
+      y: member.stageAnchor.y,
+      z: member.stageAnchor.z ?? 0,
+    };
+  }
+
+  const memberId = resolveMemberId(member);
+  if (!memberId) return null;
+
+  const groupId = options.groupId;
+  if (groupId && GROUP_DATA[groupId]) {
+    const fallback = resolveMemberDefaultFormation(groupId, memberId);
+    return resolveTimelinePosition(
+      options.formationTimeline,
+      frame.formation ?? null,
+      options.currentTimeSec ?? frame.timestamp ?? 0,
+      memberId,
+      fallback,
+    );
+  }
+
+  return resolveFrameFormationSlot(frame, memberId);
+}
+
+function offsetMemberJointsToFormation(
+  member: SkeletonMemberData,
+  joints: Record<string, JointPoint>,
+  frame: SkeletonFrameData,
+  options: GroupStudioRendererOptions,
+): Record<string, JointPoint> {
+  const targetAnchor = resolveRenderAnchor(member, frame, options);
+  const hipCenter = computeMemberHipCenter(joints);
+  if (!targetAnchor || !hipCenter) return joints;
+  return applyJointOffset(joints, hipCenter, targetAnchor);
+}
+
+function buildVideoFitRenderTransform(
+  frame: SkeletonFrameData,
+  canvasWidth: number,
+  canvasHeight: number,
+): SkeletonRenderTransform {
+  const videoWidth = Number(frame.videoWidth) > 0 ? Number(frame.videoWidth) : canvasWidth;
+  const videoHeight = Number(frame.videoHeight) > 0 ? Number(frame.videoHeight) : canvasHeight;
+  const scale = Math.min(canvasWidth / videoWidth, canvasHeight / videoHeight);
+  const offsetX = (canvasWidth - videoWidth * scale) / 2;
+  const offsetY = (canvasHeight - videoHeight * scale) / 2;
+
+  return {
+    canvasWidth,
+    canvasHeight,
+    viewport: { x: offsetX, y: offsetY, width: videoWidth * scale, height: videoHeight * scale },
+    rawBBox: { minX: 0, maxX: 1, minY: 0, maxY: 1 },
+    bbox: { minX: 0, maxX: 1, minY: 0, maxY: 1 },
+    padding: 0,
+    scale,
+    centerX: 0.5,
+    centerY: 0.5,
+    offsetX,
+    offsetY,
+    drawWidth: videoWidth * scale,
+    drawHeight: videoHeight * scale,
+    mapPoint: (nx: number, ny: number) => ({
+      x: nx * videoWidth * scale + offsetX,
+      y: ny * videoHeight * scale + offsetY,
+    }),
+  };
 }
 
 function syncCanvasLogicalSize(
@@ -197,20 +323,25 @@ export function renderGroupStudioFrame(
   drawStageBackground(ctx, logicalW, logicalH);
 
   const visibleMembers = isolateMembersForRender(
-    filterVisibleStageMembers(frame.members, options.focusMemberId),
+    filterVisibleStageMembers(frame.members, options.focusMemberId, options.userMemberId),
   );
   if (!visibleMembers.length) return null;
 
   assertDistinctMemberJoints(visibleMembers);
 
-  const isolatedJoints = visibleMembers.map((member) => member.joints);
+  const renderMembers = visibleMembers.map((member) => ({
+    ...member,
+    joints: offsetMemberJointsToFormation(member, member.joints, frame, options),
+  }));
 
-  const transform = buildSkeletonRenderTransform(isolatedJoints, logicalW, logicalH, {
-    paddingRatio: PRACTICE_RENDER_PADDING,
-  });
+  const isolatedJoints = renderMembers.map((member) => member.joints);
 
-  visibleMembers.forEach((member, index) => {
-    const memberId = member.estimatedMemberId || String(member.trackId ?? '');
+  const transform = buildVideoFitRenderTransform(frame, logicalW, logicalH);
+
+  renderMembers.forEach((member, index) => {
+    if (isUserStageMember(member, options)) return;
+
+    const memberId = resolveMemberId(member);
     const meta = options.memberColorMap?.[memberId];
     const joints = isolatedJoints[index];
     const label = meta?.name || memberId || 'AI';
@@ -218,6 +349,7 @@ export function renderGroupStudioFrame(
     if (
       String(label).toUpperCase() === 'YOU'
       || (options.focusMemberId && String(memberId) === String(options.focusMemberId))
+      || (options.userMemberId && String(memberId) === String(options.userMemberId))
     ) return;
 
     drawMemberSkeleton(

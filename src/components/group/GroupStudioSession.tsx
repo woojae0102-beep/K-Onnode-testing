@@ -171,7 +171,7 @@ export function GroupStudioSession({
   const getReferenceFrame = useCallback(
     (currentTimeSec = practiceClock.currentTime) =>
       resolveReferenceFrameAtTime(referenceFrames, currentTimeSec, referenceFps),
-    [referenceFrames, referenceFps, practiceClock.currentTime],
+    [referenceFrames, referenceFps],
   );
   const { syncScore, missedBeats, updateSyncScore, getFinalStats } = useGroupSync(
     myMemberId,
@@ -505,15 +505,17 @@ export function GroupStudioSession({
     let last3dAt = 0;
 
     const loop = () => {
+      let playbackTime = practiceClockRef.current.currentTime;
       if (referenceYoutubeUrl && isRunning) {
         const vt = ytPlayerRef.current?.getCurrentTime?.();
         const dur = ytPlayerRef.current?.getDuration?.();
         if (typeof vt === 'number' && Number.isFinite(vt)) {
-          practiceTimeRef.current = Math.max(0, vt);
+          playbackTime = Math.max(0, vt);
+          practiceTimeRef.current = playbackTime;
           const now = performance.now();
           if (now - lastUiAt > 200) {
             lastUiAt = now;
-            setVideoPlaybackTime(practiceTimeRef.current);
+            setVideoPlaybackTime(playbackTime);
           }
         }
         if (typeof dur === 'number' && Number.isFinite(dur) && dur > 0) {
@@ -522,7 +524,7 @@ export function GroupStudioSession({
       }
 
       const clock = practiceClockRef.current;
-      const t = clock.currentTime;
+      const t = referenceYoutubeUrl && isRunning ? playbackTime : clock.currentTime;
       practiceTimeRef.current = t;
 
       const now = performance.now();

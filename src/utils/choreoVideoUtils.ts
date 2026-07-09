@@ -6,6 +6,7 @@ import { resolveVideoSampleFps } from '../config/choreoExtractConfig';
 
 export const VIDEO_LOAD_TIMEOUT_MS = 90000;
 export const VIDEO_SEEK_TIMEOUT_MS = 8000;
+export const ANALYSIS_VIDEO_READY_TIMEOUT_MS = 15000;
 
 function readyForEvent(video, event) {
   if (!video) return false;
@@ -67,10 +68,19 @@ export function waitForVideoEvent(video, event, timeoutMs = VIDEO_LOAD_TIMEOUT_M
   });
 }
 
-/** seekable 범위 안에서만 분석 길이 확정 (과대 duration으로 seek 연쇄 실패 방지) */
+/** seekable은 "현재 브라우저가 seek 가능한 구간"일 뿐 전체 영상 길이가 아니다. */
 export function getSeekableEnd(video) {
-  if (!video?.seekable?.length) return null;
-  const end = video.seekable.end(video.seekable.length - 1);
+  const seekableLength = video?.seekable?.length ?? 0;
+  const bufferedLength = video?.buffered?.length ?? 0;
+  const end = seekableLength ? video.seekable.end(seekableLength - 1) : null;
+  const bufferedEnd = bufferedLength ? video.buffered.end(bufferedLength - 1) : null;
+  console.log('[choreoVideo] media ranges', {
+    duration: video?.duration,
+    seekableLength,
+    seekEnd: end,
+    bufferedLength,
+    bufferedEnd,
+  });
   return Number.isFinite(end) && end > 0 ? end : null;
 }
 
@@ -86,19 +96,16 @@ export async function resolveVideoDuration(video) {
     await waitForVideoEvent(video, 'loadeddata', 30000);
   }
 
-  let duration = Number(video.duration) || 0;
+  await waitForVideoEvent(video, 'canplay', 30000);
+
+  const duration = Number(video.duration) || 0;
   const seekEnd = getSeekableEnd(video);
 
-  if (seekEnd != null) {
-    if (seekEnd > duration && seekEnd < duration * 1.15 + 5) {
-      duration = seekEnd;
-    }
-    if (duration <= 0 && seekEnd > 0) {
-      duration = seekEnd;
-    }
-  }
+  const resolvedDuration = Number.isFinite(duration) && duration > 0
+    ? duration
+    : seekEnd;
 
-  if (!Number.isFinite(duration) || duration <= 0) {
+  if (!Number.isFinite(resolvedDuration) || resolvedDuration <= 0) {
     throw new Error('영상 길이(video.duration)를 확인할 수 없습니다.');
   }
 
@@ -109,7 +116,77 @@ export async function resolveVideoDuration(video) {
     /* ignore */
   }
 
-  return duration;
+  return resolvedDuration;
+}
+
+function isAnalysisVideoReady(video) {
+  return Boolean(
+    video
+      && video.readyState >= 3
+      && Number.isFinite(video.duration)
+      && video.duration > 0
+      && video.seekable?.length > 0,
+  );
+}
+
+export async function waitForAnalysisVideoReady(
+  video,
+  timeoutMs = ANALYSIS_VIDEO_READY_TIMEOUT_MS,
+) {
+  if (!video) throw new Error('비디오 요소가 없습니다.');
+  await waitForVideoEvent(video, 'loadedmetadata', timeoutMs);
+
+  if (isAnalysisVideoReady(video)) {
+    getSeekableEnd(video);
+    return;
+  }
+
+  await new Promise((resolve, reject) => {
+    const startedAt = performance.now();
+    let timer = 0;
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      video.removeEventListener('loadeddata', check);
+      video.removeEventListener('canplay', check);
+      video.removeEventListener('progress', check);
+      video.removeEventListener('durationchange', check);
+      video.removeEventListener('error', onError);
+    };
+
+    const finish = (fn, value) => {
+      cleanup();
+      fn(value);
+    };
+
+    const onError = () => finish(reject, new Error('영상 로드 실패'));
+
+    function check() {
+      if (isAnalysisVideoReady(video)) {
+        getSeekableEnd(video);
+        finish(resolve);
+        return;
+      }
+
+      if (performance.now() - startedAt >= timeoutMs) {
+        getSeekableEnd(video);
+        finish(
+          reject,
+          new Error('분석용 영상 준비 시간이 초과되었습니다. duration/seekable 상태를 확인해 주세요.'),
+        );
+        return;
+      }
+
+      timer = window.setTimeout(check, 100);
+    }
+
+    video.addEventListener('loadeddata', check);
+    video.addEventListener('canplay', check);
+    video.addEventListener('progress', check);
+    video.addEventListener('durationchange', check);
+    video.addEventListener('error', onError, { once: true });
+    check();
+  });
 }
 
 const RVFC_SAMPLE_MS = 600;
@@ -190,10 +267,7 @@ async function loadBlobIntoVideo(video, blob, onStatus) {
   const objectUrl = URL.createObjectURL(blob);
   onStatus?.('분석용 영상 준비 중...');
   video.src = objectUrl;
-  await waitForVideoEvent(video, 'loadedmetadata');
-  if (!Number.isFinite(video.duration) || video.duration <= 0) {
-    await waitForVideoEvent(video, 'loadeddata', 30000);
-  }
+  await waitForAnalysisVideoReady(video);
   return {
     objectUrl,
     blob,
@@ -236,10 +310,7 @@ async function fetchProxyVideoBlob(videoId, onStatus) {
 async function loadProxyStreamIntoVideo(video, videoId, onStatus) {
   onStatus?.('서버에서 YouTube 영상 스트리밍 중...');
   video.src = buildProxyVideoUrl(videoId);
-  await waitForVideoEvent(video, 'loadedmetadata', 60000);
-  if (!Number.isFinite(video.duration) || video.duration <= 0) {
-    await waitForVideoEvent(video, 'canplay', 60000);
-  }
+  await waitForAnalysisVideoReady(video);
   return {
     objectUrl: null,
     blob: null,
@@ -304,7 +375,7 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus, you
     onStatus?.('업로드 영상 준비 중...');
     const objectUrl = URL.createObjectURL(file);
     video.src = objectUrl;
-    await waitForVideoEvent(video, 'loadeddata');
+    await waitForAnalysisVideoReady(video);
     return {
       objectUrl,
       blob: file,
@@ -324,8 +395,14 @@ export async function prepareAnalysisVideo(video, { file, videoId, onStatus, you
 
 export async function seekVideoTo(video, timeSec) {
   if (!video) return;
+  const duration = Number(video.duration);
   const seekEnd = getSeekableEnd(video);
-  const clamped = seekEnd != null ? Math.min(timeSec, Math.max(0, seekEnd - 0.04)) : timeSec;
+  const upperBound = Number.isFinite(duration) && duration > 0
+    ? Math.max(0, duration - 0.04)
+    : seekEnd != null
+      ? Math.max(0, seekEnd - 0.04)
+      : Number.POSITIVE_INFINITY;
+  const clamped = Math.max(0, Math.min(timeSec, upperBound));
   if (Math.abs(video.currentTime - clamped) < 0.05 && readyForEvent(video, 'seeked')) return;
   video.currentTime = clamped;
   await waitForVideoEvent(video, 'seeked', VIDEO_SEEK_TIMEOUT_MS);

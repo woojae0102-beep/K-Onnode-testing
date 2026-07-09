@@ -29,7 +29,7 @@ import {
 import {
   resolveAnalysisSampleFps,
   resolveVideoDuration,
-  getSeekableEnd,
+  waitForAnalysisVideoReady,
 } from '../../utils/choreoVideoUtils';
 import { sampleVideoFramesPlayback } from '../../utils/videoFrameSampler';
 import { createMultiLandmarkerDetector } from './MultiLandmarkerDetector';
@@ -243,8 +243,7 @@ export async function runHolisticVideoAnalysis({
   const duration = sourceVideoDurationSec;
   if (!duration || duration <= 0) return null;
 
-  const seekEnd = getSeekableEnd(video);
-  const analysisDuration = seekEnd != null ? Math.min(duration, seekEnd + 0.02) : duration;
+  const analysisDuration = duration;
   const timelineTotalFrames = Math.max(1, Math.round(analysisDuration * sampleFps));
 
   const frames = [];
@@ -547,10 +546,7 @@ export async function analyzeFileHolistic({
   video.src = objectUrl;
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      video.addEventListener('loadeddata', () => resolve(), { once: true });
-      video.addEventListener('error', () => reject(new Error('영상 로드 실패')), { once: true });
-    });
+    await waitForAnalysisVideoReady(video);
 
     onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
     onDebug?.({ pipelineStage: 'init_models', progress: 5, expectedMemberCount: group.memberCount });
@@ -793,10 +789,7 @@ export async function extractMotionDatabase({
   video.src = objectUrl;
 
   try {
-    await new Promise<void>((resolve, reject) => {
-      video.addEventListener('loadeddata', () => resolve(), { once: true });
-      video.addEventListener('error', () => reject(new Error('영상 로드 실패')), { once: true });
-    });
+    await waitForAnalysisVideoReady(video);
 
     onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
     onDebug?.({ pipelineStage: 'init_models', progress: 5 });

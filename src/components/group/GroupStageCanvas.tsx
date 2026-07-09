@@ -54,7 +54,6 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
   }, ref) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const { resizeCanvas } = useStageCanvasResize(canvasRef);
-    const lastFrameRef = useRef<SkeletonFrameData | null>(null);
 
     const memberColorMap = useMemo(() => {
       const group = GROUP_DATA[groupId];
@@ -69,8 +68,12 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
       frame: SkeletonFrameData,
       options: GroupStudioRendererOptions = {},
     ): SkeletonFrameData => {
-      const effectiveGroupId = groupId;
-      const effectiveFocusId = options.focusMemberId ?? focusMemberId;
+      const effectiveGroupId = options.groupId ?? groupId;
+      const effectiveFocusId = options.focusMemberId
+        ?? focusMemberId
+        ?? formationTimeline?.userMemberId
+        ?? formationHole?.memberId
+        ?? '';
       if (!effectiveGroupId || !effectiveFocusId) return frame;
 
       const visibleMembers = filterVisibleStageMembers(frame.members, effectiveFocusId);
@@ -139,11 +142,12 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
 
       const size = resizeCanvas();
       const renderFrame = buildFormationFrame(frame, options);
-      lastFrameRef.current = frame;
 
       return renderGroupStudioFrame(ctx, canvas, renderFrame, {
+        groupId: options.groupId ?? groupId,
         memberColorMap: options.memberColorMap ?? memberColorMap,
         focusMemberId: options.focusMemberId ?? focusMemberId,
+        userMemberId: options.userMemberId ?? options.focusMemberId ?? focusMemberId,
         frameIndex: options.frameIndex,
         currentTimeSec: options.currentTimeSec,
         logicalSize: size,
@@ -158,7 +162,6 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      lastFrameRef.current = null;
     }, []);
 
     useImperativeHandle(ref, () => ({
@@ -169,8 +172,7 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
 
     useEffect(() => {
       resizeCanvas();
-      const frame = referenceFrame || lastFrameRef.current;
-      if (frame) drawReferenceFrame(frame);
+      if (referenceFrame) drawReferenceFrame(referenceFrame);
     }, [resizeCanvas, drawReferenceFrame, referenceFrame]);
 
     return (

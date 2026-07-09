@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { scheduleVideoFrame, cancelVideoFrame } from './cameraFrameLoop';
-import { waitForVideoEvent, getSeekableEnd } from './choreoVideoUtils';
+import { waitForVideoEvent } from './choreoVideoUtils';
 
 export type VideoFrameSample = {
   time: number;
@@ -38,12 +38,8 @@ export async function sampleVideoFramesPlayback({
   if (!video) throw new Error('비디오 요소가 없습니다.');
 
   const sampleInterval = 1 / Math.max(1, sampleFps);
-  const seekEnd = getSeekableEnd(video);
   const rawDuration = Number(video.duration) || 0;
-  const endTime = Math.min(
-    maxDuration ?? rawDuration,
-    seekEnd != null ? seekEnd + 0.02 : rawDuration,
-  );
+  const endTime = maxDuration ?? rawDuration;
 
   if (!Number.isFinite(endTime) || endTime <= 0) {
     throw new Error('영상 길이를 확인할 수 없습니다.');
@@ -62,7 +58,7 @@ export async function sampleVideoFramesPlayback({
     video.currentTime = 0;
   }
 
-  let lastSampleTime = -sampleInterval;
+  let nextSampleTime = 0;
   let handle = null;
   let settled = false;
   let lastRvfcAt = performance.now();
@@ -86,21 +82,45 @@ export async function sampleVideoFramesPlayback({
         return;
       }
 
-      const t = metadata?.mediaTime ?? video.currentTime;
+      const currentTime = Number(video.currentTime) || 0;
+      const metadataTime = metadata?.mediaTime;
+      const mediaTime = Number.isFinite(metadataTime)
+        ? Math.min(metadataTime, currentTime || metadataTime)
+        : currentTime;
+      const reachedDuration = currentTime >= endTime - 0.05;
 
-      if (t - lastSampleTime >= sampleInterval * 0.9) {
-        lastSampleTime = t;
+      while (nextSampleTime <= endTime && mediaTime + 1e-3 >= nextSampleTime) {
+        const sampleTime = nextSampleTime;
+        nextSampleTime += sampleInterval;
         try {
-          await onSample({ time: t, video, mediaTime: t });
+          await onSample({ time: sampleTime, video, mediaTime });
         } catch (err) {
           cleanup();
           reject(err);
           return;
         }
-        onProgress?.(Math.min(99, Math.round((t / endTime) * 100)));
+        onProgress?.(Math.min(99, Math.round((sampleTime / endTime) * 100)));
+
+        if (abortRef?.current) {
+          cleanup();
+          resolve();
+          return;
+        }
       }
 
-      if (t >= endTime - 0.02 || video.ended) {
+      if (video.ended || reachedDuration) {
+        while (!abortRef?.current && nextSampleTime <= endTime + 1e-3) {
+          const sampleTime = Math.min(nextSampleTime, endTime);
+          nextSampleTime += sampleInterval;
+          try {
+            await onSample({ time: sampleTime, video, mediaTime });
+          } catch (err) {
+            cleanup();
+            reject(err);
+            return;
+          }
+          onProgress?.(Math.min(99, Math.round((sampleTime / endTime) * 100)));
+        }
         cleanup();
         resolve();
         return;

@@ -133,6 +133,7 @@
   transform: scaleX(-1);
   z-index: 1;
   background: #0a0a14;
+  pointer-events: none;
 }
 
 /* 연습 모드 — contain: 비율 유지, letterbox, 몸 잘림 방지 */
@@ -153,7 +154,8 @@
   transform: scaleX(-1);
   z-index: 2;
   pointer-events: none;
-  background: transparent;
+  background: transparent !important;
+  opacity: 1;
 }
 
 .group-studio-camera-placeholder,

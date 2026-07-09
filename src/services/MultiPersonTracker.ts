@@ -204,8 +204,7 @@ export class MultiPersonTracker {
     ) => { landmarks?: unknown[] } = (d, v) => d.detect(v),
     expectedMemberCount = 5,
   ): Promise<number> {
-    const seekEnd = getSeekableEnd(video);
-    const rawDuration = seekEnd ?? video.duration ?? 0;
+    const rawDuration = video.duration ?? getSeekableEnd(video) ?? 0;
     const duration = Number(rawDuration);
     if (!Number.isFinite(duration) || duration <= 0) return 0;
 
