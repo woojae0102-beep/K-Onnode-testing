@@ -23,6 +23,8 @@ import {
 import {
   CHOREO_DEFAULT_SAMPLE_FPS,
   CHOREO_MEMBER_PROBE_SAMPLES,
+  normalizeChoreoPoseModel,
+  normalizeChoreoSampleFps,
 } from '../../config/choreoExtractConfig';
 import {
   resolveAnalysisSampleFps,
@@ -42,6 +44,7 @@ import type {
 import type { DanceDatabase } from '../../types/danceDatabase';
 
 const AI_INIT_TIMEOUT_MS = 60000;
+const DEFAULT_FRAME_BUFFER_READY_FRAMES = 30;
 
 function withTimeout(promise, ms, message) {
   return Promise.race([
@@ -52,7 +55,10 @@ function withTimeout(promise, ms, message) {
   ]);
 }
 
-function detectHolistic(detector, source) {
+function detectHolistic(detector, source, timestampMs = 0) {
+  if (typeof detector.detectForVideo === 'function') {
+    return detector.detectForVideo(source, timestampMs);
+  }
   return detector.detect(source);
 }
 
@@ -62,16 +68,16 @@ export function createOffscreenDetectPipeline(videoWidth, videoHeight) {
   offscreenCanvas.height = videoHeight;
   const offscreenCtx = offscreenCanvas.getContext('2d');
 
-  const detectFrame = (detector, video) => {
+  const detectFrame = (detector, video, timestampMs = 0) => {
     const vw = video.videoWidth || videoWidth;
     const vh = video.videoHeight || videoHeight;
     if (offscreenCtx && vw && vh) {
       if (offscreenCanvas.width !== vw) offscreenCanvas.width = vw;
       if (offscreenCanvas.height !== vh) offscreenCanvas.height = vh;
       offscreenCtx.drawImage(video, 0, 0, vw, vh);
-      return detectHolistic(detector, offscreenCanvas);
+      return detectHolistic(detector, offscreenCanvas, timestampMs);
     }
-    return detectHolistic(detector, video);
+    return detectHolistic(detector, video, timestampMs);
   };
 
   return { offscreenCanvas, detectFrame };
@@ -92,12 +98,66 @@ export async function ensureVideoDimensions(video) {
   };
 }
 
-export async function createHolisticMotionDetector(groupMemberCount, onStatus, { lenient = false } = {}) {
+export async function createHolisticMotionDetector(groupMemberCount, onStatus, {
+  lenient = false,
+  modelVariant = 'lite',
+  runningMode = 'VIDEO',
+} = {}) {
   return withTimeout(
-    createMultiLandmarkerDetector(groupMemberCount, onStatus, { lenient }),
+    createMultiLandmarkerDetector(groupMemberCount, onStatus, {
+      lenient,
+      modelVariant: normalizeChoreoPoseModel(modelVariant),
+      runningMode,
+    }),
     AI_INIT_TIMEOUT_MS,
     'Holistic AI 모델 로드 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
   );
+}
+
+function createMotionPostProcessWorker() {
+  if (typeof Worker === 'undefined') return null;
+  try {
+    return new Worker(new URL('../../workers/motionPostProcessWorker.ts', import.meta.url), {
+      type: 'module',
+      name: 'motion-post-process',
+    });
+  } catch (err) {
+    console.warn('[MotionExtract] Worker 초기화 실패 — 메인 스레드 분석만 진행', err);
+    return null;
+  }
+}
+
+function createPerfStats() {
+  return {
+    videoDecodeMs: 0,
+    poseDetectionMs: 0,
+    postProcessMs: 0,
+    jsonSerializeMs: 0,
+    totalMs: 0,
+    sampledFrames: 0,
+    workerFrames: 0,
+  };
+}
+
+function addMs(stats, key, ms) {
+  const n = Number(ms);
+  if (Number.isFinite(n) && n >= 0) stats[key] += n;
+}
+
+function logPerfStats(stats, label, extra = {}) {
+  const frames = Math.max(1, stats.sampledFrames || stats.workerFrames || 1);
+  console.table({
+    [label]: {
+      'Video Decode': `${stats.videoDecodeMs.toFixed(1)}ms`,
+      'Pose Detection': `${stats.poseDetectionMs.toFixed(1)}ms`,
+      PostProcess: `${stats.postProcessMs.toFixed(1)}ms`,
+      'JSON Serialize': `${stats.jsonSerializeMs.toFixed(1)}ms`,
+      'Total Time': `${stats.totalMs.toFixed(1)}ms`,
+      Frames: stats.sampledFrames,
+      'Avg/Frame': `${(stats.totalMs / frames).toFixed(2)}ms`,
+      ...extra,
+    },
+  });
 }
 
 export interface RunHolisticAnalysisOptions {
@@ -106,6 +166,9 @@ export interface RunHolisticAnalysisOptions {
   detector: { detect: (src: unknown) => unknown; close?: () => void };
   expectedMemberCount: number;
   sampleFps?: number;
+  modelVariant?: 'lite' | 'full' | 'heavy';
+  minBufferedFrames?: number;
+  onFrameBufferReady?: (payload: { bufferedCount: number; minBufferedFrames: number }) => void;
   bpm?: number;
   onProgress?: (pct: number, message?: string) => void;
   onFrameDetected?: (payload: Record<string, unknown>) => void;
@@ -120,6 +183,9 @@ export async function runHolisticVideoAnalysis({
   detector,
   expectedMemberCount,
   sampleFps: sampleFpsOverride,
+  modelVariant = 'lite',
+  minBufferedFrames = DEFAULT_FRAME_BUFFER_READY_FRAMES,
+  onFrameBufferReady,
   bpm = 120,
   onProgress,
   onFrameDetected,
@@ -129,16 +195,49 @@ export async function runHolisticVideoAnalysis({
   const group = getGroupData(groupId);
   if (!group || !video || !detector) return null;
 
+  const totalStartedAt = performance.now();
+  const perfStats = createPerfStats();
   const { videoWidth, videoHeight, sourceVideoDurationSec, sourceVideoNativeFps } =
     await ensureVideoDimensions(video);
-  const sampleFps = CHOREO_DEFAULT_SAMPLE_FPS;
+  const sampleFps = normalizeChoreoSampleFps(sampleFpsOverride ?? CHOREO_DEFAULT_SAMPLE_FPS);
 
   const tracker = new MultiPersonTracker();
   tracker.setSampleFps(sampleFps);
   tracker.setBpm(bpm);
   const { detectFrame } = createOffscreenDetectPipeline(videoWidth, videoHeight);
 
-  onProgress?.(5, 'RVFC GPU 추출 시작...');
+  const worker = createMotionPostProcessWorker();
+  let workerReady = false;
+  worker?.postMessage({ type: 'RESET' });
+  worker?.addEventListener('message', (event) => {
+    const msg = event.data || {};
+    if (msg.type === 'FRAME_BUFFERED') {
+      perfStats.workerFrames += 1;
+      addMs(perfStats, 'postProcessMs', msg.postProcessMs);
+    } else if (msg.type === 'FRAME_BUFFER_READY') {
+      workerReady = true;
+      onFrameBufferReady?.({
+        bufferedCount: msg.bufferedCount,
+        minBufferedFrames: msg.minBufferedFrames,
+      });
+      onDebug?.({
+        pipelineStage: 'frame_buffer_ready',
+        progress: Math.max(10, Math.round((msg.bufferedCount / Math.max(1, timelineTotalFrames)) * 100)),
+      });
+    } else if (msg.type === 'ERROR') {
+      console.warn('[MotionExtractWorker]', msg.error);
+    }
+  });
+
+  console.info('[MotionExtract] GPU 사용 여부', {
+    delegate: detector.delegate ?? 'unknown',
+    gpu: detector.delegate === 'GPU',
+    runningMode: detector.runningMode ?? 'VIDEO',
+    modelVariant: detector.modelVariant ?? modelVariant,
+    sampleFps,
+  });
+
+  onProgress?.(5, 'RVFC 연속 재생 추출 시작...');
   onDebug?.({ pipelineStage: 'rvfc_playback', sampleFps, nativeFps: sourceVideoNativeFps, expectedMemberCount });
 
   const duration = sourceVideoDurationSec;
@@ -154,17 +253,20 @@ export async function runHolisticVideoAnalysis({
   let lastSampleAt = 0;
   let measuredFps = sampleFps;
 
-  await sampleVideoFramesPlayback({
+  try {
+    await sampleVideoFramesPlayback({
     video,
     sampleFps,
     maxDuration: analysisDuration,
     abortRef,
+    onDecode: (ms) => addMs(perfStats, 'videoDecodeMs', ms),
     onProgress: (pct) => {
       onProgress?.(Math.max(5, pct), `${expectedMemberCount}명 Holistic 추적 ${pct}%`);
       onDebug?.({ progress: pct, pipelineStage: 'extracting' });
     },
     onSample: async ({ time: t, video: srcVideo }) => {
       if (abortRef?.current) return;
+      const frameStartedAt = performance.now();
 
       const now = performance.now();
       if (lastSampleAt > 0) {
@@ -173,7 +275,10 @@ export async function runHolisticVideoAnalysis({
       }
       lastSampleAt = now;
 
-      const results = detectFrame(detector, srcVideo);
+      const detectStartedAt = performance.now();
+      const timestampMsForDetector = Math.max(0, Math.round(t * 1000));
+      const results = detectFrame(detector, srcVideo, timestampMsForDetector);
+      addMs(perfStats, 'poseDetectionMs', performance.now() - detectStartedAt);
       if (memberCountSamples.length < CHOREO_MEMBER_PROBE_SAMPLES) {
         const valid = tracker.countValidPoses(results.landmarks as unknown[]);
         if (valid > 0) memberCountSamples.push(valid);
@@ -260,8 +365,64 @@ export async function runHolisticVideoAnalysis({
         videoHeight,
         detectedPeople: framePeople,
       });
+      perfStats.sampledFrames += 1;
+
+      if (worker) {
+        const latestFrame = frames[frames.length - 1];
+        const skeletonFrame = {
+          timestamp: gridTimestamp,
+          timestampMs,
+          sourceVideoTime: t,
+          frameIndex,
+          videoWidth,
+          videoHeight,
+          members: framePeople.map((person, idx) => ({
+            personIndex: idx,
+            trackId: Number(person.trackId),
+            estimatedMemberId: String(person.trackId),
+            isEstimated: person.isEstimated ?? false,
+            confidence: person.confidence,
+            joints: Object.fromEntries(
+              Object.entries(person.joints || {}).map(([name, joint]) => [
+                name,
+                {
+                  x: joint.x,
+                  y: joint.y,
+                  z: joint.z ?? 0,
+                  visibility: joint.visibility ?? joint.confidence ?? 1,
+                  presence: joint.presence,
+                  confidence: joint.confidence ?? joint.visibility ?? 1,
+                },
+              ]),
+            ),
+          })).filter((member) => Object.keys(member.joints || {}).length),
+        };
+        const workerPayload = {
+          type: 'PROCESS_FRAME',
+          frameIndex,
+          frame: skeletonFrame,
+          groupId,
+          userMemberId: '',
+          focusMemberId: null,
+          songId: groupId,
+          sampleFps,
+          detectedCount: framePeople.length,
+          allMemberIds: framePeople.map((person) => String(person.trackId)),
+          minBufferedFrames,
+        };
+        const serializeStartedAt = performance.now();
+        JSON.stringify({ frame: latestFrame, skeletonFrame });
+        addMs(perfStats, 'jsonSerializeMs', performance.now() - serializeStartedAt);
+        worker.postMessage(workerPayload);
+      }
+
+      addMs(perfStats, 'totalMs', performance.now() - frameStartedAt);
     },
-  });
+    });
+  } finally {
+    perfStats.totalMs = performance.now() - totalStartedAt;
+    worker?.terminate();
+  }
 
   const detectedMemberCount = (() => {
     if (!memberCountSamples.length) return 0;
@@ -285,6 +446,13 @@ export async function runHolisticVideoAnalysis({
   const peakTrackCount = Math.max(tracker.getPeakTrackCount(), trackIdToInitialPosition.size);
 
   onDebug?.({ pipelineStage: 'analysis_complete', progress: 92 });
+  logPerfStats(perfStats, 'Motion Extraction', {
+    'Worker Frames': perfStats.workerFrames,
+    'FrameBuffer Ready': workerReady ? 'yes' : 'no',
+    GPU: detector.delegate === 'GPU' ? 'yes' : 'no',
+    Model: detector.modelVariant ?? modelVariant,
+    FPS: sampleFps,
+  });
 
   return {
     detectedMemberCount: Math.max(detectedMemberCount, peakTrackCount),
@@ -344,6 +512,10 @@ export interface AnalyzeFileHolisticOptions {
   file: File;
   groupId: string;
   video?: HTMLVideoElement | null;
+  sampleFps?: number;
+  modelVariant?: 'lite' | 'full' | 'heavy';
+  minBufferedFrames?: number;
+  onFrameBufferReady?: (payload: { bufferedCount: number; minBufferedFrames: number }) => void;
   onStatus?: (msg: string) => void;
   onProgress?: (pct: number) => void;
   onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
@@ -355,6 +527,10 @@ export async function analyzeFileHolistic({
   file,
   groupId,
   video: videoEl,
+  sampleFps,
+  modelVariant = 'lite',
+  minBufferedFrames,
+  onFrameBufferReady,
   onStatus,
   onProgress,
   onDebug,
@@ -379,7 +555,10 @@ export async function analyzeFileHolistic({
     onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
     onDebug?.({ pipelineStage: 'init_models', progress: 5, expectedMemberCount: group.memberCount });
 
-    const detector = await createHolisticMotionDetector(group.memberCount, onStatus);
+    const detector = await createHolisticMotionDetector(group.memberCount, onStatus, {
+      modelVariant,
+      runningMode: 'VIDEO',
+    });
     if (abortRef?.current) throw new Error('추출이 취소되었습니다.');
 
     const analysisResult = await runHolisticVideoAnalysis({
@@ -387,6 +566,10 @@ export async function analyzeFileHolistic({
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
+      sampleFps,
+      modelVariant,
+      minBufferedFrames,
+      onFrameBufferReady,
       onProgress: (pct, msg) => {
         onProgress?.(pct);
         if (msg) onStatus?.(msg);
@@ -501,6 +684,10 @@ export interface ExtractMotionDatabaseOptions {
   userMemberId: string;
   songId: string;
   video?: HTMLVideoElement | null;
+  sampleFps?: number;
+  modelVariant?: 'lite' | 'full' | 'heavy';
+  minBufferedFrames?: number;
+  onFrameBufferReady?: (payload: { bufferedCount: number; minBufferedFrames: number }) => void;
   skipCache?: boolean;
   onStatus?: (msg: string) => void;
   onProgress?: (pct: number) => void;
@@ -517,6 +704,10 @@ export async function extractMotionDatabase({
   userMemberId,
   songId,
   video: videoEl,
+  sampleFps,
+  modelVariant = 'lite',
+  minBufferedFrames,
+  onFrameBufferReady,
   skipCache = false,
   onStatus,
   onProgress,
@@ -610,7 +801,10 @@ export async function extractMotionDatabase({
     onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
     onDebug?.({ pipelineStage: 'init_models', progress: 5 });
 
-    const detector = await createHolisticMotionDetector(group.memberCount, onStatus);
+    const detector = await createHolisticMotionDetector(group.memberCount, onStatus, {
+      modelVariant,
+      runningMode: 'VIDEO',
+    });
     if (abortRef?.current) throw new Error('추출이 취소되었습니다.');
 
     const analysisResult = await runHolisticVideoAnalysis({
@@ -618,6 +812,10 @@ export async function extractMotionDatabase({
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
+      sampleFps,
+      modelVariant,
+      minBufferedFrames,
+      onFrameBufferReady,
       onProgress: (pct, msg) => {
         onProgress?.(pct);
         if (msg) onStatus?.(msg);

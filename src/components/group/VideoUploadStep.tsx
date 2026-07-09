@@ -17,6 +17,8 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
   const [analysisResult, setAnalysisResult] = useState(null);
   const [phase, setPhase] = useState('upload');
   const [localError, setLocalError] = useState('');
+  const [modelVariant, setModelVariant] = useState('lite');
+  const [sampleFps, setSampleFps] = useState(10);
 
   const {
     analyzeFile,
@@ -58,6 +60,8 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
       groupId,
       userMemberId: memberId,
       songId,
+      modelVariant,
+      sampleFps,
       showDebug: true,
     });
 
@@ -273,6 +277,58 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
           </div>
         ) : null}
 
+        <div
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 12,
+            marginBottom: 16,
+          }}
+        >
+          <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+            Pose 모델
+            <select
+              value={modelVariant}
+              onChange={(e) => setModelVariant(e.target.value)}
+              style={{
+                display: 'block',
+                width: '100%',
+                marginTop: 6,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+              }}
+            >
+              <option value="lite">Lite · fastest</option>
+              <option value="full">Full · balanced</option>
+              <option value="heavy">Heavy · accurate</option>
+            </select>
+          </label>
+          <label style={{ fontSize: 12, color: 'rgba(255,255,255,0.55)' }}>
+            분석 FPS
+            <select
+              value={sampleFps}
+              onChange={(e) => setSampleFps(Number(e.target.value))}
+              style={{
+                display: 'block',
+                width: '100%',
+                marginTop: 6,
+                padding: '10px 12px',
+                borderRadius: 10,
+                border: '1px solid rgba(255,255,255,0.12)',
+                background: 'rgba(255,255,255,0.06)',
+                color: '#fff',
+              }}
+            >
+              <option value={5}>5 FPS · fastest</option>
+              <option value={10}>10 FPS · recommended</option>
+              <option value={15}>15 FPS · smoother</option>
+            </select>
+          </label>
+        </div>
+
         {(localError || error) ? (
           <div
             style={{
@@ -323,7 +379,7 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             lineHeight: 1.6,
           }}
         >
-          💡 30~60fps RVFC 추출 · Hungarian/Kalman 트래킹 · Hand/Face 포함.
+          💡 RVFC 연속 재생 추출 · Worker FrameBuffer · Hungarian/Kalman 트래킹 · Hand/Face 포함.
           분석 후 멤버 매칭 확인 → Motion Database·Reference Video·캐시 자동 저장.
         </div>
       </div>

@@ -13,6 +13,7 @@ import {
   type MotionExtractionResult,
 } from '../types/motionExtraction';
 import { CHOREO_DEFAULT_SAMPLE_FPS } from '../config/choreoExtractConfig';
+import type { ChoreoPoseModel, ChoreoSampleFps } from '../config/choreoExtractConfig';
 import {
   extractMotionDatabase,
   analyzeFileHolistic,
@@ -46,6 +47,10 @@ export interface ExtractFromFileOptions {
   userMemberId: string;
   songId?: string;
   focusMemberId?: string | null;
+  modelVariant?: ChoreoPoseModel;
+  sampleFps?: ChoreoSampleFps;
+  minBufferedFrames?: number;
+  onFrameBufferReady?: (payload: { bufferedCount: number; minBufferedFrames: number }) => void;
   skipCache?: boolean;
   showDebug?: boolean;
 }
@@ -123,6 +128,13 @@ export function useSkeletonExtract() {
           file,
           groupId,
           video: videoRef.current,
+          sampleFps: options.sampleFps,
+          modelVariant: options.modelVariant,
+          minBufferedFrames: options.minBufferedFrames,
+          onFrameBufferReady: (payload) => {
+            setStep(`FrameBuffer 준비 완료 (${payload.bufferedCount}프레임)`);
+            options.onFrameBufferReady?.(payload);
+          },
           abortRef,
           onStatus: setStep,
           onProgress: setProgress,
@@ -211,6 +223,10 @@ export function useSkeletonExtract() {
         focusMemberId = null,
         skipCache = false,
         showDebug: debugVisible = true,
+        modelVariant = 'lite',
+        sampleFps = CHOREO_DEFAULT_SAMPLE_FPS,
+        minBufferedFrames,
+        onFrameBufferReady,
       } = options;
 
       const group = getGroupData(groupId);
@@ -236,6 +252,13 @@ export function useSkeletonExtract() {
           userMemberId: memberId,
           songId,
           video: videoRef.current,
+          modelVariant,
+          sampleFps,
+          minBufferedFrames,
+          onFrameBufferReady: (payload) => {
+            setStep(`FrameBuffer 준비 완료 (${payload.bufferedCount}프레임)`);
+            onFrameBufferReady?.(payload);
+          },
           skipCache,
           abortRef,
           onStatus: setStep,
@@ -290,6 +313,10 @@ export function useSkeletonExtract() {
         songId = `${groupId}-motion`,
         focusMemberId = null,
         showDebug: debugVisible = true,
+        modelVariant = 'lite',
+        sampleFps = CHOREO_DEFAULT_SAMPLE_FPS,
+        minBufferedFrames,
+        onFrameBufferReady,
       } = options;
 
       const group = getGroupData(groupId);
@@ -305,12 +332,22 @@ export function useSkeletonExtract() {
       setStep('Holistic Motion Extraction (RVFC)...');
 
       try {
-        const detector = await createHolisticMotionDetector(group.memberCount, setStep);
+        const detector = await createHolisticMotionDetector(group.memberCount, setStep, {
+          modelVariant,
+          runningMode: 'VIDEO',
+        });
         const analysisResult = await runHolisticVideoAnalysis({
           video,
           groupId,
           detector,
           expectedMemberCount: group.memberCount,
+          sampleFps,
+          modelVariant,
+          minBufferedFrames,
+          onFrameBufferReady: (payload) => {
+            setStep(`FrameBuffer 준비 완료 (${payload.bufferedCount}프레임)`);
+            onFrameBufferReady?.(payload);
+          },
           onProgress: (pct, msg) => {
             setProgress(pct);
             if (msg) setStep(msg);
@@ -336,7 +373,7 @@ export function useSkeletonExtract() {
           userMemberId: memberId,
           analysisResult,
           trackToMember,
-          sampleFps: CHOREO_DEFAULT_SAMPLE_FPS,
+          sampleFps,
         });
 
         await saveDanceDatabase(danceDatabase);
@@ -364,7 +401,7 @@ export function useSkeletonExtract() {
           frames: danceDatabase.skeletonFrames,
           skeletonFrames: danceDatabase.skeletonFrames,
           skeletonData: danceDatabase.skeletonData ?? {
-            fps: CHOREO_DEFAULT_SAMPLE_FPS,
+            fps: sampleFps,
             duration: danceDatabase.durationSec,
             frameCount: danceDatabase.skeletonFrames.length,
           },

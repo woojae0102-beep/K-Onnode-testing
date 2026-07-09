@@ -26,7 +26,10 @@ import {
   buildSkeletonData,
 } from '../../utils/skeletonDataUtils';
 import { resolvePracticeDurationSec } from '../../utils/buildPracticeSessionData';
-import { CHOREO_DEFAULT_SAMPLE_FPS } from '../../config/choreoExtractConfig';
+import {
+  CHOREO_DEFAULT_SAMPLE_FPS,
+  normalizeChoreoSampleFps,
+} from '../../config/choreoExtractConfig';
 
 const DB_NAME = 'onnode_dance_data_v2';
 const DB_VERSION = 1;
@@ -155,7 +158,7 @@ export function buildDanceDatabase({
   sampleFps?: number;
 }): DanceDatabase {
   const normalizedMap = normalizeTrackMemberMap(trackToMember);
-  const extractionFps = CHOREO_DEFAULT_SAMPLE_FPS;
+  const extractionFps = normalizeChoreoSampleFps(sampleFps ?? analysisResult.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS);
 
   const rawSkeletonFrames = buildSkeletonFramesFromAnalysis(
     analysisResult,

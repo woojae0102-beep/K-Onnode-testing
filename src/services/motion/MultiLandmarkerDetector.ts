@@ -1,16 +1,19 @@
 // @ts-nocheck
 /**
  * Pose + Hand + Face Landmarker 동시 추출 — K-POP 안무용 Holistic Motion Detection.
- * IMAGE 모드 + detect() — 그룹 다인 추출 파이프라인과 호환.
+ * RVFC 연속 재생 분석은 VIDEO 모드 + detectForVideo()를 사용한다.
  */
 import {
   CHOREO_FACE_MODEL_URL,
   CHOREO_HAND_MODEL_URL,
+  CHOREO_POSE_MODEL,
   CHOREO_POSE_CONFIDENCE,
   CHOREO_POSE_MODEL_URL,
+  normalizeChoreoPoseModel,
   resolveNumFaces,
   resolveNumHands,
   resolveNumPoses,
+  type ChoreoPoseModel,
 } from '../../config/choreoExtractConfig';
 import { MEDIAPIPE_WASM_BASE, MEDIAPIPE_WASM_CDN } from '../../config/groupChoreoConstants';
 
@@ -35,6 +38,13 @@ export interface MultiLandmarkerDetectResult {
 
 export interface MultiLandmarkerDetector {
   detect: (source: HTMLCanvasElement | HTMLVideoElement | ImageBitmap) => MultiLandmarkerDetectResult;
+  detectForVideo?: (
+    source: HTMLCanvasElement | HTMLVideoElement | ImageBitmap,
+    timestampMs: number,
+  ) => MultiLandmarkerDetectResult;
+  delegate?: 'GPU' | 'CPU';
+  runningMode?: 'IMAGE' | 'VIDEO';
+  modelVariant?: ChoreoPoseModel;
   close?: () => void;
 }
 
@@ -53,17 +63,17 @@ async function createLandmarker(
   label: string,
 ) {
   try {
-    return await factory(vision, 'GPU');
+    return { instance: await factory(vision, 'GPU'), delegate: 'GPU' as const };
   } catch (gpuErr) {
     console.warn(`[MultiLandmarker] ${label} GPU 실패, CPU 폴백`, gpuErr);
-    return factory(vision, 'CPU');
+    return { instance: await factory(vision, 'CPU'), delegate: 'CPU' as const };
   }
 }
 
 export async function createMultiLandmarkerDetector(
   groupMemberCount: number,
   onStatus?: (msg: string) => void,
-  { lenient = false } = {},
+  { lenient = false, runningMode = 'VIDEO', modelVariant = CHOREO_POSE_MODEL } = {},
 ): Promise<MultiLandmarkerDetector> {
   onStatus?.('Holistic AI 모듈 로드 중 (Pose+Hand+Face)...');
   const visionModule = await import('@mediapipe/tasks-vision');
@@ -73,6 +83,7 @@ export async function createMultiLandmarkerDetector(
   const vision = await resolveVisionWasm(FilesetResolver);
 
   const confidence = lenient ? CHOREO_POSE_CONFIDENCE.lenient : CHOREO_POSE_CONFIDENCE.normal;
+  const resolvedModel = normalizeChoreoPoseModel(modelVariant);
   const numPoses = Math.max(resolveNumPoses(groupMemberCount), (Number(groupMemberCount) || 5) + 2);
   const numHands = resolveNumHands(groupMemberCount);
   const numFaces = resolveNumFaces(groupMemberCount);
@@ -81,10 +92,10 @@ export async function createMultiLandmarkerDetector(
     onStatus?.(delegate === 'GPU' ? 'Pose 모델 로드 (GPU)...' : 'Pose 모델 로드 (CPU)...');
     return PoseLandmarker.createFromOptions(vision, {
       baseOptions: {
-        modelAssetPath: CHOREO_POSE_MODEL_URL.lite,
+        modelAssetPath: CHOREO_POSE_MODEL_URL[resolvedModel],
         delegate,
       },
-      runningMode: 'IMAGE',
+      runningMode,
       numPoses,
       minPoseDetectionConfidence: confidence.minPoseDetectionConfidence,
       minPosePresenceConfidence: confidence.minPosePresenceConfidence,
@@ -99,7 +110,7 @@ export async function createMultiLandmarkerDetector(
         modelAssetPath: CHOREO_HAND_MODEL_URL,
         delegate,
       },
-      runningMode: 'IMAGE',
+      runningMode,
       numHands,
       minHandDetectionConfidence: confidence.minPoseDetectionConfidence,
       minHandPresenceConfidence: confidence.minPosePresenceConfidence,
@@ -114,7 +125,7 @@ export async function createMultiLandmarkerDetector(
         modelAssetPath: CHOREO_FACE_MODEL_URL,
         delegate,
       },
-      runningMode: 'IMAGE',
+      runningMode,
       numFaces,
       minFaceDetectionConfidence: confidence.minPoseDetectionConfidence,
       minFacePresenceConfidence: confidence.minPosePresenceConfidence,
@@ -122,15 +133,53 @@ export async function createMultiLandmarkerDetector(
     });
   };
 
-  const [pose, hand, face] = await Promise.all([
+  const [poseResult, handResult, faceResult] = await Promise.all([
     createLandmarker(vision, buildPose, 'Pose'),
     createLandmarker(vision, buildHand, 'Hand'),
     createLandmarker(vision, buildFace, 'Face'),
   ]);
+  const pose = poseResult.instance;
+  const hand = handResult.instance;
+  const face = faceResult.instance;
+  const delegate = poseResult.delegate === 'GPU' || handResult.delegate === 'GPU' || faceResult.delegate === 'GPU'
+    ? 'GPU'
+    : 'CPU';
 
-  onStatus?.('Holistic Motion Detection 준비 완료');
+  console.info('[MultiLandmarker] MediaPipe delegate', {
+    delegate,
+    poseDelegate: poseResult.delegate,
+    handDelegate: handResult.delegate,
+    faceDelegate: faceResult.delegate,
+    runningMode,
+    modelVariant: resolvedModel,
+  });
+  onStatus?.(`Holistic Motion Detection 준비 완료 (${delegate}, ${resolvedModel}, ${runningMode})`);
+
+  const normalizeResult = (poseRaw, handRaw, faceRaw): MultiLandmarkerDetectResult => {
+    const hands: DetectedHand[] = (handRaw.landmarks || []).map((lm, i) => ({
+      landmarks: lm,
+      worldLandmarks: handRaw.worldLandmarks?.[i],
+      handedness: handRaw.handedness?.[i]?.[0]?.categoryName === 'Right' ? 'Right' : 'Left',
+      score: Number(handRaw.handedness?.[i]?.[0]?.score ?? 0.5),
+    }));
+
+    const faces: DetectedFace[] = (faceRaw.faceLandmarks || []).map((lm) => ({
+      landmarks: lm,
+      score: 0.8,
+    }));
+
+    return {
+      landmarks: poseRaw.landmarks,
+      worldLandmarks: poseRaw.worldLandmarks,
+      hands,
+      faces,
+    };
+  };
 
   return {
+    delegate,
+    runningMode,
+    modelVariant: resolvedModel,
     detect(source) {
       const poseResult = pose.detect(source) as {
         landmarks?: unknown[][];
@@ -145,24 +194,23 @@ export async function createMultiLandmarkerDetector(
         faceLandmarks?: unknown[][];
       };
 
-      const hands: DetectedHand[] = (handResult.landmarks || []).map((lm, i) => ({
-        landmarks: lm,
-        worldLandmarks: handResult.worldLandmarks?.[i],
-        handedness: handResult.handedness?.[i]?.[0]?.categoryName === 'Right' ? 'Right' : 'Left',
-        score: Number(handResult.handedness?.[i]?.[0]?.score ?? 0.5),
-      }));
-
-      const faces: DetectedFace[] = (faceResult.faceLandmarks || []).map((lm) => ({
-        landmarks: lm,
-        score: 0.8,
-      }));
-
-      return {
-        landmarks: poseResult.landmarks,
-        worldLandmarks: poseResult.worldLandmarks,
-        hands,
-        faces,
+      return normalizeResult(poseResult, handResult, faceResult);
+    },
+    detectForVideo(source, timestampMs) {
+      const poseResult = (pose.detectForVideo || pose.detect).call(pose, source, timestampMs) as {
+        landmarks?: unknown[][];
+        worldLandmarks?: unknown[][];
       };
+      const handResult = (hand.detectForVideo || hand.detect).call(hand, source, timestampMs) as {
+        landmarks?: unknown[][];
+        worldLandmarks?: unknown[][];
+        handedness?: Array<Array<{ categoryName?: string; score?: number }>>;
+      };
+      const faceResult = (face.detectForVideo || face.detect).call(face, source, timestampMs) as {
+        faceLandmarks?: unknown[][];
+      };
+
+      return normalizeResult(poseResult, handResult, faceResult);
     },
     close() {
       pose.close?.();

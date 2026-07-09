@@ -4,17 +4,19 @@
 /** 트래커: 가려짐 유지 시간(초) — 추적 슬롯을 삭제하지 않고 보강 유지 */
 export const CHOREO_MAX_OCCLUSION_SEC = 12;
 
-/** Motion Extraction 샘플 FPS — 추출 단계 고정 30fps (timestamp = frameIndex / 30) */
-export const CHOREO_MIN_SAMPLE_FPS = 30;
-export const CHOREO_MAX_SAMPLE_FPS = 60;
-export const CHOREO_DEFAULT_SAMPLE_FPS = 30;
-/** @deprecated 추출은 항상 CHOREO_DEFAULT_SAMPLE_FPS(30) 사용 */
+/** Motion Extraction 샘플 FPS — RVFC 연속 재생 분석 */
+export const CHOREO_AVAILABLE_SAMPLE_FPS = [5, 10, 15] as const;
+export type ChoreoSampleFps = typeof CHOREO_AVAILABLE_SAMPLE_FPS[number];
+export const CHOREO_MIN_SAMPLE_FPS = 5;
+export const CHOREO_MAX_SAMPLE_FPS = 15;
+export const CHOREO_DEFAULT_SAMPLE_FPS: ChoreoSampleFps = 10;
+/** @deprecated CHOREO_DEFAULT_SAMPLE_FPS 사용 */
 export const CHOREO_EXTRACTION_SAMPLE_FPS = CHOREO_DEFAULT_SAMPLE_FPS;
 
 /** @deprecated CHOREO_DEFAULT_SAMPLE_FPS 사용 */
 export const CHOREO_SAMPLE_FPS = CHOREO_DEFAULT_SAMPLE_FPS;
 
-/** 재분석도 동일 FPS (lenient 모드만 변경, 프레임 스킵 없음) */
+/** 재분석도 동일 FPS (lenient 모드만 변경) */
 export const CHOREO_RETRY_SAMPLE_FPS = CHOREO_DEFAULT_SAMPLE_FPS;
 
 /** 멤버 수 사전 감지 샘플 수 */
@@ -23,7 +25,7 @@ export const CHOREO_MEMBER_PROBE_SAMPLES = 12;
 /** 동시 추적 인원 상한 (그룹 정원+5 미만일 때 폴백) */
 export const CHOREO_MAX_POSES_CAP = 15;
 
-/** MediaPipe 감지 신뢰도 (IMAGE 모드) */
+/** MediaPipe 감지 신뢰도 */
 export const CHOREO_POSE_CONFIDENCE = {
   normal: {
     minPoseDetectionConfidence: 0.3,
@@ -44,11 +46,13 @@ export const CHOREO_MIN_PERSON_CONFIDENCE = 0.15;
 export const CHOREO_JOINT_CONFIDENCE_INTERPOLATE_MAX = 0.6;
 export const CHOREO_JOINT_CONFIDENCE_DISCARD_MAX = 0.3;
 
-/** lite: 빠름(권장) / heavy: 정밀하지만 2~3배 느림 */
+/** lite: 빠름(권장) / full: 균형 / heavy: 정밀하지만 느림 */
 export const CHOREO_POSE_MODEL = 'lite' as const;
+export type ChoreoPoseModel = 'lite' | 'full' | 'heavy';
 
 export const CHOREO_POSE_MODEL_URL = {
   lite: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_lite/float16/1/pose_landmarker_lite.task',
+  full: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_full/float16/1/pose_landmarker_full.task',
   heavy: 'https://storage.googleapis.com/mediapipe-models/pose_landmarker/pose_landmarker_heavy/float16/1/pose_landmarker_heavy.task',
 };
 
@@ -84,11 +88,24 @@ export function estimateExtractSeconds(durationSec: number, sampleFps = CHOREO_D
   return Math.round(frames * 0.06 + 8);
 }
 
-/** 영상에서 읽은 native FPS → 추출 샘플 FPS (30~60 clamp, 미확인 시 30) */
+export function normalizeChoreoSampleFps(fps: number | null | undefined): ChoreoSampleFps {
+  const raw = Number(fps);
+  if (!Number.isFinite(raw)) return CHOREO_DEFAULT_SAMPLE_FPS;
+  if (raw <= 7) return 5;
+  if (raw <= 12) return 10;
+  return 15;
+}
+
+export function normalizeChoreoPoseModel(model: string | null | undefined): ChoreoPoseModel {
+  if (model === 'heavy' || model === 'full' || model === 'lite') return model;
+  return CHOREO_POSE_MODEL;
+}
+
+/** 영상에서 읽은 native FPS → 추출 샘플 FPS (5/10/15 중 선택) */
 export function resolveVideoSampleFps(nativeFps: number | null | undefined): number {
   const raw = Number(nativeFps);
   if (!Number.isFinite(raw) || raw <= 0) return CHOREO_DEFAULT_SAMPLE_FPS;
-  return Math.min(CHOREO_MAX_SAMPLE_FPS, Math.max(CHOREO_MIN_SAMPLE_FPS, Math.round(raw)));
+  return normalizeChoreoSampleFps(Math.round(raw / 2));
 }
 
 /**

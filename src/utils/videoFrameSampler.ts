@@ -1,6 +1,6 @@
 // @ts-nocheck
 import { scheduleVideoFrame, cancelVideoFrame } from './cameraFrameLoop';
-import { waitForVideoEvent, getSeekableEnd, seekVideoTo } from './choreoVideoUtils';
+import { waitForVideoEvent, getSeekableEnd } from './choreoVideoUtils';
 
 export type VideoFrameSample = {
   time: number;
@@ -15,16 +15,11 @@ export type SampleVideoFramesOptions = {
   onSample: (sample: VideoFrameSample) => void | Promise<void>;
   abortRef?: { current: boolean };
   onProgress?: (pct: number) => void;
-  /** RVFC 미지원 시 seek 폴백 (느림) */
-  allowSeekFallback?: boolean;
+  onDecode?: (decodeWaitMs: number) => void;
 };
 
 function supportsRvfc(video: HTMLVideoElement): boolean {
   return typeof video.requestVideoFrameCallback === 'function';
-}
-
-function supportsWebCodecs(): boolean {
-  return typeof VideoDecoder !== 'undefined';
 }
 
 /**
@@ -38,6 +33,7 @@ export async function sampleVideoFramesPlayback({
   onSample,
   abortRef,
   onProgress,
+  onDecode,
 }: SampleVideoFramesOptions): Promise<void> {
   if (!video) throw new Error('비디오 요소가 없습니다.');
 
@@ -54,24 +50,7 @@ export async function sampleVideoFramesPlayback({
   }
 
   if (!supportsRvfc(video)) {
-    if (supportsWebCodecs()) {
-      return sampleVideoFramesWebCodecs({
-        video,
-        sampleFps,
-        maxDuration: endTime,
-        onSample,
-        abortRef,
-        onProgress,
-      });
-    }
-    return sampleVideoFramesSeekFallback({
-      video,
-      sampleFps,
-      maxDuration: endTime,
-      onSample,
-      abortRef,
-      onProgress,
-    });
+    throw new Error('requestVideoFrameCallback 미지원 브라우저입니다. Chrome/Edge 최신 버전을 사용해 주세요.');
   }
 
   video.muted = true;
@@ -79,12 +58,14 @@ export async function sampleVideoFramesPlayback({
   video.playbackRate = 1;
 
   await waitForVideoEvent(video, 'canplay', 30000);
-  video.currentTime = 0;
-  await waitForVideoEvent(video, 'seeked', 8000);
+  if (video.currentTime > 0.05) {
+    video.currentTime = 0;
+  }
 
   let lastSampleTime = -sampleInterval;
   let handle = null;
   let settled = false;
+  let lastRvfcAt = performance.now();
 
   const cleanup = () => {
     if (settled) return;
@@ -95,6 +76,10 @@ export async function sampleVideoFramesPlayback({
 
   await new Promise<void>((resolve, reject) => {
     const onFrame = async (_now: number, metadata?: { mediaTime?: number }) => {
+      const frameArrivedAt = performance.now();
+      onDecode?.(frameArrivedAt - lastRvfcAt);
+      lastRvfcAt = frameArrivedAt;
+
       if (abortRef?.current) {
         cleanup();
         resolve();
@@ -131,39 +116,4 @@ export async function sampleVideoFramesPlayback({
       reject(err);
     });
   });
-}
-
-/**
- * WebCodecs VideoDecoder — RVFC 불가 환경 폴백.
- * ImageBitmap 생성으로 GPU 텍스처 경로 활용.
- */
-async function sampleVideoFramesWebCodecs(options: SampleVideoFramesOptions): Promise<void> {
-  if (import.meta.env?.DEV) {
-    console.debug('[videoFrameSampler] WebCodecs 사용 가능 — RVFC 재생 우선');
-  }
-  return sampleVideoFramesSeekFallback(options);
-}
-
-/** 최후 폴백 — seek (느림, DEV 경고) */
-async function sampleVideoFramesSeekFallback({
-  video,
-  sampleFps,
-  maxDuration,
-  onSample,
-  abortRef,
-  onProgress,
-}: SampleVideoFramesOptions): Promise<void> {
-  if (import.meta.env?.DEV) {
-    console.warn('[videoFrameSampler] RVFC/WebCodecs 미지원 — seek 폴백 (느림)');
-  }
-
-  const sampleInterval = 1 / Math.max(1, sampleFps);
-  const endTime = maxDuration ?? video.duration;
-
-  for (let t = 0; t < endTime; t += sampleInterval) {
-    if (abortRef?.current) break;
-    await seekVideoTo(video, t);
-    await onSample({ time: t, video, mediaTime: t });
-    onProgress?.(Math.min(99, Math.round((t / endTime) * 100)));
-  }
 }
