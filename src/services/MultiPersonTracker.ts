@@ -113,6 +113,9 @@ export class MultiPersonTracker {
 
   private bpm = 120;
 
+  /** 가려짐 초과로 TrackPool에 반환(소멸)된 트랙 누적 수 — Debug Overlay용 */
+  private releasedTrackCount = 0;
+
   /** 분석 샘플 fps에 맞춰 가려짐 허용 프레임 수 조정 */
   setSampleFps(fps: number) {
     this.sampleFps = fps || 30;
@@ -138,6 +141,12 @@ export class MultiPersonTracker {
       this.predictorByTrackId.delete(trackId);
     }
     this.trackPool.release(trackId);
+    this.releasedTrackCount += 1;
+  }
+
+  /** 가려짐 초과로 소멸된 트랙 누적 수 (Debug Overlay / 최종 리포트용) */
+  getReleasedTrackCount(): number {
+    return this.releasedTrackCount;
   }
 
   private acquireTrackId(preferred?: number): number | null {
@@ -649,6 +658,7 @@ export class MultiPersonTracker {
     this.predictorByTrackId.clear();
     this.trackPool.reset();
     this.lastFrameTimestamp = 0;
+    this.releasedTrackCount = 0;
   }
 }
 

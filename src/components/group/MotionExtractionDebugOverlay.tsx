@@ -91,6 +91,25 @@ export function MotionExtractionDebugOverlay({
         />
         <Row label="Confidence" value={debug.avgConfidence.toFixed(3)} />
         <Row label="Pose Quality" value={debug.poseQuality != null ? debug.poseQuality.toFixed(3) : '—'} />
+        <Row
+          label="Tracked Members"
+          value={debug.currentTrackedMembers?.length ? debug.currentTrackedMembers.join(', ') : '—'}
+        />
+        <Row
+          label="Missing Members"
+          value={debug.missingMembers?.length ? debug.missingMembers.join(', ') : '—'}
+          highlight={Boolean(debug.missingMembers?.length)}
+        />
+        <Row label="Worker Queue" value={debug.workerQueue} highlight={debug.workerQueue > 20} />
+        <Row
+          label="Processing"
+          value={debug.processingFrame ? 'LOCKED (dropped)' : `${debug.processingDelay.toFixed(1)}ms`}
+          highlight={debug.processingFrame}
+        />
+        <Row label="Tracker Resets" value={debug.trackerResetCount} />
+        <Row label="TrackId Changes" value={debug.trackIdChanges} highlight={debug.trackIdChanges > 0} />
+        <Row label="Coverage (running)" value={`${Math.round((debug.coverage || 0) * 100)}%`} />
+        <Row label="Last Timestamp" value={`${debug.lastTimestamp.toFixed(2)}s`} />
       </div>
     </div>
   );

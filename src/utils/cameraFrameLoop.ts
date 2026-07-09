@@ -9,10 +9,12 @@ export type FrameLoopHandle = {
 
 export function scheduleVideoFrame(
   video: HTMLVideoElement | null | undefined,
-  callback: (now: number) => void,
+  callback: (now: number, metadata?: { mediaTime?: number }) => void,
 ): FrameLoopHandle {
   if (video && typeof video.requestVideoFrameCallback === 'function') {
-    const id = video.requestVideoFrameCallback((now) => callback(now));
+    // metadata(mediaTime 포함)를 반드시 그대로 전달한다 — 이전에는 (now) => callback(now)로
+    // 감싸면서 metadata가 누락되어 호출부의 metadata.mediaTime이 항상 undefined였다.
+    const id = video.requestVideoFrameCallback((now, metadata) => callback(now, metadata));
     return { type: 'rvfc', id, video };
   }
   const id = requestAnimationFrame(() => callback(performance.now()));

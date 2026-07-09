@@ -33,6 +33,24 @@ export interface MotionExtractionDebugState {
   timelineDuration: number;
   timelineFrameIndex: number;
   timelineTotalFrames: number;
+  /** 현재 프레임에서 유지 중인 trackId 목록 (실감지 + 보강 포함) */
+  currentTrackedMembers: number[];
+  /** 이번 프레임에서 lastDetectedPeople로부터 보간한 trackId 목록 */
+  missingMembers: number[];
+  /** Worker에 전송했으나 아직 FRAME_BUFFERED로 확인되지 않은 대기열 길이 */
+  workerQueue: number;
+  /** Frame Processing Lock — 이전 프레임 처리 중 새 샘플이 드롭되었는지 */
+  processingFrame: boolean;
+  /** 직전 프레임 처리(detect+track+worker dispatch)에 걸린 시간(ms) */
+  processingDelay: number;
+  /** 가려짐 초과로 소멸된 트랙 누적 수 */
+  trackerResetCount: number;
+  /** Track Stability 보정으로 되돌린 trackId 변경 누적 수 */
+  trackIdChanges: number;
+  /** 현재까지 진행된 Coverage 추정치 (0~1) */
+  coverage: number;
+  /** 마지막으로 처리된 원본 영상 시각(초) */
+  lastTimestamp: number;
 }
 
 export interface ReferenceVideoMeta {
@@ -83,4 +101,13 @@ export const EMPTY_MOTION_DEBUG: MotionExtractionDebugState = {
   timelineDuration: 0,
   timelineFrameIndex: 0,
   timelineTotalFrames: 0,
+  currentTrackedMembers: [],
+  missingMembers: [],
+  workerQueue: 0,
+  processingFrame: false,
+  processingDelay: 0,
+  trackerResetCount: 0,
+  trackIdChanges: 0,
+  coverage: 0,
+  lastTimestamp: 0,
 };
