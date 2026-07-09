@@ -351,7 +351,7 @@ export class GroupMotionReconstructionEngine {
       }
     }
 
-    const pipeline = runGroupMotionPipeline({
+    const pipeline = await runGroupMotionPipeline({
       rawFrames,
       groupId,
       songId,

@@ -674,7 +674,7 @@ export async function buildMotionDatabaseFromAnalysis({
   onStatus?.('Motion Pipeline v4 처리 중...');
   onDebug?.({ pipelineStage: 'motion_pipeline', progress: 93 });
 
-  const danceDatabase = buildDanceDatabase({
+  const danceDatabase = await buildDanceDatabase({
     groupId,
     songId,
     userMemberId,

@@ -40,6 +40,7 @@ import {
 import { interpolateSkeletonFrameGaps } from '../skeleton/FrameInterpolationEngine';
 import { stabilizeSkeletonMemberTracks } from '../skeleton/SkeletonMemberTracker';
 import { interpolateLowConfidenceJoints } from '../../utils/jointConfidenceFilter';
+import { yieldToMainThread } from '../../utils/mainThreadYield';
 import { normalizeMemberPoseScale } from '../../utils/skeletonPoseNormalize';
 import { enrichSkeletonFrameMetadata } from '../../utils/frameMetadataUtils';
 import { smoothSkeletonFrames } from './JointKalmanFilter';
@@ -140,7 +141,7 @@ function stage(
   audit.stages[id] = { applied, ...extra };
 }
 
-export function runGroupMotionPipeline({
+export async function runGroupMotionPipeline({
   rawFrames,
   groupId,
   songId = 'unknown',
@@ -155,7 +156,7 @@ export function runGroupMotionPipeline({
   applySmoothing = false,
   skipPostProcess = false,
   preserveExtractionFrames = false,
-}: GroupMotionPipelineInput): GroupMotionPipelineResult {
+}: GroupMotionPipelineInput): Promise<GroupMotionPipelineResult> {
   let formationKeyframes = [...inputFormationKeyframes];
   let memberTracks = [...inputMemberTracks];
   let motionTimelines: ReturnType<typeof buildMemberMotionTimelines> | undefined;
@@ -200,6 +201,7 @@ export function runGroupMotionPipeline({
     });
     stage(audit, 'metadata', true);
     stage(audit, 'validate', true);
+    await yieldToMainThread();
     const validation = validateSkeletonForPractice(frames, userMemberId, {
       skipNormalize: true,
       expectedDurationSec: duration,
@@ -231,6 +233,7 @@ export function runGroupMotionPipeline({
   }));
   stage(audit, 'normalize', true, { inputFrames: rawFrames.length, outputFrames: frames.length });
   if (!frames.length) throw new Error('[GroupMotionPipeline] normalize 후 프레임 없음');
+  await yieldToMainThread();
 
   // [2] confidence — 추출 단계는 원본 관절 유지 (보간은 렌더링에서)
   if (preserveExtractionFrames) {
@@ -239,23 +242,26 @@ export function runGroupMotionPipeline({
     frames = interpolateLowConfidenceJoints(frames);
     stage(audit, 'confidence', true, { outputFrames: frames.length });
   }
+  await yieldToMainThread();
 
   // [3] smooth
   if (applySmoothing) {
     frames = smoothSkeletonFrames(frames);
     stage(audit, 'smooth', true);
+    await yieldToMainThread();
   } else {
     stage(audit, 'smooth', false);
   }
 
-  // [4] tracking
-  frames = stabilizeSkeletonMemberTracks(frames, {
+  // [4] tracking — 프레임별 Hungarian 매칭 (가장 무거운 단계, 내부적으로도 주기적 yield)
+  frames = await stabilizeSkeletonMemberTracks(frames, {
     trackToMember,
     bpm,
     sampleFps: timeline.fps,
     maxTracks: allMemberIds?.length || 9,
   });
   stage(audit, 'tracking', true, { outputFrames: frames.length });
+  await yieldToMainThread();
 
   // [5] interpolation — 추출 단계 스킵 (렌더링에서 수행)
   if (preserveExtractionFrames) {
@@ -268,6 +274,7 @@ export function runGroupMotionPipeline({
       outputFrames: frames.length,
     });
   }
+  await yieldToMainThread();
 
   if (groupId && allMemberIds.length > 1) {
     const trackMap = trackToMember instanceof Map
@@ -335,18 +342,22 @@ export function runGroupMotionPipeline({
     stage(audit, 'motion_timeline', false);
     stage(audit, 'motion_database', false);
   }
+  await yieldToMainThread();
 
   // [9] orientation — 앞/뒤/45°/90°
   frames = applyOrientationToFrames(frames);
   stage(audit, 'orientation', true, { outputFrames: frames.length });
+  await yieldToMainThread();
 
   // [10] joint_rotation — Quaternion (GLB 리타겟)
   frames = applyJointRotationsToFrames(frames);
   stage(audit, 'joint_rotation', true, { outputFrames: frames.length });
+  await yieldToMainThread();
 
   // [11] formation metadata
   frames = attachSessionMetadataToFrames(frames, { memberTracks, formationKeyframes });
   stage(audit, 'formation', true, { outputFrames: frames.length });
+  await yieldToMainThread();
 
   // [12] timeline grid — 추출 단계는 30fps 그리드 timestamp 유지
   if (preserveExtractionFrames) {
@@ -355,6 +366,7 @@ export function runGroupMotionPipeline({
     frames = normalizeFrameTimestampsToFpsGrid(frames, timeline.fps);
     stage(audit, 'timeline', true, { outputFrames: frames.length });
   }
+  await yieldToMainThread();
 
   // [13] metadata
   frames = enrichSkeletonFrameMetadata(frames, {
@@ -365,6 +377,7 @@ export function runGroupMotionPipeline({
     formationKeyframes,
   });
   stage(audit, 'metadata', true);
+  await yieldToMainThread();
 
   // [14] validate
   const validation = validateSkeletonForPractice(frames, userMemberId, {

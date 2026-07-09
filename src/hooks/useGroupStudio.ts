@@ -47,7 +47,7 @@ export function useGroupStudio() {
 
     const refPlayback = await loadReferenceVideoForPractice(songId, videoId || meta.danceDatabase?.videoId);
 
-    const sessionData = buildPracticeSessionData({
+    const sessionData = await buildPracticeSessionData({
       frames,
       danceDatabase: meta.danceDatabase || null,
       groupId,

@@ -367,7 +367,7 @@ export function useSkeletonExtract() {
           analysisResult.trackIdToInitialPosition,
         );
 
-        const danceDatabase = buildDanceDatabase({
+        const danceDatabase = await buildDanceDatabase({
           groupId,
           songId,
           userMemberId: memberId,

@@ -142,7 +142,7 @@ function resolveBpm(songId: string): DanceBpmMeta {
   return { bpm: 120, estimated: true, source: 'default' };
 }
 
-export function buildDanceDatabase({
+export async function buildDanceDatabase({
   groupId,
   songId,
   userMemberId,
@@ -158,7 +158,7 @@ export function buildDanceDatabase({
   trackToMember: Map<number, string> | Record<string | number, string>;
   videoId?: string;
   sampleFps?: number;
-}): DanceDatabase {
+}): Promise<DanceDatabase> {
   const normalizedMap = normalizeTrackMemberMap(trackToMember);
   const extractionFps = normalizeChoreoSampleFps(sampleFps ?? analysisResult.sampleFps ?? CHOREO_DEFAULT_SAMPLE_FPS);
 
@@ -186,7 +186,7 @@ export function buildDanceDatabase({
 
   const bpmMeta = resolveBpm(songId);
 
-  const pipeline = runGroupMotionPipeline({
+  const pipeline = await runGroupMotionPipeline({
     rawFrames: rawSkeletonFrames,
     groupId,
     songId,

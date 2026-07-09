@@ -8,6 +8,7 @@ import {
   computeJointMotionVelocity,
 } from '../motion/adaptiveMatchThreshold';
 import { computeMemberPoseConfidence } from '../../utils/jointConfidenceFilter';
+import { yieldEvery } from '../../utils/mainThreadYield';
 
 function cloneMember(member: SkeletonMemberData, overrides: Partial<SkeletonMemberData> = {}): SkeletonMemberData {
   return {
@@ -47,7 +48,7 @@ function buildMemberTracksForFrame(members: SkeletonMemberData[]) {
  * Kalman Prediction → confidence-weighted Pose Similarity → Hungarian.
  * TrackPool로 ID 재사용 — 프레임마다 증가하는 trackId 방지.
  */
-export function stabilizeSkeletonMemberTracks(
+export async function stabilizeSkeletonMemberTracks(
   frames: SkeletonFrameData[],
   options: {
     trackToMember?: Record<number, string> | Map<number, string>;
@@ -57,7 +58,7 @@ export function stabilizeSkeletonMemberTracks(
     maxTracks?: number;
     maxOcclusionFrames?: number;
   } = {},
-): SkeletonFrameData[] {
+): Promise<SkeletonFrameData[]> {
   if (!frames.length) return frames;
 
   const bpm = options.bpm ?? 120;
@@ -87,7 +88,12 @@ export function stabilizeSkeletonMemberTracks(
   let prevMembers: SkeletonMemberData[] = [];
   let prevTimestamp = 0;
 
-  frames.forEach((frame, frameIndex) => {
+  for (let frameIndex = 0; frameIndex < frames.length; frameIndex += 1) {
+    // 프레임 수천 개 × 멤버별 Hungarian 매칭은 무거운 연산 — 메인 스레드 장시간
+    // 블로킹(→ "페이지 응답 없음" 팝업) 방지를 위해 주기적으로 이벤트 루프를 양보한다.
+    await yieldEvery(frameIndex, 150);
+
+    const frame = frames[frameIndex];
     const currMembers = frame.members || [];
     const timestamp = frame.timestamp ?? frameIndex / sampleFps;
     const dtSec = prevTimestamp > 0 ? Math.max(1e-3, timestamp - prevTimestamp) : 1 / sampleFps;
@@ -116,7 +122,7 @@ export function stabilizeSkeletonMemberTracks(
         members: seeded,
         memberTracks: buildMemberTracksForFrame(seeded),
       });
-      return;
+      continue;
     }
 
     let motionVelocity = 0;
@@ -303,7 +309,7 @@ export function stabilizeSkeletonMemberTracks(
       members: nextMembers,
       memberTracks: buildMemberTracksForFrame(nextMembers),
     });
-  });
+  }
 
   if (import.meta.env?.DEV) {
     console.debug('[SkeletonMemberTracker] stabilized', stabilized.length, 'frames (TrackPool+confidence)');

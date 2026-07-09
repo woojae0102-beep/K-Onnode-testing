@@ -57,7 +57,7 @@ export interface BuildPracticeSessionInput {
 }
 
 /** completeChoreoExtract → GroupStudioSession 전달용 전체 패키지 생성 */
-export function buildPracticeSessionData({
+export async function buildPracticeSessionData({
   frames,
   danceDatabase = null,
   groupId,
@@ -111,7 +111,7 @@ export function buildPracticeSessionData({
 
   let pipeline;
   try {
-    pipeline = runGroupMotionPipeline({
+    pipeline = await runGroupMotionPipeline({
       rawFrames,
       groupId,
       songId,

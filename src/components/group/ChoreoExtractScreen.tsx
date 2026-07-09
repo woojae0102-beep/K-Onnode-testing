@@ -253,7 +253,7 @@ export function ChoreoExtractScreen({
         analysisResult={pendingAnalysis}
         onConfirm={async (trackToMemberMap) => {
           try {
-            const danceDb = buildDanceDatabase({
+            const danceDb = await buildDanceDatabase({
               groupId: song.groupId,
               songId,
               userMemberId: memberId,
