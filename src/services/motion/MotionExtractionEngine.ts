@@ -383,16 +383,24 @@ export async function runHolisticVideoAnalysis({
     const msg = event.data || {};
     if (handleWorkerMessageForHealth('motion-post-process', msg)) return;
     if (msg.type === 'FRAME_BUFFERED') {
-      perfStats.workerFrames += 1;
-      workerAckCount += 1;
+      const ackDelta = Number.isFinite(msg.ackDelta) && msg.ackDelta > 0
+        ? msg.ackDelta
+        : (Number.isFinite(msg.bufferedCount) ? Math.max(0, msg.bufferedCount - workerAckCount) : 1) || 1;
+      perfStats.workerFrames += ackDelta;
+      workerAckCount = Number.isFinite(msg.bufferedCount)
+        ? msg.bufferedCount
+        : workerAckCount + ackDelta;
       const ackSampleTime = Number.isFinite(msg.frameIndex) ? msg.frameIndex / sampleFps : 0;
       pipelineDiagnostics.markTimeline(ackSampleTime, 'worker-ack', msg.frameIndex);
       addMs(perfStats, 'postProcessMs', msg.postProcessMs);
-      const sentAt = workerSentAtByFrame.get(msg.frameIndex);
-      if (sentAt != null) {
-        workerSentAtByFrame.delete(msg.frameIndex);
-        const delay = performance.now() - sentAt;
-        avgWorkerDelayMs = avgWorkerDelayMs > 0 ? avgWorkerDelayMs * 0.85 + delay * 0.15 : delay;
+      if (Number.isFinite(msg.frameIndex)) {
+        workerSentAtByFrame.forEach((sentAt, idx) => {
+          if (idx <= msg.frameIndex) {
+            const delay = performance.now() - sentAt;
+            avgWorkerDelayMs = avgWorkerDelayMs > 0 ? avgWorkerDelayMs * 0.85 + delay * 0.15 : delay;
+            workerSentAtByFrame.delete(idx);
+          }
+        });
       }
     } else if (msg.type === 'FRAME_BUFFER_READY') {
       workerReady = true;
@@ -404,19 +412,15 @@ export async function runHolisticVideoAnalysis({
         pipelineStage: 'frame_buffer_ready',
         progress: Math.max(10, Math.round((msg.bufferedCount / Math.max(1, timelineTotalFrames)) * 100)),
       });
-    } else if (msg.type === 'ERROR' || msg.type === 'WORKER_RUNTIME_ERROR' || msg.type === 'WORKER_UNHANDLED_REJECTION') {
-      const errObj = new Error(msg.error || msg.message || msg.reason || 'Worker ERROR message');
-      if (msg.stack) errObj.stack = msg.stack;
-      logWorkerErrorDetail('motion-post-process', msg.type, errObj, {
+    } else if (msg.type === 'ERROR' || msg.type === 'WORKER_RUNTIME_ERROR'
+      || msg.type === 'WORKER_UNHANDLED_REJECTION' || msg.type === 'WORKER_ONERROR') {
+      logWorkerErrorDetail('motion-post-process', msg.type, msg, {
         frameIndex: msg.frameIndex,
-        name: msg.name,
-        filename: msg.filename,
-        lineno: msg.lineno,
-        colno: msg.colno,
+        phase: msg.phase,
       });
       recordPropagationHop(
         `MotionExtractionEngine.worker.${msg.type}`,
-        errObj.message,
+        msg.error || msg.message || msg.reason || 'worker error',
         { propagatedToSampler: false },
       );
     } else if (msg.type === 'memory-report') {

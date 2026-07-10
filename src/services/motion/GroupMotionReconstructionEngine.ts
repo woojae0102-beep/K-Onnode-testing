@@ -34,6 +34,13 @@ import {
   saveCachedChoreo,
   CHOREO_CACHE_PIPELINE_VERSION,
 } from '../groupChoreoCache';
+import {
+  isProfileEnabled,
+  profileBeginFrame,
+  profileEndFrame,
+  profileRecordBytes,
+  profileStep,
+} from '../../benchmark/reconstructFrameProfiler';
 
 export const GROUP_MOTION_ENGINE_VERSION = '1.0';
 
@@ -177,6 +184,11 @@ export class GroupMotionReconstructionEngine {
     options: GroupMotionReconstructionOptions,
     detectedCount?: number,
   ): SkeletonFrameData {
+    const t0 = isProfileEnabled() ? performance.now() : 0;
+    if (isProfileEnabled()) {
+      profileBeginFrame(frame.frameIndex ?? 0, frame.timestamp);
+    }
+
     const {
       groupId,
       userMemberId,
@@ -191,20 +203,23 @@ export class GroupMotionReconstructionEngine {
     let members = frame.members || [];
 
     if (motionDatabase?.skeletonFrames?.length) {
-      members = this.generateAIMembers(frame, options);
+      members = profileStep('generateAI', () => this.generateAIMembers(frame, options)) as SkeletonMemberData[];
       this.debug.pipelineStage = 'motion_database';
     } else if (count > 1) {
-      const trackResult = this.previousFrame?.members?.length
-        ? this.tracker.trackMembers(members, this.previousFrame.members, {
-            bpm,
-            sampleFps,
-            timestamp: frame.timestamp,
-            prevTimestamp: this.previousFrame.timestamp,
-            maxTracks: allMemberIds.length || 9,
-          })
-        : { members: this.tracker.seedMembers(members), occlusionRecoveries: 0, avgVelocity: 0, identityConfidence: {} };
+      const trackResult = profileStep('trackingTotal', () => (
+        this.previousFrame?.members?.length
+          ? this.tracker.trackMembers(members, this.previousFrame.members, {
+              bpm,
+              sampleFps,
+              timestamp: frame.timestamp,
+              prevTimestamp: this.previousFrame.timestamp,
+              maxTracks: allMemberIds.length || 9,
+            })
+          : { members: this.tracker.seedMembers(members), occlusionRecoveries: 0, avgVelocity: 0, identityConfidence: {} }
+      )) as import('./MemberTrackingEngine').MemberTrackingResult;
 
       members = trackResult.members;
+      profileRecordBytes('members', members);
       this.occlusionRecoveryTotal += trackResult.occlusionRecoveries;
       this.debug.pipelineStage = 'adaptive_tracking';
       this.debug.avgMemberVelocity = trackResult.avgVelocity;
@@ -214,24 +229,33 @@ export class GroupMotionReconstructionEngine {
           / Math.max(1, Object.keys(trackResult.identityConfidence).length),
       });
     } else {
-      members = this.generateAIMembers(frame, options);
+      members = profileStep('generateAI', () => this.generateAIMembers(frame, options)) as SkeletonMemberData[];
       this.debug.singleDancerMode = true;
       this.debug.pipelineStage = 'motion_timeline';
     }
 
     const formation = formationTimeline ?? this.formationTimeline;
-    const formationKf = formation ? resolveFormationAtTime(formation, frame.timestamp) : null;
+    const formationKf = profileStep('formation', () => (
+      formation ? resolveFormationAtTime(formation, frame.timestamp) : null
+    )) as import('../../types/danceDatabase').FormationKeyframe | null;
 
-    const out: SkeletonFrameData = {
+    const out: SkeletonFrameData = profileStep('finalSkeleton', () => ({
       ...frame,
       members,
       formationType: formationKf?.formationType ?? frame.formationType,
       formation: formationKf ?? frame.formation,
-    };
+    })) as SkeletonFrameData;
 
     this.previousFrame = out;
-    this.updateLiveTimelines(out, allMemberIds.filter((id) => id !== userMemberId));
+    profileStep('timeline', () => {
+      this.updateLiveTimelines(out, allMemberIds.filter((id) => id !== userMemberId));
+    });
     this.updateDebugFromFrame(out, options);
+    profileRecordBytes('final', out);
+
+    if (isProfileEnabled()) {
+      profileEndFrame(performance.now() - t0);
+    }
 
     return out;
   }

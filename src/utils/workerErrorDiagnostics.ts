@@ -52,27 +52,61 @@ let lastWorkerErrorBeforeStall: WorkerErrorDetail | null = null;
 
 export function formatErrorEvent(ev: ErrorEvent | Event): Partial<WorkerErrorDetail> {
   const e = ev as ErrorEvent;
-  const err = e.error;
+  const inner = e.error;
+  const filename = typeof e.filename === 'string' ? e.filename : undefined;
+  const lineno = typeof e.lineno === 'number' ? e.lineno : undefined;
+  const colno = typeof e.colno === 'number' ? e.colno : undefined;
+  const message = (inner && typeof inner.message === 'string' && inner.message)
+    || (typeof e.message === 'string' && e.message)
+    || (filename ? `Script error at ${filename}:${lineno ?? '?'}:${colno ?? '?'}` : '(Worker ErrorEvent — message unavailable)');
   return {
-    message: e.message || err?.message || '(ErrorEvent.message empty)',
-    name: err?.name,
-    filename: e.filename,
-    lineno: e.lineno,
-    colno: e.colno,
-    stack: err?.stack || (e.message ? `ErrorEvent: ${e.message}` : undefined),
+    message,
+    name: inner?.name,
+    filename,
+    lineno,
+    colno,
+    stack: inner?.stack,
   };
 }
 
+/** Worker ErrorEvent는 cross-realm이라 instanceof Event/ErrorEvent가 실패할 수 있음 — duck-type 사용 */
+export function parseWorkerErrorSource(source: unknown): Partial<WorkerErrorDetail> {
+  if (source instanceof Error) {
+    return { message: source.message, name: source.name, stack: source.stack };
+  }
+  if (typeof source === 'string') {
+    return { message: source };
+  }
+  if (source && typeof source === 'object') {
+    const e = source as Record<string, unknown>;
+    // ErrorEvent duck-type (instanceof 불가 환경 대응)
+    if ('filename' in e || 'lineno' in e || 'colno' in e || 'error' in e || e.type === 'error') {
+      return formatErrorEvent(source as ErrorEvent);
+    }
+    // Worker postMessage ERROR payload
+    const errMsg = (typeof e.error === 'string' && e.error)
+      || (typeof e.message === 'string' && e.message)
+      || (typeof e.reason === 'string' && e.reason);
+    if (errMsg) {
+      return {
+        message: errMsg,
+        name: typeof e.name === 'string' ? e.name : undefined,
+        filename: typeof e.filename === 'string' ? e.filename : undefined,
+        lineno: typeof e.lineno === 'number' ? e.lineno : undefined,
+        colno: typeof e.colno === 'number' ? e.colno : undefined,
+        stack: typeof e.stack === 'string' ? e.stack : undefined,
+      };
+    }
+    // Event 객체를 JSON.stringify 하면 {"isTrusted":true} 만 나옴 — 금지
+    if (typeof e.type === 'string') {
+      return { message: `Event type=${e.type} (cross-realm — 필드 직접 읽기 실패)` };
+    }
+  }
+  return { message: String(source) };
+}
+
 export function formatUnknownError(err: unknown): Partial<WorkerErrorDetail> {
-  if (err instanceof Error) {
-    return { message: err.message, name: err.name, stack: err.stack };
-  }
-  if (typeof err === 'string') return { message: err };
-  try {
-    return { message: JSON.stringify(err) };
-  } catch {
-    return { message: String(err) };
-  }
+  return parseWorkerErrorSource(err);
 }
 
 /** Worker onerror / onmessageerror / ERROR 메시지 — 전체 필드 콘솔 출력 */
@@ -82,9 +116,7 @@ export function logWorkerErrorDetail(
   source: ErrorEvent | Event | unknown,
   extra?: Record<string, unknown>,
 ): WorkerErrorDetail {
-  const base = source instanceof Event && 'lineno' in source
-    ? formatErrorEvent(source as ErrorEvent)
-    : formatUnknownError(source);
+  const base = parseWorkerErrorSource(source);
 
   const detail: WorkerErrorDetail = {
     workerName,
@@ -110,6 +142,19 @@ export function logWorkerErrorDetail(
   if (detail.lineno != null) console.error('lineno:', detail.lineno, 'colno:', detail.colno);
   if (detail.stack) console.error('stack:\n', detail.stack);
   if (extra) console.error('extra:', extra);
+  // cross-realm ErrorEvent raw 필드 — instanceof 실패 시에도 filename/lineno 확보
+  if (source && typeof source === 'object') {
+    const raw = source as Record<string, unknown>;
+    console.error('raw ErrorEvent:', {
+      type: raw.type,
+      message: raw.message,
+      filename: raw.filename,
+      lineno: raw.lineno,
+      colno: raw.colno,
+      errorMessage: (raw.error as Error | undefined)?.message,
+      errorStack: (raw.error as Error | undefined)?.stack,
+    });
+  }
   console.error('capture stack:', new Error(`[capture] ${phase}`).stack);
   console.groupEnd();
 

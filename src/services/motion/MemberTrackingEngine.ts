@@ -18,6 +18,10 @@ import {
 import { applyOrientationToMember } from './OrientationEngine';
 import { applyBoneRotationsToMember } from './JointRotationEngine';
 import { interpolateJointsHybrid } from '../../utils/quaternionInterpolation';
+import {
+  isProfileEnabled,
+  profileStep,
+} from '../../benchmark/reconstructFrameProfiler';
 
 export interface MemberTrackingOptions {
   bpm?: number;
@@ -163,7 +167,7 @@ export class MemberTrackingEngine {
     const nPrev = previousMembers.length;
     const nCurr = filteredCurrent.length;
 
-    const costMatrix = Array.from({ length: nPrev }, (_, i) => {
+    const costMatrix = profileStep('memberMatching', () => Array.from({ length: nPrev }, (_, i) => {
       const prev = previousMembers[i];
       const tid = Number(prev.trackId ?? i);
       const occlusionFrames = this.occlusionByTrack.get(tid) ?? (prev.isEstimated ? 1 : 0);
@@ -189,105 +193,24 @@ export class MemberTrackingEngine {
         const raw = jointsPoseDistance(refJoints, filteredCurrent[j]?.joints);
         return Math.max(0, raw - boost * 0.15);
       });
-    });
+    })) as number[][];
 
-    const assignment = hungarianAssign(costMatrix);
+    const assignment = profileStep('hungarianMatching', () => hungarianAssign(costMatrix)) as number[];
     const matchedCurr = new Set<number>();
     const matchedPrev = new Set<number>();
     const result: SkeletonMemberData[] = [];
     let occlusionRecoveries = 0;
     let velocitySum = 0;
     let velocityCount = 0;
-
-    assignment.forEach((currIdx, prevIdx) => {
-      if (currIdx < 0 || currIdx >= nCurr) return;
-      const prev = previousMembers[prevIdx];
-      const tid = Number(prev.trackId ?? prevIdx);
-      const cost = costMatrix[prevIdx]?.[currIdx] ?? Infinity;
-      const occlusionFrames = this.occlusionByTrack.get(tid) ?? (prev.isEstimated ? 1 : 0);
-      const threshold = computeAdaptiveMatchThreshold({
-        motionVelocity: frameMotionVelocity,
-        poseConfidence: avgConfidence,
-        bpm: options.bpm,
-        sampleFps: options.sampleFps,
-        occlusionFrames,
-      });
-      if (cost > threshold) return;
-
-      matchedCurr.add(currIdx);
-      matchedPrev.add(prevIdx);
-      const curr = filteredCurrent[currIdx];
-      const memberId = prev.estimatedMemberId ?? curr.estimatedMemberId;
-
-      if (prev.joints && curr.joints) {
-        const vel = computeJointMotionVelocity(prev.joints, curr.joints, dtSec);
-        frameMotionVelocity = Math.max(frameMotionVelocity, vel);
-        if (memberId) {
-          this.memberVelocity.set(memberId, vel);
-          velocitySum += vel;
-          velocityCount += 1;
-        }
-      }
-
-      this.getPredictor(tid).update(curr.joints, now);
-      this.occlusionByTrack.set(tid, 0);
-
-      if (memberId) {
-        const prevConf = this.identityConfidence.get(memberId) ?? 0.5;
-        this.identityConfidence.set(
-          memberId,
-          prevConf * 0.15 + (curr.confidence ?? 0.8) * 0.85,
-        );
-      }
-
-      result.push(applyBoneRotationsToMember(applyOrientationToMember({
-        ...curr,
-        trackId: tid,
-        personIndex: tid,
-        estimatedMemberId: memberId,
-        isEstimated: false,
-      })));
-    });
-
     const staleTracks: number[] = [];
-    previousMembers.forEach((prev, prevIdx) => {
-      if (matchedPrev.has(prevIdx)) return;
-      const tid = Number(prev.trackId ?? prevIdx);
-      const missed = (this.occlusionByTrack.get(tid) ?? 0) + 1;
-      this.occlusionByTrack.set(tid, missed);
 
-      if (missed > maxOcclusion) {
-        staleTracks.push(tid);
-        return;
-      }
-
-      const predicted = this.getPredictor(tid).predict(now);
-      const holdJoints = Object.keys(predicted).length ? predicted : prev.joints;
-
-      result.push(applyBoneRotationsToMember(applyOrientationToMember({
-        ...prev,
-        joints: holdJoints,
-        isEstimated: true,
-        confidence: computeMemberPoseConfidence(prev) * 0.7,
-      })));
-    });
-    staleTracks.forEach((tid) => this.releaseTrack(tid));
-
-    filteredCurrent.forEach((curr, currIdx) => {
-      if (matchedCurr.has(currIdx)) return;
-
-      let reIdPrev: SkeletonMemberData | null = null;
-      let reIdCost = Infinity;
-      let reIdTid = -1;
-
-      previousMembers.forEach((prev, prevIdx) => {
-        if (matchedPrev.has(prevIdx)) return;
+    profileStep('poseMerge', () => {
+      assignment.forEach((currIdx, prevIdx) => {
+        if (currIdx < 0 || currIdx >= nCurr) return;
+        const prev = previousMembers[prevIdx];
         const tid = Number(prev.trackId ?? prevIdx);
-        const occlusionFrames = this.occlusionByTrack.get(tid) ?? 1;
-        if (occlusionFrames <= 0) return;
-
-        const predicted = this.getPredictor(tid).predict(now);
-        const cost = jointsPoseDistance(predicted, curr.joints);
+        const cost = costMatrix[prevIdx]?.[currIdx] ?? Infinity;
+        const occlusionFrames = this.occlusionByTrack.get(tid) ?? (prev.isEstimated ? 1 : 0);
         const threshold = computeAdaptiveMatchThreshold({
           motionVelocity: frameMotionVelocity,
           poseConfidence: avgConfidence,
@@ -295,43 +218,128 @@ export class MemberTrackingEngine {
           sampleFps: options.sampleFps,
           occlusionFrames,
         });
-        if (cost < reIdCost && cost <= threshold) {
-          reIdCost = cost;
-          reIdPrev = prev;
-          reIdTid = tid;
-        }
-      });
+        if (cost > threshold) return;
 
-      if (reIdPrev && reIdTid >= 0) {
-        occlusionRecoveries += 1;
-        const memberId = reIdPrev.estimatedMemberId ?? curr.estimatedMemberId;
-        this.getPredictor(reIdTid).update(curr.joints, now);
-        this.occlusionByTrack.set(reIdTid, 0);
-        if (memberId) this.identityConfidence.set(memberId, (curr.confidence ?? 0.75) * 0.9);
+        matchedCurr.add(currIdx);
+        matchedPrev.add(prevIdx);
+        const curr = filteredCurrent[currIdx];
+        const memberId = prev.estimatedMemberId ?? curr.estimatedMemberId;
+
+        if (prev.joints && curr.joints) {
+          const vel = computeJointMotionVelocity(prev.joints, curr.joints, dtSec);
+          frameMotionVelocity = Math.max(frameMotionVelocity, vel);
+          if (memberId) {
+            this.memberVelocity.set(memberId, vel);
+            velocitySum += vel;
+            velocityCount += 1;
+          }
+        }
+
+        this.getPredictor(tid).update(curr.joints, now);
+        this.occlusionByTrack.set(tid, 0);
+
+        if (memberId) {
+          const prevConf = this.identityConfidence.get(memberId) ?? 0.5;
+          this.identityConfidence.set(
+            memberId,
+            prevConf * 0.15 + (curr.confidence ?? 0.8) * 0.85,
+          );
+        }
 
         result.push(applyBoneRotationsToMember(applyOrientationToMember({
           ...curr,
-          trackId: reIdTid,
-          personIndex: reIdTid,
+          trackId: tid,
+          personIndex: tid,
           estimatedMemberId: memberId,
+          isEstimated: false,
         })));
-        return;
-      }
+      });
+    });
 
-      const trackId = this.trackPool.acquire(Number(curr.trackId));
-      if (trackId == null) return;
+    profileStep('missingMemberFill', () => {
+      previousMembers.forEach((prev, prevIdx) => {
+        if (matchedPrev.has(prevIdx)) return;
+        const tid = Number(prev.trackId ?? prevIdx);
+        const missed = (this.occlusionByTrack.get(tid) ?? 0) + 1;
+        this.occlusionByTrack.set(tid, missed);
 
-      this.getPredictor(trackId).update(curr.joints, now);
-      this.occlusionByTrack.set(trackId, 0);
-      if (curr.estimatedMemberId) {
-        this.identityConfidence.set(curr.estimatedMemberId, curr.confidence ?? 0.6);
-      }
+        if (missed > maxOcclusion) {
+          staleTracks.push(tid);
+          return;
+        }
 
-      result.push(applyBoneRotationsToMember(applyOrientationToMember({
-        ...curr,
-        trackId,
-        personIndex: trackId,
-      })));
+        const predicted = this.getPredictor(tid).predict(now);
+        const holdJoints = Object.keys(predicted).length ? predicted : prev.joints;
+
+        result.push(applyBoneRotationsToMember(applyOrientationToMember({
+          ...prev,
+          joints: holdJoints,
+          isEstimated: true,
+          confidence: computeMemberPoseConfidence(prev) * 0.7,
+        })));
+      });
+      staleTracks.forEach((tid) => this.releaseTrack(tid));
+
+      filteredCurrent.forEach((curr, currIdx) => {
+        if (matchedCurr.has(currIdx)) return;
+
+        let reIdPrev: SkeletonMemberData | null = null;
+        let reIdCost = Infinity;
+        let reIdTid = -1;
+
+        previousMembers.forEach((prev, prevIdx) => {
+          if (matchedPrev.has(prevIdx)) return;
+          const tid = Number(prev.trackId ?? prevIdx);
+          const occlusionFrames = this.occlusionByTrack.get(tid) ?? 1;
+          if (occlusionFrames <= 0) return;
+
+          const predicted = this.getPredictor(tid).predict(now);
+          const cost = jointsPoseDistance(predicted, curr.joints);
+          const threshold = computeAdaptiveMatchThreshold({
+            motionVelocity: frameMotionVelocity,
+            poseConfidence: avgConfidence,
+            bpm: options.bpm,
+            sampleFps: options.sampleFps,
+            occlusionFrames,
+          });
+          if (cost < reIdCost && cost <= threshold) {
+            reIdCost = cost;
+            reIdPrev = prev;
+            reIdTid = tid;
+          }
+        });
+
+        if (reIdPrev && reIdTid >= 0) {
+          occlusionRecoveries += 1;
+          const memberId = reIdPrev.estimatedMemberId ?? curr.estimatedMemberId;
+          this.getPredictor(reIdTid).update(curr.joints, now);
+          this.occlusionByTrack.set(reIdTid, 0);
+          if (memberId) this.identityConfidence.set(memberId, (curr.confidence ?? 0.75) * 0.9);
+
+          result.push(applyBoneRotationsToMember(applyOrientationToMember({
+            ...curr,
+            trackId: reIdTid,
+            personIndex: reIdTid,
+            estimatedMemberId: memberId,
+          })));
+          return;
+        }
+
+        const trackId = this.trackPool.acquire(Number(curr.trackId));
+        if (trackId == null) return;
+
+        this.getPredictor(trackId).update(curr.joints, now);
+        this.occlusionByTrack.set(trackId, 0);
+        if (curr.estimatedMemberId) {
+          this.identityConfidence.set(curr.estimatedMemberId, curr.confidence ?? 0.6);
+        }
+
+        result.push(applyBoneRotationsToMember(applyOrientationToMember({
+          ...curr,
+          trackId,
+          personIndex: trackId,
+        })));
+      });
     });
 
     return {

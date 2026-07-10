@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <title>reconstructFrame Benchmark</title>
+</head>
+<body>
+  <h1>reconstructFrame Benchmark</h1>
+  <pre id="status">Running...</pre>
+  <script type="module">
+    import { runReconstructFrameBenchmark } from '/src/benchmark/runReconstructFrameBenchmark.ts';
+    try {
+      const result = runReconstructFrameBenchmark();
+      document.getElementById('status').textContent = JSON.stringify({
+        ok: true,
+        totalFrames: result.totalFrames,
+        benchTotalMs: result.benchTotalMs,
+        avgMsPerFrame: result.timingTrend.find((t) => t.metric === 'avg ms/frame (measured)')?.value,
+      }, null, 2);
+      window.__BENCH_RESULT__ = result;
+      window.__BENCH_DONE__ = true;
+    } catch (err) {
+      document.getElementById('status').textContent = String(err?.stack || err);
+      window.__BENCH_ERROR__ = err;
+      window.__BENCH_DONE__ = true;
+    }
+  </script>
+</body>
+</html>
