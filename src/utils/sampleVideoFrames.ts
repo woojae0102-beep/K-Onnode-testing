@@ -5,6 +5,8 @@
 import { sampleVideoFramesPlayback, type SampleVideoFramesOptions } from './videoFrameSampler';
 import { isWebCodecsEnabled } from '../config/pipelineConfig';
 import { isWebCodecsSupported, sampleVideoFramesWebCodecs } from './webCodecsFrameSampler';
+import { setRvfcDecodePath } from './rvfcStallDiagnostics';
+import { pipelineDiagnostics } from './pipelineDiagnostics';
 
 export type UnifiedSampleOptions = SampleVideoFramesOptions & {
   /** WebCodecs 경로용 — File/Blob이 있으면 RVFC 대신 WebCodecs를 먼저 시도 */
@@ -22,6 +24,7 @@ export async function sampleVideoFrames(options: UnifiedSampleOptions): Promise<
 
   if (!forceRvfc && isWebCodecsEnabled() && sourceFile && isWebCodecsSupported()) {
     try {
+      setRvfcDecodePath('webcodecs');
       console.info('[sampleVideoFrames] WebCodecs 경로 시도');
       await sampleVideoFramesWebCodecs({
         file: sourceFile,
@@ -34,7 +37,11 @@ export async function sampleVideoFrames(options: UnifiedSampleOptions): Promise<
       return;
     } catch (err) {
       console.warn('[sampleVideoFrames] WebCodecs 실패 — RVFC 폴백', err);
+      pipelineDiagnostics.markWebCodecsFailed();
+      setRvfcDecodePath('webcodecs-fallback-rvfc');
     }
+  } else {
+    setRvfcDecodePath('rvfc');
   }
 
   await sampleVideoFramesPlayback(rvfcOptions);

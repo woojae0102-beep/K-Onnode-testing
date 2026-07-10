@@ -33,6 +33,11 @@ function ensureCanvas(w: number, h: number, devicePixelRatio = 1) {
 self.onmessage = (event) => {
   const msg = event.data || {};
 
+  if (msg.type === 'PING') {
+    post('PONG', { pingId: msg.pingId, atMs: performance.now() });
+    return;
+  }
+
   if (msg.type === 'INIT') {
     canvas = msg.canvas as OffscreenCanvas;
     ensureCanvas(msg.width ?? 300, msg.height ?? 200, msg.dpr ?? 1);

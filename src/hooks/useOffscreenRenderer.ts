@@ -9,6 +9,8 @@ import { isRendererWorkerEnabled } from '../config/pipelineConfig';
 import { pipelineEventBus, pipelineRegistry } from '../utils/pipelineEventBus';
 import { createManagedWorker } from '../utils/workerRecovery';
 import { recordWorkerError } from '../utils/pipelineTelemetry';
+import { handleWorkerMessageForHealth, registerWorkerHealth } from '../utils/workerHealthMonitor';
+import { pipelineDiagnostics } from '../utils/pipelineDiagnostics';
 import type { SkeletonFrameData } from '../types/groupPractice';
 import type { GroupStudioRendererOptions } from '../services/rendering/GroupStudioRenderer';
 
@@ -36,6 +38,7 @@ export function useOffscreenRenderer(
   surface = 'group-stage',
 ): OffscreenRendererBridge {
   const managedRef = useRef<ReturnType<typeof createManagedWorker> | null>(null);
+  const unregisterHealthRef = useRef<(() => void) | null>(null);
   const [enabled, setEnabled] = useState(false);
   const unregisterRef = useRef<(() => void) | null>(null);
 
@@ -76,6 +79,12 @@ export function useOffscreenRenderer(
     });
 
     managedRef.current = managed;
+    unregisterHealthRef.current = registerWorkerHealth({
+      name: `renderer-${surface}`,
+      subsystem: 'renderer',
+      postMessage: (m) => managed.postMessage(m),
+      managed: true,
+    });
     setEnabled(true);
     unregisterRef.current = pipelineRegistry.register({
       name: `rendererWorker:${surface}`,
@@ -86,6 +95,7 @@ export function useOffscreenRenderer(
 
     const onMessage = (event: MessageEvent) => {
       const msg = event.data || {};
+      if (handleWorkerMessageForHealth(`renderer-${surface}`, msg)) return;
       if (msg.type === 'DRAW_DONE') {
         pipelineEventBus.emit('renderer-frame-drawn', {
           surface: msg.surface || surface,
@@ -101,6 +111,8 @@ export function useOffscreenRenderer(
       managed.removeEventListener('message', onMessage);
       managed.terminate();
       managedRef.current = null;
+      unregisterHealthRef.current?.();
+      unregisterHealthRef.current = null;
       setEnabled(false);
       unregisterRef.current?.();
       unregisterRef.current = null;
@@ -114,6 +126,7 @@ export function useOffscreenRenderer(
     frameIndex = 0,
   ) => {
     if (!enabled || !managedRef.current) return;
+    pipelineDiagnostics.markTimeline((frameIndex ?? 0) / 30, 'renderer-start', frameIndex);
     managedRef.current.postMessage({
       type: 'DRAW_GROUP_FRAME',
       surface,

@@ -156,6 +156,11 @@ async function initDetector(config: {
 self.onmessage = async (event) => {
   const msg = event.data || {};
 
+  if (msg.type === 'PING') {
+    post('PONG', { pingId: msg.pingId, atMs: performance.now() });
+    return;
+  }
+
   if (msg.type === 'INIT') {
     try {
       const info = await initDetector(msg.config || {});

@@ -7,6 +7,9 @@ import { featureFlagManager } from './featureFlagManager';
 import { initGpuResourceMonitor } from '../utils/gpuResourceMonitor';
 import { initPipelineTelemetry } from '../utils/pipelineTelemetry';
 import { initE2EPipelineHarness } from '../testing/e2ePipelineHarness';
+import { pipelineDiagnostics } from '../utils/pipelineDiagnostics';
+import { pipelineEventBus } from '../utils/pipelineEventBus';
+import { setWorkerHungCallback } from '../utils/workerHealthMonitor';
 
 let bootstrapped = false;
 
@@ -18,6 +21,16 @@ export function initProductionReadiness(): void {
   initGpuResourceMonitor();
   initPipelineTelemetry();
   initE2EPipelineHarness();
+
+  pipelineEventBus.on('renderer-frame-drawn', (p) => {
+    const t = (p.frameIndex ?? 0) / 30;
+    pipelineDiagnostics.markTimeline(t, 'renderer-end', p.frameIndex);
+  });
+
+  setWorkerHungCallback((name, status) => {
+    console.error('[PipelineDiag] Worker HUNG — queue dump', { name, status });
+    pipelineDiagnostics.dumpSnapshots(30);
+  });
 
   if (import.meta.env?.DEV) {
     console.info('[ProductionReadiness] Feature Flags', featureFlagManager.getAll());

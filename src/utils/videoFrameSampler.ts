@@ -1,6 +1,8 @@
 // @ts-nocheck
 import { scheduleVideoFrame, cancelVideoFrame } from './cameraFrameLoop';
 import { waitForVideoEvent } from './choreoVideoUtils';
+import { createRvfcStallDiagnostics, setRvfcDecodePath, setRvfcExternalDiagnosticsProvider } from './rvfcStallDiagnostics';
+import { pipelineDiagnostics } from './pipelineDiagnostics';
 
 export type VideoFrameSample = {
   time: number;
@@ -74,6 +76,8 @@ export type SampleVideoFramesOptions = {
   onQueueOverflow?: (info: QueueOverflowInfo) => void;
   /** 종료 시 최종 리포트를 프로그램적으로도 받고 싶을 때 (console.table과 별개로 호출됨) */
   onReport?: (report: SamplerReport) => void;
+  /** Motion Extraction 파이프라인/Worker 큐 등 외부 진단값 — Stall 덤프에 포함 */
+  getExternalDiagnostics?: () => Record<string, unknown>;
 };
 
 const DEFAULT_MAX_QUEUE_LENGTH = 60;
@@ -130,6 +134,7 @@ export async function sampleVideoFramesPlayback({
   onStall,
   onQueueOverflow,
   onReport,
+  getExternalDiagnostics,
 }: SampleVideoFramesOptions): Promise<void> {
   if (!video) throw new Error('비디오 요소가 없습니다.');
 
@@ -172,7 +177,6 @@ export async function sampleVideoFramesPlayback({
     sampleTime: number;
     mediaTime: number;
     canvas: HTMLCanvasElement | OffscreenCanvas;
-    /** Producer가 이 프레임을 큐에 넣은 시각 — Queue Delay 계산용 */
     captureTime: number;
   };
   const queue: QueueItem[] = [];
@@ -202,6 +206,62 @@ export async function sampleVideoFramesPlayback({
   let avgProcessingDelayMs = 0;
   let adaptiveCheckCounter = 0;
   const targetFrameBudgetMs = 1000 / Math.max(1, sampleFps);
+
+  const getDiagCtx = () => ({
+    nextSampleTime,
+    endTime,
+    producerDone,
+    settled,
+    aborted,
+    samplerQueueLength: queue.length,
+    rvfcCallbackCount,
+    rvfcFps,
+    lastRvfcIdleMs: performance.now() - lastRvfcAt,
+    droppedFrames,
+  });
+
+  const diagnostics = createRvfcStallDiagnostics(video);
+  if (getExternalDiagnostics) {
+    setRvfcExternalDiagnosticsProvider(getExternalDiagnostics);
+  }
+  setRvfcDecodePath('rvfc');
+  pipelineDiagnostics.startSession({
+    video,
+    decodePath: 'rvfc',
+    metricsProvider: () => {
+      const ext = getExternalDiagnostics?.() ?? {};
+      return {
+        samplerQueue: queue.length,
+        rvfcFps,
+        pipelineQueues: ext.pipelineStages
+          ? Object.fromEntries(
+            Object.entries(ext.pipelineStages as Record<string, { queueLength: number }>)
+              .map(([k, v]) => [k, v.queueLength]),
+          )
+          : {},
+        mediaPipeDelayMs: ext.lastMediaPipeDelayMs ?? 0,
+        workerDelayMs: ext.lastWorkerDelayMs ?? 0,
+        coverage: ext.coverage ?? 0,
+        trackCount: ext.trackCount ?? 0,
+        workerQueueLength: ext.workerQueueLength ?? 0,
+        memoryMb: ext.memoryMb ?? null,
+      };
+    },
+    stageStatsProvider: () => {
+      const ext = getExternalDiagnostics?.() ?? {};
+      const stages = ext.pipelineStages as Record<string, { queueLength: number; processedCount: number; droppedCount: number }> | undefined;
+      if (!stages) return [];
+      return Object.entries(stages).map(([name, s]) => ({
+        name,
+        queueLength: s.queueLength,
+        processedCount: s.processedCount,
+        droppedCount: s.droppedCount,
+      }));
+    },
+  });
+  diagnostics.startPeriodicLog(getDiagCtx);
+
+  let scheduleNextRvfc: () => void = () => {};
 
   const adjustAdaptiveQueueLength = () => {
     adaptiveCheckCounter += 1;
@@ -258,6 +318,9 @@ export async function sampleVideoFramesPlayback({
     if (settled) return;
     settled = true;
     stopWatchdog();
+    diagnostics.detach();
+    setRvfcExternalDiagnosticsProvider(null);
+    pipelineDiagnostics.endSession();
     video.pause();
     cancelVideoFrame(handle);
     handle = null;
@@ -286,6 +349,7 @@ export async function sampleVideoFramesPlayback({
           break;
         }
         const item = queue.shift();
+        pipelineDiagnostics.markTimeline(item.sampleTime, 'queue-exit');
         processingStartedAt = performance.now();
         const queueDelayMs = Math.max(0, processingStartedAt - item.captureTime);
         try {
@@ -350,6 +414,8 @@ export async function sampleVideoFramesPlayback({
       ctx.drawImage(video, 0, 0, vw, vh);
     }
     queue.push({ sampleTime, mediaTime, canvas, captureTime: performance.now() });
+    pipelineDiagnostics.markTimeline(sampleTime, 'capture');
+    pipelineDiagnostics.markTimeline(sampleTime, 'queue-enter');
     maxQueueLengthObserved = Math.max(maxQueueLengthObserved, queue.length);
   };
 
@@ -368,6 +434,7 @@ export async function sampleVideoFramesPlayback({
           `RVFC Stall 감지: ${(rvfcIdleMs / 1000).toFixed(1)}s 동안 새 비디오 프레임 없음 `
           + `(nextSampleTime=${nextSampleTime.toFixed(2)}s / endTime=${endTime.toFixed(2)}s) `
           + '— Coverage 확보가 불가능하다고 판단, 즉시 종료합니다.';
+        diagnostics.dumpStall(reason, { ...getDiagCtx(), lastRvfcIdleMs: rvfcIdleMs });
         onStall?.({ idleMs: rvfcIdleMs, nextSampleTime, endTime, reason, kind: 'rvfc_idle' });
         finalize(new Error(reason));
         return;
@@ -387,65 +454,77 @@ export async function sampleVideoFramesPlayback({
     }, watchdogIntervalMs);
 
     const onFrame = (_now: number, metadata?: { mediaTime?: number }) => {
-      rvfcCallbackCount += 1;
-      const frameArrivedAt = performance.now();
-      onDecode?.(frameArrivedAt - lastRvfcAt);
-      lastRvfcAt = frameArrivedAt;
+      let shouldReschedule = true;
+      try {
+        rvfcCallbackCount += 1;
+        const frameArrivedAt = performance.now();
+        onDecode?.(frameArrivedAt - lastRvfcAt);
+        lastRvfcAt = frameArrivedAt;
 
-      // Producer 단독 RVFC 도착 속도 — Processing(Consumer) 지연과 무관한 측정값.
-      const rvfcIntervalMs = frameArrivedAt - lastRvfcIntervalAt;
-      lastRvfcIntervalAt = frameArrivedAt;
-      if (rvfcIntervalMs > 0) {
-        const instantFps = 1000 / rvfcIntervalMs;
-        rvfcFps = rvfcFps > 0 ? rvfcFps * 0.85 + instantFps * 0.15 : instantFps;
-      }
+        // Producer 단독 RVFC 도착 속도 — Processing(Consumer) 지연과 무관한 측정값.
+        const rvfcIntervalMs = frameArrivedAt - lastRvfcIntervalAt;
+        lastRvfcIntervalAt = frameArrivedAt;
+        if (rvfcIntervalMs > 0) {
+          const instantFps = 1000 / rvfcIntervalMs;
+          rvfcFps = rvfcFps > 0 ? rvfcFps * 0.85 + instantFps * 0.15 : instantFps;
+        }
 
-      if (settled) return;
+        if (settled) return;
 
-      if (abortRef?.current) {
-        aborted = true;
-        producerDone = true;
-        tryFinalizeIfDrained();
-        return;
-      }
+        if (abortRef?.current) {
+          aborted = true;
+          producerDone = true;
+          shouldReschedule = false;
+          tryFinalizeIfDrained();
+          return;
+        }
 
-      // [요구사항 5] currentTime 대신 metadata.mediaTime을 Timeline/Coverage 기준으로 사용.
-      // (디코더가 실제로 디코드한 프레임 시각이므로 currentTime보다 정확하다)
-      const metadataTime = metadata?.mediaTime;
-      const currentTime = Number(video.currentTime) || 0;
-      const mediaTime = Number.isFinite(metadataTime) ? metadataTime : currentTime;
-      const reachedDuration = mediaTime >= endTime - 0.05;
+        const metadataTime = metadata?.mediaTime;
+        const currentTime = Number(video.currentTime) || 0;
+        const mediaTime = Number.isFinite(metadataTime) ? metadataTime : currentTime;
+        diagnostics.recordOnFrame(mediaTime);
 
-      // Producer: 캡처만 수행 — 절대 await onSample() 하지 않는다.
-      while (nextSampleTime <= endTime && mediaTime + 1e-3 >= nextSampleTime) {
-        const sampleTime = nextSampleTime;
-        nextSampleTime += sampleInterval;
-        enqueueCapture(sampleTime, mediaTime);
-      }
+        const reachedDuration = mediaTime >= endTime - 0.05;
 
-      const videoEnded = video.ended || reachedDuration;
-      if (videoEnded) {
-        // 영상이 끝났으므로 새 프레임을 더 받을 수 없다 — 남은 그리드는 마지막 프레임으로 flush.
-        while (nextSampleTime <= endTime + 1e-3) {
-          const sampleTime = Math.min(nextSampleTime, endTime);
+        while (nextSampleTime <= endTime && mediaTime + 1e-3 >= nextSampleTime) {
+          const sampleTime = nextSampleTime;
           nextSampleTime += sampleInterval;
           enqueueCapture(sampleTime, mediaTime);
         }
-        producerDone = true;
-      } else {
-        // 요구사항 1 — Queue push 직후 즉시 다음 RVFC를 예약한다 (MediaPipe 완료 대기 없음).
-        handle = scheduleVideoFrame(video, onFrame);
-      }
 
-      if (queue.length && !consumerRunning) {
-        void pumpQueue();
+        const videoEnded = video.ended || reachedDuration;
+        if (videoEnded) {
+          while (nextSampleTime <= endTime + 1e-3) {
+            const sampleTime = Math.min(nextSampleTime, endTime);
+            nextSampleTime += sampleInterval;
+            enqueueCapture(sampleTime, mediaTime);
+          }
+          producerDone = true;
+          shouldReschedule = false;
+        }
+      } catch (err) {
+        diagnostics.recordOnFrameError(err);
+        // 예외가 나도 Producer 체인은 유지 — scheduleVideoFrame이 끊기면 RVFC는 영원히 안 온다.
+      } finally {
+        if (!settled && shouldReschedule && !producerDone && !aborted) {
+          scheduleNextRvfc();
+        }
+        if (queue.length && !consumerRunning) {
+          void pumpQueue();
+        }
+        tryFinalizeIfDrained();
       }
-      tryFinalizeIfDrained();
+    };
+
+    scheduleNextRvfc = () => {
+      handle = scheduleVideoFrame(video, onFrame);
+      diagnostics.recordSchedule(handle);
     };
 
     video.play().then(() => {
-      handle = scheduleVideoFrame(video, onFrame);
+      scheduleNextRvfc();
     }).catch((err) => {
+      diagnostics.dumpStall(`video.play() 실패: ${err?.message || err}`, getDiagCtx());
       producerDone = true;
       finalize(err);
     });

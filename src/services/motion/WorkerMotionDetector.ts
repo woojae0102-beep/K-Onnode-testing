@@ -9,6 +9,7 @@ import { pipelineRegistry } from '../../utils/pipelineEventBus';
 import { isMotionWorkerEnabled, isForceMainThreadMediaPipe } from '../../config/pipelineConfig';
 import { createManagedWorker, type ManagedWorkerHandle } from '../../utils/workerRecovery';
 import { recordMediaPipeError } from '../../utils/pipelineTelemetry';
+import { handleWorkerMessageForHealth, registerWorkerHealth } from '../../utils/workerHealthMonitor';
 
 const PROBE_TIMEOUT_MS = 3000;
 let cachedWorkerCapable: boolean | null = null;
@@ -102,6 +103,7 @@ class WorkerBackedMotionDetector implements MotionDetectorLike {
   private nextRequestId = 0;
   private unregister: () => void;
   private onMessageBound: (event: MessageEvent) => void;
+  private unregisterHealth: () => void;
 
   constructor(managed: ManagedWorkerHandle, initInfo: { delegate?: string; runningMode?: string; modelVariant?: string }) {
     this.managed = managed;
@@ -116,10 +118,17 @@ class WorkerBackedMotionDetector implements MotionDetectorLike {
       kind: 'worker',
       meta: { delegate: this.delegate },
     });
+    this.unregisterHealth = registerWorkerHealth({
+      name: 'motion-detection',
+      subsystem: 'motion-extraction',
+      postMessage: (m) => this.managed.postMessage(m),
+      managed: true,
+    });
   }
 
   private onMessage(event: MessageEvent) {
     const msg = event.data || {};
+    if (handleWorkerMessageForHealth('motion-detection', msg)) return;
     if (msg.type === 'DETECT_RESULT' || msg.type === 'DETECT_ERROR') {
       const pending = this.pending.get(msg.requestId);
       if (!pending) return;
@@ -173,6 +182,7 @@ class WorkerBackedMotionDetector implements MotionDetectorLike {
     this.managed.removeEventListener('message', this.onMessageBound);
     this.managed.terminate();
     this.unregister();
+    this.unregisterHealth();
     this.pending.forEach(({ reject }) => reject(new Error('Detector closed')));
     this.pending.clear();
   }

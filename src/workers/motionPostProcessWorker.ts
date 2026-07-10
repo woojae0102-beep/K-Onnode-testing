@@ -16,6 +16,11 @@ startWorkerMemoryReporter('postProcess', (msg) => self.postMessage(msg));
 self.onmessage = (event) => {
   const msg = event.data || {};
 
+  if (msg.type === 'PING') {
+    post('PONG', { pingId: msg.pingId, atMs: performance.now() });
+    return;
+  }
+
   if (msg.type === 'RESET') {
     frameBuffer.length = 0;
     previousFrame = null;

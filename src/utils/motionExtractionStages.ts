@@ -14,6 +14,7 @@ import {
 } from './memoryProfiler';
 import { pipelineEventBus } from './pipelineEventBus';
 import { recordQueueOverflow, recordCoverageFailure } from './pipelineTelemetry';
+import { pipelineDiagnostics } from './pipelineDiagnostics';
 import { calculateTimelineCoverage, SKELETON_MIN_TIMELINE_COVERAGE } from './skeletonDataUtils';
 import type { MotionExtractionDebugState } from '../types/motionExtraction';
 
@@ -118,10 +119,14 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
     targetFrameBudgetMs: 1000 / Math.max(1, ctx.sampleFps),
     onDrop: stageDrop('mediapipe'),
     handler: async (sample, meta) => {
+      pipelineDiagnostics.setStageProcessing('mediapipe', sample.time);
+      pipelineDiagnostics.markTimeline(sample.time, 'mediapipe-start');
       const detectStartedAt = performance.now();
       const timestampMsForDetector = Math.max(0, Math.round(sample.time * 1000));
       const results = await runDetect(ctx, sample.source, timestampMsForDetector);
       const mediaPipeDelayMs = performance.now() - detectStartedAt;
+      pipelineDiagnostics.markTimeline(sample.time, 'mediapipe-end');
+      pipelineDiagnostics.clearStageProcessing('mediapipe');
       ctx.perfStats.poseDetectionMs = (ctx.perfStats.poseDetectionMs || 0) + mediaPipeDelayMs;
       if (ctx.memberCountSamples.length < 20) {
         const valid = ctx.tracker.countValidPoses(results.landmarks || []);
@@ -137,6 +142,8 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
     targetFrameBudgetMs: 1000 / Math.max(1, ctx.sampleFps),
     onDrop: stageDrop('tracking'),
     handler: async (item) => {
+      pipelineDiagnostics.setStageProcessing('tracking', item.time);
+      pipelineDiagnostics.markTimeline(item.time, 'tracking-start');
       const t = item.time;
       const frameIndex = ctx.frames.length;
       const gridTimestamp = frameIndex / ctx.sampleFps;
@@ -186,6 +193,10 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       const trackStability = frameIndex > 0
         ? Math.max(0, 1 - ctx.trackIdChangeCount / (frameIndex + 1))
         : 1;
+
+      pipelineDiagnostics.setFrameIndex(t, frameIndex);
+      pipelineDiagnostics.markTimeline(t, 'tracking-end', frameIndex);
+      pipelineDiagnostics.clearStageProcessing('tracking');
 
       return {
         ...item,
@@ -313,6 +324,7 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
           });
           ctx.workerSentAtByFrame.set(frameIndex, performance.now());
           ctx.workerSentCount += 1;
+          pipelineDiagnostics.markTimeline(t, 'worker-send', frameIndex);
           ctx.maxWorkerQueueObserved = Math.max(ctx.maxWorkerQueueObserved, workerQueueLength + 1);
         }
       }

@@ -37,6 +37,8 @@ import { createMotionDetector } from './WorkerMotionDetector';
 import { isForceMainThreadMediaPipe } from '../../config/pipelineConfig';
 import { createManagedWorker } from '../../utils/workerRecovery';
 import { recordCoverageFailure, recordQueueOverflow, recordMemoryReport, recordWorkerError } from '../../utils/pipelineTelemetry';
+import { pipelineDiagnostics } from '../../utils/pipelineDiagnostics';
+import { handleWorkerMessageForHealth, registerWorkerHealth } from '../../utils/workerHealthMonitor';
 import { getGpuResourceSnapshot } from '../../utils/gpuResourceMonitor';
 import {
   createHeapTrendTracker,
@@ -337,6 +339,14 @@ export async function runHolisticVideoAnalysis({
   const unregisterWorker = worker
     ? pipelineRegistry.register({ name: 'motionPostProcessWorker', subsystem: 'motion-extraction', kind: 'worker' })
     : () => {};
+  const unregisterWorkerHealth = worker
+    ? registerWorkerHealth({
+      name: 'motion-post-process',
+      subsystem: 'motion-extraction',
+      postMessage: (m) => worker.postMessage(m),
+      managed: true,
+    })
+    : () => {};
   let workerReady = false;
   let workerSentCount = 0;
   let workerAckCount = 0;
@@ -348,9 +358,12 @@ export async function runHolisticVideoAnalysis({
   const workerMemory = createWorkerMemoryAggregator();
   worker?.addEventListener('message', (event) => {
     const msg = event.data || {};
+    if (handleWorkerMessageForHealth('motion-post-process', msg)) return;
     if (msg.type === 'FRAME_BUFFERED') {
       perfStats.workerFrames += 1;
       workerAckCount += 1;
+      const ackSampleTime = Number.isFinite(msg.frameIndex) ? msg.frameIndex / sampleFps : 0;
+      pipelineDiagnostics.markTimeline(ackSampleTime, 'worker-ack', msg.frameIndex);
       addMs(perfStats, 'postProcessMs', msg.postProcessMs);
       const sentAt = workerSentAtByFrame.get(msg.frameIndex);
       if (sentAt != null) {
@@ -530,6 +543,35 @@ export async function runHolisticVideoAnalysis({
       recordQueueOverflow('sampler', { queueLength, droppedCount: samplerDropped });
       onDebug?.({ pipelineStage: 'sampler_queue_overflow', workerQueue: queueLength });
     },
+    getExternalDiagnostics: () => {
+      const stageStats = motionPipeline.getAllStats();
+      const pipelineQueueLength = stageStats.reduce((sum, s) => sum + s.queueLength, 0);
+      const workerQueueLength = Math.max(0, workerSentCount - workerAckCount);
+      const cov = calculateTimelineCoverage(frames, analysisDuration);
+      const lastFrame = frames[frames.length - 1];
+      return {
+        pipelineQueueLength,
+        pipelineStages: Object.fromEntries(stageStats.map((s) => [s.name, {
+          queueLength: s.queueLength,
+          droppedCount: s.droppedCount,
+          processedCount: s.processedCount,
+          maxQueue: s.maxQueueLengthObserved,
+        }])),
+        workerQueueLength,
+        workerSentCount,
+        workerAckCount,
+        workerDroppedCount,
+        motionDetectorWorkerBacked: detector?.isWorkerBacked ?? false,
+        motionDetectorDelegate: detector?.delegate ?? 'unknown',
+        coverage: cov.coverage,
+        trackCount: lastFrame?.detectedPeople?.length ?? 0,
+        lastMediaPipeDelayMs: perfStats.sampledFrames
+          ? perfStats.poseDetectionMs / perfStats.sampledFrames
+          : 0,
+        lastWorkerDelayMs: avgWorkerDelayMs,
+        memoryMb: bytesToMb(heapTracker.getStats().latestBytes),
+      };
+    },
     onSample: (sample) => {
       if (abortRef?.current) return;
       motionPipeline.ingress({
@@ -552,6 +594,7 @@ export async function runHolisticVideoAnalysis({
     heapTracker.stop();
     worker?.terminate();
     unregisterWorker();
+    unregisterWorkerHealth();
   }
 
   const detectedMemberCount = (() => {
@@ -888,6 +931,7 @@ export async function buildMotionDatabaseFromAnalysis({
   });
 
   await saveDanceDatabase(danceDatabase);
+  pipelineDiagnostics.markTimeline(danceDatabase.durationSec, 'database-save');
   onDebug?.({ pipelineStage: 'complete', progress: 100 });
   onStatus?.('K-POP Motion Extraction 완료');
 
