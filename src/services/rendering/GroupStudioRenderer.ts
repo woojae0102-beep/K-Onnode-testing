@@ -294,6 +294,15 @@ function drawMemberSkeleton(
     canvasJoints[name] = { ...joint, x: px.x, y: px.y };
   });
 
+  if (import.meta.env?.DEV) {
+    // 겹침 디버깅용 — 서로 다른 멤버의 첫 관절이 같은 픽셀 좌표로 나오면
+    // transform.mapPoint 또는 그 이전 단계(좌표 분리)가 잘못된 것이다.
+    const firstKey = Object.keys(canvasJoints)[0];
+    if (firstKey) {
+      console.log(`[Draw] ${label} ${firstKey}:`, canvasJoints[firstKey].x, canvasJoints[firstKey].y);
+    }
+  }
+
   drawAccurateSkeleton(ctx, canvasJoints, color, label, {
     mapPoint: (x, y) => ({ x, y }),
     canvasWidth: transform.canvasWidth,
@@ -338,6 +347,17 @@ export function renderGroupStudioFrame(
 
   const transform = buildVideoFitRenderTransform(frame, logicalW, logicalH);
 
+  if (import.meta.env?.DEV) {
+    // 겹침 디버깅용 — mapped hip 좌표가 멤버별로 최소 50px 이상 차이나야 정상이다.
+    isolatedJoints.forEach((joints, i) => {
+      const hip = joints?.left_hip || joints?.right_hip;
+      if (hip) {
+        const mapped = transform.mapPoint(hip.x, hip.y);
+        console.log(`[Transform] member ${i} mapped hip:`, mapped);
+      }
+    });
+  }
+
   renderMembers.forEach((member, index) => {
     if (isUserStageMember(member, options)) return;
 
@@ -345,6 +365,13 @@ export function renderGroupStudioFrame(
     const meta = options.memberColorMap?.[memberId];
     const joints = isolatedJoints[index];
     const label = meta?.name || memberId || 'AI';
+
+    if (import.meta.env?.DEV) {
+      // 겹침 디버깅용 — 멤버 좌표가 실제로 다른지 확인
+      const hipX = joints?.left_hip?.x ?? joints?.right_hip?.x ?? 0;
+      const hipY = joints?.left_hip?.y ?? joints?.right_hip?.y ?? 0;
+      console.log(`[Renderer] member ${memberId} hip:`, { hipX, hipY });
+    }
 
     if (
       String(label).toUpperCase() === 'YOU'

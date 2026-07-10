@@ -7,8 +7,8 @@ export interface StageAnchor {
   z: number;
 }
 
-/** AI-only 추출 데이터 기준 기본 대형 스케일 (1.0 = 원본, 1.25 = 약간 넓게) */
-export const FORMATION_SPREAD_SCALE = 1.25;
+/** AI-only 추출 데이터 기준 기본 대형 스케일 (1.0 = 원본) — 멤버 간 겹침 방지를 위해 0.35 이상 유지 */
+export const FORMATION_SPREAD_SCALE = 0.35;
 
 export interface FormationPositioningInput {
   frame: ChoreographyFrame | null;

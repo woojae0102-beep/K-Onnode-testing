@@ -171,8 +171,13 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
     }), [drawReferenceFrame, clearReferenceFrame, resizeCanvas]);
 
     useEffect(() => {
-      resizeCanvas();
-      if (referenceFrame) drawReferenceFrame(referenceFrame);
+      // resizeCanvas() 직후 곧바로 그리면 Canvas 크기가 아직 반영되지 않은 상태에서
+      // 그리기가 시작될 수 있다 — 한 프레임 뒤로 미뤄 크기 반영을 보장한다.
+      const id = requestAnimationFrame(() => {
+        resizeCanvas();
+        if (referenceFrame) drawReferenceFrame(referenceFrame);
+      });
+      return () => cancelAnimationFrame(id);
     }, [resizeCanvas, drawReferenceFrame, referenceFrame]);
 
     return (

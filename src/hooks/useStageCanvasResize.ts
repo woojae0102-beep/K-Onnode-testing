@@ -6,7 +6,11 @@ export interface StageCanvasLogicalSize {
   height: number;
 }
 
-/** 부모 Div 크기 → Canvas logical/pixel 동기화 (고정 크기 없음) */
+/** 마운트 직후 부모 레이아웃이 아직 0일 때도 검은 화면이 되지 않도록 보장하는 최소 크기 */
+const MIN_STAGE_CANVAS_WIDTH = 300;
+const MIN_STAGE_CANVAS_HEIGHT = 200;
+
+/** 부모 Div 크기 → Canvas logical/pixel 동기화 (최소 300x200 보장) */
 export function syncStageCanvasToParent(
   canvas: HTMLCanvasElement | null | undefined,
 ): StageCanvasLogicalSize {
@@ -14,8 +18,14 @@ export function syncStageCanvasToParent(
 
   const parent = canvas.parentElement;
   const rect = parent.getBoundingClientRect();
-  const parentW = Math.max(1, Math.round(rect.width > 0 ? rect.width : parent.clientWidth));
-  const parentH = Math.max(1, Math.round(rect.height > 0 ? rect.height : parent.clientHeight));
+  const parentW = Math.max(
+    MIN_STAGE_CANVAS_WIDTH,
+    Math.round(rect.width > 0 ? rect.width : parent.clientWidth),
+  );
+  const parentH = Math.max(
+    MIN_STAGE_CANVAS_HEIGHT,
+    Math.round(rect.height > 0 ? rect.height : parent.clientHeight),
+  );
   const dpr = window.devicePixelRatio || 1;
   const pixelW = Math.round(parentW * dpr);
   const pixelH = Math.round(parentH * dpr);

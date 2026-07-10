@@ -159,8 +159,17 @@ export function GroupStudioSession({
   const isPracticing = sessionPhase === 'practicing';
   const useYoutubeClock = Boolean(referenceYoutubeUrl && isPracticing);
 
+  // referenceVideoDuration(YouTube 실측값)이 아직 로드되지 않았으면(0) 조기 종료를 막기
+  // 위해 넉넉한 보호값을 사용하고, 로드된 후에는 실제 영상 길이를 우선한다.
+  // (referenceYoutubeUrl이 없는 세션은 skeleton 기반 maxDuration이 그대로 유일한 기준이다.)
+  const effectiveMaxDuration = referenceYoutubeUrl
+    ? (referenceVideoDuration > 0
+      ? Math.max(maxDuration, referenceVideoDuration)
+      : Math.max(maxDuration, 300))
+    : maxDuration;
+
   const practiceClock = usePracticeClock({
-    durationSec: maxDuration,
+    durationSec: effectiveMaxDuration,
     fps: referenceFps,
     externalTimeSec: useYoutubeClock ? videoPlaybackTime : null,
     externalRunning: useYoutubeClock,
@@ -272,12 +281,20 @@ export function GroupStudioSession({
       ? `스켈레톤 타임라인 커버리지 ${Math.round(referenceTimelineCoverage * 100)}% — referenceFrames.length=${referenceFrames?.length ?? 0}`
       : '');
 
-  const effectiveMaxDuration = maxDuration;
-
   const practiceEnded = isPracticing && (
-    practiceClock.isFinished
-    || isPracticePlaybackFinished(currentTime, maxDuration)
-    || (referenceYoutubeUrl && isRunning && isPracticePlaybackFinished(videoPlaybackTime, maxDuration))
+    (!referenceYoutubeUrl && (
+      practiceClock.isFinished
+      || isPracticePlaybackFinished(currentTime, maxDuration)
+    ))
+    || (
+      referenceYoutubeUrl
+      && isRunning
+      && referenceVideoDuration > 0 // 영상 길이 확인 완료 후에만 종료 판단
+      && (
+        practiceClock.isFinished
+        || isPracticePlaybackFinished(videoPlaybackTime, effectiveMaxDuration)
+      )
+    )
   );
 
   const debugHudStats = useMemo(() => {
@@ -523,7 +540,10 @@ export function GroupStudioSession({
           }
         }
         if (typeof dur === 'number' && Number.isFinite(dur) && dur > 0) {
-          setReferenceVideoDuration((prev) => (Math.abs(prev - dur) > 0.5 ? dur : prev));
+          setReferenceVideoDuration((prev) => {
+            if (prev === 0 && dur > 0) return dur; // 첫 로드 즉시 반영
+            return Math.abs(prev - dur) > 0.5 ? dur : prev;
+          });
         }
       }
 

@@ -44,7 +44,8 @@ export interface FormationRenderMemberOutput {
   isEstimated?: boolean;
 }
 
-const MIN_MEMBER_DISTANCE = 0.048;
+/** 5명 그룹 기준 화면 비율 0.12 미만이면 육안으로 겹쳐 보인다 — 최소 분리 거리 */
+const MIN_MEMBER_DISTANCE = 0.12;
 
 function lerp(a: number, b: number, t: number): number {
   return a + (b - a) * t;
@@ -195,6 +196,9 @@ function resolveChoreographyDelta(
   scale: number,
   isEstimated: boolean,
   frameMembers: SkeletonMemberData[] | undefined,
+  groupId: string,
+  memberId: string,
+  userMemberId: string,
 ): StageAnchor {
   if (isEstimated || !frameMembers?.length) {
     return { x: 0, y: 0, z: 0 };
@@ -207,13 +211,31 @@ function resolveChoreographyDelta(
       .map((h) => `${h.x.toFixed(3)},${h.y.toFixed(3)}`),
   );
   if (distinctHips.size < 2) {
-    return { x: 0, y: 0, z: 0 };
+    // hip 데이터가 부족할 때(추출된 실제 좌표가 서로 겹치거나 1명뿐일 때)도 0을 반환하지
+    // 않고 default formation 기반 분산값을 유지해 겹침을 방지한다.
+    return resolveDefaultFormationDelta(groupId, memberId, userMemberId, scale);
   }
 
   return {
     x: (hipCenter.x - userFrameHip.x) * scale,
     y: (hipCenter.y - userFrameHip.y) * scale,
     z: (hipCenter.z - userFrameHip.z) * scale,
+  };
+}
+
+/** hip 데이터가 부족할 때의 폴백 — default formation 좌표 차이를 분산값으로 사용 */
+function resolveDefaultFormationDelta(
+  groupId: string,
+  memberId: string,
+  userMemberId: string,
+  scale: number,
+): StageAnchor {
+  const memberDefault = resolveMemberDefaultFormation(groupId, memberId);
+  const userDefault = resolveMemberDefaultFormation(groupId, userMemberId);
+  return {
+    x: (memberDefault.x - userDefault.x) * scale,
+    y: (memberDefault.y - userDefault.y) * scale,
+    z: 0,
   };
 }
 
@@ -302,6 +324,16 @@ export function applySkeletonFormationPipeline(
     const hipCenter = computeMemberHipCenter(member.joints);
     if (!hipCenter) return;
 
+    if (import.meta.env?.DEV) {
+      // hipCenter가 모든 멤버에서 동일하면 스켈레톤 추출 단계(useVideoAnalysis 등)에서
+      // joints 좌표가 공유되고 있다는 신호 — 렌더러가 아니라 추출 단계를 확인해야 한다.
+      console.log(
+        '[Formation] memberId:', member.memberId,
+        'hipCenter:', hipCenter,
+        'joints keys:', Object.keys(member.joints).length,
+      );
+    }
+
     const memberDefault = resolveMemberDefaultFormation(groupId, member.memberId);
     const memberTimeline = resolveTimelinePosition(
       formationTimeline,
@@ -325,6 +357,9 @@ export function applySkeletonFormationPipeline(
       scale,
       member.isEstimated ?? false,
       frameMembers,
+      groupId,
+      member.memberId,
+      userMemberId,
     );
 
     const targetAnchor: StageAnchor = {

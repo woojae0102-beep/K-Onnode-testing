@@ -47,15 +47,15 @@ const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
       const video = videoRef.current;
       if (!video) return undefined;
 
-      if (stream && video.srcObject !== stream) {
-        video.srcObject = stream;
-      } else if (stream === null && video.srcObject) {
-        video.srcObject = null;
-      }
-
       if (stream) {
+        if (video.srcObject !== stream) {
+          video.srcObject = stream;
+        }
         const playPromise = video.play?.();
         if (playPromise?.catch) playPromise.catch(() => {});
+      } else if (stream === null) {
+        // stream이 명시적으로 null일 때만 해제 — undefined(아직 미전달)면 기존 스트림 유지
+        video.srcObject = null;
       }
 
       return () => {
@@ -77,6 +77,16 @@ const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
         ref={ref}
         className={`group-studio-camera-stack ${fitClass} ${className}`.trim()}
         data-camera-layer-stack="video-overlay"
+        style={{
+          position: 'relative',
+          width: '100%',
+          height: '100%',
+          overflow: 'hidden',
+          backgroundColor: '#000',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
       >
         <video
           ref={videoRef}
@@ -85,11 +95,30 @@ const CameraPreviewStack = forwardRef<HTMLDivElement, CameraPreviewStackProps>(
           playsInline
           muted
           aria-label="Camera preview"
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: fitMode === 'cover' ? 'cover' : 'contain',
+            display: 'block',
+            backgroundColor: '#000',
+            // Safari에서 검은 화면으로 굳는 문제 방지 (mirror 유지 위해 scaleX(-1)와 함께 적용)
+            WebkitTransform: 'scaleX(-1) translateZ(0)',
+            transform: 'scaleX(-1) translateZ(0)',
+          }}
         />
         <canvas
           ref={skeletonCanvasRef}
           className="group-studio-camera-skeleton-overlay"
           aria-hidden
+          style={{
+            position: 'absolute',
+            top: 0,
+            left: 0,
+            width: '100%',
+            height: '100%',
+            pointerEvents: 'none',
+            backgroundColor: 'transparent',
+          }}
         />
         {showPlaceholder && !isTracking ? (
           <div className="group-studio-camera-placeholder">{placeholderText}</div>

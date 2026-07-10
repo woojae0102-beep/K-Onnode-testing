@@ -24,6 +24,8 @@ export function GroupStageView({
   groupId,
   myMemberId,
   skeletonData,
+  referenceVideoDuration = 0,
+  maxDuration = 0,
   agency = 'hybe',
   onEnd,
   onHome,
@@ -33,10 +35,16 @@ export function GroupStageView({
   const otherMembers = group?.members.filter((m) => m.id !== myMemberId) || [];
   const agencyColor = AGENCY_COLORS[agency as Agency] || '#FF1F8E';
 
-  const totalDuration =
-    skeletonData?.length > 0
-      ? skeletonData[skeletonData.length - 1]?.timestamp || 60
-      : 60;
+  // 영상 길이(referenceVideoDuration) · 세션 duration(maxDuration) · skeleton 마지막
+  // timestamp 중 가장 긴 값을 사용해, 실제 영상보다 짧게 연습이 잘리는 것을 방지한다.
+  const skeletonLastTimestamp = skeletonData?.length > 0
+    ? skeletonData[skeletonData.length - 1]?.timestamp || 0
+    : 0;
+  const totalDuration = Math.max(
+    referenceVideoDuration || 0,
+    skeletonLastTimestamp,
+    maxDuration || 0,
+  ) || 60;
 
   const {
     currentTime,
