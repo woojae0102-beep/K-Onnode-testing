@@ -59,7 +59,12 @@ export function jointsPoseDistance(
     const ja = a[key];
     const jb = b[key];
     if (!ja || !jb) return;
-    if (!Number.isFinite(ja.x) || !Number.isFinite(jb.x)) return;
+    if (
+      !Number.isFinite(ja.x) || !Number.isFinite(jb.x) ||
+      !Number.isFinite(ja.y) || !Number.isFinite(jb.y) ||
+      (ja.z != null && !Number.isFinite(ja.z)) ||
+      (jb.z != null && !Number.isFinite(jb.z))
+    ) return;
 
     const w = jointMatchWeight(ja, jb);
     if (w < minWeight) return;
@@ -70,7 +75,9 @@ export function jointsPoseDistance(
   });
 
   if (!weightSum) return MAX_POSE_DISTANCE;
-  return Math.min(MAX_POSE_DISTANCE, weightedSum / weightSum);
+  const result = Math.min(MAX_POSE_DISTANCE, weightedSum / weightSum);
+  if (Number.isNaN(result)) return MAX_POSE_DISTANCE;
+  return result;
 }
 
 export function poseDistance(
@@ -93,8 +100,11 @@ export function hungarianAssign(costMatrix: number[][]): number[] {
   const LARGE = 1e9;
   const cost: number[][] = Array.from({ length: n }, (_, i) =>
     Array.from({ length: n }, (_, j) => {
-      if (i < nRows && j < nCols) return costMatrix[i][j];
-      return LARGE;
+      let val = (i < nRows && j < nCols) ? costMatrix[i][j] : LARGE;
+      if (val == null || Number.isNaN(val) || !Number.isFinite(val)) {
+        val = LARGE;
+      }
+      return val;
     }),
   );
 
@@ -103,13 +113,19 @@ export function hungarianAssign(costMatrix: number[][]): number[] {
   const p = Array(n + 1).fill(0);
   const way = Array(n + 1).fill(0);
 
+  const MAX_ITERATIONS = n * 2;
   for (let i = 1; i <= n; i += 1) {
     p[0] = i;
     let j0 = 0;
     const minv = Array(n + 1).fill(Infinity);
     const used = Array(n + 1).fill(false);
 
+    let iterations = 0;
     do {
+      iterations += 1;
+      if (iterations > MAX_ITERATIONS) {
+        break;
+      }
       used[j0] = true;
       const i0 = p[j0];
       let delta = Infinity;
@@ -118,6 +134,7 @@ export function hungarianAssign(costMatrix: number[][]): number[] {
       for (let j = 1; j <= n; j += 1) {
         if (used[j]) continue;
         const cur = cost[i0 - 1][j - 1] - u[i0] - v[j];
+        if (Number.isNaN(cur)) continue;
         if (cur < minv[j]) {
           minv[j] = cur;
           way[j] = j0;
@@ -137,6 +154,9 @@ export function hungarianAssign(costMatrix: number[][]): number[] {
         }
       }
       j0 = j1;
+      if (j0 === 0 || !Number.isFinite(delta)) {
+        break;
+      }
     } while (p[j0] !== 0);
 
     do {

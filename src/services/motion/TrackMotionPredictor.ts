@@ -74,7 +74,12 @@ export class TrackMotionPredictor {
     if (!joints) return;
     POSE_MATCH_JOINTS.forEach((name) => {
       const j = joints[name];
-      if (!j || !Number.isFinite(j.x) || !Number.isFinite(j.y)) return;
+      if (
+        !j ||
+        !Number.isFinite(j.x) ||
+        !Number.isFinite(j.y) ||
+        (j.z != null && !Number.isFinite(j.z))
+      ) return;
       this.getJoint(name).update({ x: j.x, y: j.y, z: j.z ?? 0 }, timestamp);
     });
   }
