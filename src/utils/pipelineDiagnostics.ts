@@ -396,10 +396,14 @@ function createPipelineDiagnostics() {
     return { cause: 'UNKNOWN', confidence: 'low', evidence };
   };
 
-  const handleRvfcStall = (rvfcSnap: RvfcDiagnosticsSnapshot | null, reason: string) => {
-    const classification = classifyStall(rvfcSnap, reason);
-    console.group(`[PipelineDiag] RVFC STALL ROOT CAUSE → ${classification.cause} (${classification.confidence})`);
-    console.info('판단 근거:', classification.evidence);
+  const handleRvfcStall = (
+    rvfcSnap: RvfcDiagnosticsSnapshot | null,
+    reason: string,
+    forced?: { cause: string; evidence: string[] },
+  ) => {
+    const classification = forced ?? classifyStall(rvfcSnap, reason);
+    console.group(`[PipelineDiag] RVFC STALL — ${forced?.cause ?? classification.cause}`);
+    console.info('판단 근거:', forced?.evidence ?? classification.evidence);
     dumpTimeline();
     dumpSnapshots();
     console.table({ Workers: getWorkerHealthStatuses().map((w) => ({

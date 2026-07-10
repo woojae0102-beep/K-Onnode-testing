@@ -72,7 +72,29 @@ self.onmessage = (event) => {
       post('ERROR', {
         frameIndex: msg.frameIndex,
         error: error?.message || String(error),
+        name: error?.name,
+        stack: error?.stack,
       });
     }
   }
 };
+
+self.addEventListener('error', (e) => {
+  post('WORKER_RUNTIME_ERROR', {
+    message: e.message || e.error?.message || 'worker runtime error',
+    name: e.error?.name,
+    filename: e.filename,
+    lineno: e.lineno,
+    colno: e.colno,
+    stack: e.error?.stack,
+  });
+});
+
+self.addEventListener('unhandledrejection', (e) => {
+  const reason = e.reason;
+  post('WORKER_UNHANDLED_REJECTION', {
+    reason: reason instanceof Error ? reason.message : String(reason),
+    name: reason instanceof Error ? reason.name : undefined,
+    stack: reason instanceof Error ? reason.stack : undefined,
+  });
+});

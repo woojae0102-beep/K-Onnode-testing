@@ -7,6 +7,7 @@ import { featureFlagManager } from '../config/featureFlagManager';
 import { pipelineEventBus } from './pipelineEventBus';
 import { getGpuResourceSnapshot } from './gpuResourceMonitor';
 import { readHeapBytes } from './memoryProfiler';
+import { logWorkerErrorDetail } from './workerErrorDiagnostics';
 
 export type TelemetryCategory =
   | 'coverage_failure'
@@ -145,6 +146,7 @@ export function recordCoverageFailure(meta: Record<string, unknown>): void {
 }
 
 export function recordWorkerError(workerName: string, error: string | Error, meta?: Record<string, unknown>): void {
+  logWorkerErrorDetail(workerName, meta?.phase as string || 'recordWorkerError', error, meta);
   recordTelemetry('worker_error', `${workerName}: ${error instanceof Error ? error.message : error}`, {
     subsystem: workerName,
     severity: 'error',

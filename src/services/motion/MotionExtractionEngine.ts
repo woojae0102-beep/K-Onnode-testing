@@ -39,6 +39,11 @@ import { createManagedWorker } from '../../utils/workerRecovery';
 import { recordCoverageFailure, recordQueueOverflow, recordMemoryReport, recordWorkerError } from '../../utils/pipelineTelemetry';
 import { pipelineDiagnostics } from '../../utils/pipelineDiagnostics';
 import { handleWorkerMessageForHealth, registerWorkerHealth } from '../../utils/workerHealthMonitor';
+import {
+  logWorkerErrorDetail,
+  logWorkerLifecycle,
+  recordPropagationHop,
+} from '../../utils/workerErrorDiagnostics';
 import { getGpuResourceSnapshot } from '../../utils/gpuResourceMonitor';
 import {
   createHeapTrendTracker,
@@ -161,13 +166,31 @@ function createMotionPostProcessWorker() {
       onWorkerCreated: async (worker) => {
         worker.postMessage({ type: 'RESET' });
       },
+      onWorkerTerminated: (reason) => {
+        logWorkerLifecycle('motion-post-process', 'terminate', { reason });
+      },
+      onFatal: (err) => {
+        logWorkerLifecycle('motion-post-process', 'onFatal', { message: err.message });
+        recordPropagationHop('MotionExtractionEngine.postProcessWorker.onFatal', err.message, { propagatedToSampler: false });
+      },
     });
+
+    managed.addEventListener('error', (ev) => {
+      recordPropagationHop(
+        'MotionExtractionEngine.postProcessWorker.addEventListener(error)',
+        (ev as ErrorEvent)?.message || 'worker error event',
+        { propagatedToSampler: false },
+      );
+    });
+
     return {
       postMessage: (message: unknown, transfer?: unknown[]) => managed.postMessage(message, transfer),
       addEventListener: (type: 'message' | 'error', listener: (event: MessageEvent) => void) => managed.addEventListener(type, listener as any),
       terminate: () => managed.terminate(),
+      _managed: managed,
     };
   } catch (err) {
+    logWorkerErrorDetail('motion-post-process', 'create-failed', err);
     console.warn('[MotionExtract] Worker 초기화 실패 — 메인 스레드 분석만 진행', err);
     return null;
   }
@@ -381,9 +404,21 @@ export async function runHolisticVideoAnalysis({
         pipelineStage: 'frame_buffer_ready',
         progress: Math.max(10, Math.round((msg.bufferedCount / Math.max(1, timelineTotalFrames)) * 100)),
       });
-    } else if (msg.type === 'ERROR') {
-      console.warn('[MotionExtractWorker]', msg.error);
-      recordWorkerError('motion-post-process', msg.error);
+    } else if (msg.type === 'ERROR' || msg.type === 'WORKER_RUNTIME_ERROR' || msg.type === 'WORKER_UNHANDLED_REJECTION') {
+      const errObj = new Error(msg.error || msg.message || msg.reason || 'Worker ERROR message');
+      if (msg.stack) errObj.stack = msg.stack;
+      logWorkerErrorDetail('motion-post-process', msg.type, errObj, {
+        frameIndex: msg.frameIndex,
+        name: msg.name,
+        filename: msg.filename,
+        lineno: msg.lineno,
+        colno: msg.colno,
+      });
+      recordPropagationHop(
+        `MotionExtractionEngine.worker.${msg.type}`,
+        errObj.message,
+        { propagatedToSampler: false },
+      );
     } else if (msg.type === 'memory-report') {
       workerMemory.ingest(msg);
       pipelineEventBus.emit('pipeline-memory-report', {

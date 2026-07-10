@@ -10,6 +10,15 @@
  */
 import { recordTelemetry } from './pipelineTelemetry';
 import { pipelineDiagnostics } from './pipelineDiagnostics';
+import {
+  classifyRvfcBreak,
+  dumpPropagationCallGraph,
+  getRvfcScheduleState,
+  recordRvfcCallback,
+  recordRvfcScheduleSuccess,
+  resetPropagationSession,
+  resetRvfcScheduleState,
+} from './workerErrorDiagnostics';
 import type { FrameLoopHandle } from './cameraFrameLoop';
 
 export type VideoEventName =
@@ -186,6 +195,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
       lastHandleId = handle.id;
       lastHandleType = handle.type;
       handleRegistered = handle.type === 'rvfc' && Number.isFinite(handle.id);
+      if (handleRegistered) recordRvfcScheduleSuccess(handle.id);
     } else {
       handleRegistered = false;
     }
@@ -196,6 +206,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     lastOnFrameAtMs = performance.now();
     lastOnFrameCurrentTime = Number(video.currentTime) || 0;
     lastOnFrameMediaTime = Number.isFinite(mediaTime) ? mediaTime : lastOnFrameCurrentTime;
+    recordRvfcCallback(lastOnFrameMediaTime ?? undefined);
   };
 
   const recordOnFrameError = (err: unknown) => {
@@ -284,8 +295,44 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
 
   const dumpStall = (reason: string, ctx: Parameters<typeof buildSnapshot>[0]) => {
     const snap = buildSnapshot(ctx);
-    const classification = pipelineDiagnostics.handleRvfcStall(snap, reason);
-    logSnapshot(`STALL — ${reason} [${classification.cause}]`, snap);
+    const rvfcState = getRvfcScheduleState();
+    const recentWithin = (ev: string, ms = 15000) =>
+      videoEvents.some((e) => e.event === ev && performance.now() - e.atMs < ms);
+
+    const forced = classifyRvfcBreak({
+      videoPaused: snap.paused,
+      videoEnded: snap.ended,
+      videoWaitingRecent: recentWithin('waiting'),
+      videoStalledRecent: recentWithin('stalled'),
+      currentTimeStalledMs: snap.lastOnFrameAtMs != null ? performance.now() - snap.lastOnFrameAtMs : 0,
+      aborted: ctx.aborted,
+      onFrameErrors: snap.onFrameErrors,
+      scheduleCallCount: snap.scheduleCallCount,
+      onFrameCallCount: snap.onFrameCallCount,
+      handleRegistered: snap.handleRegistered,
+      stallReason: reason,
+    });
+
+    console.group(`[RVFC-Diag] STALL — ${reason}`);
+    console.info('강제 분류:', forced.cause);
+    console.info('근거:', forced.evidence);
+    console.table({
+      'RVFC Schedule': {
+        lastScheduleAgoMs: rvfcState.lastScheduleSuccessAtMs
+          ? Math.round(performance.now() - rvfcState.lastScheduleSuccessAtMs) : 'never',
+        lastScheduleHandleId: rvfcState.lastScheduleHandleId,
+        lastCallbackAgoMs: rvfcState.lastCallbackAtMs
+          ? Math.round(performance.now() - rvfcState.lastCallbackAtMs) : 'never',
+        lastCallbackMediaTime: rvfcState.lastCallbackMediaTime,
+        scheduleCalls: rvfcState.scheduleCallCount,
+        callbackCalls: rvfcState.callbackCallCount,
+      },
+    });
+    dumpPropagationCallGraph();
+    console.groupEnd();
+
+    pipelineDiagnostics.handleRvfcStall(snap, reason, forced);
+    logSnapshot(`STALL — ${reason} [${forced.cause}]`, snap);
     recordTelemetry('pipeline_error', `RVFC Stall: ${reason}`, {
       subsystem: 'rvfc-producer',
       severity: 'error',
@@ -305,6 +352,9 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
   };
 
   attach();
+
+  resetPropagationSession();
+  resetRvfcScheduleState();
 
   return {
     recordSchedule,

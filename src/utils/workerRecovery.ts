@@ -4,8 +4,9 @@
  * INIT 콜백으로 Worker 상태를 복구하고, pending 메시지 큐를 이어받는다.
  */
 import { featureFlagManager } from '../config/featureFlagManager';
-import { recordWorkerError, recordWorkerRecovery } from './pipelineTelemetry';
+import { recordWorkerRecovery } from './pipelineTelemetry';
 import { pipelineRegistry } from './pipelineEventBus';
+import { logWorkerErrorDetail, logWorkerLifecycle } from './workerErrorDiagnostics';
 
 export type ManagedWorkerOptions = {
   name: string;
@@ -73,8 +74,12 @@ export function createManagedWorker(options: ManagedWorkerOptions): ManagedWorke
       const w = new Worker(workerUrl, { type: 'module', name });
       attachListeners(w);
       w.addEventListener('error', (ev) => {
-        recordWorkerError(name, (ev as ErrorEvent).message || 'Worker error');
-        if (isWorkerRecoveryEnabled()) void scheduleRecovery('error');
+        logWorkerErrorDetail(name, 'onerror', ev as ErrorEvent, { attempt });
+        if (isWorkerRecoveryEnabled()) void scheduleRecovery('onerror');
+      });
+      w.addEventListener('messageerror', (ev) => {
+        logWorkerErrorDetail(name, 'onmessageerror', ev as ErrorEvent, { attempt });
+        if (isWorkerRecoveryEnabled()) void scheduleRecovery('messageerror');
       });
       if (onWorkerCreated) await onWorkerCreated(w, attempt);
       unregisterRegistry?.();
@@ -86,7 +91,7 @@ export function createManagedWorker(options: ManagedWorkerOptions): ManagedWorke
       });
       return w;
     } catch (err) {
-      recordWorkerError(name, err as Error);
+      logWorkerErrorDetail(name, 'spawn-failed', err, { attempt });
       return null;
     }
   };
@@ -94,19 +99,23 @@ export function createManagedWorker(options: ManagedWorkerOptions): ManagedWorke
   const scheduleRecovery = async (reason: string) => {
     if (terminated || recovering) return;
     if (!isWorkerRecoveryEnabled()) {
+      logWorkerLifecycle(name, 'onFatal', { reason, detail: 'recovery disabled' });
       onFatal?.(new Error(`${name} crashed (${reason}) — recovery disabled`));
       return;
     }
     if (restartCount >= maxRestarts) {
+      logWorkerLifecycle(name, 'onFatal', { reason, detail: 'max restarts exceeded' });
       onFatal?.(new Error(`${name} crashed (${reason}) — max restarts exceeded`));
       return;
     }
     recovering = true;
     restartCount += 1;
+    logWorkerLifecycle(name, 'restart', { reason, attempt: restartCount });
     recordWorkerRecovery(name, restartCount, { reason });
 
     if (worker) {
       detachListeners(worker);
+      logWorkerLifecycle(name, 'terminate', { reason: `recovery:${reason}` });
       worker.terminate();
       worker = null;
     }
@@ -117,16 +126,18 @@ export function createManagedWorker(options: ManagedWorkerOptions): ManagedWorke
     recovering = false;
 
     if (!w) {
+      logWorkerLifecycle(name, 'onFatal', { reason: 'recovery-spawn-failed' });
       onFatal?.(new Error(`${name} recovery spawn failed`));
       return;
     }
+    logWorkerLifecycle(name, 'recovery-done', { attempt: restartCount });
 
     while (pendingQueue.length) {
       const item = pendingQueue.shift();
       try {
         w.postMessage(item.message, item.transfer || []);
       } catch (err) {
-        recordWorkerError(name, err as Error, { phase: 'replay-pending' });
+        logWorkerErrorDetail(name, 'replay-pending-failed', err, { phase: 'replay-pending' });
         break;
       }
     }
@@ -152,7 +163,7 @@ export function createManagedWorker(options: ManagedWorkerOptions): ManagedWorke
         worker.postMessage(message, transfer || []);
         return true;
       } catch (err) {
-        recordWorkerError(name, err as Error);
+        logWorkerErrorDetail(name, 'postMessage-failed', err);
         pendingQueue.push({ message, transfer });
         if (isWorkerRecoveryEnabled()) void scheduleRecovery('postMessage-failed');
         return false;
@@ -160,6 +171,7 @@ export function createManagedWorker(options: ManagedWorkerOptions): ManagedWorke
     },
     terminate() {
       terminated = true;
+      logWorkerLifecycle(name, 'terminate', { reason: 'manual' });
       onWorkerTerminated?.('manual');
       if (worker) {
         detachListeners(worker);

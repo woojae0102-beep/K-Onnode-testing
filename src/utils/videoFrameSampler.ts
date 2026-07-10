@@ -3,6 +3,13 @@ import { scheduleVideoFrame, cancelVideoFrame } from './cameraFrameLoop';
 import { waitForVideoEvent } from './choreoVideoUtils';
 import { createRvfcStallDiagnostics, setRvfcDecodePath, setRvfcExternalDiagnosticsProvider } from './rvfcStallDiagnostics';
 import { pipelineDiagnostics } from './pipelineDiagnostics';
+import {
+  markSamplerAborted,
+  markSamplerFinalized,
+  recordPromiseRejection,
+  recordPropagationHop,
+  resetPropagationSession,
+} from './workerErrorDiagnostics';
 
 export type VideoFrameSample = {
   time: number;
@@ -221,6 +228,7 @@ export async function sampleVideoFramesPlayback({
   });
 
   const diagnostics = createRvfcStallDiagnostics(video);
+  resetPropagationSession();
   if (getExternalDiagnostics) {
     setRvfcExternalDiagnosticsProvider(getExternalDiagnostics);
   }
@@ -321,6 +329,13 @@ export async function sampleVideoFramesPlayback({
     diagnostics.detach();
     setRvfcExternalDiagnosticsProvider(null);
     pipelineDiagnostics.endSession();
+    if (err) {
+      recordPromiseRejection('videoFrameSampler.finalize', err);
+      markSamplerFinalized(err instanceof Error ? err.message : String(err));
+    } else {
+      markSamplerFinalized('normal');
+    }
+    recordPropagationHop('videoFrameSampler.finalize', err ? String(err) : 'ok', { propagatedToSampler: true });
     video.pause();
     cancelVideoFrame(handle);
     handle = null;
@@ -364,6 +379,8 @@ export async function sampleVideoFramesPlayback({
           });
         } catch (err) {
           releaseCanvas(item.canvas);
+          recordPromiseRejection('videoFrameSampler.pumpQueue.onSample', err);
+          recordPropagationHop('videoFrameSampler.pumpQueue→finalize', (err as Error)?.message, { propagatedToSampler: true });
           finalize(err);
           return;
         }
@@ -380,6 +397,7 @@ export async function sampleVideoFramesPlayback({
 
         if (abortRef?.current) {
           aborted = true;
+          markSamplerAborted();
           queue.length = 0;
           break;
         }
@@ -474,6 +492,7 @@ export async function sampleVideoFramesPlayback({
         if (abortRef?.current) {
           aborted = true;
           producerDone = true;
+          markSamplerAborted();
           shouldReschedule = false;
           tryFinalizeIfDrained();
           return;
