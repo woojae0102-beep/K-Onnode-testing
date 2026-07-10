@@ -335,6 +335,21 @@ analyze-song, dance-persona, vocal-soul, vocal-clone, vocal-cover, korean-*, sec
 | v5.0 이전 캐시 | pipelineVersion 불일치 | `isChoreoCacheValid()` 거부 — **안무 재추출** 필요 |
 | Motion Engine 디버그 없음 | HUD 미연동 | `GroupMotionDebugOverlay` — `VideoUploadStep` / `GroupStudioSession` |
 
+### 2026-07-10 세션 (Production Pipeline Architecture)
+
+| 구성요소 | 경로 | 격리 원칙 |
+|----------|------|-----------|
+| Frame Queue (RVFC/WebCodecs) | `videoFrameSampler.ts` / `webCodecsFrameSampler.ts` / `sampleVideoFrames.ts` | Producer만 캡처, `onSample`은 메타데이터만 전달 |
+| Pipeline Stages | `motionExtractionStages.ts` + `asyncPipelineQueue.ts` | mediapipe → tracking → worker-dancedatabase 독립 큐 |
+| MediaPipe Worker | `motionDetectionWorker.ts` + `WorkerMotionDetector.ts` | Capability Probe 실패 시 메인 스레드 폴백 |
+| PostProcess Worker | `motionPostProcessWorker.ts` | Motion Queue와 독립, 큐 공유 금지 |
+| Renderer Worker | `rendererWorker.ts` + `useOffscreenRenderer.ts` | `VITE_RENDERER_WORKER_ENABLED=true` 시만 활성, 기본 메인 스레드 |
+| Event Bus | `pipelineEventBus.ts` | Motion / Renderer / AI Coach는 직접 import 금지, 이벤트만 |
+| Memory Profiler | `memoryProfiler.ts` | Chrome heap + Worker memory-report + GC 휴리스틱 |
+| Stress Test | `stressTestHarness.ts` | `?stressTest=1` (DEV) — 30분+ 영상 로컬 검증 |
+
+**AI Dance Coach 확장 규칙:** 코칭이 로컬 연산(실시간 자세 비교 등)을 추가할 때는 반드시 **자체 Worker + Queue**를 만들고, MediaPipe/PostProcess/Renderer Worker와 큐를 공유하지 않는다. `asyncPipelineQueue.createPipelineStage()` 재사용 권장.
+
 ---
 
 ## 10. 파일 연결 Quick Reference (그룹 모드)

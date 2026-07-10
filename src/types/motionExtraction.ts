@@ -51,6 +51,36 @@ export interface MotionExtractionDebugState {
   coverage: number;
   /** 마지막으로 처리된 원본 영상 시각(초) */
   lastTimestamp: number;
+  /** RVFC 콜백이 실제 도착하는 속도(fps) — Processing 지연과 무관한 Producer 단독 측정값 */
+  rvfcFps: number;
+  /** Processing Queue backlog — 이 프레임을 꺼낸 시점에 남아있던 나머지 프레임 수 */
+  queueLength: number;
+  /** 이 프레임이 캡처된 뒤 Processing Queue에서 대기한 시간(ms) */
+  queueDelay: number;
+  /** Worker postMessage → FRAME_BUFFERED ack까지의 왕복 시간(ms, EMA) */
+  workerDelay: number;
+  /** MediaPipe detect() 단일 호출에 걸린 시간(ms) */
+  mediaPipeDelay: number;
+  /** Processing Queue Overflow로 드롭된 누적 프레임 수 */
+  droppedFrames: number;
+  /** Track Stability — 지금까지 프레임 대비 되돌린 trackId 변경 비율의 역수(0~1) */
+  trackStability: number;
+  /** 이번 추출/조회가 캐시에서 왔는지 여부 */
+  cacheUsed: boolean;
+  /** 캐시 사용 시 해당 캐시의 Timeline Coverage (0~1) — 캐시 미사용 시 null */
+  cacheCoverage: number | null;
+  /** Frame Buffer(추출 중 frames[]) 추정 메모리(MB) — Chrome 계열 외에는 null */
+  frameBufferMemoryMb: number | null;
+  /** DanceDatabase 저장 시점 추정 메모리(MB) — 추출 완료 후에만 값이 채워짐 */
+  danceDatabaseMemoryMb: number | null;
+  /** Worker(들)가 자체 보고한 heap 합계(MB) — Chrome 계열 외에는 null */
+  workerMemoryMb: number | null;
+  /** Canvas Pool(RGBA) 추정 메모리(MB) — 정확 계산(근사 아님) */
+  canvasMemoryMb: number | null;
+  /** 실행 중 관측된 메인 스레드 Peak Heap(MB) — Chrome 계열 외에는 null */
+  peakHeapMb: number | null;
+  /** GC 발생 추정 횟수(휴리스틱 — 표준 GC 이벤트 API가 없어 heap 급락 감지로 근사) */
+  gcFrequency: number;
 }
 
 export interface ReferenceVideoMeta {
@@ -110,4 +140,19 @@ export const EMPTY_MOTION_DEBUG: MotionExtractionDebugState = {
   trackIdChanges: 0,
   coverage: 0,
   lastTimestamp: 0,
+  rvfcFps: 0,
+  queueLength: 0,
+  queueDelay: 0,
+  workerDelay: 0,
+  mediaPipeDelay: 0,
+  droppedFrames: 0,
+  trackStability: 1,
+  cacheUsed: false,
+  cacheCoverage: null,
+  frameBufferMemoryMb: null,
+  danceDatabaseMemoryMb: null,
+  workerMemoryMb: null,
+  canvasMemoryMb: null,
+  peakHeapMb: null,
+  gcFrequency: 0,
 };

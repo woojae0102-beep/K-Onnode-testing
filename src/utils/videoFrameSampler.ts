@@ -14,6 +14,12 @@ export type VideoFrameSample = {
    * MediaPipe detect 등에는 이 source를 사용해야 한다 (video 직접 사용 금지).
    */
   source: HTMLCanvasElement | OffscreenCanvas;
+  /** 이 프레임이 캡처된 뒤 Processing Queue에서 대기한 시간(ms) — Queue Delay */
+  queueDelayMs: number;
+  /** 이 프레임을 꺼낸 시점에 Queue에 남아있던 나머지 프레임 수 (backlog) */
+  queueLength: number;
+  /** RVFC 콜백이 실제로 도착하는 속도(EMA, fps) — Processing 속도와 무관하게 Producer 단독 측정값 */
+  rvfcFps: number;
 };
 
 export type StallInfo = {
@@ -29,6 +35,8 @@ export type QueueOverflowInfo = {
   queueLength: number;
   droppedSampleTime: number;
   droppedFrames: number;
+  /** Adaptive Backpressure가 현재 적용 중인 실질 Queue 상한 (maxQueueLength 이하) */
+  effectiveMaxQueueLength: number;
 };
 
 export type SamplerReport = {
@@ -40,6 +48,11 @@ export type SamplerReport = {
   processingDelay: number;
   droppedFrames: number;
   rvfcCallbacks: number;
+  rvfcFps: number;
+  /** 전체 실행 중 관측된 Queue 최대 길이 — Backpressure 심각도 지표 */
+  maxQueueLengthObserved: number;
+  /** 종료 시점의 Adaptive Backpressure 실질 Queue 상한 */
+  effectiveMaxQueueLength: number;
 };
 
 export type SampleVideoFramesOptions = {
@@ -66,6 +79,10 @@ export type SampleVideoFramesOptions = {
 const DEFAULT_MAX_QUEUE_LENGTH = 60;
 const DEFAULT_STALL_TIMEOUT_MS = 8000;
 const DEFAULT_PROCESSING_STALL_MS = 4000;
+/** Adaptive Backpressure — 이 값 이하로는 절대 줄이지 않는다 (최소 버퍼 보장) */
+const MIN_ADAPTIVE_QUEUE_LENGTH = 10;
+/** 이만큼의 프레임을 처리할 때마다 Adaptive Backpressure 재평가 */
+const ADAPTIVE_CHECK_INTERVAL_FRAMES = 15;
 
 function supportsRvfc(video: HTMLVideoElement): boolean {
   return typeof video.requestVideoFrameCallback === 'function';
@@ -151,7 +168,13 @@ export async function sampleVideoFramesPlayback({
     if (canvas) freeCanvases.push(canvas);
   };
 
-  type QueueItem = { sampleTime: number; mediaTime: number; canvas: HTMLCanvasElement | OffscreenCanvas };
+  type QueueItem = {
+    sampleTime: number;
+    mediaTime: number;
+    canvas: HTMLCanvasElement | OffscreenCanvas;
+    /** Producer가 이 프레임을 큐에 넣은 시각 — Queue Delay 계산용 */
+    captureTime: number;
+  };
   const queue: QueueItem[] = [];
 
   let nextSampleTime = 0;
@@ -164,11 +187,43 @@ export async function sampleVideoFramesPlayback({
   let rvfcCallbackCount = 0;
   let droppedFrames = 0;
   let lastRvfcAt = performance.now();
+  let lastRvfcIntervalAt = performance.now();
+  let rvfcFps = 0;
   let lastMediaTime = 0;
   let lastProcessedFrame = -1;
   let lastProcessingDelay = 0;
   let processingStartedAt = 0;
+  let maxQueueLengthObserved = 0;
   let watchdogHandle: ReturnType<typeof setInterval> | null = null;
+
+  // Adaptive Backpressure — 메모리 사용량과 처리 지연을 근거로 Queue 실질 상한을
+  // maxQueueLength(ceiling)와 MIN_ADAPTIVE_QUEUE_LENGTH(floor) 사이에서 자동 조절한다.
+  let effectiveMaxQueueLength = maxQueueLength;
+  let avgProcessingDelayMs = 0;
+  let adaptiveCheckCounter = 0;
+  const targetFrameBudgetMs = 1000 / Math.max(1, sampleFps);
+
+  const adjustAdaptiveQueueLength = () => {
+    adaptiveCheckCounter += 1;
+    if (adaptiveCheckCounter % ADAPTIVE_CHECK_INTERVAL_FRAMES !== 0) return;
+    const prev = effectiveMaxQueueLength;
+    if (avgProcessingDelayMs > targetFrameBudgetMs * 1.5) {
+      // Consumer가 목표 프레임 예산의 1.5배 이상 걸림 — Queue를 줄여 최신 프레임 우선 처리
+      // 및 메모리 사용량 억제(오래된 캡처가 쌓이지 않도록 backlog 상한을 낮춘다).
+      effectiveMaxQueueLength = Math.max(MIN_ADAPTIVE_QUEUE_LENGTH, Math.round(effectiveMaxQueueLength * 0.85));
+    } else if (avgProcessingDelayMs < targetFrameBudgetMs * 0.6) {
+      // Consumer에 여유가 있음 — 순간적 지연 스파이크에 대비해 버퍼 여유를 서서히 늘린다.
+      effectiveMaxQueueLength = Math.min(maxQueueLength, effectiveMaxQueueLength + 4);
+    }
+    if (effectiveMaxQueueLength !== prev) {
+      console.info('[VideoFrameSampler] Adaptive Backpressure 조정', {
+        from: prev,
+        to: effectiveMaxQueueLength,
+        avgProcessingDelayMs: Math.round(avgProcessingDelayMs),
+        targetFrameBudgetMs: Math.round(targetFrameBudgetMs),
+      });
+    }
+  };
 
   let resolveRef: (() => void) | null = null;
   let rejectRef: ((err: unknown) => void) | null = null;
@@ -184,6 +239,9 @@ export async function sampleVideoFramesPlayback({
       processingDelay: lastProcessingDelay,
       droppedFrames,
       rvfcCallbacks: rvfcCallbackCount,
+      rvfcFps,
+      maxQueueLengthObserved,
+      effectiveMaxQueueLength,
     };
     console.table({ 'Video Frame Sampler': report });
     onReport?.(report);
@@ -229,14 +287,27 @@ export async function sampleVideoFramesPlayback({
         }
         const item = queue.shift();
         processingStartedAt = performance.now();
+        const queueDelayMs = Math.max(0, processingStartedAt - item.captureTime);
         try {
-          await onSample({ time: item.sampleTime, video, mediaTime: item.mediaTime, source: item.canvas });
+          await onSample({
+            time: item.sampleTime,
+            video,
+            mediaTime: item.mediaTime,
+            source: item.canvas,
+            queueDelayMs,
+            queueLength: queue.length,
+            rvfcFps,
+          });
         } catch (err) {
           releaseCanvas(item.canvas);
           finalize(err);
           return;
         }
         lastProcessingDelay = performance.now() - processingStartedAt;
+        avgProcessingDelayMs = avgProcessingDelayMs > 0
+          ? avgProcessingDelayMs * 0.9 + lastProcessingDelay * 0.1
+          : lastProcessingDelay;
+        adjustAdaptiveQueueLength();
         processingStartedAt = 0;
         lastProcessedFrame += 1;
         lastMediaTime = Math.max(lastMediaTime, item.mediaTime);
@@ -255,11 +326,20 @@ export async function sampleVideoFramesPlayback({
     }
   };
 
-  /** Producer 측 캡처 — 큐가 가득 차면 이번 프레임은 드롭(Backpressure), RVFC는 계속 진행 */
+  /**
+   * Producer 측 캡처 — 큐가 (Adaptive) 상한을 넘으면 이번 프레임은 드롭(Backpressure),
+   * RVFC는 계속 진행한다. 상한 자체는 처리 지연에 따라 adjustAdaptiveQueueLength()가
+   * maxQueueLength(ceiling)~MIN_ADAPTIVE_QUEUE_LENGTH(floor) 사이에서 조절한다.
+   */
   const enqueueCapture = (sampleTime: number, mediaTime: number) => {
-    if (queue.length >= maxQueueLength) {
+    if (queue.length >= effectiveMaxQueueLength) {
       droppedFrames += 1;
-      onQueueOverflow?.({ queueLength: queue.length, droppedSampleTime: sampleTime, droppedFrames });
+      onQueueOverflow?.({
+        queueLength: queue.length,
+        droppedSampleTime: sampleTime,
+        droppedFrames,
+        effectiveMaxQueueLength,
+      });
       return;
     }
     const canvas = acquireCanvas();
@@ -269,7 +349,8 @@ export async function sampleVideoFramesPlayback({
       if (canvas.height !== vh) canvas.height = vh;
       ctx.drawImage(video, 0, 0, vw, vh);
     }
-    queue.push({ sampleTime, mediaTime, canvas });
+    queue.push({ sampleTime, mediaTime, canvas, captureTime: performance.now() });
+    maxQueueLengthObserved = Math.max(maxQueueLengthObserved, queue.length);
   };
 
   await new Promise<void>((resolve, reject) => {
@@ -310,6 +391,14 @@ export async function sampleVideoFramesPlayback({
       const frameArrivedAt = performance.now();
       onDecode?.(frameArrivedAt - lastRvfcAt);
       lastRvfcAt = frameArrivedAt;
+
+      // Producer 단독 RVFC 도착 속도 — Processing(Consumer) 지연과 무관한 측정값.
+      const rvfcIntervalMs = frameArrivedAt - lastRvfcIntervalAt;
+      lastRvfcIntervalAt = frameArrivedAt;
+      if (rvfcIntervalMs > 0) {
+        const instantFps = 1000 / rvfcIntervalMs;
+        rvfcFps = rvfcFps > 0 ? rvfcFps * 0.85 + instantFps * 0.15 : instantFps;
+      }
 
       if (settled) return;
 

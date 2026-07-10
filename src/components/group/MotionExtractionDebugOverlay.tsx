@@ -110,6 +110,19 @@ export function MotionExtractionDebugOverlay({
         <Row label="TrackId Changes" value={debug.trackIdChanges} highlight={debug.trackIdChanges > 0} />
         <Row label="Coverage (running)" value={`${Math.round((debug.coverage || 0) * 100)}%`} />
         <Row label="Last Timestamp" value={`${debug.lastTimestamp.toFixed(2)}s`} />
+        <Row label="RVFC FPS" value={(debug.rvfcFps ?? 0).toFixed(1)} />
+        <Row label="Queue Length" value={debug.queueLength ?? 0} highlight={(debug.queueLength ?? 0) > 20} />
+        <Row label="Queue Delay" value={`${(debug.queueDelay ?? 0).toFixed(1)}ms`} />
+        <Row label="Worker Delay" value={`${(debug.workerDelay ?? 0).toFixed(1)}ms`} />
+        <Row label="MediaPipe Delay" value={`${(debug.mediaPipeDelay ?? 0).toFixed(1)}ms`} />
+        <Row label="Dropped Frames" value={debug.droppedFrames ?? 0} highlight={(debug.droppedFrames ?? 0) > 0} />
+        <Row label="Track Stability" value={`${Math.round((debug.trackStability ?? 1) * 100)}%`} />
+        <Row label="Cache" value={debug.cacheUsed ? `used (${Math.round((debug.cacheCoverage ?? 0) * 100)}%)` : 'unused'} />
+        <Row label="Frame Buffer Mem" value={debug.frameBufferMemoryMb != null ? `${debug.frameBufferMemoryMb.toFixed(1)}MB` : 'n/a'} />
+        <Row label="Canvas Mem" value={debug.canvasMemoryMb != null ? `${debug.canvasMemoryMb.toFixed(1)}MB` : 'n/a'} />
+        <Row label="Worker Mem" value={debug.workerMemoryMb != null ? `${debug.workerMemoryMb.toFixed(1)}MB` : 'n/a'} />
+        <Row label="Peak Heap" value={debug.peakHeapMb != null ? `${debug.peakHeapMb.toFixed(1)}MB` : 'n/a'} />
+        <Row label="GC Freq (approx)" value={debug.gcFrequency ?? 0} />
       </div>
     </div>
   );

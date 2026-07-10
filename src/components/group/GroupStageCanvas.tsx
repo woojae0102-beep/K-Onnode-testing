@@ -10,6 +10,7 @@ import React, {
 import type { SkeletonFrameData } from '../../types/groupPractice';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useStageCanvasResize } from '../../hooks/useStageCanvasResize';
+import { useOffscreenRenderer } from '../../hooks/useOffscreenRenderer';
 import {
   filterVisibleStageMembers,
   renderGroupStudioFrame,
@@ -54,6 +55,7 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
   }, ref) {
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const { resizeCanvas } = useStageCanvasResize(canvasRef);
+    const offscreenRenderer = useOffscreenRenderer(canvasRef, 'group-stage');
 
     const memberColorMap = useMemo(() => {
       const group = GROUP_DATA[groupId];
@@ -143,6 +145,25 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
       const size = resizeCanvas();
       const renderFrame = buildFormationFrame(frame, options);
 
+      if (offscreenRenderer.enabled) {
+        offscreenRenderer.resize(size.width, size.height);
+        offscreenRenderer.drawGroupFrame(
+          renderFrame,
+          {
+            groupId: options.groupId ?? groupId,
+            focusMemberId: options.focusMemberId ?? focusMemberId,
+            userMemberId: options.userMemberId ?? options.focusMemberId ?? focusMemberId,
+            frameIndex: options.frameIndex,
+            currentTimeSec: options.currentTimeSec,
+            formationTimeline: options.formationTimeline ?? formationTimeline,
+            formationHole: options.formationHole ?? formationHole,
+          },
+          options.memberColorMap ?? memberColorMap,
+          options.frameIndex,
+        );
+        return null;
+      }
+
       return renderGroupStudioFrame(ctx, canvas, renderFrame, {
         groupId: options.groupId ?? groupId,
         memberColorMap: options.memberColorMap ?? memberColorMap,
@@ -154,7 +175,7 @@ const GroupStageCanvas = forwardRef<GroupStageCanvasHandle, GroupStageCanvasProp
         formationTimeline: options.formationTimeline ?? formationTimeline,
         formationHole: options.formationHole ?? formationHole,
       });
-    }, [resizeCanvas, buildFormationFrame, memberColorMap, focusMemberId, formationTimeline, formationHole]);
+    }, [resizeCanvas, buildFormationFrame, memberColorMap, focusMemberId, formationTimeline, formationHole, groupId, offscreenRenderer]);
 
     const clearReferenceFrame = useCallback(() => {
       const canvas = canvasRef.current;

@@ -304,6 +304,9 @@ export default defineConfig(({ mode }) => {
     target: 'es2020',
     sourcemap: false,
   },
+  worker: {
+    format: 'es',
+  },
   define: {
     __ONNODE_BUILD__: JSON.stringify(`${pkg.version}-${Date.now()}`),
   },

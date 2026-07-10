@@ -9,12 +9,20 @@ import { SocialAuthProvider } from './contexts/SocialAuthContext';
 import { firebaseInitError } from './firebase';
 import { parseTVCodeFromUrl } from './utils/tvConnect';
 import { cleanupInvalidChoreoCache } from './services/groupChoreoCache';
+import { probeMotionDetectionWorkerSupport } from './services/motion/WorkerMotionDetector';
+import { initProductionReadiness } from './config/productionReadiness';
 import './index.css';
 import './i18n.ts';
 import './store/languageStore.ts';
 
 cleanupInvalidChoreoCache().catch((err) => {
   console.warn('[ChoreoCache] 앱 시작 캐시 정리 실패', err);
+});
+
+initProductionReadiness();
+
+probeMotionDetectionWorkerSupport().catch((err) => {
+  console.warn('[MotionDetector] Worker Capability Probe 실패', err);
 });
 
 function FullScreenLoader({ message = '' }) {

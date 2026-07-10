@@ -1,4 +1,4 @@
-// @ts-nocheck
+﻿// @ts-nocheck
 /**
  * K-POP Motion Extraction Engine — Holistic(Pose+Hand+Face) · RVFC · Tracking · Pipeline · Cache
  * useSkeletonExtract / useGroupChoreoExtract 공용 코어
@@ -31,8 +31,23 @@ import {
   resolveVideoDuration,
   waitForAnalysisVideoReady,
 } from '../../utils/choreoVideoUtils';
-import { sampleVideoFramesPlayback } from '../../utils/videoFrameSampler';
-import { createMultiLandmarkerDetector } from './MultiLandmarkerDetector';
+import { sampleVideoFrames } from '../../utils/sampleVideoFrames';
+import { createMotionExtractionPipeline } from '../../utils/motionExtractionStages';
+import { createMotionDetector } from './WorkerMotionDetector';
+import { isForceMainThreadMediaPipe } from '../../config/pipelineConfig';
+import { createManagedWorker } from '../../utils/workerRecovery';
+import { recordCoverageFailure, recordQueueOverflow, recordMemoryReport, recordWorkerError } from '../../utils/pipelineTelemetry';
+import { getGpuResourceSnapshot } from '../../utils/gpuResourceMonitor';
+import {
+  createHeapTrendTracker,
+  createWorkerMemoryAggregator,
+  estimateBytesPerSkeletonFrame,
+  estimateCanvasPoolMemoryBytes,
+  estimateFrameBufferMemoryBytes,
+  estimateDanceDatabaseMemoryBytes,
+  bytesToMb,
+} from '../../utils/memoryProfiler';
+import { pipelineEventBus, pipelineRegistry } from '../../utils/pipelineEventBus';
 import { associateHolisticLandmarksToPeople } from '../../utils/holisticLandmarkUtils';
 import { timeSecToBeat, timeSecToBeatIndex } from '../../utils/frameMetadataUtils';
 import { computeMemberHipCenter } from '../rendering/SkeletonFormationRender';
@@ -60,6 +75,8 @@ const STALL_TIMEOUT_MS = 8000;
 const SAMPLER_MAX_QUEUE_LENGTH = 60;
 /** Queue 소비(단일 프레임 detect+track+worker dispatch)가 이 시간 이상 걸리면 경고 로그 */
 const PROCESSING_STALL_TIMEOUT_MS = 4000;
+const COVERAGE_CHECKPOINTS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
+const COVERAGE_PROJECTION_MIN_PROGRESS = 0.3;
 
 function withTimeout(promise, ms, message) {
   return Promise.race([
@@ -119,10 +136,11 @@ export async function createHolisticMotionDetector(groupMemberCount, onStatus, {
   runningMode = 'VIDEO',
 } = {}) {
   return withTimeout(
-    createMultiLandmarkerDetector(groupMemberCount, onStatus, {
+    createMotionDetector(groupMemberCount, onStatus, {
       lenient,
       modelVariant: normalizeChoreoPoseModel(modelVariant),
       runningMode,
+      forceMainThread: isForceMainThreadMediaPipe(),
     }),
     AI_INIT_TIMEOUT_MS,
     'Holistic AI 모델 로드 시간이 초과되었습니다. 잠시 후 다시 시도해 주세요.',
@@ -132,10 +150,21 @@ export async function createHolisticMotionDetector(groupMemberCount, onStatus, {
 function createMotionPostProcessWorker() {
   if (typeof Worker === 'undefined') return null;
   try {
-    return new Worker(new URL('../../workers/motionPostProcessWorker.ts', import.meta.url), {
-      type: 'module',
+    const workerUrl = new URL('../../workers/motionPostProcessWorker.ts', import.meta.url);
+    const managed = createManagedWorker({
       name: 'motion-post-process',
+      workerUrl,
+      subsystem: 'motion-extraction',
+      maxRestarts: 3,
+      onWorkerCreated: async (worker) => {
+        worker.postMessage({ type: 'RESET' });
+      },
     });
+    return {
+      postMessage: (message: unknown, transfer?: unknown[]) => managed.postMessage(message, transfer),
+      addEventListener: (type: 'message' | 'error', listener: (event: MessageEvent) => void) => managed.addEventListener(type, listener as any),
+      terminate: () => managed.terminate(),
+    };
   } catch (err) {
     console.warn('[MotionExtract] Worker 초기화 실패 — 메인 스레드 분석만 진행', err);
     return null;
@@ -257,6 +286,7 @@ function fillMissingMembersFromLastDetected(people, lastDetectedById, expectedMe
 
 export interface RunHolisticAnalysisOptions {
   video: HTMLVideoElement;
+  sourceFile?: Blob | File | null;
   groupId: string;
   detector: { detect: (src: unknown) => unknown; close?: () => void };
   expectedMemberCount: number;
@@ -269,11 +299,13 @@ export interface RunHolisticAnalysisOptions {
   onFrameDetected?: (payload: Record<string, unknown>) => void;
   onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
   abortRef?: { current: boolean };
+  onPipelineStats?: (stats: import('../../utils/asyncPipelineQueue').PipelineStageStats[]) => void;
 }
 
 /** RVFC 재생 + Holistic detect + Hungarian/Kalman tracking */
 export async function runHolisticVideoAnalysis({
   video,
+  sourceFile = null,
   groupId,
   detector,
   expectedMemberCount,
@@ -286,6 +318,7 @@ export async function runHolisticVideoAnalysis({
   onFrameDetected,
   onDebug,
   abortRef,
+  onPipelineStats,
 }: RunHolisticAnalysisOptions): Promise<AnalysisResult | null> {
   const group = getGroupData(groupId);
   if (!group || !video || !detector) return null;
@@ -299,22 +332,32 @@ export async function runHolisticVideoAnalysis({
   const tracker = new MultiPersonTracker();
   tracker.setSampleFps(sampleFps);
   tracker.setBpm(bpm);
-  const { detectFrame } = createOffscreenDetectPipeline(videoWidth, videoHeight);
 
   const worker = createMotionPostProcessWorker();
+  const unregisterWorker = worker
+    ? pipelineRegistry.register({ name: 'motionPostProcessWorker', subsystem: 'motion-extraction', kind: 'worker' })
+    : () => {};
   let workerReady = false;
-  // Worker Queue Overflow 방지용 상태 — sent-acked 차이가 워커의 실제 대기열 길이.
   let workerSentCount = 0;
   let workerAckCount = 0;
   let workerDroppedCount = 0;
   let maxWorkerQueueObserved = 0;
+  const workerSentAtByFrame = new Map<number, number>();
+  let avgWorkerDelayMs = 0;
   worker?.postMessage({ type: 'RESET' });
+  const workerMemory = createWorkerMemoryAggregator();
   worker?.addEventListener('message', (event) => {
     const msg = event.data || {};
     if (msg.type === 'FRAME_BUFFERED') {
       perfStats.workerFrames += 1;
       workerAckCount += 1;
       addMs(perfStats, 'postProcessMs', msg.postProcessMs);
+      const sentAt = workerSentAtByFrame.get(msg.frameIndex);
+      if (sentAt != null) {
+        workerSentAtByFrame.delete(msg.frameIndex);
+        const delay = performance.now() - sentAt;
+        avgWorkerDelayMs = avgWorkerDelayMs > 0 ? avgWorkerDelayMs * 0.85 + delay * 0.15 : delay;
+      }
     } else if (msg.type === 'FRAME_BUFFER_READY') {
       workerReady = true;
       onFrameBufferReady?.({
@@ -327,6 +370,14 @@ export async function runHolisticVideoAnalysis({
       });
     } else if (msg.type === 'ERROR') {
       console.warn('[MotionExtractWorker]', msg.error);
+      recordWorkerError('motion-post-process', msg.error);
+    } else if (msg.type === 'memory-report') {
+      workerMemory.ingest(msg);
+      pipelineEventBus.emit('pipeline-memory-report', {
+        subsystem: 'motion-extraction:postProcessWorker',
+        usedJSHeapBytes: msg.usedJSHeapBytes,
+        reportedAtMs: msg.reportedAtMs,
+      });
     }
   });
 
@@ -367,12 +418,78 @@ export async function runHolisticVideoAnalysis({
   let missingMemberFrameCount = 0;
   let maxMissingInFrame = 0;
 
-  // sampleVideoFramesPlayback()의 Processing Queue Overflow(Frame Drop) 카운터
   let samplerQueueDroppedCount = 0;
+  let nextCoverageCheckpointIdx = 0;
+  let maxSamplerQueueObserved = 0;
+  let rvfcFpsSum = 0;
+  let queueDelaySum = 0;
+  let sampleCountForAvg = 0;
+  const heapTracker = createHeapTrendTracker();
+  heapTracker.start();
+  let bytesPerSkeletonFrame = 0;
+
+  const pipelineCtx = {
+    detector,
+    tracker,
+    worker,
+    frames,
+    groupId,
+    expectedMemberCount,
+    sampleFps,
+    bpm,
+    analysisDuration,
+    timelineTotalFrames,
+    videoWidth,
+    videoHeight,
+    sourceVideoNativeFps,
+    minBufferedFrames,
+    perfStats,
+    heapTracker,
+    workerMemory,
+    onDebug,
+    onFrameDetected,
+    onProgress,
+    abortRef,
+    lastDetectedPeopleById,
+    prevFramePeopleById,
+    memberCountSamples,
+    trackIdChangeCount,
+    missingMemberFrameCount,
+    maxMissingInFrame,
+    workerSentCount,
+    workerAckCount,
+    workerDroppedCount,
+    maxWorkerQueueObserved,
+    workerSentAtByFrame,
+    avgWorkerDelayMs,
+    samplerQueueDroppedCount,
+    nextCoverageCheckpointIdx,
+    bytesPerSkeletonFrame,
+    lastProcessingDelayMs,
+    measuredFps,
+    lastSampleAt,
+    rvfcFpsSum,
+    queueDelaySum,
+    sampleCountForAvg,
+    maxSamplerQueueObserved,
+    COVERAGE_CHECKPOINTS,
+    COVERAGE_PROJECTION_MIN_PROGRESS,
+    MAX_WORKER_QUEUE,
+    SAMPLER_MAX_QUEUE_LENGTH,
+    stabilizeTrackIds,
+    fillMissingMembersFromLastDetected,
+    detectHolistic,
+  };
+
+  const motionPipeline = createMotionExtractionPipeline(pipelineCtx);
+  const unregisterStages = motionPipeline.stages.map((stage) =>
+    pipelineRegistry.register({ name: stage.name, subsystem: 'motion-extraction', kind: 'queue' }),
+  );
 
   try {
-    await sampleVideoFramesPlayback({
+    await sampleVideoFrames({
     video,
+    sourceFile,
     sampleFps,
     maxDuration: analysisDuration,
     abortRef,
@@ -382,6 +499,12 @@ export async function runHolisticVideoAnalysis({
       // processing_delay — Queue 소비(detect+track+worker)가 느릴 뿐, RVFC는 계속 진행 중 (경고).
       if (info.kind === 'rvfc_idle') {
         const projected = calculateTimelineCoverage(frames, analysisDuration);
+        recordCoverageFailure({
+          kind: 'rvfc_idle',
+          ...info,
+          framesSoFar: frames.length,
+          projectedCoverage: projected.coverage,
+        });
         console.error(
           '[MotionExtract] Coverage 조기 종료 — RVFC Stall',
           {
@@ -404,202 +527,31 @@ export async function runHolisticVideoAnalysis({
     processingStallTimeoutMs: PROCESSING_STALL_TIMEOUT_MS,
     onQueueOverflow: ({ queueLength, droppedFrames: samplerDropped }) => {
       samplerQueueDroppedCount = samplerDropped;
+      recordQueueOverflow('sampler', { queueLength, droppedCount: samplerDropped });
       onDebug?.({ pipelineStage: 'sampler_queue_overflow', workerQueue: queueLength });
     },
-    // Processing Queue Consumer — sampleVideoFramesPlayback() 내부에서 캡처된 프레임을
-    // 순차적으로 꺼내 전달한다. RVFC는 이 처리와 완전히 독립적으로 계속 진행된다.
-    // (Frame Processing Lock이 이제 필요 없다 — Queue 소비 자체가 항상 단일 실행을 보장한다)
-    onSample: async ({ time: t, mediaTime, source }) => {
+    onSample: (sample) => {
       if (abortRef?.current) return;
-
-      const frameStartedAt = performance.now();
-      const now = performance.now();
-      if (lastSampleAt > 0) {
-        const instant = 1000 / Math.max(1, now - lastSampleAt);
-        measuredFps = measuredFps * 0.85 + instant * 0.15;
-      }
-      lastSampleAt = now;
-
-      const detectStartedAt = performance.now();
-      const timestampMsForDetector = Math.max(0, Math.round(t * 1000));
-      // Queue에서 처리되므로 video 자체는 이미 다른 프레임으로 진행되어 있을 수 있다 —
-      // RVFC 콜백에서 캡처해 둔 고정 스냅샷(source)을 반드시 사용해야 한다.
-      const results = detectFrame(detector, source, timestampMsForDetector);
-      addMs(perfStats, 'poseDetectionMs', performance.now() - detectStartedAt);
-      if (memberCountSamples.length < CHOREO_MEMBER_PROBE_SAMPLES) {
-        const valid = tracker.countValidPoses(results.landmarks as unknown[]);
-        if (valid > 0) memberCountSamples.push(valid);
-      }
-
-      const frameIndex = frames.length;
-      const gridTimestamp = frameIndex / sampleFps;
-      const timestampMs = Math.round(gridTimestamp * 1000);
-      const rawCount = results.landmarks?.length || 0;
-      let trackedPeople = tracker.trackFrame(
-        results.landmarks || [],
-        results.worldLandmarks || [],
-        t,
-        expectedMemberCount,
-      );
-      trackedPeople = associateHolisticLandmarksToPeople(trackedPeople, results);
-      trackedPeople = tracker.enrichWithHolisticLandmarks(trackedPeople);
-
-      // [요구사항 3] Track Stability — 위치가 거의 같은데 trackId만 바뀐 경우 이전 ID 유지.
-      const stabilizeResult = stabilizeTrackIds(trackedPeople, prevFramePeopleById);
-      trackedPeople = stabilizeResult.people;
-      trackIdChangeCount += stabilizeResult.changes;
-
-      // [요구사항 2] Group Skeleton 개수 유지 — expectedMemberCount보다 적게 검출되면
-      // lastDetectedPeopleById에서 누락 멤버를 보간해 채운다 (완전 미검출 프레임 포함).
-      const fillResult = fillMissingMembersFromLastDetected(
-        trackedPeople,
-        lastDetectedPeopleById,
-        expectedMemberCount,
-        t,
-      );
-      const framePeople = fillResult.people;
-      const missingMemberIds = fillResult.missingTrackIds;
-      if (missingMemberIds.length) {
-        missingMemberFrameCount += 1;
-        maxMissingInFrame = Math.max(maxMissingInFrame, missingMemberIds.length);
-      }
-
-      // 다음 프레임의 Track Stability / 보간 기준으로 사용할 상태 갱신.
-      prevFramePeopleById = new Map(framePeople.map((p) => [p.trackId, p]));
-      framePeople.forEach((person) => {
-        if (!person.isEstimated) lastDetectedPeopleById.set(person.trackId, person);
+      motionPipeline.ingress({
+        time: sample.time,
+        mediaTime: sample.mediaTime,
+        source: sample.source,
+        queueDelayMs: sample.queueDelayMs ?? 0,
+        queueLength: sample.queueLength ?? 0,
+        rvfcFps: sample.rvfcFps ?? 0,
       });
-
-      const visibleCount = framePeople.filter((p) => !p.isEstimated).length;
-      const estimatedCount = framePeople.filter((p) => p.isEstimated).length;
-      const avgConfidence = framePeople.length
-        ? framePeople.reduce((s, p) => s + (p.confidence || 0), 0) / framePeople.length
-        : 0;
-      const beat = timeSecToBeat(t, bpm);
-      const beatIndex = timeSecToBeatIndex(t, bpm);
-      const timelineFrameIndex = Math.min(timelineTotalFrames - 1, Math.round(t * sampleFps));
-      const runningCoverage = analysisDuration > 0 ? Math.min(1, t / analysisDuration) : 0;
-      const workerQueueLength = Math.max(0, workerSentCount - workerAckCount);
-
-      frames.push({
-        timestamp: gridTimestamp,
-        timestampMs,
-        sourceVideoTime: t,
-        videoWidth,
-        videoHeight,
-        detectedPeople: framePeople,
-      });
-      perfStats.sampledFrames += 1;
-
-      // [요구사항 4] Worker Queue Overflow 방지 — 대기열이 너무 길면 이 프레임의 워커 오프로드는 건너뛴다.
-      // (frames[] 에는 그대로 남아 최종 AnalysisResult에는 영향 없음 — Worker는 FrameBuffer 조기 시작용 보조 경로)
-      if (worker) {
-        if (workerQueueLength >= MAX_WORKER_QUEUE) {
-          workerDroppedCount += 1;
-        } else {
-          const latestFrame = frames[frames.length - 1];
-          const skeletonFrame = {
-            timestamp: gridTimestamp,
-            timestampMs,
-            sourceVideoTime: t,
-            frameIndex,
-            videoWidth,
-            videoHeight,
-            members: framePeople.map((person, idx) => ({
-              personIndex: idx,
-              trackId: Number(person.trackId),
-              estimatedMemberId: String(person.trackId),
-              isEstimated: person.isEstimated ?? false,
-              confidence: person.confidence,
-              joints: Object.fromEntries(
-                Object.entries(person.joints || {}).map(([name, joint]) => [
-                  name,
-                  {
-                    x: joint.x,
-                    y: joint.y,
-                    z: joint.z ?? 0,
-                    visibility: joint.visibility ?? joint.confidence ?? 1,
-                    presence: joint.presence,
-                    confidence: joint.confidence ?? joint.visibility ?? 1,
-                  },
-                ]),
-              ),
-            })).filter((member) => Object.keys(member.joints || {}).length),
-          };
-          const workerPayload = {
-            type: 'PROCESS_FRAME',
-            frameIndex,
-            frame: skeletonFrame,
-            groupId,
-            userMemberId: '',
-            focusMemberId: null,
-            songId: groupId,
-            sampleFps,
-            detectedCount: framePeople.length,
-            allMemberIds: framePeople.map((person) => String(person.trackId)),
-            minBufferedFrames,
-          };
-          const serializeStartedAt = performance.now();
-          JSON.stringify({ frame: latestFrame, skeletonFrame });
-          addMs(perfStats, 'jsonSerializeMs', performance.now() - serializeStartedAt);
-          worker.postMessage(workerPayload);
-          workerSentCount += 1;
-          maxWorkerQueueObserved = Math.max(maxWorkerQueueObserved, workerQueueLength + 1);
-        }
-      }
-
-      addMs(perfStats, 'totalMs', performance.now() - frameStartedAt);
-      lastProcessingDelayMs = performance.now() - frameStartedAt;
-
-      const debugPayload: Partial<MotionExtractionDebugState> = {
-        frameIndex,
-        timestamp: gridTimestamp,
-        sourceVideoTime: t,
-        lastTimestamp: t,
-        measuredFps,
-        sampleFps,
-        nativeFps: sourceVideoNativeFps,
-        rawPoseCount: rawCount,
-        handCount: results.hands?.length || 0,
-        faceCount: results.faces?.length || 0,
-        trackedCount: framePeople.length,
-        visibleCount,
-        estimatedCount,
-        expectedMemberCount,
-        missingMemberCount: Math.max(0, expectedMemberCount - visibleCount),
-        trackingIds: framePeople.map((p) => p.trackId),
-        currentTrackedMembers: framePeople.map((p) => p.trackId),
-        missingMembers: missingMemberIds,
-        avgConfidence,
-        beat,
-        beatIndex,
-        interpolationHold: estimatedCount > 0,
-        timelineDuration: analysisDuration,
-        timelineFrameIndex,
-        timelineTotalFrames,
-        pipelineStage: 'frame_detect',
-        workerQueue: workerQueueLength,
-        processingFrame: false,
-        processingDelay: lastProcessingDelayMs,
-        trackerResetCount: tracker.getReleasedTrackCount(),
-        trackIdChanges: trackIdChangeCount,
-        coverage: runningCoverage,
-      };
-      onDebug?.(debugPayload);
-
-      onFrameDetected?.({
-        rawCount,
-        trackedCount: framePeople.length,
-        visibleCount,
-        expectedMemberCount,
-      });
+      onPipelineStats?.(motionPipeline.getAllStats());
     },
     });
+    await motionPipeline.drain();
   } finally {
-    // Stall/abort/정상 종료 모든 경로에서 sampleVideoFramesPlayback()이 이미
-    // RVFC handle과 내부 watchdog을 정리했으므로, 여기서는 Worker만 확실히 종료한다.
+    motionPipeline.close();
+    unregisterStages.forEach((fn) => fn());
     perfStats.totalMs = performance.now() - totalStartedAt;
+    workerSentAtByFrame.clear();
+    heapTracker.stop();
     worker?.terminate();
+    unregisterWorker();
   }
 
   const detectedMemberCount = (() => {
@@ -632,6 +584,12 @@ export async function runHolisticVideoAnalysis({
   });
 
   if (coverageReport.coverage < SKELETON_MIN_TIMELINE_COVERAGE) {
+    recordCoverageFailure({
+      analysisDuration,
+      lastTimestamp: coverageReport.lastTimestamp,
+      coverage: coverageReport.coverage,
+      frameCount: coverageReport.frameCount,
+    });
     throw new Error(
       `Motion Extraction coverage 부족: analysisDuration=${analysisDuration.toFixed(2)}s, `
       + `lastTimestamp=${coverageReport.lastTimestamp.toFixed(2)}s, `
@@ -698,6 +656,34 @@ export async function runHolisticVideoAnalysis({
       samplerQueueDrops: samplerQueueDroppedCount,
       workerQueueDrops: workerDroppedCount,
     },
+  });
+
+  const finalHeapStats = heapTracker.getStats();
+  const gpuSnapshot = getGpuResourceSnapshot();
+  console.table({
+    'Memory Profile Report': {
+      'Frame Buffer': bytesToMb(estimateFrameBufferMemoryBytes(frames.length, bytesPerSkeletonFrame)) != null
+        ? `${bytesToMb(estimateFrameBufferMemoryBytes(frames.length, bytesPerSkeletonFrame))!.toFixed(1)}MB` : 'n/a',
+      'Peak Heap': bytesToMb(finalHeapStats.peakBytes) != null
+        ? `${bytesToMb(finalHeapStats.peakBytes)!.toFixed(1)}MB` : 'n/a (Chrome only)',
+      'GC Frequency (heuristic)': finalHeapStats.gcEventCount,
+      'ImageBitmap live': gpuSnapshot.imageBitmapLive,
+      'VideoFrame live': gpuSnapshot.videoFrameLive,
+      'Canvas live': gpuSnapshot.canvasLive,
+      'WebGL live': gpuSnapshot.webglContextLive,
+    },
+  });
+  recordMemoryReport('motion-extraction', {
+    peakHeapBytes: finalHeapStats.peakBytes,
+    gcFrequency: finalHeapStats.gcEventCount,
+    gpu: gpuSnapshot,
+  });
+
+  pipelineEventBus.emit('motion-extraction-complete', {
+    groupId,
+    songId: '',
+    frameCount: coverageReport.frameCount,
+    coverage: coverageReport.coverage,
   });
 
   return {
@@ -806,6 +792,7 @@ export async function analyzeFileHolistic({
 
     const analysisResult = await runHolisticVideoAnalysis({
       video,
+      sourceFile: file,
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
@@ -936,6 +923,7 @@ export interface ExtractMotionDatabaseOptions {
   onProgress?: (pct: number) => void;
   onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
   abortRef?: { current: boolean };
+  onPipelineStats?: (stats: import('../../utils/asyncPipelineQueue').PipelineStageStats[]) => void;
 }
 
 /**
@@ -956,6 +944,7 @@ export async function extractMotionDatabase({
   onProgress,
   onDebug,
   abortRef,
+  onPipelineStats,
 }: ExtractMotionDatabaseOptions): Promise<MotionExtractionResult> {
   const group = getGroupData(groupId);
   if (!group || !file) throw new Error('그룹 또는 영상 파일이 없습니다.');
@@ -1060,6 +1049,7 @@ export async function extractMotionDatabase({
 
     const analysisResult = await runHolisticVideoAnalysis({
       video,
+      sourceFile: file,
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
@@ -1073,6 +1063,7 @@ export async function extractMotionDatabase({
       },
       onDebug,
       abortRef,
+      onPipelineStats,
     });
 
     detector.close?.();

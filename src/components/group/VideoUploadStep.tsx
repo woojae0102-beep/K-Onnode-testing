@@ -2,6 +2,8 @@
 import React, { useRef, useState } from 'react';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { useSkeletonExtract } from '../../hooks/useSkeletonExtract';
+import { isStressTestMode } from '../../utils/stressTestHarness';
+import { isBenchmarkMode, BENCHMARK_PRESETS, getBenchmarkPresetFromQuery } from '../../utils/pipelineBenchmark';
 import MotionExtractionDebugOverlay from './MotionExtractionDebugOverlay';
 import GroupMotionDebugOverlay from './GroupMotionDebugOverlay';
 import MemberAutoDetect from './MemberAutoDetect';
@@ -342,6 +344,40 @@ export function VideoUploadStep({ groupId, memberId, onExtracted, onBack }) {
             }}
           >
             {localError || error}
+          </div>
+        ) : null}
+
+        {isBenchmarkMode() ? (
+          <div
+            style={{
+              padding: '12px 16px',
+              marginBottom: 12,
+              borderRadius: 10,
+              border: '1px solid rgba(0,200,255,0.35)',
+              background: 'rgba(0,200,255,0.08)',
+              color: '#7DD3FC',
+              fontSize: 12,
+            }}
+          >
+            Benchmark 모드 ({getBenchmarkPresetFromQuery()}) — 추출 완료 시 JSON 리포트가 자동 다운로드됩니다.
+            {' '}
+            프리셋: {BENCHMARK_PRESETS.map((p) => p.id).join(', ')}
+          </div>
+        ) : null}
+
+        {isStressTestMode() ? (
+          <div
+            style={{
+              padding: '12px 16px',
+              marginBottom: 12,
+              borderRadius: 10,
+              border: '1px solid rgba(255,215,0,0.35)',
+              background: 'rgba(255,215,0,0.08)',
+              color: '#FFD700',
+              fontSize: 12,
+            }}
+          >
+            Stress Test 모드 — 30분+ 영상 추출 후 콘솔 Stress Test Report를 확인하세요.
           </div>
         ) : null}
 

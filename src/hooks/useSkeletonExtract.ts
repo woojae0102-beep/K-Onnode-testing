@@ -5,7 +5,7 @@
  * 프로토타입 수준의 단순 스켈레톤 추출 → 서비스 수준 Holistic Motion Pipeline.
  * Pose+Hand+Face · RVFC · Hungarian/Kalman · Interpolation · Normalize · Beat · Cache · DanceDatabase
  */
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { SkeletonFrameData } from '../types/groupPractice';
 import {
   EMPTY_MOTION_DEBUG,
@@ -35,6 +35,16 @@ import {
   buildGroupMotionDebugFromAudit,
   buildGroupMotionDebugFromFrame,
 } from '../utils/groupMotionDebugUtils';
+import {
+  createStressTestHarness,
+  isStressTestMode,
+} from '../utils/stressTestHarness';
+import {
+  createPipelineBenchmark,
+  downloadBenchmarkReport,
+  getBenchmarkPresetFromQuery,
+  isBenchmarkMode,
+} from '../utils/pipelineBenchmark';
 import {
   EMPTY_GROUP_MOTION_DEBUG,
   type GroupMotionEngineDebugState,
@@ -67,6 +77,46 @@ function mergeDebug(
   return { ...prev, ...patch };
 }
 
+/** onDebug()가 프레임(최대 60fps)마다 호출되어도 React 리렌더는 최대 10fps로 제한한다.
+ *  — Debug Overlay가 매 프레임 setState → 리렌더되어 Consumer/RVFC와 무관하게 Renderer가
+ *  추가 병목이 되는 것을 막는다. 콘솔 로그(console.debug)도 같은 주기로 함께 스로틀된다. */
+const DEBUG_FLUSH_INTERVAL_MS = 100;
+
+function useThrottledDebugSetter(setDebug) {
+  const pendingRef = useRef<Partial<MotionExtractionDebugState> | null>(null);
+  const lastFlushAtRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const flush = useCallback(() => {
+    if (timerRef.current != null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+    if (!pendingRef.current) return;
+    const patch = pendingRef.current;
+    pendingRef.current = null;
+    lastFlushAtRef.current = performance.now();
+    setDebug((prev) => mergeDebug(prev, patch));
+    if (import.meta.env?.DEV) console.debug('[MotionExtract]', patch);
+  }, [setDebug]);
+
+  const push = useCallback((patch: Partial<MotionExtractionDebugState>) => {
+    pendingRef.current = pendingRef.current ? { ...pendingRef.current, ...patch } : patch;
+    const elapsed = performance.now() - lastFlushAtRef.current;
+    if (elapsed >= DEBUG_FLUSH_INTERVAL_MS) {
+      flush();
+    } else if (timerRef.current == null) {
+      timerRef.current = setTimeout(flush, DEBUG_FLUSH_INTERVAL_MS - elapsed);
+    }
+  }, [flush]);
+
+  useEffect(() => () => {
+    if (timerRef.current != null) clearTimeout(timerRef.current);
+  }, []);
+
+  return { push, flush };
+}
+
 export function useSkeletonExtract() {
   const [isExtracting, setIsExtracting] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -81,6 +131,7 @@ export function useSkeletonExtract() {
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const abortRef = useRef(false);
+  const debugFlusher = useThrottledDebugSetter(setDebug);
 
   const cancel = useCallback(() => {
     abortRef.current = true;
@@ -138,11 +189,9 @@ export function useSkeletonExtract() {
           abortRef,
           onStatus: setStep,
           onProgress: setProgress,
-          onDebug: (patch) => {
-            setDebug((prev) => mergeDebug(prev, patch));
-            if (import.meta.env?.DEV) console.debug('[MotionExtract]', patch);
-          },
+          onDebug: debugFlusher.push,
         });
+        debugFlusher.flush();
         setIsExtracting(false);
         return analysisResult;
       } catch (err: unknown) {
@@ -185,8 +234,9 @@ export function useSkeletonExtract() {
           songId,
           trackToMember,
           onStatus: setStep,
-          onDebug: (patch) => setDebug((prev) => mergeDebug(prev, patch)),
+          onDebug: debugFlusher.push,
         });
+        debugFlusher.flush();
         const lastFrame = result.frames[result.frames.length - 1] ?? null;
         setGroupMotionDebug(
           buildGroupMotionDebugFromAudit(result.danceDatabase?.motionPipelineAudit, {
@@ -246,6 +296,11 @@ export function useSkeletonExtract() {
       setStep('K-POP Motion Extraction Engine 시작...');
 
       try {
+        const stressHarness = isStressTestMode() ? createStressTestHarness() : null;
+        const benchmarkHarness = isBenchmarkMode() ? createPipelineBenchmark(getBenchmarkPresetFromQuery()) : null;
+        stressHarness?.start();
+        benchmarkHarness?.start();
+
         const result = await extractMotionDatabase({
           file,
           groupId,
@@ -263,13 +318,17 @@ export function useSkeletonExtract() {
           abortRef,
           onStatus: setStep,
           onProgress: setProgress,
-          onDebug: (patch) => {
-            setDebug((prev) => mergeDebug(prev, patch));
-            if (import.meta.env?.DEV) {
-              console.debug('[MotionExtract]', patch);
-            }
+          onDebug: debugFlusher.push,
+          onPipelineStats: (stats) => {
+            const frameCount = stats.reduce((sum, s) => sum + s.processedCount, 0);
+            stressHarness?.updateProgress(frameCount, stats);
+            benchmarkHarness?.updateProgress(frameCount, stats);
           },
         });
+        debugFlusher.flush();
+        const benchmarkReport = benchmarkHarness?.stop();
+        if (benchmarkReport) downloadBenchmarkReport(benchmarkReport, 'json');
+        stressHarness?.stop();
 
         setFromCache(result.fromCache);
         setGroupMotionDebug(
@@ -352,9 +411,10 @@ export function useSkeletonExtract() {
             setProgress(pct);
             if (msg) setStep(msg);
           },
-          onDebug: (patch) => setDebug((prev) => mergeDebug(prev, patch)),
+          onDebug: debugFlusher.push,
           abortRef,
         });
+        debugFlusher.flush();
         detector.close?.();
 
         if (!analysisResult?.frames?.length) {

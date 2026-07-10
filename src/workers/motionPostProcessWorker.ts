@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { postProcessFrame } from '../utils/memberPoseMatching';
+import { startWorkerMemoryReporter } from '../utils/memoryProfiler';
 
 const frameBuffer = [];
 let previousFrame = null;
@@ -8,6 +9,9 @@ let readyPosted = false;
 function post(type, payload = {}) {
   self.postMessage({ type, ...payload });
 }
+
+// [Memory Profiling] 2초마다 이 Worker의 heap 사용량을 메인 스레드로 보고한다.
+startWorkerMemoryReporter('postProcess', (msg) => self.postMessage(msg));
 
 self.onmessage = (event) => {
   const msg = event.data || {};
