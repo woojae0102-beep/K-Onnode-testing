@@ -41,6 +41,12 @@ import {
   profileRecordBytes,
   profileStep,
 } from '../../benchmark/reconstructFrameProfiler';
+import {
+  frameStepContext,
+  logMotionPipelineStepFailure,
+  runMotionPipelineStep,
+  summarizeMembers,
+} from '../../utils/motionPipelineStepDiagnostics';
 
 export const GROUP_MOTION_ENGINE_VERSION = '1.0';
 
@@ -185,6 +191,7 @@ export class GroupMotionReconstructionEngine {
     detectedCount?: number,
   ): SkeletonFrameData {
     const t0 = isProfileEnabled() ? performance.now() : 0;
+    const stepCtx = frameStepContext(frame);
     if (isProfileEnabled()) {
       profileBeginFrame(frame.frameIndex ?? 0, frame.timestamp);
     }
@@ -201,56 +208,166 @@ export class GroupMotionReconstructionEngine {
 
     const count = detectedCount ?? (frame.members || []).filter((m) => !m.isEstimated).length;
     let members = frame.members || [];
+    let formationKf: import('../../types/danceDatabase').FormationKeyframe | null = null;
+    let out: SkeletonFrameData;
 
-    if (motionDatabase?.skeletonFrames?.length) {
-      members = profileStep('generateAI', () => this.generateAIMembers(frame, options)) as SkeletonMemberData[];
-      this.debug.pipelineStage = 'motion_database';
-    } else if (count > 1) {
-      const trackResult = profileStep('trackingTotal', () => (
-        this.previousFrame?.members?.length
-          ? this.tracker.trackMembers(members, this.previousFrame.members, {
-              bpm,
-              sampleFps,
-              timestamp: frame.timestamp,
-              prevTimestamp: this.previousFrame.timestamp,
-              maxTracks: allMemberIds.length || 9,
-            })
-          : { members: this.tracker.seedMembers(members), occlusionRecoveries: 0, avgVelocity: 0, identityConfidence: {} }
-      )) as import('./MemberTrackingEngine').MemberTrackingResult;
+    try {
+      if (motionDatabase?.skeletonFrames?.length) {
+        members = runMotionPipelineStep(
+          'STEP 1 generateAIMembers (motionDatabase)',
+          () => (isProfileEnabled()
+            ? profileStep('generateAI', () => this.generateAIMembers(frame, options))
+            : this.generateAIMembers(frame, options)) as SkeletonMemberData[],
+          { ...stepCtx, path: 'motion_database' },
+        );
+        this.debug.pipelineStage = 'motion_database';
+      } else if (count > 1) {
+        const trackCtx = {
+          ...stepCtx,
+          detectedCount: count,
+          previousMemberCount: this.previousFrame?.members?.length ?? 0,
+          currentMembers: summarizeMembers(members),
+          previousMembers: summarizeMembers(this.previousFrame?.members),
+        };
 
-      members = trackResult.members;
-      profileRecordBytes('members', members);
-      this.occlusionRecoveryTotal += trackResult.occlusionRecoveries;
-      this.debug.pipelineStage = 'adaptive_tracking';
-      this.debug.avgMemberVelocity = trackResult.avgVelocity;
-      Object.assign(this.debug, {
-        occlusionRecoveries: this.occlusionRecoveryTotal,
-        avgIdentityConfidence: Object.values(trackResult.identityConfidence).reduce((a, b) => a + b, 0)
-          / Math.max(1, Object.keys(trackResult.identityConfidence).length),
-      });
-    } else {
-      members = profileStep('generateAI', () => this.generateAIMembers(frame, options)) as SkeletonMemberData[];
-      this.debug.singleDancerMode = true;
-      this.debug.pipelineStage = 'motion_timeline';
+        let trackResult: import('./MemberTrackingEngine').MemberTrackingResult;
+        try {
+          trackResult = runMotionPipelineStep(
+            this.previousFrame?.members?.length
+              ? 'STEP 2 trackMembers'
+              : 'STEP 2 seedMembers',
+            () => {
+              const run = () => (
+                this.previousFrame?.members?.length
+                  ? this.tracker.trackMembers(members, this.previousFrame.members, {
+                      bpm,
+                      sampleFps,
+                      timestamp: frame.timestamp,
+                      prevTimestamp: this.previousFrame.timestamp,
+                      maxTracks: allMemberIds.length || 9,
+                      debugFrameIndex: frame.frameIndex,
+                      debugTimestamp: frame.timestamp,
+                      debugMemberCount: members.length,
+                    })
+                  : {
+                      members: this.tracker.seedMembers(members, {
+                        debugFrameIndex: frame.frameIndex,
+                        debugTimestamp: frame.timestamp,
+                      }),
+                      occlusionRecoveries: 0,
+                      avgVelocity: 0,
+                      identityConfidence: {},
+                    }
+              );
+              return (isProfileEnabled() ? profileStep('trackingTotal', run) : run()) as import('./MemberTrackingEngine').MemberTrackingResult;
+            },
+            trackCtx,
+          );
+        } catch (error) {
+          logMotionPipelineStepFailure('STEP 2 trackMembers/seedMembers', error, trackCtx);
+          throw error;
+        }
+
+        members = trackResult.members;
+        profileRecordBytes('members', members);
+        this.occlusionRecoveryTotal += trackResult.occlusionRecoveries;
+        this.debug.pipelineStage = 'adaptive_tracking';
+        this.debug.avgMemberVelocity = trackResult.avgVelocity;
+        Object.assign(this.debug, {
+          occlusionRecoveries: this.occlusionRecoveryTotal,
+          avgIdentityConfidence: Object.values(trackResult.identityConfidence).reduce((a, b) => a + b, 0)
+            / Math.max(1, Object.keys(trackResult.identityConfidence).length),
+        });
+      } else {
+        members = runMotionPipelineStep(
+          'STEP 1 generateAIMembers (singleDancer)',
+          () => (isProfileEnabled()
+            ? profileStep('generateAI', () => this.generateAIMembers(frame, options))
+            : this.generateAIMembers(frame, options)) as SkeletonMemberData[],
+          { ...stepCtx, path: 'motion_timeline' },
+        );
+        this.debug.singleDancerMode = true;
+        this.debug.pipelineStage = 'motion_timeline';
+      }
+    } catch (error) {
+      logMotionPipelineStepFailure('STEP 1-2 member generation/tracking', error, stepCtx);
+      throw error;
     }
 
-    const formation = formationTimeline ?? this.formationTimeline;
-    const formationKf = profileStep('formation', () => (
-      formation ? resolveFormationAtTime(formation, frame.timestamp) : null
-    )) as import('../../types/danceDatabase').FormationKeyframe | null;
+    try {
+      const formation = formationTimeline ?? this.formationTimeline;
+      formationKf = runMotionPipelineStep(
+        'STEP 3 resolveFormation',
+        () => (isProfileEnabled()
+          ? profileStep('formation', () => (formation ? resolveFormationAtTime(formation, frame.timestamp) : null))
+          : (formation ? resolveFormationAtTime(formation, frame.timestamp) : null)) as import('../../types/danceDatabase').FormationKeyframe | null,
+        stepCtx,
+      );
+    } catch (error) {
+      logMotionPipelineStepFailure('STEP 3 resolveFormation', error, stepCtx);
+      throw error;
+    }
 
-    const out: SkeletonFrameData = profileStep('finalSkeleton', () => ({
-      ...frame,
-      members,
-      formationType: formationKf?.formationType ?? frame.formationType,
-      formation: formationKf ?? frame.formation,
-    })) as SkeletonFrameData;
+    try {
+      out = runMotionPipelineStep(
+        'STEP 4 buildFinalSkeleton',
+        () => (isProfileEnabled()
+          ? profileStep('finalSkeleton', () => ({
+              ...frame,
+              members,
+              formationType: formationKf?.formationType ?? frame.formationType,
+              formation: formationKf ?? frame.formation,
+            }))
+          : {
+              ...frame,
+              members,
+              formationType: formationKf?.formationType ?? frame.formationType,
+              formation: formationKf ?? frame.formation,
+            }) as SkeletonFrameData,
+        { ...stepCtx, outputMemberCount: members.length },
+      );
+    } catch (error) {
+      logMotionPipelineStepFailure('STEP 4 buildFinalSkeleton', error, stepCtx);
+      throw error;
+    }
 
-    this.previousFrame = out;
-    profileStep('timeline', () => {
-      this.updateLiveTimelines(out, allMemberIds.filter((id) => id !== userMemberId));
-    });
-    this.updateDebugFromFrame(out, options);
+    try {
+      this.previousFrame = out;
+    } catch (error) {
+      logMotionPipelineStepFailure('STEP 5 assignPreviousFrame', error, stepCtx);
+      throw error;
+    }
+
+    try {
+      runMotionPipelineStep(
+        'STEP 6 updateLiveTimelines',
+        () => {
+          if (isProfileEnabled()) {
+            profileStep('timeline', () => {
+              this.updateLiveTimelines(out, allMemberIds.filter((id) => id !== userMemberId));
+            });
+          } else {
+            this.updateLiveTimelines(out, allMemberIds.filter((id) => id !== userMemberId));
+          }
+        },
+        { ...stepCtx, aiMemberIds: allMemberIds.filter((id) => id !== userMemberId) },
+      );
+    } catch (error) {
+      logMotionPipelineStepFailure('STEP 6 updateLiveTimelines', error, stepCtx);
+      throw error;
+    }
+
+    try {
+      runMotionPipelineStep(
+        'STEP 7 updateDebugFromFrame',
+        () => this.updateDebugFromFrame(out, options),
+        stepCtx,
+      );
+    } catch (error) {
+      logMotionPipelineStepFailure('STEP 7 updateDebugFromFrame', error, stepCtx);
+      throw error;
+    }
+
     profileRecordBytes('final', out);
 
     if (isProfileEnabled()) {

@@ -417,6 +417,8 @@ export async function runHolisticVideoAnalysis({
       logWorkerErrorDetail('motion-post-process', msg.type, msg, {
         frameIndex: msg.frameIndex,
         phase: msg.phase,
+        step: msg.step,
+        stepContext: msg.stepContext,
       });
       recordPropagationHop(
         `MotionExtractionEngine.worker.${msg.type}`,

@@ -303,11 +303,25 @@ function handleMessage(event) {
       }
     } catch (error) {
       logShutdownDiagnostics('PROCESS_FRAME-catch');
+      const step = error?.motionPipelineStep
+        || error?.motionPipelineContext?.step
+        || 'PROCESS_FRAME';
+      const stepContext = error?.motionPipelineContext || {};
+      console.error('[postProcess] PROCESS_FRAME FAIL', {
+        frameIndex,
+        step,
+        stepContext,
+        message: error?.message,
+        stack: error?.stack,
+      });
       post('ERROR', {
         frameIndex,
         phase: 'PROCESS_FRAME',
+        step,
+        stepContext,
         ...serializeError(error),
       });
+      throw error;
     }
   }
 }
