@@ -64,6 +64,9 @@ export type SamplerReport = {
   maxQueueLengthObserved: number;
   /** 종료 시점의 Adaptive Backpressure 실질 Queue 상한 */
   effectiveMaxQueueLength: number;
+  /** 샘플 그리드 기준 Coverage (lastProcessedFrame / 기대 프레임 수) */
+  timelineCoverage?: number;
+  nextSampleTime?: number;
 };
 
 export type SampleVideoFramesOptions = {
@@ -91,8 +94,10 @@ export type SampleVideoFramesOptions = {
 
 const DEFAULT_MAX_QUEUE_LENGTH = 60;
 const DEFAULT_STALL_TIMEOUT_MS = 8000;
-/** RVFC 1회당 동기 drawImage 상한 — onFrame 장시간 점유 시 Chrome callback 유실 방지 */
-const MAX_CAPTURES_PER_RVFC = 2;
+/** RVFC 1회당 동기 drawImage 상한 — 이후 미처리 구간은 microtask로 catch-up */
+const MAX_CAPTURES_SYNC_PER_RVFC = 16;
+/** RVFC 1회당 catch-up 상한(동기+비동기 합) */
+const MAX_CATCHUP_PER_RVFC = 120;
 /** schedule>callback gap 감지 후 heal까지 대기(ms) */
 const RVFC_GAP_HEAL_DELAY_MS = 400;
 /** gap heal 최소 RVFC idle(ms) */
@@ -326,12 +331,15 @@ export async function sampleVideoFramesPlayback({
   let rejectRef: ((err: unknown) => void) | null = null;
 
   const emitReport = () => {
-    const coverage = endTime > 0 ? Math.min(1, lastMediaTime / endTime) : 0;
+    const expectedFrames = Math.max(1, Math.round(endTime * sampleFps));
+    const timelineCoverage = Math.min(1, (lastProcessedFrame + 1) / expectedFrames);
     const report: SamplerReport = {
       videoDuration: endTime,
       lastMediaTime,
       lastProcessedFrame,
-      coverage,
+      coverage: timelineCoverage,
+      timelineCoverage,
+      nextSampleTime,
       queueLength: queue.length,
       processingDelay: lastProcessingDelay,
       droppedFrames,
@@ -473,6 +481,72 @@ export async function sampleVideoFramesPlayback({
     maxQueueLengthObserved = Math.max(maxQueueLengthObserved, queue.length);
   };
 
+  const getTimelineCoverage = () => {
+    const expectedFrames = Math.max(1, Math.round(endTime * sampleFps));
+    return Math.min(1, (lastProcessedFrame + 1) / expectedFrames);
+  };
+
+  const enqueueCatchUp = (mediaTime: number, maxCount: number) => {
+    let n = 0;
+    while (
+      n < maxCount
+      && nextSampleTime <= endTime
+      && mediaTime + 1e-3 >= nextSampleTime
+      && queue.length < effectiveMaxQueueLength
+    ) {
+      const sampleTime = nextSampleTime;
+      nextSampleTime += sampleInterval;
+      enqueueCapture(sampleTime, mediaTime);
+      n += 1;
+    }
+    return n;
+  };
+
+  const scheduleDeferredCatchUp = (mediaTime: number, totalBudget: number) => {
+    let used = 0;
+    const run = () => {
+      if (settled || producerDone || aborted || used >= totalBudget) return;
+      const batch = enqueueCatchUp(
+        mediaTime,
+        Math.min(24, totalBudget - used),
+      );
+      used += batch;
+      if (queue.length && !consumerRunning) void pumpQueue();
+      if (
+        used < totalBudget
+        && nextSampleTime <= endTime
+        && mediaTime + 1e-3 >= nextSampleTime
+        && queue.length < effectiveMaxQueueLength
+      ) {
+        queueMicrotask(run);
+      }
+    };
+    queueMicrotask(run);
+  };
+
+  const flushSamplesThroughEnd = (mediaTime: number) => {
+    while (nextSampleTime <= endTime + 1e-3 && queue.length < effectiveMaxQueueLength) {
+      const sampleTime = Math.min(nextSampleTime, endTime);
+      nextSampleTime += sampleInterval;
+      enqueueCapture(sampleTime, mediaTime);
+    }
+  };
+
+  const tryGracefulVideoEnd = () => {
+    if (settled || producerDone || aborted) return false;
+    const atEnd = video.ended || Number(video.currentTime) >= endTime - 0.05;
+    if (!atEnd) return false;
+    const mt = Math.min(Number(video.currentTime) || endTime, endTime);
+    flushSamplesThroughEnd(mt);
+    producerDone = true;
+    lastShouldReschedule = false;
+    cancelVideoFrame(handle);
+    handle = null;
+    if (queue.length && !consumerRunning) void pumpQueue();
+    tryFinalizeIfDrained();
+    return true;
+  };
+
   await new Promise<void>((resolve, reject) => {
     resolveRef = resolve;
     rejectRef = reject;
@@ -524,7 +598,7 @@ export async function sampleVideoFramesPlayback({
     };
 
     const onTimeupdateHeal = () => {
-      if (settled || producerDone || aborted) return;
+      if (settled || producerDone || aborted || video.ended) return;
       const rvfcState = getRvfcScheduleState();
       if (rvfcState.scheduleCallCount <= rvfcState.callbackCallCount) return;
       const rvfcIdleMs = performance.now() - lastRvfcAt;
@@ -542,10 +616,24 @@ export async function sampleVideoFramesPlayback({
       const rvfcState = getRvfcScheduleState();
       const scheduleAhead = rvfcState.scheduleCallCount > rvfcState.callbackCallCount;
 
-      // stall 확정 직전에도 heal 시도 (이전: idle>=stallTimeout이면 heal 스킵 → starvation 시 heal 0회)
+      if (tryGracefulVideoEnd()) return;
+
       const healed = tryRvfcGapHeal(rvfcIdleMs, scheduleAhead);
 
       if (rvfcIdleMs > stallTimeoutMs) {
+        const timelineCov = getTimelineCoverage();
+        if (video.ended || timelineCov >= 0.85) {
+          console.info('[VideoFrameSampler] RVFC idle after video end / sufficient timeline coverage — 정상 종료', {
+            timelineCoverage: timelineCov,
+            nextSampleTime,
+            lastProcessedFrame,
+            rvfcIdleMs: Math.round(rvfcIdleMs),
+          });
+          producerDone = true;
+          detachTimeupdateHeal?.();
+          finalize();
+          return;
+        }
         if (!healed && scheduleAhead && rvfcHealAttempts < MAX_RVFC_HEAL_ATTEMPTS) {
           forceRescheduleRvfc('last-chance-before-stall');
           return;
@@ -609,24 +697,21 @@ export async function sampleVideoFramesPlayback({
 
         const reachedDuration = mediaTime >= endTime - 0.05;
 
-        let capturesThisRvfc = 0;
-        while (nextSampleTime <= endTime && mediaTime + 1e-3 >= nextSampleTime) {
-          if (capturesThisRvfc >= MAX_CAPTURES_PER_RVFC) break;
-          const sampleTime = nextSampleTime;
-          nextSampleTime += sampleInterval;
-          enqueueCapture(sampleTime, mediaTime);
-          capturesThisRvfc += 1;
+        const pendingSamples = nextSampleTime <= endTime && mediaTime + 1e-3 >= nextSampleTime
+          ? Math.ceil((mediaTime - nextSampleTime + sampleInterval) / sampleInterval)
+          : 0;
+
+        if (pendingSamples > 0) {
+          const catchUpBudget = Math.min(MAX_CATCHUP_PER_RVFC, pendingSamples);
+          const syncCount = enqueueCatchUp(mediaTime, Math.min(MAX_CAPTURES_SYNC_PER_RVFC, catchUpBudget));
+          if (syncCount < catchUpBudget) {
+            scheduleDeferredCatchUp(mediaTime, catchUpBudget - syncCount);
+          }
         }
 
         const videoEnded = video.ended || reachedDuration;
         if (videoEnded) {
-          while (nextSampleTime <= endTime + 1e-3) {
-            if (capturesThisRvfc >= MAX_CAPTURES_PER_RVFC + 4) break;
-            const sampleTime = Math.min(nextSampleTime, endTime);
-            nextSampleTime += sampleInterval;
-            enqueueCapture(sampleTime, mediaTime);
-            capturesThisRvfc += 1;
-          }
+          flushSamplesThroughEnd(mediaTime);
           producerDone = true;
           shouldReschedule = false;
         }
