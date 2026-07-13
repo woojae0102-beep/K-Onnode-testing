@@ -401,6 +401,21 @@ function createPipelineDiagnostics() {
     reason: string,
     forced?: { cause: string; evidence: string[] },
   ) => {
+    const now = performance.now();
+    const rvfcCallbackIdleMs = rvfcSnap?.lastOnFrameAtMs != null
+      ? now - rvfcSnap.lastOnFrameAtMs
+      : 0;
+    const videoCurrentTimeIdleMs = getVideoTimeIdleMs();
+
+    console.table({
+      'PipelineDiag Idle (분리)': {
+        rvfcCallbackIdleMs: Math.round(rvfcCallbackIdleMs),
+        videoCurrentTimeIdleMs: Math.round(videoCurrentTimeIdleMs),
+        lastVideoTimeChangeAt: Math.round(lastVideoTimeChangeAt),
+        videoCurrentTimeNow: videoRef ? Number(videoRef.currentTime).toFixed(3) : 'n/a',
+      },
+    });
+
     const classification = forced ?? classifyStall(rvfcSnap, reason);
     console.group(`[PipelineDiag] RVFC STALL — ${forced?.cause ?? classification.cause}`);
     console.info('판단 근거:', forced?.evidence ?? classification.evidence);
@@ -468,6 +483,13 @@ function createPipelineDiagnostics() {
 
   const markWebCodecsFailed = () => { webCodecsFailed = true; };
 
+  const getVideoTimeIdleMs = () => {
+    if (!videoRef) return 0;
+    return performance.now() - lastVideoTimeChangeAt;
+  };
+
+  const getLastVideoTimeChangeAt = () => lastVideoTimeChangeAt;
+
   return {
     frameKeyFromSampleTime,
     markTimeline,
@@ -483,6 +505,8 @@ function createPipelineDiagnostics() {
     classifyStall,
     markWebCodecsFailed,
     setDecodePath: (p: string) => { decodePath = p; },
+    getVideoTimeIdleMs,
+    getLastVideoTimeChangeAt,
     getTimeline: () => timelineRing.all(),
     getSnapshots: () => snapshotRing.all(),
   };

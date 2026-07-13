@@ -14,16 +14,25 @@ import {
   classifyRvfcBreak,
   dumpPropagationCallGraph,
   getRvfcScheduleState,
-  recordRvfcCallback,
-  recordRvfcScheduleSuccess,
+  recordCallback,
+  recordSchedule,
   resetPropagationSession,
   resetRvfcScheduleState,
 } from './workerErrorDiagnostics';
+import {
+  dumpRvfcRcaTableAndSummary,
+  dumpRvfcStallTimeline,
+  logRvfcCallbackLost,
+  markRvfcPlayStart,
+  recordRvfcDiagEvent,
+  resetRvfcDiagSession,
+} from './rvfcDiagnosticLog';
 import type { FrameLoopHandle } from './cameraFrameLoop';
 
 export type VideoEventName =
   | 'pause' | 'waiting' | 'stalled' | 'playing' | 'ended' | 'error'
-  | 'seeking' | 'seeked' | 'canplay' | 'canplaythrough' | 'loadeddata' | 'loadstart';
+  | 'seeking' | 'seeked' | 'canplay' | 'canplaythrough' | 'loadeddata' | 'loadstart'
+  | 'suspend' | 'emptied' | 'abort';
 
 export type VideoEventRecord = {
   event: VideoEventName;
@@ -75,6 +84,7 @@ export type RvfcDiagnosticsSnapshot = {
   producerDone: boolean;
   settled: boolean;
   aborted: boolean;
+  shouldReschedule?: boolean;
   samplerQueueLength: number;
   rvfcCallbackCount: number;
   rvfcFps: number;
@@ -167,6 +177,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     const names: VideoEventName[] = [
       'pause', 'waiting', 'stalled', 'playing', 'ended', 'error',
       'seeking', 'seeked', 'canplay', 'canplaythrough', 'loadeddata', 'loadstart',
+      'suspend', 'emptied', 'abort',
     ];
     names.forEach((name) => {
       const fn = (ev: Event) => {
@@ -189,16 +200,21 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     }
   };
 
-  const recordSchedule = (handle: FrameLoopHandle | null) => {
+  const recordScheduleLocal = (handle: FrameLoopHandle | null) => {
     scheduleCallCount += 1;
     if (handle) {
       lastHandleId = handle.id;
       lastHandleType = handle.type;
       handleRegistered = handle.type === 'rvfc' && Number.isFinite(handle.id);
-      if (handleRegistered) recordRvfcScheduleSuccess(handle.id);
+      if (handleRegistered) recordSchedule(handle.id);
     } else {
       handleRegistered = false;
     }
+    recordRvfcDiagEvent('scheduleNextRvfc()', {
+      handleId: lastHandleId,
+      scheduleCalls: scheduleCallCount,
+      callbackCalls: onFrameCallCount,
+    });
   };
 
   const recordOnFrame = (mediaTime?: number) => {
@@ -206,7 +222,12 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     lastOnFrameAtMs = performance.now();
     lastOnFrameCurrentTime = Number(video.currentTime) || 0;
     lastOnFrameMediaTime = Number.isFinite(mediaTime) ? mediaTime : lastOnFrameCurrentTime;
-    recordRvfcCallback(lastOnFrameMediaTime ?? undefined);
+    recordCallback(lastOnFrameMediaTime ?? undefined);
+    recordRvfcDiagEvent('last RVFC callback', {
+      mediaTime: lastOnFrameMediaTime,
+      currentTime: lastOnFrameCurrentTime,
+      callbackCalls: onFrameCallCount,
+    });
   };
 
   const recordOnFrameError = (err: unknown) => {
@@ -221,6 +242,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     producerDone: boolean;
     settled: boolean;
     aborted: boolean;
+    shouldReschedule?: boolean;
     samplerQueueLength: number;
     rvfcCallbackCount: number;
     rvfcFps: number;
@@ -296,15 +318,24 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
   const dumpStall = (reason: string, ctx: Parameters<typeof buildSnapshot>[0]) => {
     const snap = buildSnapshot(ctx);
     const rvfcState = getRvfcScheduleState();
+    const now = performance.now();
+    const rvfcCallbackIdleMs = snap.lastOnFrameAtMs != null ? now - snap.lastOnFrameAtMs : 0;
+    const videoCurrentTimeIdleMs = pipelineDiagnostics.getVideoTimeIdleMs?.() ?? 0;
     const recentWithin = (ev: string, ms = 15000) =>
       videoEvents.some((e) => e.event === ev && performance.now() - e.atMs < ms);
+
+    recordRvfcDiagEvent('Watchdog RVFC Stall', {
+      rvfcCallbackIdleMs: Math.round(rvfcCallbackIdleMs),
+      reason: reason.slice(0, 160),
+    });
 
     const forced = classifyRvfcBreak({
       videoPaused: snap.paused,
       videoEnded: snap.ended,
       videoWaitingRecent: recentWithin('waiting'),
       videoStalledRecent: recentWithin('stalled'),
-      currentTimeStalledMs: snap.lastOnFrameAtMs != null ? performance.now() - snap.lastOnFrameAtMs : 0,
+      rvfcCallbackIdleMs,
+      videoCurrentTimeIdleMs,
       aborted: ctx.aborted,
       onFrameErrors: snap.onFrameErrors,
       scheduleCallCount: snap.scheduleCallCount,
@@ -316,18 +347,89 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     console.group(`[RVFC-Diag] STALL — ${reason}`);
     console.info('강제 분류:', forced.cause);
     console.info('근거:', forced.evidence);
+
+    dumpRvfcRcaTableAndSummary({
+      producerDone: ctx.producerDone,
+      settled: ctx.settled,
+      shouldReschedule: ctx.shouldReschedule ?? true,
+      aborted: ctx.aborted,
+      scheduleCalls: snap.scheduleCallCount,
+      callbackCalls: snap.onFrameCallCount,
+      lastOnFrameCurrentTime: snap.lastOnFrameCurrentTime,
+      videoCurrentTime: snap.currentTime,
+      videoReadyState: snap.readyState,
+      videoPaused: snap.paused,
+      videoEnded: snap.ended,
+      visibilityState: snap.visibilityState,
+      videoEvents,
+      classifyOpts: {
+        videoPaused: snap.paused,
+        videoEnded: snap.ended,
+        videoWaitingRecent: recentWithin('waiting'),
+        videoStalledRecent: recentWithin('stalled'),
+        rvfcCallbackIdleMs,
+        videoCurrentTimeIdleMs,
+        aborted: ctx.aborted,
+        onFrameErrors: snap.onFrameErrors,
+        scheduleCallCount: snap.scheduleCallCount,
+        onFrameCallCount: snap.onFrameCallCount,
+        handleRegistered: snap.handleRegistered,
+        stallReason: reason,
+      },
+      forced,
+    });
+
+    if (snap.scheduleCallCount !== snap.onFrameCallCount) {
+      logRvfcCallbackLost(snap.scheduleCallCount, snap.onFrameCallCount, {
+        lastScheduleHandleId: rvfcState.lastScheduleHandleId,
+        producerDone: ctx.producerDone,
+      });
+    }
+
+    let playbackQuality = null;
+    try {
+      if (typeof video.getVideoPlaybackQuality === 'function') {
+        playbackQuality = video.getVideoPlaybackQuality();
+      }
+    } catch {
+      playbackQuality = null;
+    }
+    if (playbackQuality) {
+      console.table({
+        'Video Playback Quality': {
+          totalVideoFrames: playbackQuality.totalVideoFrames,
+          droppedVideoFrames: playbackQuality.droppedVideoFrames,
+          corruptedVideoFrames: playbackQuality.corruptedVideoFrames ?? 'n/a',
+        },
+      });
+    }
+
+    console.group('[RVFC-Diag] videoEvents');
+    console.table(videoEvents.map((e) => ({
+      event: e.event,
+      videoCurrentTime: `${e.currentTime.toFixed(3)}s`,
+      atIso: new Date(e.atMs).toISOString(),
+      agoMs: Math.round(now - e.atMs),
+      readyState: formatReadyState(e.readyState),
+      paused: e.paused,
+      ended: e.ended,
+    })));
+    console.groupEnd();
+
     console.table({
-      'RVFC Schedule': {
+      'RVFC Schedule (global state)': {
         lastScheduleAgoMs: rvfcState.lastScheduleSuccessAtMs
-          ? Math.round(performance.now() - rvfcState.lastScheduleSuccessAtMs) : 'never',
+          ? Math.round(now - rvfcState.lastScheduleSuccessAtMs) : 'never',
         lastScheduleHandleId: rvfcState.lastScheduleHandleId,
         lastCallbackAgoMs: rvfcState.lastCallbackAtMs
-          ? Math.round(performance.now() - rvfcState.lastCallbackAtMs) : 'never',
+          ? Math.round(now - rvfcState.lastCallbackAtMs) : 'never',
         lastCallbackMediaTime: rvfcState.lastCallbackMediaTime,
         scheduleCalls: rvfcState.scheduleCallCount,
         callbackCalls: rvfcState.callbackCallCount,
       },
     });
+
+    dumpRvfcStallTimeline();
     dumpPropagationCallGraph();
     console.groupEnd();
 
@@ -355,9 +457,10 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
 
   resetPropagationSession();
   resetRvfcScheduleState();
+  resetRvfcDiagSession();
 
   return {
-    recordSchedule,
+    recordSchedule: recordScheduleLocal,
     recordOnFrame,
     recordOnFrameError,
     buildSnapshot,

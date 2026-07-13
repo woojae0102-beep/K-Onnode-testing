@@ -10,6 +10,7 @@ import {
   recordPropagationHop,
   resetPropagationSession,
 } from './workerErrorDiagnostics';
+import { markRvfcPlayStart, resetRvfcDiagSession } from './rvfcDiagnosticLog';
 
 export type VideoFrameSample = {
   time: number;
@@ -225,10 +226,12 @@ export async function sampleVideoFramesPlayback({
     rvfcFps,
     lastRvfcIdleMs: performance.now() - lastRvfcAt,
     droppedFrames,
+    shouldReschedule: lastShouldReschedule,
   });
 
   const diagnostics = createRvfcStallDiagnostics(video);
   resetPropagationSession();
+  resetRvfcDiagSession();
   if (getExternalDiagnostics) {
     setRvfcExternalDiagnosticsProvider(getExternalDiagnostics);
   }
@@ -270,6 +273,7 @@ export async function sampleVideoFramesPlayback({
   diagnostics.startPeriodicLog(getDiagCtx);
 
   let scheduleNextRvfc: () => void = () => {};
+  let lastShouldReschedule = true;
 
   const adjustAdaptiveQueueLength = () => {
     adaptiveCheckCounter += 1;
@@ -525,6 +529,7 @@ export async function sampleVideoFramesPlayback({
         diagnostics.recordOnFrameError(err);
         // 예외가 나도 Producer 체인은 유지 — scheduleVideoFrame이 끊기면 RVFC는 영원히 안 온다.
       } finally {
+        lastShouldReschedule = shouldReschedule;
         if (!settled && shouldReschedule && !producerDone && !aborted) {
           scheduleNextRvfc();
         }
@@ -541,6 +546,7 @@ export async function sampleVideoFramesPlayback({
     };
 
     video.play().then(() => {
+      markRvfcPlayStart();
       scheduleNextRvfc();
     }).catch((err) => {
       diagnostics.dumpStall(`video.play() 실패: ${err?.message || err}`, getDiagCtx());

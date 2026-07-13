@@ -3,6 +3,7 @@
  * Worker Error Diagnostics — ErrorEvent/message/stack 전체 출력,
  * Promise reject 체인, sampleVideoFramesPlayback() 전파 Call Graph 추적.
  */
+import { recordRvfcDiagEvent } from './rvfcDiagnosticLog';
 
 export type WorkerErrorDetail = {
   workerName: string;
@@ -159,6 +160,10 @@ export function logWorkerErrorDetail(
   console.groupEnd();
 
   recordPropagationHop(`workerError:${workerName}:${phase}`, detail.message);
+  recordRvfcDiagEvent(`Worker Error (${workerName})`, {
+    phase,
+    message: (detail.message || '').slice(0, 120),
+  });
 
   if (typeof window !== 'undefined') {
     (window as any).__K_ONNODE_WORKER_ERRORS__ = workerErrors.slice();
@@ -306,10 +311,20 @@ export function recordRvfcScheduleSuccess(handleId: number | null): void {
   rvfcScheduleState.lastScheduleHandleId = handleId;
 }
 
+/** @alias recordRvfcScheduleSuccess — RVFC RCA 계측 */
+export function recordSchedule(handleId: number | null): void {
+  recordRvfcScheduleSuccess(handleId);
+}
+
 export function recordRvfcCallback(mediaTime?: number): void {
   rvfcScheduleState.callbackCallCount += 1;
   rvfcScheduleState.lastCallbackAtMs = performance.now();
   if (Number.isFinite(mediaTime)) rvfcScheduleState.lastCallbackMediaTime = mediaTime as number;
+}
+
+/** @alias recordRvfcCallback — RVFC RCA 계측 */
+export function recordCallback(mediaTime?: number): void {
+  recordRvfcCallback(mediaTime);
 }
 
 export function getRvfcScheduleState(): RvfcScheduleState {
@@ -335,7 +350,10 @@ export function classifyRvfcBreak(opts: {
   videoEnded: boolean;
   videoWaitingRecent: boolean;
   videoStalledRecent: boolean;
-  currentTimeStalledMs: number;
+  /** 마지막 RVFC callback 이후 경과(ms) — performance.now() - lastOnFrameAt */
+  rvfcCallbackIdleMs: number;
+  /** video.currentTime 실제 정체(ms) — PipelineDiagnostics.lastVideoTimeChangeAt 기준 */
+  videoCurrentTimeIdleMs: number;
   aborted: boolean;
   onFrameErrors: number;
   scheduleCallCount: number;
@@ -347,6 +365,9 @@ export function classifyRvfcBreak(opts: {
   const now = performance.now();
   const rvfc = getRvfcScheduleState();
   const recentWorkerErrors = getRecentWorkerErrors(20_000);
+
+  evidence.push(`rvfcCallbackIdleMs=${Math.round(opts.rvfcCallbackIdleMs)}`);
+  evidence.push(`videoCurrentTimeIdleMs=${Math.round(opts.videoCurrentTimeIdleMs)}`);
 
   if (opts.aborted || samplerAborted) {
     evidence.push('abortRef.current=true 또는 sampler aborted 플래그');
@@ -363,25 +384,34 @@ export function classifyRvfcBreak(opts: {
     return { cause: 'Worker Exception propagated', evidence };
   }
 
+  const scheduleAhead = opts.scheduleCallCount > opts.onFrameCallCount;
+  const msSinceSchedule = rvfc.lastScheduleSuccessAtMs != null ? now - rvfc.lastScheduleSuccessAtMs : null;
+  const msSinceCallback = rvfc.lastCallbackAtMs != null ? now - rvfc.lastCallbackAtMs : null;
+
+  if (scheduleAhead && opts.rvfcCallbackIdleMs > 500) {
+    evidence.push(`schedule(${opts.scheduleCallCount}) > callback(${opts.onFrameCallCount}) — RVFC callback lost`);
+    if (msSinceSchedule != null) evidence.push(`마지막 schedule ${Math.round(msSinceSchedule)}ms 전 (handle=${rvfc.lastScheduleHandleId})`);
+    if (msSinceCallback != null) evidence.push(`마지막 callback ${Math.round(msSinceCallback)}ms 전`);
+    return { cause: 'requestVideoFrameCallback never fired', evidence };
+  }
+
   if (opts.videoPaused || opts.videoEnded || opts.videoWaitingRecent || opts.videoStalledRecent
-    || opts.currentTimeStalledMs > 3000) {
+    || opts.videoCurrentTimeIdleMs > 3000) {
     if (opts.videoPaused) evidence.push('video.paused=true');
     if (opts.videoEnded) evidence.push('video.ended=true');
     if (opts.videoWaitingRecent) evidence.push('최근 waiting 이벤트');
     if (opts.videoStalledRecent) evidence.push('최근 stalled 이벤트');
-    if (opts.currentTimeStalledMs > 3000) evidence.push(`currentTime ${Math.round(opts.currentTimeStalledMs)}ms 무변화`);
+    if (opts.videoCurrentTimeIdleMs > 3000) {
+      evidence.push(`video.currentTime ${Math.round(opts.videoCurrentTimeIdleMs)}ms 무변화 (실제 timeline freeze)`);
+    }
     return { cause: 'video decoder stopped', evidence };
   }
-
-  const msSinceSchedule = rvfc.lastScheduleSuccessAtMs != null ? now - rvfc.lastScheduleSuccessAtMs : null;
-  const msSinceCallback = rvfc.lastCallbackAtMs != null ? now - rvfc.lastCallbackAtMs : null;
 
   if (opts.onFrameErrors > 0) {
     evidence.push(`onFrame() 예외 ${opts.onFrameErrors}회 — finally에서 schedule 누락 가능`);
     return { cause: 'scheduleVideoFrame not re-registered', evidence };
   }
 
-  const scheduleAhead = opts.scheduleCallCount > opts.onFrameCallCount;
   if (scheduleAhead && msSinceSchedule != null && msSinceCallback != null
     && msSinceSchedule < msSinceCallback + 500) {
     evidence.push(`schedule(${opts.scheduleCallCount}) > callback(${opts.onFrameCallCount})`);
@@ -395,7 +425,9 @@ export function classifyRvfcBreak(opts: {
     evidence.push(`motion-post-process Worker error: "${we.message}" (${Math.round(now - we.atMs)}ms 전)`);
     evidence.push(`filename=${we.filename ?? 'n/a'} lineno=${we.lineno ?? 'n/a'}`);
     evidence.push('Worker error 후 main thread finalize/reject 전파 없음');
-    evidence.push('video 상태 정상 — RVFC callback만 중단 (브라우저/Worker crash 연동)');
+    if (opts.rvfcCallbackIdleMs > 3000) {
+      evidence.push(`RVFC callback loss가 Worker error보다 먼저 (rvfc idle ${Math.round(opts.rvfcCallbackIdleMs)}ms)`);
+    }
     if (msSinceSchedule != null) evidence.push(`마지막 RVFC schedule 성공: ${Math.round(msSinceSchedule)}ms 전 (handle=${rvfc.lastScheduleHandleId})`);
     if (msSinceCallback != null) evidence.push(`마지막 RVFC callback: ${Math.round(msSinceCallback)}ms 전`);
     return { cause: 'requestVideoFrameCallback never fired', evidence };
