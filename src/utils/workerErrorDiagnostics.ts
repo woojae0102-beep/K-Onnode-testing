@@ -133,6 +133,17 @@ export function logWorkerErrorDetail(
     raw: extra,
   };
 
+  const isSpuriousEmptyErrorEvent = phase === 'onerror'
+    && detail.message.includes('message unavailable')
+    && !detail.filename
+    && detail.lineno == null;
+
+  if (isSpuriousEmptyErrorEvent) {
+    console.debug(`[WorkerError] ${workerName} — spurious empty ErrorEvent (무시)`, { extra });
+    console.groupEnd();
+    return detail;
+  }
+
   workerErrors.push(detail);
   if (workerErrors.length > MAX_ERRORS) workerErrors.shift();
   lastWorkerErrorBeforeStall = detail;

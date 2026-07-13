@@ -93,11 +93,23 @@ const DEFAULT_MAX_QUEUE_LENGTH = 60;
 const DEFAULT_STALL_TIMEOUT_MS = 8000;
 /** RVFC 1회당 동기 drawImage 상한 — onFrame 장시간 점유 시 Chrome callback 유실 방지 */
 const MAX_CAPTURES_PER_RVFC = 2;
-/** schedule>callback gap 감지 후 재등록 시도까지 대기(ms) */
-const RVFC_GAP_HEAL_DELAY_MS = 1200;
+/** schedule>callback gap 감지 후 heal까지 대기(ms) */
+const RVFC_GAP_HEAL_DELAY_MS = 400;
 /** gap heal 최소 RVFC idle(ms) */
-const RVFC_GAP_HEAL_MIN_IDLE_MS = 1500;
+const RVFC_GAP_HEAL_MIN_IDLE_MS = 800;
+/** gap heal 재시도 쿨다운(ms) */
+const RVFC_GAP_HEAL_COOLDOWN_MS = 600;
+const MAX_RVFC_HEAL_ATTEMPTS = 16;
 const DEFAULT_PROCESSING_STALL_MS = 4000;
+
+/** MediaPipe 등 장시간 sync 작업 사이 메인 스레드에 제어권 반환 */
+const yieldMainThread = () => new Promise<void>((resolve) => {
+  if (typeof globalThis.scheduler !== 'undefined' && typeof globalThis.scheduler.yield === 'function') {
+    globalThis.scheduler.yield().then(resolve).catch(() => setTimeout(resolve, 0));
+    return;
+  }
+  setTimeout(resolve, 0);
+});
 /** Adaptive Backpressure — 이 값 이하로는 절대 줄이지 않는다 (최소 버퍼 보장) */
 const MIN_ADAPTIVE_QUEUE_LENGTH = 10;
 /** 이만큼의 프레임을 처리할 때마다 Adaptive Backpressure 재평가 */
@@ -216,7 +228,10 @@ export async function sampleVideoFramesPlayback({
   let watchdogHandle: ReturnType<typeof setInterval> | null = null;
   let rvfcGapDetectedAt: number | null = null;
   let rvfcHealAttempts = 0;
+  let lastRvfcHealAt = 0;
   let scheduleNextRvfc: () => void = () => {};
+  let forceRescheduleRvfc: (reason: string) => void = () => {};
+  let detachTimeupdateHeal: (() => void) | null = null;
   let lastShouldReschedule = true;
 
   // Adaptive Backpressure — 메모리 사용량과 처리 지연을 근거로 Queue 실질 상한을
@@ -340,6 +355,8 @@ export async function sampleVideoFramesPlayback({
     if (settled) return;
     settled = true;
     stopWatchdog();
+    detachTimeupdateHeal?.();
+    detachTimeupdateHeal = null;
     diagnostics.detach();
     setRvfcExternalDiagnosticsProvider(null);
     pipelineDiagnostics.endSession();
@@ -367,58 +384,63 @@ export async function sampleVideoFramesPlayback({
     }
   };
 
-  /** Consumer — Processing Queue에서 MediaPipe → Tracking → Skeleton → Worker를 순차 처리 */
+  /** Consumer — 프레임 1개씩 처리 후 yield. while 루프 전체 점유 시 Watchdog/RVFC heal starvation 방지 */
   const pumpQueue = async () => {
-    if (consumerRunning || settled) return;
+    if (consumerRunning || settled || !queue.length) return;
     consumerRunning = true;
+    let item: QueueItem | undefined;
     try {
-      while (queue.length && !settled) {
-        if (aborted) {
-          queue.length = 0;
-          break;
-        }
-        const item = queue.shift();
-        pipelineDiagnostics.markTimeline(item.sampleTime, 'queue-exit');
-        processingStartedAt = performance.now();
-        const queueDelayMs = Math.max(0, processingStartedAt - item.captureTime);
-        try {
-          await onSample({
-            time: item.sampleTime,
-            video,
-            mediaTime: item.mediaTime,
-            source: item.canvas,
-            queueDelayMs,
-            queueLength: queue.length,
-            rvfcFps,
-          });
-        } catch (err) {
-          releaseCanvas(item.canvas);
-          recordPromiseRejection('videoFrameSampler.pumpQueue.onSample', err);
-          recordPropagationHop('videoFrameSampler.pumpQueue→finalize', (err as Error)?.message, { propagatedToSampler: true });
-          finalize(err);
-          return;
-        }
-        lastProcessingDelay = performance.now() - processingStartedAt;
-        avgProcessingDelayMs = avgProcessingDelayMs > 0
-          ? avgProcessingDelayMs * 0.9 + lastProcessingDelay * 0.1
-          : lastProcessingDelay;
-        adjustAdaptiveQueueLength();
-        processingStartedAt = 0;
-        lastProcessedFrame += 1;
-        lastMediaTime = Math.max(lastMediaTime, item.mediaTime);
+      if (aborted) {
+        queue.length = 0;
+        return;
+      }
+      item = queue.shift();
+      if (!item) return;
+      pipelineDiagnostics.markTimeline(item.sampleTime, 'queue-exit');
+      processingStartedAt = performance.now();
+      const queueDelayMs = Math.max(0, processingStartedAt - item.captureTime);
+      try {
+        await onSample({
+          time: item.sampleTime,
+          video,
+          mediaTime: item.mediaTime,
+          source: item.canvas,
+          queueDelayMs,
+          queueLength: queue.length,
+          rvfcFps,
+        });
+      } catch (err) {
         releaseCanvas(item.canvas);
-        onProgress?.(Math.min(99, Math.round((item.sampleTime / endTime) * 100)));
+        recordPromiseRejection('videoFrameSampler.pumpQueue.onSample', err);
+        recordPropagationHop('videoFrameSampler.pumpQueue→finalize', (err as Error)?.message, { propagatedToSampler: true });
+        finalize(err);
+        return;
+      }
+      lastProcessingDelay = performance.now() - processingStartedAt;
+      avgProcessingDelayMs = avgProcessingDelayMs > 0
+        ? avgProcessingDelayMs * 0.9 + lastProcessingDelay * 0.1
+        : lastProcessingDelay;
+      adjustAdaptiveQueueLength();
+      processingStartedAt = 0;
+      lastProcessedFrame += 1;
+      lastMediaTime = Math.max(lastMediaTime, item.mediaTime);
+      releaseCanvas(item.canvas);
+      onProgress?.(Math.min(99, Math.round((item.sampleTime / endTime) * 100)));
 
-        if (abortRef?.current) {
-          aborted = true;
-          markSamplerAborted();
-          queue.length = 0;
-          break;
-        }
+      if (abortRef?.current) {
+        aborted = true;
+        markSamplerAborted();
+        queue.length = 0;
       }
     } finally {
       consumerRunning = false;
-      tryFinalizeIfDrained();
+      if (item) {
+        if (queue.length && !settled && !aborted) {
+          await yieldMainThread();
+          void pumpQueue();
+        }
+        tryFinalizeIfDrained();
+      }
     }
   };
 
@@ -455,38 +477,86 @@ export async function sampleVideoFramesPlayback({
     resolveRef = resolve;
     rejectRef = reject;
 
+    forceRescheduleRvfc = (reason: string) => {
+      if (settled || producerDone || aborted) return;
+      const now = performance.now();
+      if (now - lastRvfcHealAt < RVFC_GAP_HEAL_COOLDOWN_MS) return;
+      lastRvfcHealAt = now;
+      cancelVideoFrame(handle);
+      handle = null;
+      rvfcHealAttempts += 1;
+      recordRvfcDiagEvent('RVFC gap heal', { reason, attempt: rvfcHealAttempts });
+      console.warn('[VideoFrameSampler] RVFC gap heal — orphan cancel & reschedule', {
+        reason,
+        attempt: rvfcHealAttempts,
+        scheduleCalls: getRvfcScheduleState().scheduleCallCount,
+        callbackCalls: getRvfcScheduleState().callbackCallCount,
+      });
+      handle = scheduleVideoFrame(video, onFrame);
+      diagnostics.recordSchedule(handle);
+      rvfcGapDetectedAt = null;
+    };
+
+    scheduleNextRvfc = () => {
+      cancelVideoFrame(handle);
+      if (settled || producerDone || aborted) return;
+      handle = scheduleVideoFrame(video, onFrame);
+      diagnostics.recordSchedule(handle);
+    };
+
+    const tryRvfcGapHeal = (rvfcIdleMs: number, scheduleAhead: boolean) => {
+      if (settled || producerDone || aborted || video.paused || video.ended) return false;
+      const shouldHeal = scheduleAhead
+        || rvfcIdleMs > RVFC_GAP_HEAL_MIN_IDLE_MS;
+      if (!shouldHeal) {
+        rvfcGapDetectedAt = null;
+        return false;
+      }
+      if (rvfcGapDetectedAt == null) rvfcGapDetectedAt = performance.now();
+      const gapMs = performance.now() - rvfcGapDetectedAt;
+      if (gapMs < RVFC_GAP_HEAL_DELAY_MS) return false;
+      if (rvfcHealAttempts >= MAX_RVFC_HEAL_ATTEMPTS) return false;
+      const healReason = scheduleAhead
+        ? `schedule(${getRvfcScheduleState().scheduleCallCount})>callback(${getRvfcScheduleState().callbackCallCount})`
+        : `rvfcIdle=${Math.round(rvfcIdleMs)}ms`;
+      forceRescheduleRvfc(healReason);
+      return true;
+    };
+
+    const onTimeupdateHeal = () => {
+      if (settled || producerDone || aborted) return;
+      const rvfcState = getRvfcScheduleState();
+      if (rvfcState.scheduleCallCount <= rvfcState.callbackCallCount) return;
+      const rvfcIdleMs = performance.now() - lastRvfcAt;
+      if (rvfcIdleMs < RVFC_GAP_HEAL_MIN_IDLE_MS) return;
+      forceRescheduleRvfc('timeupdate-schedule-ahead');
+    };
+    video.addEventListener('timeupdate', onTimeupdateHeal);
+    detachTimeupdateHeal = () => video.removeEventListener('timeupdate', onTimeupdateHeal);
+
     const watchdogIntervalMs = Math.min(1000, Math.max(250, Math.min(stallTimeoutMs, processingStallTimeoutMs) / 4));
     watchdogHandle = setInterval(() => {
       if (settled) return;
 
-      // [요구사항 4-a] RVFC 수신 자체가 멈춘 경우 — 디코더 정지, Coverage 확보 불가로 확정 → 즉시 종료.
       const rvfcIdleMs = performance.now() - lastRvfcAt;
       const rvfcState = getRvfcScheduleState();
       const scheduleAhead = rvfcState.scheduleCallCount > rvfcState.callbackCallCount;
 
-      // Chrome orphan RVFC 복구 — stall 확정 전 gap이 지속되면 cancel+reschedule
-      if (!settled && !producerDone && !aborted && !video.paused && !video.ended) {
-        if (scheduleAhead || rvfcIdleMs > RVFC_GAP_HEAL_MIN_IDLE_MS) {
-          if (rvfcGapDetectedAt == null) rvfcGapDetectedAt = performance.now();
-          const gapMs = performance.now() - rvfcGapDetectedAt;
-          if (gapMs >= RVFC_GAP_HEAL_DELAY_MS && rvfcHealAttempts < 8 && rvfcIdleMs < stallTimeoutMs) {
-            const healReason = scheduleAhead
-              ? `schedule(${rvfcState.scheduleCallCount})>callback(${rvfcState.callbackCallCount})`
-              : `rvfcIdle=${Math.round(rvfcIdleMs)}ms`;
-            forceRescheduleRvfc(healReason);
-          }
-        } else {
-          rvfcGapDetectedAt = null;
-        }
-      }
+      // stall 확정 직전에도 heal 시도 (이전: idle>=stallTimeout이면 heal 스킵 → starvation 시 heal 0회)
+      const healed = tryRvfcGapHeal(rvfcIdleMs, scheduleAhead);
 
       if (rvfcIdleMs > stallTimeoutMs) {
+        if (!healed && scheduleAhead && rvfcHealAttempts < MAX_RVFC_HEAL_ATTEMPTS) {
+          forceRescheduleRvfc('last-chance-before-stall');
+          return;
+        }
         const reason =
           `RVFC Stall 감지: ${(rvfcIdleMs / 1000).toFixed(1)}s 동안 새 비디오 프레임 없음 `
           + `(nextSampleTime=${nextSampleTime.toFixed(2)}s / endTime=${endTime.toFixed(2)}s) `
           + '— Coverage 확보가 불가능하다고 판단, 즉시 종료합니다.';
         diagnostics.dumpStall(reason, { ...getDiagCtx(), lastRvfcIdleMs: rvfcIdleMs });
         onStall?.({ idleMs: rvfcIdleMs, nextSampleTime, endTime, reason, kind: 'rvfc_idle' });
+        detachTimeupdateHeal?.();
         finalize(new Error(reason));
         return;
       }
@@ -508,6 +578,7 @@ export async function sampleVideoFramesPlayback({
       let shouldReschedule = true;
       try {
         rvfcCallbackCount += 1;
+        rvfcGapDetectedAt = null;
         const frameArrivedAt = performance.now();
         onDecode?.(frameArrivedAt - lastRvfcAt);
         lastRvfcAt = frameArrivedAt;
@@ -574,37 +645,6 @@ export async function sampleVideoFramesPlayback({
           });
         }
         tryFinalizeIfDrained();
-      }
-    };
-
-    const forceRescheduleRvfc = (reason: string) => {
-      if (settled || producerDone || aborted) return;
-      cancelVideoFrame(handle);
-      handle = null;
-      rvfcHealAttempts += 1;
-      recordRvfcDiagEvent('RVFC gap heal', { reason, attempt: rvfcHealAttempts });
-      console.warn('[VideoFrameSampler] RVFC gap heal — orphan cancel & reschedule', {
-        reason,
-        attempt: rvfcHealAttempts,
-        scheduleCalls: getRvfcScheduleState().scheduleCallCount,
-        callbackCalls: getRvfcScheduleState().callbackCallCount,
-      });
-      handle = scheduleVideoFrame(video, onFrame);
-      diagnostics.recordSchedule(handle);
-      rvfcGapDetectedAt = null;
-    };
-
-    scheduleNextRvfc = () => {
-      cancelVideoFrame(handle);
-      const doSchedule = () => {
-        if (settled || producerDone || aborted) return;
-        handle = scheduleVideoFrame(video, onFrame);
-        diagnostics.recordSchedule(handle);
-      };
-      if (typeof requestAnimationFrame === 'function') {
-        requestAnimationFrame(doSchedule);
-      } else {
-        doSchedule();
       }
     };
 
