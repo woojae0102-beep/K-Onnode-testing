@@ -59,6 +59,7 @@ export function formatErrorEvent(ev: ErrorEvent | Event): Partial<WorkerErrorDet
   const colno = typeof e.colno === 'number' ? e.colno : undefined;
   const message = (inner && typeof inner.message === 'string' && inner.message)
     || (typeof e.message === 'string' && e.message)
+    || (inner && typeof inner.toString === 'function' && String(inner) !== '[object Object]' ? String(inner) : '')
     || (filename ? `Script error at ${filename}:${lineno ?? '?'}:${colno ?? '?'}` : '(Worker ErrorEvent — message unavailable)');
   return {
     message,
@@ -282,7 +283,8 @@ export function dumpPropagationCallGraph(): void {
     });
     console.groupEnd();
   }
-  console.info('samplerFinalized:', samplerFinalized, 'samplerAborted:', samplerAborted);
+  console.info('samplerFinalized:', samplerFinalized, 'samplerAborted:', samplerAborted,
+    samplerFinalized ? '' : '(stall 시점 — finalize 전)');
   console.info('propagatedToSampler:', didWorkerErrorPropagateToSampler());
   console.groupEnd();
 }

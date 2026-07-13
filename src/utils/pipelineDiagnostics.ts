@@ -406,13 +406,20 @@ function createPipelineDiagnostics() {
       ? now - rvfcSnap.lastOnFrameAtMs
       : 0;
     const videoCurrentTimeIdleMs = getVideoTimeIdleMs();
+    const liveCurrentTime = videoRef ? Number(videoRef.currentTime) || 0 : 0;
+    const lastOnFrameCt = rvfcSnap?.lastOnFrameCurrentTime ?? null;
+    const rvfcMediaDriftSec = lastOnFrameCt != null
+      ? Math.max(0, liveCurrentTime - lastOnFrameCt)
+      : null;
 
     console.table({
       'PipelineDiag Idle (분리)': {
         rvfcCallbackIdleMs: Math.round(rvfcCallbackIdleMs),
         videoCurrentTimeIdleMs: Math.round(videoCurrentTimeIdleMs),
         lastVideoTimeChangeAt: Math.round(lastVideoTimeChangeAt),
-        videoCurrentTimeNow: videoRef ? Number(videoRef.currentTime).toFixed(3) : 'n/a',
+        videoCurrentTimeNow: videoRef ? liveCurrentTime.toFixed(3) : 'n/a',
+        lastOnFrameCurrentTime: lastOnFrameCt != null ? lastOnFrameCt.toFixed(3) : 'n/a',
+        rvfcMediaDriftSec: rvfcMediaDriftSec != null ? rvfcMediaDriftSec.toFixed(3) : 'n/a',
       },
     });
 

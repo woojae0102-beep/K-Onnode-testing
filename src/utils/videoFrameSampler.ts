@@ -227,6 +227,7 @@ export async function sampleVideoFramesPlayback({
     lastRvfcIdleMs: performance.now() - lastRvfcAt,
     droppedFrames,
     shouldReschedule: lastShouldReschedule,
+    stallTimeoutMs,
   });
 
   const diagnostics = createRvfcStallDiagnostics(video);

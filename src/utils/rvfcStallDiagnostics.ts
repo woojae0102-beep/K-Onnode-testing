@@ -20,6 +20,7 @@ import {
   resetRvfcScheduleState,
 } from './workerErrorDiagnostics';
 import {
+  buildRcaTelemetryMeta,
   dumpRvfcRcaTableAndSummary,
   dumpRvfcStallTimeline,
   logRvfcCallbackLost,
@@ -32,7 +33,7 @@ import type { FrameLoopHandle } from './cameraFrameLoop';
 export type VideoEventName =
   | 'pause' | 'waiting' | 'stalled' | 'playing' | 'ended' | 'error'
   | 'seeking' | 'seeked' | 'canplay' | 'canplaythrough' | 'loadeddata' | 'loadstart'
-  | 'suspend' | 'emptied' | 'abort';
+  | 'suspend' | 'emptied' | 'abort' | 'timeupdate';
 
 export type VideoEventRecord = {
   event: VideoEventName;
@@ -168,7 +169,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
       + `paused=${state.paused}`;
     if (event === 'pause' || event === 'waiting' || event === 'stalled' || event === 'error') {
       console.warn(msg, detail || '');
-    } else {
+    } else if (event !== 'timeupdate') {
       console.info(msg);
     }
   };
@@ -189,6 +190,17 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
       video.addEventListener(name, fn);
       listeners.push({ event: name, fn });
     });
+
+    // timeupdate — Stall RCA용. play 시작 스냅샷(0s)만 있으면 timeline 정지로 오해하기 쉬움.
+    let lastTimeupdateLogAt = 0;
+    const onTimeupdate = () => {
+      const t = performance.now();
+      if (t - lastTimeupdateLogAt < 2000) return;
+      lastTimeupdateLogAt = t;
+      recordVideoEvent('timeupdate' as VideoEventName);
+    };
+    video.addEventListener('timeupdate', onTimeupdate);
+    listeners.push({ event: 'timeupdate', fn: onTimeupdate });
   };
 
   const detach = () => {
@@ -243,6 +255,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     settled: boolean;
     aborted: boolean;
     shouldReschedule?: boolean;
+    stallTimeoutMs?: number;
     samplerQueueLength: number;
     rvfcCallbackCount: number;
     rvfcFps: number;
@@ -252,6 +265,7 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     const state = readVideoState();
     return {
       atMs: performance.now(),
+      ...ctx,
       ...state,
       visibilityState: typeof document !== 'undefined' ? document.visibilityState : 'unknown',
       scheduleCallCount,
@@ -267,7 +281,6 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
       lastHandleType,
       onFrameErrors,
       lastOnFrameError,
-      ...ctx,
     };
   };
 
@@ -319,74 +332,16 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     const snap = buildSnapshot(ctx);
     const rvfcState = getRvfcScheduleState();
     const now = performance.now();
+    const liveVideo = readVideoState();
+    const scheduleCalls = Math.max(snap.scheduleCallCount, rvfcState.scheduleCallCount);
+    const callbackCalls = Math.max(snap.onFrameCallCount, rvfcState.callbackCallCount);
     const rvfcCallbackIdleMs = snap.lastOnFrameAtMs != null ? now - snap.lastOnFrameAtMs : 0;
     const videoCurrentTimeIdleMs = pipelineDiagnostics.getVideoTimeIdleMs?.() ?? 0;
+    const stallTimeoutMs = ctx.stallTimeoutMs ?? 8000;
     const recentWithin = (ev: string, ms = 15000) =>
       videoEvents.some((e) => e.event === ev && performance.now() - e.atMs < ms);
 
-    recordRvfcDiagEvent('Watchdog RVFC Stall', {
-      rvfcCallbackIdleMs: Math.round(rvfcCallbackIdleMs),
-      reason: reason.slice(0, 160),
-    });
-
-    const forced = classifyRvfcBreak({
-      videoPaused: snap.paused,
-      videoEnded: snap.ended,
-      videoWaitingRecent: recentWithin('waiting'),
-      videoStalledRecent: recentWithin('stalled'),
-      rvfcCallbackIdleMs,
-      videoCurrentTimeIdleMs,
-      aborted: ctx.aborted,
-      onFrameErrors: snap.onFrameErrors,
-      scheduleCallCount: snap.scheduleCallCount,
-      onFrameCallCount: snap.onFrameCallCount,
-      handleRegistered: snap.handleRegistered,
-      stallReason: reason,
-    });
-
-    console.group(`[RVFC-Diag] STALL — ${reason}`);
-    console.info('강제 분류:', forced.cause);
-    console.info('근거:', forced.evidence);
-
-    dumpRvfcRcaTableAndSummary({
-      producerDone: ctx.producerDone,
-      settled: ctx.settled,
-      shouldReschedule: ctx.shouldReschedule ?? true,
-      aborted: ctx.aborted,
-      scheduleCalls: snap.scheduleCallCount,
-      callbackCalls: snap.onFrameCallCount,
-      lastOnFrameCurrentTime: snap.lastOnFrameCurrentTime,
-      videoCurrentTime: snap.currentTime,
-      videoReadyState: snap.readyState,
-      videoPaused: snap.paused,
-      videoEnded: snap.ended,
-      visibilityState: snap.visibilityState,
-      videoEvents,
-      classifyOpts: {
-        videoPaused: snap.paused,
-        videoEnded: snap.ended,
-        videoWaitingRecent: recentWithin('waiting'),
-        videoStalledRecent: recentWithin('stalled'),
-        rvfcCallbackIdleMs,
-        videoCurrentTimeIdleMs,
-        aborted: ctx.aborted,
-        onFrameErrors: snap.onFrameErrors,
-        scheduleCallCount: snap.scheduleCallCount,
-        onFrameCallCount: snap.onFrameCallCount,
-        handleRegistered: snap.handleRegistered,
-        stallReason: reason,
-      },
-      forced,
-    });
-
-    if (snap.scheduleCallCount !== snap.onFrameCallCount) {
-      logRvfcCallbackLost(snap.scheduleCallCount, snap.onFrameCallCount, {
-        lastScheduleHandleId: rvfcState.lastScheduleHandleId,
-        producerDone: ctx.producerDone,
-      });
-    }
-
-    let playbackQuality = null;
+    let playbackQuality: { totalVideoFrames: number; droppedVideoFrames: number } | null = null;
     try {
       if (typeof video.getVideoPlaybackQuality === 'function') {
         playbackQuality = video.getVideoPlaybackQuality();
@@ -394,18 +349,124 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     } catch {
       playbackQuality = null;
     }
+
+    recordRvfcDiagEvent('Watchdog RVFC Stall', {
+      rvfcCallbackIdleMs: Math.round(rvfcCallbackIdleMs),
+      stallTimeoutMs,
+      watchdogOverrunMs: Math.max(0, Math.round(rvfcCallbackIdleMs - stallTimeoutMs)),
+      videoCurrentTimeLive: liveVideo.currentTime,
+      lastOnFrameCurrentTime: snap.lastOnFrameCurrentTime,
+      lastOnFrameMediaTime: snap.lastOnFrameMediaTime,
+      reason: reason.slice(0, 160),
+    });
+
+    const forced = classifyRvfcBreak({
+      videoPaused: liveVideo.paused,
+      videoEnded: liveVideo.ended,
+      videoWaitingRecent: recentWithin('waiting'),
+      videoStalledRecent: recentWithin('stalled'),
+      rvfcCallbackIdleMs,
+      videoCurrentTimeIdleMs,
+      aborted: ctx.aborted,
+      onFrameErrors: snap.onFrameErrors,
+      scheduleCallCount: scheduleCalls,
+      onFrameCallCount: callbackCalls,
+      handleRegistered: snap.handleRegistered,
+      stallReason: reason,
+    });
+
+    if (snap.lastOnFrameCurrentTime != null) {
+      const drift = liveVideo.currentTime - snap.lastOnFrameCurrentTime;
+      if (drift > 0.5 && !liveVideo.paused) {
+        forced.evidence.push(
+          `rvfcMediaDrift=${drift.toFixed(2)}s — video.currentTime=${liveVideo.currentTime.toFixed(2)}s, `
+          + `lastOnFrame=${snap.lastOnFrameCurrentTime.toFixed(2)}s (timeline 진행, RVFC만 정지)`,
+        );
+      }
+    }
+
+    const rcaInput = {
+      producerDone: ctx.producerDone,
+      settled: ctx.settled,
+      shouldReschedule: ctx.shouldReschedule ?? true,
+      aborted: ctx.aborted,
+      scheduleCalls,
+      callbackCalls,
+      lastOnFrameCurrentTime: snap.lastOnFrameCurrentTime,
+      lastOnFrameMediaTime: snap.lastOnFrameMediaTime,
+      videoCurrentTime: liveVideo.currentTime,
+      videoReadyState: liveVideo.readyState,
+      videoPaused: liveVideo.paused,
+      videoEnded: liveVideo.ended,
+      visibilityState: snap.visibilityState,
+      videoEvents,
+      stallTimeoutMs,
+      droppedVideoFrames: playbackQuality?.droppedVideoFrames ?? null,
+      totalVideoFrames: playbackQuality?.totalVideoFrames ?? null,
+      samplerDroppedFrames: ctx.droppedFrames ?? 0,
+      classifyOpts: {
+        videoPaused: liveVideo.paused,
+        videoEnded: liveVideo.ended,
+        videoWaitingRecent: recentWithin('waiting'),
+        videoStalledRecent: recentWithin('stalled'),
+        rvfcCallbackIdleMs,
+        videoCurrentTimeIdleMs,
+        aborted: ctx.aborted,
+        onFrameErrors: snap.onFrameErrors,
+        scheduleCallCount: scheduleCalls,
+        onFrameCallCount: callbackCalls,
+        handleRegistered: snap.handleRegistered,
+        stallReason: reason,
+      },
+      forced,
+      rvfcCallbackIdleMs,
+      videoCurrentTimeIdleMs,
+      scheduleCallsGlobal: rvfcState.scheduleCallCount,
+      callbackCallsGlobal: rvfcState.callbackCallCount,
+    };
+
+    console.group(`[RVFC-Diag] STALL — ${reason}`);
+    console.info('강제 분류:', forced.cause);
+    console.info('근거:', forced.evidence);
+
+    dumpRvfcRcaTableAndSummary(rcaInput);
+
+    if (scheduleCalls !== callbackCalls) {
+      logRvfcCallbackLost(scheduleCalls, callbackCalls, {
+        lastScheduleHandleId: rvfcState.lastScheduleHandleId,
+        producerDone: ctx.producerDone,
+      });
+    }
+
     if (playbackQuality) {
       console.table({
         'Video Playback Quality': {
           totalVideoFrames: playbackQuality.totalVideoFrames,
           droppedVideoFrames: playbackQuality.droppedVideoFrames,
           corruptedVideoFrames: playbackQuality.corruptedVideoFrames ?? 'n/a',
+          dropRatePct: playbackQuality.totalVideoFrames
+            ? `${((playbackQuality.droppedVideoFrames / playbackQuality.totalVideoFrames) * 100).toFixed(1)}%`
+            : 'n/a',
         },
       });
     }
 
     console.group('[RVFC-Diag] videoEvents');
-    console.table(videoEvents.map((e) => ({
+    console.table({
+      'Video Live At Stall': {
+        currentTime: `${liveVideo.currentTime.toFixed(3)}s`,
+        readyState: formatReadyState(liveVideo.readyState),
+        paused: liveVideo.paused,
+        ended: liveVideo.ended,
+        lastOnFrameMediaTime: snap.lastOnFrameMediaTime != null
+          ? `${snap.lastOnFrameMediaTime.toFixed(3)}s` : 'n/a',
+      },
+    });
+    console.info(
+      '※ 아래 videoEvents는 이벤트 발생 시점 스냅샷. playing/canplaythrough(0s)만 있으면 '
+      + 'timeline 정지로 오해하지 말 것 — Live At Stall / timeupdate 참고.',
+    );
+    console.table(videoEvents.slice(-12).map((e) => ({
       event: e.event,
       videoCurrentTime: `${e.currentTime.toFixed(3)}s`,
       atIso: new Date(e.atMs).toISOString(),
@@ -438,7 +499,10 @@ export function createRvfcStallDiagnostics(video: HTMLVideoElement) {
     recordTelemetry('pipeline_error', `RVFC Stall: ${reason}`, {
       subsystem: 'rvfc-producer',
       severity: 'error',
-      meta: snap,
+      meta: {
+        rca: buildRcaTelemetryMeta(rcaInput),
+        snapshot: snap,
+      },
     });
     if (typeof window !== 'undefined') {
       (window as any).__K_ONNODE_RVFC_DIAG__ = { snapshot: snap, history: videoEvents };
