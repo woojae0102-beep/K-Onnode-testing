@@ -104,7 +104,11 @@ const RVFC_GAP_HEAL_DELAY_MS = 400;
 const RVFC_GAP_HEAL_MIN_IDLE_MS = 800;
 /** gap heal 재시도 쿨다운(ms) */
 const RVFC_GAP_HEAL_COOLDOWN_MS = 600;
-const MAX_RVFC_HEAL_ATTEMPTS = 16;
+const MAX_RVFC_HEAL_ATTEMPTS = 4;
+/** heal 후 callback 미증가가 연속 N회면 futile로 간주하고 heal 중단 */
+const MAX_FUTILE_HEAL_STREAK = 2;
+/** 탭 비활성 시 heal/stall 대기 없이 빠르게 실패(ms) */
+const HIDDEN_TAB_FAIL_FAST_MS = 2500;
 const DEFAULT_PROCESSING_STALL_MS = 4000;
 
 /** MediaPipe 등 장시간 sync 작업 사이 메인 스레드에 제어권 반환 */
@@ -236,8 +240,11 @@ export async function sampleVideoFramesPlayback({
   let lastRvfcHealAt = 0;
   let scheduleNextRvfc: () => void = () => {};
   let forceRescheduleRvfc: (reason: string) => void = () => {};
-  let detachTimeupdateHeal: (() => void) | null = null;
+  let detachVisibilityGuard: (() => void) | null = null;
   let lastShouldReschedule = true;
+  let futileHealStreak = 0;
+  let callbackCountAtLastHeal = 0;
+  let hiddenSinceAt: number | null = null;
 
   // Adaptive Backpressure — 메모리 사용량과 처리 지연을 근거로 Queue 실질 상한을
   // maxQueueLength(ceiling)와 MIN_ADAPTIVE_QUEUE_LENGTH(floor) 사이에서 자동 조절한다.
@@ -363,8 +370,8 @@ export async function sampleVideoFramesPlayback({
     if (settled) return;
     settled = true;
     stopWatchdog();
-    detachTimeupdateHeal?.();
-    detachTimeupdateHeal = null;
+    detachVisibilityGuard?.();
+    detachVisibilityGuard = null;
     diagnostics.detach();
     setRvfcExternalDiagnosticsProvider(null);
     pipelineDiagnostics.endSession();
@@ -551,11 +558,26 @@ export async function sampleVideoFramesPlayback({
     resolveRef = resolve;
     rejectRef = reject;
 
+    const isRvfcProducerViable = () => {
+      if (settled || producerDone || aborted || video.ended) return false;
+      if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false;
+      if (video.paused) return false;
+      return true;
+    };
+
+    const ensureVideoPlaying = () => {
+      if (video.ended || video.paused === false) return;
+      if (typeof document !== 'undefined' && document.visibilityState !== 'visible') return;
+      void video.play().catch(() => {});
+    };
+
     forceRescheduleRvfc = (reason: string) => {
-      if (settled || producerDone || aborted) return;
+      if (!isRvfcProducerViable()) return;
+      if (futileHealStreak >= MAX_FUTILE_HEAL_STREAK) return;
       const now = performance.now();
       if (now - lastRvfcHealAt < RVFC_GAP_HEAL_COOLDOWN_MS) return;
       lastRvfcHealAt = now;
+      callbackCountAtLastHeal = rvfcCallbackCount;
       cancelVideoFrame(handle);
       handle = null;
       rvfcHealAttempts += 1;
@@ -579,7 +601,9 @@ export async function sampleVideoFramesPlayback({
     };
 
     const tryRvfcGapHeal = (rvfcIdleMs: number, scheduleAhead: boolean) => {
-      if (settled || producerDone || aborted || video.paused || video.ended) return false;
+      if (!isRvfcProducerViable()) return false;
+      ensureVideoPlaying();
+      if (!isRvfcProducerViable()) return false;
       const shouldHeal = scheduleAhead
         || rvfcIdleMs > RVFC_GAP_HEAL_MIN_IDLE_MS;
       if (!shouldHeal) {
@@ -594,19 +618,30 @@ export async function sampleVideoFramesPlayback({
         ? `schedule(${getRvfcScheduleState().scheduleCallCount})>callback(${getRvfcScheduleState().callbackCallCount})`
         : `rvfcIdle=${Math.round(rvfcIdleMs)}ms`;
       forceRescheduleRvfc(healReason);
+      if (rvfcCallbackCount <= callbackCountAtLastHeal) {
+        futileHealStreak += 1;
+      } else {
+        futileHealStreak = 0;
+      }
       return true;
     };
 
-    const onTimeupdateHeal = () => {
-      if (settled || producerDone || aborted || video.ended) return;
-      const rvfcState = getRvfcScheduleState();
-      if (rvfcState.scheduleCallCount <= rvfcState.callbackCallCount) return;
-      const rvfcIdleMs = performance.now() - lastRvfcAt;
-      if (rvfcIdleMs < RVFC_GAP_HEAL_MIN_IDLE_MS) return;
-      forceRescheduleRvfc('timeupdate-schedule-ahead');
+    const onVisibilityChange = () => {
+      if (settled) return;
+      if (document.visibilityState === 'hidden') {
+        if (hiddenSinceAt == null) hiddenSinceAt = performance.now();
+        console.error(
+          '[VideoFrameSampler] 추출 중 탭이 비활성화됨 — Chrome이 RVFC/디코드를 중단합니다. '
+          + '추출이 끝날 때까지 이 탭을 활성 상태로 유지해 주세요.',
+        );
+        return;
+      }
+      hiddenSinceAt = null;
+      ensureVideoPlaying();
+      if (!settled && !producerDone && !aborted) scheduleNextRvfc();
     };
-    video.addEventListener('timeupdate', onTimeupdateHeal);
-    detachTimeupdateHeal = () => video.removeEventListener('timeupdate', onTimeupdateHeal);
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    detachVisibilityGuard = () => document.removeEventListener('visibilitychange', onVisibilityChange);
 
     const watchdogIntervalMs = Math.min(1000, Math.max(250, Math.min(stallTimeoutMs, processingStallTimeoutMs) / 4));
     watchdogHandle = setInterval(() => {
@@ -618,7 +653,29 @@ export async function sampleVideoFramesPlayback({
 
       if (tryGracefulVideoEnd()) return;
 
-      const healed = tryRvfcGapHeal(rvfcIdleMs, scheduleAhead);
+      const tabHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
+      if (tabHidden) {
+        if (hiddenSinceAt == null) hiddenSinceAt = performance.now();
+        const hiddenMs = performance.now() - hiddenSinceAt;
+        if (hiddenMs > HIDDEN_TAB_FAIL_FAST_MS) {
+          const reason =
+            `탭 비활성(visibility=hidden) ${(hiddenMs / 1000).toFixed(1)}s — `
+            + '브라우저가 비디오 디코드·RVFC를 중단합니다. 추출 중에는 이 탭을 활성 상태로 유지해 주세요.';
+          diagnostics.dumpStall(reason, { ...getDiagCtx(), lastRvfcIdleMs: rvfcIdleMs });
+          onStall?.({ idleMs: hiddenMs, nextSampleTime, endTime, reason, kind: 'rvfc_idle' });
+          detachVisibilityGuard?.();
+          finalize(new Error(reason));
+          return;
+        }
+      } else {
+        hiddenSinceAt = null;
+      }
+
+      if (video.paused && !video.ended && !tabHidden) {
+        ensureVideoPlaying();
+      }
+
+      tryRvfcGapHeal(rvfcIdleMs, scheduleAhead);
 
       if (rvfcIdleMs > stallTimeoutMs) {
         const timelineCov = getTimelineCoverage();
@@ -630,21 +687,22 @@ export async function sampleVideoFramesPlayback({
             rvfcIdleMs: Math.round(rvfcIdleMs),
           });
           producerDone = true;
-          detachTimeupdateHeal?.();
+          detachVisibilityGuard?.();
           finalize();
           return;
         }
-        if (!healed && scheduleAhead && rvfcHealAttempts < MAX_RVFC_HEAL_ATTEMPTS) {
-          forceRescheduleRvfc('last-chance-before-stall');
-          return;
-        }
+        const envHint = tabHidden
+          ? ' (탭 비활성 — 추출 중 이 탭을 활성 상태로 유지하세요)'
+          : video.paused
+            ? ' (video.paused — 재생이 중단됨)'
+            : '';
         const reason =
           `RVFC Stall 감지: ${(rvfcIdleMs / 1000).toFixed(1)}s 동안 새 비디오 프레임 없음 `
           + `(nextSampleTime=${nextSampleTime.toFixed(2)}s / endTime=${endTime.toFixed(2)}s) `
-          + '— Coverage 확보가 불가능하다고 판단, 즉시 종료합니다.';
+          + `— Coverage 확보가 불가능하다고 판단, 즉시 종료합니다.${envHint}`;
         diagnostics.dumpStall(reason, { ...getDiagCtx(), lastRvfcIdleMs: rvfcIdleMs });
         onStall?.({ idleMs: rvfcIdleMs, nextSampleTime, endTime, reason, kind: 'rvfc_idle' });
-        detachTimeupdateHeal?.();
+        detachVisibilityGuard?.();
         finalize(new Error(reason));
         return;
       }
