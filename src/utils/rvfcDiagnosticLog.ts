@@ -95,9 +95,15 @@ function formatLastEventAgo(events: RvfcRcaVideoEvent[], name: string, now: numb
   return `${agoMs}ms ago @ ${t}`;
 }
 
-/** video.currentTime ≈ lastOnFrameCurrentTime — 디코더/timeline 완전 정지 */
-function isVideoTimelineFrozen(currentTime: number, lastOnFrameCurrentTime: number | null): boolean {
+/** video.currentTime이 실제로 멈춤 — RVFC 정지 직후 currentTime≈lastOnFrame인 착시 제외 */
+function isVideoTimelineFrozen(
+  currentTime: number,
+  lastOnFrameCurrentTime: number | null,
+  videoCurrentTimeIdleMs: number,
+): boolean {
+  if (videoCurrentTimeIdleMs > 3000) return true;
   if (lastOnFrameCurrentTime == null) return false;
+  if (videoCurrentTimeIdleMs < 500) return false;
   return Math.abs(currentTime - lastOnFrameCurrentTime) < 0.05;
 }
 
@@ -138,7 +144,7 @@ export function buildRcaTelemetryMeta(input: RvfcRcaDumpInput & {
     rvfcMediaDriftSec: drift != null ? Number(drift.toFixed(3)) : null,
     rvfcCallbackIdleMs: Math.round(input.rvfcCallbackIdleMs),
     videoCurrentTimeIdleMs: Math.round(input.videoCurrentTimeIdleMs),
-    videoTimelineFrozen: isVideoTimelineFrozen(input.videoCurrentTime, input.lastOnFrameCurrentTime),
+    videoTimelineFrozen: isVideoTimelineFrozen(input.videoCurrentTime, input.lastOnFrameCurrentTime, input.videoCurrentTimeIdleMs),
     rvfcMediaDesync: isRvfcMediaDesync(input.videoCurrentTime, input.lastOnFrameCurrentTime, input.videoPaused),
     classifyCause: input.forced?.cause ?? input.classifyOpts.stallReason,
     stallTimeoutMs: input.stallTimeoutMs,
@@ -195,7 +201,11 @@ export function dumpRvfcRcaTableAndSummary(input: RvfcRcaDumpInput & {
     ?? Math.round(input.classifyOpts.rvfcCallbackIdleMs);
   const videoCurrentTimeIdleMs = input.videoCurrentTimeIdleMs
     ?? Math.round(input.classifyOpts.videoCurrentTimeIdleMs);
-  const timelineFrozen = isVideoTimelineFrozen(input.videoCurrentTime, input.lastOnFrameCurrentTime);
+  const timelineFrozen = isVideoTimelineFrozen(
+    input.videoCurrentTime,
+    input.lastOnFrameCurrentTime,
+    videoCurrentTimeIdleMs,
+  );
   const rvfcMediaDriftSec = computeRvfcMediaDriftSec(input.videoCurrentTime, input.lastOnFrameCurrentTime);
   const rvfcMediaDesync = isRvfcMediaDesync(
     input.videoCurrentTime,

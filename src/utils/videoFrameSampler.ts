@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { scheduleVideoFrame, cancelVideoFrame } from './cameraFrameLoop';
+import { getRvfcScheduleState } from './workerErrorDiagnostics';
 import { waitForVideoEvent } from './choreoVideoUtils';
 import { createRvfcStallDiagnostics, setRvfcDecodePath, setRvfcExternalDiagnosticsProvider } from './rvfcStallDiagnostics';
 import { pipelineDiagnostics } from './pipelineDiagnostics';
@@ -10,7 +11,7 @@ import {
   recordPropagationHop,
   resetPropagationSession,
 } from './workerErrorDiagnostics';
-import { markRvfcPlayStart, resetRvfcDiagSession } from './rvfcDiagnosticLog';
+import { markRvfcPlayStart, recordRvfcDiagEvent, resetRvfcDiagSession } from './rvfcDiagnosticLog';
 
 export type VideoFrameSample = {
   time: number;
@@ -90,6 +91,12 @@ export type SampleVideoFramesOptions = {
 
 const DEFAULT_MAX_QUEUE_LENGTH = 60;
 const DEFAULT_STALL_TIMEOUT_MS = 8000;
+/** RVFC 1회당 동기 drawImage 상한 — onFrame 장시간 점유 시 Chrome callback 유실 방지 */
+const MAX_CAPTURES_PER_RVFC = 2;
+/** schedule>callback gap 감지 후 재등록 시도까지 대기(ms) */
+const RVFC_GAP_HEAL_DELAY_MS = 1200;
+/** gap heal 최소 RVFC idle(ms) */
+const RVFC_GAP_HEAL_MIN_IDLE_MS = 1500;
 const DEFAULT_PROCESSING_STALL_MS = 4000;
 /** Adaptive Backpressure — 이 값 이하로는 절대 줄이지 않는다 (최소 버퍼 보장) */
 const MIN_ADAPTIVE_QUEUE_LENGTH = 10;
@@ -207,6 +214,10 @@ export async function sampleVideoFramesPlayback({
   let processingStartedAt = 0;
   let maxQueueLengthObserved = 0;
   let watchdogHandle: ReturnType<typeof setInterval> | null = null;
+  let rvfcGapDetectedAt: number | null = null;
+  let rvfcHealAttempts = 0;
+  let scheduleNextRvfc: () => void = () => {};
+  let lastShouldReschedule = true;
 
   // Adaptive Backpressure — 메모리 사용량과 처리 지연을 근거로 Queue 실질 상한을
   // maxQueueLength(ceiling)와 MIN_ADAPTIVE_QUEUE_LENGTH(floor) 사이에서 자동 조절한다.
@@ -228,6 +239,7 @@ export async function sampleVideoFramesPlayback({
     droppedFrames,
     shouldReschedule: lastShouldReschedule,
     stallTimeoutMs,
+    rvfcHealAttempts,
   });
 
   const diagnostics = createRvfcStallDiagnostics(video);
@@ -272,9 +284,6 @@ export async function sampleVideoFramesPlayback({
     },
   });
   diagnostics.startPeriodicLog(getDiagCtx);
-
-  let scheduleNextRvfc: () => void = () => {};
-  let lastShouldReschedule = true;
 
   const adjustAdaptiveQueueLength = () => {
     adaptiveCheckCounter += 1;
@@ -452,6 +461,25 @@ export async function sampleVideoFramesPlayback({
 
       // [요구사항 4-a] RVFC 수신 자체가 멈춘 경우 — 디코더 정지, Coverage 확보 불가로 확정 → 즉시 종료.
       const rvfcIdleMs = performance.now() - lastRvfcAt;
+      const rvfcState = getRvfcScheduleState();
+      const scheduleAhead = rvfcState.scheduleCallCount > rvfcState.callbackCallCount;
+
+      // Chrome orphan RVFC 복구 — stall 확정 전 gap이 지속되면 cancel+reschedule
+      if (!settled && !producerDone && !aborted && !video.paused && !video.ended) {
+        if (scheduleAhead || rvfcIdleMs > RVFC_GAP_HEAL_MIN_IDLE_MS) {
+          if (rvfcGapDetectedAt == null) rvfcGapDetectedAt = performance.now();
+          const gapMs = performance.now() - rvfcGapDetectedAt;
+          if (gapMs >= RVFC_GAP_HEAL_DELAY_MS && rvfcHealAttempts < 8 && rvfcIdleMs < stallTimeoutMs) {
+            const healReason = scheduleAhead
+              ? `schedule(${rvfcState.scheduleCallCount})>callback(${rvfcState.callbackCallCount})`
+              : `rvfcIdle=${Math.round(rvfcIdleMs)}ms`;
+            forceRescheduleRvfc(healReason);
+          }
+        } else {
+          rvfcGapDetectedAt = null;
+        }
+      }
+
       if (rvfcIdleMs > stallTimeoutMs) {
         const reason =
           `RVFC Stall 감지: ${(rvfcIdleMs / 1000).toFixed(1)}s 동안 새 비디오 프레임 없음 `
@@ -510,18 +538,23 @@ export async function sampleVideoFramesPlayback({
 
         const reachedDuration = mediaTime >= endTime - 0.05;
 
+        let capturesThisRvfc = 0;
         while (nextSampleTime <= endTime && mediaTime + 1e-3 >= nextSampleTime) {
+          if (capturesThisRvfc >= MAX_CAPTURES_PER_RVFC) break;
           const sampleTime = nextSampleTime;
           nextSampleTime += sampleInterval;
           enqueueCapture(sampleTime, mediaTime);
+          capturesThisRvfc += 1;
         }
 
         const videoEnded = video.ended || reachedDuration;
         if (videoEnded) {
           while (nextSampleTime <= endTime + 1e-3) {
+            if (capturesThisRvfc >= MAX_CAPTURES_PER_RVFC + 4) break;
             const sampleTime = Math.min(nextSampleTime, endTime);
             nextSampleTime += sampleInterval;
             enqueueCapture(sampleTime, mediaTime);
+            capturesThisRvfc += 1;
           }
           producerDone = true;
           shouldReschedule = false;
@@ -531,19 +564,48 @@ export async function sampleVideoFramesPlayback({
         // 예외가 나도 Producer 체인은 유지 — scheduleVideoFrame이 끊기면 RVFC는 영원히 안 온다.
       } finally {
         lastShouldReschedule = shouldReschedule;
+        // RVFC 재등록을 Consumer(MediaPipe)보다 먼저 — 동기 pumpQueue가 callback 등록을 밀어내는 것 방지.
         if (!settled && shouldReschedule && !producerDone && !aborted) {
           scheduleNextRvfc();
         }
         if (queue.length && !consumerRunning) {
-          void pumpQueue();
+          queueMicrotask(() => {
+            void pumpQueue();
+          });
         }
         tryFinalizeIfDrained();
       }
     };
 
-    scheduleNextRvfc = () => {
+    const forceRescheduleRvfc = (reason: string) => {
+      if (settled || producerDone || aborted) return;
+      cancelVideoFrame(handle);
+      handle = null;
+      rvfcHealAttempts += 1;
+      recordRvfcDiagEvent('RVFC gap heal', { reason, attempt: rvfcHealAttempts });
+      console.warn('[VideoFrameSampler] RVFC gap heal — orphan cancel & reschedule', {
+        reason,
+        attempt: rvfcHealAttempts,
+        scheduleCalls: getRvfcScheduleState().scheduleCallCount,
+        callbackCalls: getRvfcScheduleState().callbackCallCount,
+      });
       handle = scheduleVideoFrame(video, onFrame);
       diagnostics.recordSchedule(handle);
+      rvfcGapDetectedAt = null;
+    };
+
+    scheduleNextRvfc = () => {
+      cancelVideoFrame(handle);
+      const doSchedule = () => {
+        if (settled || producerDone || aborted) return;
+        handle = scheduleVideoFrame(video, onFrame);
+        diagnostics.recordSchedule(handle);
+      };
+      if (typeof requestAnimationFrame === 'function') {
+        requestAnimationFrame(doSchedule);
+      } else {
+        doSchedule();
+      }
     };
 
     video.play().then(() => {

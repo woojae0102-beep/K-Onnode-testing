@@ -394,6 +394,9 @@ export function classifyRvfcBreak(opts: {
     evidence.push(`schedule(${opts.scheduleCallCount}) > callback(${opts.onFrameCallCount}) — RVFC callback lost`);
     if (msSinceSchedule != null) evidence.push(`마지막 schedule ${Math.round(msSinceSchedule)}ms 전 (handle=${rvfc.lastScheduleHandleId})`);
     if (msSinceCallback != null) evidence.push(`마지막 callback ${Math.round(msSinceCallback)}ms 전`);
+    if (opts.videoCurrentTimeIdleMs < 500) {
+      evidence.push('video.currentTime는 진행 중 — 메인 스레드 블로킹(MediaPipe)으로 RVFC delivery 지연/유실 가능');
+    }
     return { cause: 'requestVideoFrameCallback never fired', evidence };
   }
 
