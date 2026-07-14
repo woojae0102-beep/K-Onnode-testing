@@ -17,6 +17,7 @@ import { recordQueueOverflow, recordCoverageFailure } from './pipelineTelemetry'
 import { pipelineDiagnostics } from './pipelineDiagnostics';
 import { calculateTimelineCoverage, SKELETON_MIN_TIMELINE_COVERAGE } from './skeletonDataUtils';
 import type { MotionExtractionDebugState } from '../types/motionExtraction';
+import type { MotionExtractionRcaSession } from './motionExtractionRca';
 
 export type FrameIngressSample = {
   time: number;
@@ -98,6 +99,7 @@ export type MotionPipelineContext = {
   COVERAGE_PROJECTION_MIN_PROGRESS: number;
   MAX_WORKER_QUEUE: number;
   SAMPLER_MAX_QUEUE_LENGTH: number;
+  rcaSession: MotionExtractionRcaSession | null;
   stabilizeTrackIds: (people: any[], prev: Map<number, any>) => { people: any[]; changes: number };
   fillMissingMembersFromLastDetected: (...args: any[]) => { people: any[]; missingTrackIds: number[] };
   detectHolistic: (detector: any, source: unknown, ts: number) => Promise<any> | any;
@@ -128,6 +130,15 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       pipelineDiagnostics.markTimeline(sample.time, 'mediapipe-end');
       pipelineDiagnostics.clearStageProcessing('mediapipe');
       ctx.perfStats.poseDetectionMs = (ctx.perfStats.poseDetectionMs || 0) + mediaPipeDelayMs;
+      const rawLandmarks = results.landmarks?.length || 0;
+      const detectedPersons = ctx.tracker.countValidPoses(results.landmarks || []);
+      const frameIndex = ctx.frames.length;
+      ctx.rcaSession?.recordDetector(
+        frameIndex,
+        sample.time,
+        detectedPersons,
+        rawLandmarks,
+      );
       return { ...sample, results, mediaPipeDelayMs };
     },
   });
@@ -146,6 +157,7 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       const timestampMs = Math.round(gridTimestamp * 1000);
       const rawCount = item.results.landmarks?.length || 0;
 
+      ctx.tracker.setRcaFrameContext(frameIndex, t);
       let trackedPeople = ctx.tracker.trackFrame(
         item.results.landmarks || [],
         item.results.worldLandmarks || [],
@@ -273,8 +285,11 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       }
 
       const workerQueueLength = Math.max(0, ctx.workerSentCount - ctx.workerAckCount);
+      const workerOverflowThisFrame = ctx.worker && workerQueueLength >= ctx.MAX_WORKER_QUEUE;
+      const workerStartedAt = performance.now();
+
       if (ctx.worker) {
-        if (workerQueueLength >= ctx.MAX_WORKER_QUEUE) {
+        if (workerOverflowThisFrame) {
           ctx.workerDroppedCount += 1;
           recordQueueOverflow('motion-post-process-worker', {
             queueLength: workerQueueLength,
@@ -332,6 +347,14 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
 
       ctx.lastProcessingDelayMs = performance.now() - frameStartedAt;
       ctx.perfStats.totalMs = (ctx.perfStats.totalMs || 0) + ctx.lastProcessingDelayMs;
+
+      ctx.rcaSession?.recordQueue(frameIndex, t, {
+        stage: 'worker-dancedatabase',
+        queueLength: workerQueueLength,
+        droppedFrames: ctx.samplerQueueDroppedCount,
+        overflowCount: workerOverflowThisFrame ? 1 : 0,
+        workerProcessingTimeMs: performance.now() - workerStartedAt,
+      });
 
       const now = performance.now();
       if (ctx.lastSampleAt > 0) {

@@ -56,6 +56,10 @@ import {
   bytesToMb,
 } from '../../utils/memoryProfiler';
 import { pipelineEventBus, pipelineRegistry } from '../../utils/pipelineEventBus';
+import {
+  createMotionExtractionRcaSession,
+  clearMotionExtractionRcaSession,
+} from '../../utils/motionExtractionRca';
 import { associateHolisticLandmarksToPeople } from '../../utils/holisticLandmarkUtils';
 import { timeSecToBeat, timeSecToBeatIndex } from '../../utils/frameMetadataUtils';
 import { computeMemberHipCenter } from '../rendering/SkeletonFormationRender';
@@ -587,6 +591,26 @@ export async function runHolisticVideoAnalysis({
   heapTracker.start();
   let bytesPerSkeletonFrame = 0;
 
+  const rcaSession = createMotionExtractionRcaSession(expectedMemberCount);
+
+  const dumpMemberCountRca = (observed: number, peak: number, mapped: number) => {
+    const avgDetected = memberCountSamples.length
+      ? memberCountSamples.reduce((a, b) => a + b, 0) / memberCountSamples.length
+      : 0;
+    const avgTracked = frames.length
+      ? frames.reduce((sum, f) => sum + (f.detectedPeople?.filter((p) => !p.isEstimated).length || 0), 0) / frames.length
+      : 0;
+    return rcaSession.dumpSummaryAndRca({
+      expectedMembers: expectedMemberCount,
+      observedMembers: observed,
+      peakTrack: peak,
+      mappedTracks: mapped,
+      totalDroppedFrames: samplerQueueDroppedCount + workerDroppedCount,
+      averageDetectedPersons: avgDetected,
+      averageTrackedPersons: avgTracked,
+    });
+  };
+
   const pipelineCtx = {
     detector,
     tracker,
@@ -635,6 +659,7 @@ export async function runHolisticVideoAnalysis({
     COVERAGE_PROJECTION_MIN_PROGRESS,
     MAX_WORKER_QUEUE,
     SAMPLER_MAX_QUEUE_LENGTH,
+    rcaSession,
     stabilizeTrackIds,
     fillMissingMembersFromLastDetected,
     detectHolistic,
@@ -687,6 +712,12 @@ export async function runHolisticVideoAnalysis({
     onQueueOverflow: ({ queueLength, droppedFrames: samplerDropped }) => {
       samplerQueueDroppedCount = samplerDropped;
       recordQueueOverflow('sampler', { queueLength, droppedCount: samplerDropped });
+      rcaSession.recordQueue(samplerDropped, 0, {
+        stage: 'videoFrameSampler',
+        queueLength,
+        droppedFrames: samplerDropped,
+        overflowCount: 1,
+      });
       onDebug?.({ pipelineStage: 'sampler_queue_overflow', workerQueue: queueLength });
     },
     getExternalDiagnostics: () => {
@@ -743,7 +774,10 @@ export async function runHolisticVideoAnalysis({
     unregisterWorkerHealth();
   }
 
-  if (!frames.length) return null;
+  if (!frames.length) {
+    clearMotionExtractionRcaSession();
+    return null;
+  }
 
   const coverageReport = calculateTimelineCoverage(frames, analysisDuration);
   logCoverageTable('Motion Extraction Coverage', {
@@ -835,6 +869,12 @@ export async function runHolisticVideoAnalysis({
     }
 
     if (observedTrackCount < minRequiredTracks) {
+      dumpMemberCountRca(
+        observedTrackCount,
+        peakTrackCount,
+        trackIdToInitialPosition.size,
+      );
+      clearMotionExtractionRcaSession();
       throw new Error(
         `Motion Extraction AI 참조 인원 부족: 그룹 ${expectedMemberCount}명 중 연습 담당 1명을 제외하고 `
         + `영상에서 최소 ${minRequiredTracks}명이 필요합니다 `
@@ -855,6 +895,11 @@ export async function runHolisticVideoAnalysis({
   }
 
   onDebug?.({ pipelineStage: 'analysis_complete', progress: 92 });
+  dumpMemberCountRca(
+    observedTrackCount,
+    peakTrackCount,
+    trackIdToInitialPosition.size,
+  );
   logPerfStats(perfStats, 'Motion Extraction', {
     'Worker Frames': perfStats.workerFrames,
     'FrameBuffer Ready': workerReady ? 'yes' : 'no',
@@ -920,6 +965,8 @@ export async function runHolisticVideoAnalysis({
     frameCount: coverageReport.frameCount,
     coverage: coverageReport.coverage,
   });
+
+  clearMotionExtractionRcaSession();
 
   return {
     detectedMemberCount: observedTrackCount,

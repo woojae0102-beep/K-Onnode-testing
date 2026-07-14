@@ -14,6 +14,7 @@ import {
   type MediaPipeJointInput,
 } from '../utils/jointConfidenceFilter';
 import { hungarianAssign, jointsPoseDistance } from './skeleton/poseSimilarity';
+import { getMotionExtractionRcaSession, motionRcaConfidenceThreshold } from '../utils/motionExtractionRca';
 import { JointKalmanFilter } from './motion/JointKalmanFilter';
 import { TrackMotionPredictor } from './motion/TrackMotionPredictor';
 import { TrackPool } from './motion/TrackPool';
@@ -112,6 +113,15 @@ export class MultiPersonTracker {
   private lastFrameTimestamp = 0;
 
   private bpm = 120;
+
+  private rcaFrameIndex = -1;
+  private rcaTimestamp = 0;
+
+  /** RCA 계측용 — 알고리즘 변경 없음 */
+  setRcaFrameContext(frameIndex: number, timestamp: number) {
+    this.rcaFrameIndex = frameIndex;
+    this.rcaTimestamp = timestamp;
+  }
 
   /** 가려짐 초과로 TrackPool에 반환(소멸)된 트랙 누적 수 — Debug Overlay용 */
   private releasedTrackCount = 0;
@@ -276,10 +286,14 @@ export class MultiPersonTracker {
     }
 
     const worldArr = worldLandmarks || [];
+    const prevTrackIds = new Set(this.persistentTracks.keys());
+    const newTracksThisFrame: number[] = [];
+    const rcaSession = getMotionExtractionRcaSession();
+    const confThreshold = motionRcaConfidenceThreshold();
 
     this.trackPool.setMaxSlots(Math.max(expectedMemberCount, 1));
 
-    const currentDetections = (detectedLandmarks || [])
+    const mappedDetections = (detectedLandmarks || [])
       .map((landmarks, idx) => {
         const rawJoints = this.extractRawJoints(landmarks as unknown[]);
         const rawWorldJoints = worldArr[idx]
@@ -292,13 +306,31 @@ export class MultiPersonTracker {
           worldJoints: filtered.worldJoints,
           centerPos: this.calculateCenter(landmarks as unknown[]),
           confidence: 0,
+          detectionIdx: idx,
         };
       })
       .map((d) => ({
         ...d,
         confidence: computeMemberPoseConfidence({ joints: d.joints, confidence: this.calculateConfidence(d.joints) }),
-      }))
-      .filter((d) => d.confidence > CHOREO_MIN_PERSON_CONFIDENCE);
+      }));
+
+    if (rcaSession && this.rcaFrameIndex >= 0) {
+      mappedDetections.forEach((d) => {
+        if (d.confidence <= confThreshold) {
+          rcaSession.recordConfidenceRemoval({
+            frameIndex: this.rcaFrameIndex,
+            timestamp: this.rcaTimestamp,
+            detectionIdx: d.detectionIdx,
+            confidence: d.confidence,
+            threshold: confThreshold,
+            reason: `confidence ${d.confidence.toFixed(4)} <= ${confThreshold}`,
+          });
+        }
+      });
+    }
+
+    const currentDetections = mappedDetections
+      .filter((d) => d.confidence > confThreshold);
 
     const matchedTrackIds = new Set<number>();
     const matchedDetectionIdx = new Set<number>();
@@ -307,6 +339,9 @@ export class MultiPersonTracker {
     const assignDetectionToTrack = (detection, trackId: number, isEstimated: boolean) => {
       matchedTrackIds.add(trackId);
       this.allTrackIdsEver.add(trackId);
+      if (!prevTrackIds.has(trackId) && !isEstimated) {
+        newTracksThisFrame.push(trackId);
+      }
 
       let joints = detection.joints;
       let worldJoints = detection.worldJoints;
@@ -390,9 +425,28 @@ export class MultiPersonTracker {
       });
 
       const assignment = hungarianAssign(costMatrix);
+      const hungarianRejects: Array<{
+        prevTrackId: number;
+        currIdx: number;
+        cost: number;
+        threshold: number;
+        reason: string;
+      }> = [];
 
       assignment.forEach((currIdx, prevIdx) => {
-        if (currIdx < 0 || currIdx >= nCurr) return;
+        if (currIdx < 0 || currIdx >= nCurr) {
+          const [, track] = trackEntries[prevIdx] ?? [];
+          if (track) {
+            hungarianRejects.push({
+              prevTrackId: track.trackId,
+              currIdx,
+              cost: Infinity,
+              threshold: baseThreshold,
+              reason: 'no assignment column',
+            });
+          }
+          return;
+        }
         const [, track] = trackEntries[prevIdx];
         const cost = costMatrix[prevIdx]?.[currIdx] ?? Infinity;
         const threshold = computeAdaptiveMatchThreshold({
@@ -402,12 +456,31 @@ export class MultiPersonTracker {
           sampleFps: this.sampleFps,
           occlusionFrames: track.consecutiveMissedFrames,
         });
-        if (cost > threshold) return;
+        if (cost > threshold) {
+          hungarianRejects.push({
+            prevTrackId: track.trackId,
+            currIdx,
+            cost,
+            threshold,
+            reason: `cost ${cost.toFixed(4)} > threshold ${threshold.toFixed(4)}`,
+          });
+          return;
+        }
 
         matchedDetectionIdx.add(currIdx);
         const [trackId] = trackEntries[prevIdx];
         assignDetectionToTrack(currentDetections[currIdx], trackId, false);
       });
+
+      if (rcaSession && this.rcaFrameIndex >= 0) {
+        rcaSession.recordHungarian(this.rcaFrameIndex, this.rcaTimestamp, {
+          costMatrixRows: nPrev,
+          costMatrixCols: nCurr,
+          assignment,
+          threshold: baseThreshold,
+          rejects: hungarianRejects,
+        });
+      }
 
       // 2) 가려짐 트랙 재등장 — Prediction 기반 Re-ID (새 사람 취급 방지)
       currentDetections.forEach((detection, currIdx) => {
@@ -538,6 +611,18 @@ export class MultiPersonTracker {
       console.debug(
         `[Tracker] 슬롯 ${this.persistentTracks.size} (실감지 ${visible}, 보강 ${estimated}) / 기대 ${expectedMemberCount}`,
       );
+    }
+
+    if (rcaSession && this.rcaFrameIndex >= 0) {
+      rcaSession.recordTracking(this.rcaFrameIndex, this.rcaTimestamp, {
+        activeTracks: this.persistentTracks.size,
+        newTracks: newTracksThisFrame,
+        removedTracks: staleTrackIds,
+        matchedTracks: [...matchedTrackIds],
+        occludedTracks: result.filter((p) => p.isEstimated).map((p) => p.trackId),
+        visibleTracks: result.filter((p) => !p.isEstimated).length,
+        outputTrackCount: result.length,
+      });
     }
 
     return result;
