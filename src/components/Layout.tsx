@@ -26,7 +26,9 @@ import RoutineView from '../views/RoutineView';
 import CoachingView from '../views/CoachingView';
 import AgencyAuditionView from '../views/AgencyAuditionView';
 import TVModeView from '../views/TVModeView';
+import SkeletonDebugStudioView from '../views/SkeletonDebugStudioView';
 import AppLanguageSync from './AppLanguageSync';
+import { isDevEnvironment } from '../utils/isDevEnvironment';
 
 const TAB_TO_DEFAULT_VIEW = {
   home: 'home',
@@ -64,6 +66,17 @@ export default function Layout(props) {
 
   useEffect(() => {
     loadTeachingReports();
+  }, []);
+
+  useEffect(() => {
+    const path = window.location.pathname || '';
+    const viewParam = new URLSearchParams(window.location.search).get('view');
+    if (
+      isDevEnvironment()
+      && (path.includes('/dev/skeleton-debug-studio') || viewParam === 'skeleton-debug-studio')
+    ) {
+      setMainView('skeleton-debug-studio');
+    }
   }, []);
 
   const handleChangeTab = useCallback((tab) => {
@@ -132,6 +145,10 @@ export default function Layout(props) {
         return <NotificationsView onNavigate={handleSelectView} />;
       case 'settings':
         return <SettingsView {...props} />;
+      case 'skeleton-debug-studio':
+        return isDevEnvironment()
+          ? <SkeletonDebugStudioView onNavigate={handleSelectView} />
+          : <HomeView onNavigate={handleSelectView} />;
       default:
         return <HomeView onNavigate={handleSelectView} />;
     }
@@ -139,6 +156,10 @@ export default function Layout(props) {
 
   if (mainView === 'tv-mode') {
     return <TVModeView onNavigate={handleSelectView} />;
+  }
+
+  if (mainView === 'skeleton-debug-studio' && isDevEnvironment()) {
+    return <SkeletonDebugStudioView onNavigate={handleSelectView} />;
   }
 
   return (

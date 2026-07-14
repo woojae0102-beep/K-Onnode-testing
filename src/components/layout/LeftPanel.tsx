@@ -5,6 +5,7 @@ import { Settings } from 'lucide-react';
 import TabBar from './TabBar';
 import MenuRow, { SectionTitle } from './MenuRow';
 import { useAuth } from '../../contexts/AuthContext';
+import { isDevEnvironment } from '../../utils/isDevEnvironment';
 
 const HOME_MENUS_MY = [
   { icon: '👤', labelKey: 'leftPanel.profile', view: 'mypage' },
@@ -129,6 +130,17 @@ function HomeTabContent({ mainView, onSelectView }) {
           trailing={item.accent ? <NewBadge /> : null}
         />
       ))}
+      {isDevEnvironment() ? (
+        <>
+          <SectionTitle>Dev Tools</SectionTitle>
+          <MenuRow
+            icon="🦴"
+            label="Skeleton Analysis Studio"
+            active={mainView === 'skeleton-debug-studio'}
+            onClick={() => onSelectView?.('skeleton-debug-studio')}
+          />
+        </>
+      ) : null}
     </>
   );
 }

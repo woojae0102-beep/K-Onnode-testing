@@ -34,6 +34,7 @@ import {
 } from '../../utils/choreoVideoUtils';
 import { sampleVideoFrames } from '../../utils/sampleVideoFrames';
 import { createMotionExtractionPipeline } from '../../utils/motionExtractionStages';
+import { debugBus, isDebugEventBusEnabled } from '../../studio/skeletonDebug/live/debugEventBus';
 import { createMotionDetector } from './WorkerMotionDetector';
 import { isForceMainThreadMediaPipe } from '../../config/pipelineConfig';
 import { createManagedWorker } from '../../utils/workerRecovery';
@@ -682,6 +683,13 @@ export async function runHolisticVideoAnalysis({
       // rvfc_idle — 디코더 정지, Coverage 확보 불가로 확정되어 즉시 종료됨 (치명적).
       // processing_delay — Queue 소비(detect+track+worker)가 느릴 뿐, RVFC는 계속 진행 중 (경고).
       if (info.kind === 'rvfc_idle') {
+        if (isDebugEventBusEnabled()) {
+          debugBus.rvfcStall(
+            frames.length,
+            video.currentTime ?? 0,
+            `RVFC idle ${Math.round(info.idleMs ?? 0)}ms — ${info.reason ?? 'stall'}`,
+          );
+        }
         const projected = calculateTimelineCoverage(frames, analysisDuration);
         recordCoverageFailure({
           kind: 'rvfc_idle',
@@ -1038,6 +1046,8 @@ export interface AnalyzeFileHolisticOptions {
   onStatus?: (msg: string) => void;
   onProgress?: (pct: number) => void;
   onDebug?: (state: Partial<MotionExtractionDebugState>) => void;
+  /** Skeleton Debug Studio 등 — 미전달 시 no-op */
+  onFrameDetected?: (payload: Record<string, unknown>) => void;
   abortRef?: { current: boolean };
 }
 
@@ -1054,6 +1064,7 @@ export async function analyzeFileHolistic({
   onStatus,
   onProgress,
   onDebug,
+  onFrameDetected,
   abortRef,
 }: AnalyzeFileHolisticOptions): Promise<AnalysisResult> {
   const group = getGroupData(groupId);
@@ -1099,6 +1110,7 @@ export async function analyzeFileHolistic({
         if (msg) onStatus?.(msg);
       },
       onDebug,
+      onFrameDetected,
       abortRef,
     });
 

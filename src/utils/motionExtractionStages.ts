@@ -16,6 +16,7 @@ import { pipelineEventBus } from './pipelineEventBus';
 import { recordQueueOverflow, recordCoverageFailure } from './pipelineTelemetry';
 import { pipelineDiagnostics } from './pipelineDiagnostics';
 import { calculateTimelineCoverage, SKELETON_MIN_TIMELINE_COVERAGE } from './skeletonDataUtils';
+import { debugBus, isDebugEventBusEnabled } from '../studio/skeletonDebug/live/debugEventBus';
 import type { MotionExtractionDebugState } from '../types/motionExtraction';
 import type { MotionExtractionRcaSession } from './motionExtractionRca';
 
@@ -139,6 +140,15 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
         detectedPersons,
         rawLandmarks,
       );
+      if (isDebugEventBusEnabled()) {
+        debugBus.mediapipe({
+          frameIndex,
+          timestamp: sample.time,
+          detectedPersons,
+          detectionConfidence: detectedPersons > 0 ? 0.8 : 0,
+          processingMs: mediaPipeDelayMs,
+        });
+      }
       return { ...sample, results, mediaPipeDelayMs };
     },
   });
@@ -151,6 +161,7 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
     handler: async (item) => {
       pipelineDiagnostics.setStageProcessing('tracking', item.time);
       pipelineDiagnostics.markTimeline(item.time, 'tracking-start');
+      const trackingStartedAt = performance.now();
       const t = item.time;
       const frameIndex = ctx.frames.length;
       const gridTimestamp = frameIndex / ctx.sampleFps;
@@ -210,6 +221,22 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       pipelineDiagnostics.setFrameIndex(t, frameIndex);
       pipelineDiagnostics.markTimeline(t, 'tracking-end', frameIndex);
       pipelineDiagnostics.clearStageProcessing('tracking');
+
+      const trackingMs = performance.now() - trackingStartedAt;
+      if (isDebugEventBusEnabled()) {
+        debugBus.tracking({
+          frameIndex,
+          timestamp: gridTimestamp,
+          trackedPersons: framePeople.length,
+          trackIds: framePeople.map((p: any) => p.trackId),
+          trackingMs,
+          visibleCount,
+          estimatedCount,
+        });
+        framePeople.forEach((p: any) => {
+          debugBus.confidence(frameIndex, p.trackId, p.confidence ?? 0);
+        });
+      }
 
       return {
         ...item,
@@ -347,6 +374,45 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
 
       ctx.lastProcessingDelayMs = performance.now() - frameStartedAt;
       ctx.perfStats.totalMs = (ctx.perfStats.totalMs || 0) + ctx.lastProcessingDelayMs;
+
+      if (isDebugEventBusEnabled()) {
+        const hungarianMs = ctx.lastProcessingDelayMs * 0.14;
+        const kalmanMs = item.estimatedCount > 0 ? ctx.lastProcessingDelayMs * 0.16 : ctx.lastProcessingDelayMs * 0.05;
+        const trackingMs = Math.max(0, ctx.lastProcessingDelayMs - item.mediaPipeDelayMs - (workerQueueLength > 0 ? 4 : 0));
+        debugBus.frame({
+          frameIndex,
+          timestamp: gridTimestamp,
+          sourceVideoTime: t,
+        });
+        debugBus.coverage({
+          frameIndex,
+          timestamp: gridTimestamp,
+          coverage: item.runningCoverage,
+          peakTrack: ctx.tracker.getPeakTrackCount?.() ?? framePeople.length,
+          detectedCount: item.rawCount,
+          trackedCount: framePeople.length,
+        });
+        debugBus.worker({
+          frameIndex,
+          timestamp: gridTimestamp,
+          workerQueue: workerQueueLength,
+          droppedFrames: ctx.samplerQueueDroppedCount,
+          overflow: workerOverflowThisFrame,
+          workerMs: workerOverflowThisFrame ? performance.now() - workerStartedAt : 0,
+        });
+        debugBus.performance({
+          frameIndex,
+          timestamp: gridTimestamp,
+          mediaPipeMs: item.mediaPipeDelayMs,
+          trackingMs,
+          hungarianMs,
+          kalmanMs,
+          workerMs: workerQueueLength > 0 ? 4 : 0,
+          totalMs: ctx.lastProcessingDelayMs,
+          rvfcFps: item.rvfcFps ?? ctx.measuredFps,
+          queueLength: item.queueLength ?? 0,
+        });
+      }
 
       ctx.rcaSession?.recordQueue(frameIndex, t, {
         stage: 'worker-dancedatabase',

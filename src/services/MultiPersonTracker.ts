@@ -15,6 +15,7 @@ import {
 } from '../utils/jointConfidenceFilter';
 import { hungarianAssign, jointsPoseDistance } from './skeleton/poseSimilarity';
 import { getMotionExtractionRcaSession, motionRcaConfidenceThreshold } from '../utils/motionExtractionRca';
+import { debugBus, isDebugEventBusEnabled } from '../studio/skeletonDebug/live/debugEventBus';
 import { JointKalmanFilter } from './motion/JointKalmanFilter';
 import { TrackMotionPredictor } from './motion/TrackMotionPredictor';
 import { TrackPool } from './motion/TrackPool';
@@ -464,11 +465,36 @@ export class MultiPersonTracker {
             threshold,
             reason: `cost ${cost.toFixed(4)} > threshold ${threshold.toFixed(4)}`,
           });
+          if (isDebugEventBusEnabled()) {
+            debugBus.hungarian({
+              frameIndex: this.rcaFrameIndex,
+              timestamp: this.rcaTimestamp,
+              previousTrackId: track.trackId,
+              currentDetectionId: currIdx,
+              cost,
+              threshold,
+              matched: false,
+              rejected: true,
+              reason: `cost ${cost.toFixed(4)} > threshold ${threshold.toFixed(4)}`,
+            });
+          }
           return;
         }
 
         matchedDetectionIdx.add(currIdx);
         const [trackId] = trackEntries[prevIdx];
+        if (isDebugEventBusEnabled()) {
+          debugBus.hungarian({
+            frameIndex: this.rcaFrameIndex,
+            timestamp: this.rcaTimestamp,
+            previousTrackId: track.trackId,
+            currentDetectionId: currIdx,
+            cost,
+            threshold,
+            matched: true,
+            rejected: false,
+          });
+        }
         assignDetectionToTrack(currentDetections[currIdx], trackId, false);
       });
 
@@ -578,6 +604,30 @@ export class MultiPersonTracker {
       const holdJoints = Object.keys(predicted).length
         ? (predicted as Record<string, JointPosition>)
         : track.lastKnownJoints;
+
+      const nose = holdJoints?.nose;
+      const predPos = nose ? { x: nose.x, y: nose.y } : { x: track.lastKnownPosition.x, y: track.lastKnownPosition.y };
+      if (isDebugEventBusEnabled() && this.rcaFrameIndex >= 0) {
+        const vis = nose?.visibility ?? nose?.confidence ?? 0.2;
+        debugBus.kalman({
+          frameIndex: this.rcaFrameIndex,
+          timestamp: this.rcaTimestamp,
+          trackId,
+          predictedPosition: predPos,
+          actualPosition: null,
+          distanceError: 0,
+          predictionConfidence: Math.max(0.15, 0.5 - track.consecutiveMissedFrames * 0.02),
+          predictionAge: track.consecutiveMissedFrames,
+        });
+        debugBus.occlusion({
+          frameIndex: this.rcaFrameIndex,
+          timestamp: this.rcaTimestamp,
+          trackId,
+          reason: 'Occlusion — Kalman hold',
+          visibility: vis,
+          bboxOverlap: 0,
+        });
+      }
 
       result.push({
         trackId,
