@@ -115,7 +115,7 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
 
   const mediapipeStage = createPipelineStage<FrameIngressSample, MediaPipeStageOutput>({
     name: 'mediapipe',
-    maxQueueLength: 30,
+    maxQueueLength: 20,
     targetFrameBudgetMs: 1000 / Math.max(1, ctx.sampleFps),
     onDrop: stageDrop('mediapipe'),
     handler: async (sample, meta) => {
@@ -138,7 +138,7 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
 
   const trackingStage = createPipelineStage<MediaPipeStageOutput, TrackingStageOutput>({
     name: 'tracking',
-    maxQueueLength: 45,
+    maxQueueLength: 30,
     targetFrameBudgetMs: 1000 / Math.max(1, ctx.sampleFps),
     onDrop: stageDrop('tracking'),
     handler: async (item) => {

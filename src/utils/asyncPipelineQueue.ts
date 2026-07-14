@@ -40,6 +40,15 @@ const DEFAULT_MAX_QUEUE = 60;
 const DEFAULT_MIN_QUEUE = 10;
 const ADAPTIVE_CHECK_INTERVAL = 15;
 
+/** MediaPipe 등 sync 작업 후 RVFC·Watchdog이 스케줄될 수 있게 제어권 반환 */
+const yieldMainThread = () => new Promise<void>((resolve) => {
+  if (typeof globalThis.scheduler !== 'undefined' && typeof globalThis.scheduler.yield === 'function') {
+    globalThis.scheduler.yield().then(resolve).catch(() => setTimeout(resolve, 0));
+    return;
+  }
+  setTimeout(resolve, 0);
+});
+
 export function createPipelineStage<TIn, TOut>({
   name,
   maxQueueLength = DEFAULT_MAX_QUEUE,
@@ -93,37 +102,40 @@ export function createPipelineStage<TIn, TOut>({
     });
   };
 
+  /** 프레임 1개 처리 후 yield — while 루프 전체 점유 시 RVFC callback·Watchdog starvation 방지 */
   const pump = async () => {
-    if (consumerRunning || settled) return;
+    if (consumerRunning || settled || !queue.length) return;
     consumerRunning = true;
+    let item: PipelineStageItem<TIn> | undefined;
     try {
-      while (queue.length && !settled) {
-        const item = queue.shift();
-        const startedAt = performance.now();
-        const queueDelayMs = Math.max(0, startedAt - item.enqueuedAt);
-        lastQueueDelayMs = queueDelayMs;
-        try {
-          const result = await handler(item.payload, {
-            queueDelayMs,
-            queueLength: queue.length,
-          });
-          const processingMs = performance.now() - startedAt;
-          avgProcessingDelayMs = avgProcessingDelayMs > 0
-            ? avgProcessingDelayMs * 0.9 + processingMs * 0.1
-            : processingMs;
-          adjustAdaptiveQueueLength();
-          processedCount += 1;
-          if (result != null && nextStage) {
-            nextStage.push(result);
-          }
-          emitStats();
-        } catch (err) {
-          consumerRunning = false;
-          throw err;
-        }
+      item = queue.shift();
+      if (!item) return;
+      const startedAt = performance.now();
+      const queueDelayMs = Math.max(0, startedAt - item.enqueuedAt);
+      lastQueueDelayMs = queueDelayMs;
+      const result = await handler(item.payload, {
+        queueDelayMs,
+        queueLength: queue.length,
+      });
+      const processingMs = performance.now() - startedAt;
+      avgProcessingDelayMs = avgProcessingDelayMs > 0
+        ? avgProcessingDelayMs * 0.9 + processingMs * 0.1
+        : processingMs;
+      adjustAdaptiveQueueLength();
+      processedCount += 1;
+      if (result != null && nextStage) {
+        nextStage.push(result);
       }
+      emitStats();
+    } catch (err) {
+      consumerRunning = false;
+      throw err;
     } finally {
       consumerRunning = false;
+      if (item && queue.length && !settled) {
+        await yieldMainThread();
+        void pump();
+      }
     }
   };
 

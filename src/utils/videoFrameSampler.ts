@@ -95,9 +95,16 @@ export type SampleVideoFramesOptions = {
 const DEFAULT_MAX_QUEUE_LENGTH = 60;
 const DEFAULT_STALL_TIMEOUT_MS = 8000;
 /** RVFC 1회당 동기 drawImage 상한 — 이후 미처리 구간은 microtask로 catch-up */
-const MAX_CAPTURES_SYNC_PER_RVFC = 16;
+const MAX_CAPTURES_SYNC_PER_RVFC = 8;
 /** RVFC 1회당 catch-up 상한(동기+비동기 합) */
-const MAX_CATCHUP_PER_RVFC = 120;
+const MAX_CATCHUP_PER_RVFC = 48;
+/** 파이프라인 backlog 합계가 이 값 이상이면 video pause로 Producer 속도 제한 */
+const BACKPRESSURE_PAUSE_MIN_BACKLOG = 10;
+/** sampler 큐 점유율이 이 비율 이상이면 pause */
+const BACKPRESSURE_PAUSE_SAMPLER_RATIO = 0.55;
+/** backlog·sampler 점유가 낮아지면 resume */
+const BACKPRESSURE_RESUME_SAMPLER_RATIO = 0.3;
+const BACKPRESSURE_RESUME_MAX_BACKLOG = 6;
 /** schedule>callback gap 감지 후 heal까지 대기(ms) */
 const RVFC_GAP_HEAL_DELAY_MS = 400;
 /** gap heal 최소 RVFC idle(ms) */
@@ -245,6 +252,8 @@ export async function sampleVideoFramesPlayback({
   let futileHealStreak = 0;
   let callbackCountAtLastHeal = 0;
   let hiddenSinceAt: number | null = null;
+  let backpressurePaused = false;
+  let backpressurePausedAt = 0;
 
   // Adaptive Backpressure — 메모리 사용량과 처리 지연을 근거로 Queue 실질 상한을
   // maxQueueLength(ceiling)와 MIN_ADAPTIVE_QUEUE_LENGTH(floor) 사이에서 자동 조절한다.
@@ -267,7 +276,47 @@ export async function sampleVideoFramesPlayback({
     shouldReschedule: lastShouldReschedule,
     stallTimeoutMs,
     rvfcHealAttempts,
+    backpressurePaused,
   });
+
+  const getTotalPipelineBacklog = () => {
+    const ext = getExternalDiagnostics?.() ?? {};
+    const pipelineQ = Number(ext.pipelineQueueLength) || 0;
+    const workerQ = Number(ext.workerQueueLength) || 0;
+    return queue.length + pipelineQ + workerQ;
+  };
+
+  const updateProducerBackpressure = () => {
+    if (settled || producerDone || aborted || video.ended) return;
+    const totalBacklog = getTotalPipelineBacklog();
+    const samplerRatio = queue.length / Math.max(1, effectiveMaxQueueLength);
+    const shouldPause = totalBacklog >= BACKPRESSURE_PAUSE_MIN_BACKLOG
+      && (samplerRatio >= BACKPRESSURE_PAUSE_SAMPLER_RATIO || totalBacklog >= 20);
+    const shouldResume = totalBacklog <= BACKPRESSURE_RESUME_MAX_BACKLOG
+      && samplerRatio < BACKPRESSURE_RESUME_SAMPLER_RATIO;
+
+    if (shouldPause && !video.paused) {
+      video.pause();
+      backpressurePaused = true;
+      backpressurePausedAt = performance.now();
+      recordRvfcDiagEvent('backpressure pause', { totalBacklog, samplerQueue: queue.length });
+      console.info('[VideoFrameSampler] Backpressure — video pause (파이프라인 backlog)', {
+        totalBacklog,
+        queueLength: queue.length,
+      });
+      return;
+    }
+
+    if (backpressurePaused && shouldResume) {
+      backpressurePaused = false;
+      backpressurePausedAt = 0;
+      void video.play().then(() => {
+        lastRvfcAt = performance.now();
+        scheduleNextRvfc();
+      });
+      console.info('[VideoFrameSampler] Backpressure — video resume', { totalBacklog });
+    }
+  };
 
   const diagnostics = createRvfcStallDiagnostics(video);
   resetPropagationSession();
@@ -450,6 +499,7 @@ export async function sampleVideoFramesPlayback({
     } finally {
       consumerRunning = false;
       if (item) {
+        updateProducerBackpressure();
         if (queue.length && !settled && !aborted) {
           await yieldMainThread();
           void pumpQueue();
@@ -561,7 +611,7 @@ export async function sampleVideoFramesPlayback({
     const isRvfcProducerViable = () => {
       if (settled || producerDone || aborted || video.ended) return false;
       if (typeof document !== 'undefined' && document.visibilityState === 'hidden') return false;
-      if (video.paused) return false;
+      if (video.paused && !backpressurePaused) return false;
       return true;
     };
 
@@ -653,6 +703,22 @@ export async function sampleVideoFramesPlayback({
 
       if (tryGracefulVideoEnd()) return;
 
+      updateProducerBackpressure();
+
+      if (backpressurePaused) {
+        const pausedMs = backpressurePausedAt > 0 ? performance.now() - backpressurePausedAt : 0;
+        if (pausedMs > 120_000) {
+          const reason =
+            `Backpressure pause 120s 초과 — 파이프라인이 프레임을 소화하지 못합니다 `
+            + `(backlog=${getTotalPipelineBacklog()}, nextSampleTime=${nextSampleTime.toFixed(2)}s)`;
+          diagnostics.dumpStall(reason, { ...getDiagCtx(), lastRvfcIdleMs: rvfcIdleMs });
+          onStall?.({ idleMs: pausedMs, nextSampleTime, endTime, reason, kind: 'rvfc_idle' });
+          detachVisibilityGuard?.();
+          finalize(new Error(reason));
+        }
+        return;
+      }
+
       const tabHidden = typeof document !== 'undefined' && document.visibilityState === 'hidden';
       if (tabHidden) {
         if (hiddenSinceAt == null) hiddenSinceAt = performance.now();
@@ -671,13 +737,17 @@ export async function sampleVideoFramesPlayback({
         hiddenSinceAt = null;
       }
 
-      if (video.paused && !video.ended && !tabHidden) {
+      if (video.paused && !video.ended && !tabHidden && !backpressurePaused) {
         ensureVideoPlaying();
       }
 
       tryRvfcGapHeal(rvfcIdleMs, scheduleAhead);
 
-      if (rvfcIdleMs > stallTimeoutMs) {
+      const totalBacklog = getTotalPipelineBacklog();
+      const pipelineBusy = totalBacklog > 6 || consumerRunning || processingStartedAt > 0;
+      const effectiveStallTimeoutMs = pipelineBusy ? stallTimeoutMs * 2.5 : stallTimeoutMs;
+
+      if (rvfcIdleMs > effectiveStallTimeoutMs) {
         const timelineCov = getTimelineCoverage();
         if (video.ended || timelineCov >= 0.85) {
           console.info('[VideoFrameSampler] RVFC idle after video end / sufficient timeline coverage — 정상 종료', {
@@ -695,7 +765,9 @@ export async function sampleVideoFramesPlayback({
           ? ' (탭 비활성 — 추출 중 이 탭을 활성 상태로 유지하세요)'
           : video.paused
             ? ' (video.paused — 재생이 중단됨)'
-            : '';
+            : pipelineBusy
+              ? ` (파이프라인 backlog=${totalBacklog} — MediaPipe/Worker 처리 지연)`
+              : '';
         const reason =
           `RVFC Stall 감지: ${(rvfcIdleMs / 1000).toFixed(1)}s 동안 새 비디오 프레임 없음 `
           + `(nextSampleTime=${nextSampleTime.toFixed(2)}s / endTime=${endTime.toFixed(2)}s) `
@@ -760,9 +832,14 @@ export async function sampleVideoFramesPlayback({
           : 0;
 
         if (pendingSamples > 0) {
-          const catchUpBudget = Math.min(MAX_CATCHUP_PER_RVFC, pendingSamples);
-          const syncCount = enqueueCatchUp(mediaTime, Math.min(MAX_CAPTURES_SYNC_PER_RVFC, catchUpBudget));
-          if (syncCount < catchUpBudget) {
+          const backlogFill = queue.length / Math.max(1, effectiveMaxQueueLength);
+          const syncCap = backlogFill > 0.55 ? 1 : backlogFill > 0.3 ? 4 : MAX_CAPTURES_SYNC_PER_RVFC;
+          const catchUpBudget = Math.min(
+            backlogFill > 0.45 ? 12 : MAX_CATCHUP_PER_RVFC,
+            pendingSamples,
+          );
+          const syncCount = enqueueCatchUp(mediaTime, Math.min(syncCap, catchUpBudget));
+          if (syncCount < catchUpBudget && backlogFill < 0.5) {
             scheduleDeferredCatchUp(mediaTime, catchUpBudget - syncCount);
           }
         }

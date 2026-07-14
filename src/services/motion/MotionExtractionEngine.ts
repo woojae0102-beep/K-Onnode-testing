@@ -77,9 +77,9 @@ const MAX_WORKER_QUEUE = 45;
 /** Track ID 안정화 — 이 거리(정규화 좌표) 이내면 "같은 사람"으로 간주해 이전 trackId 유지 */
 const TRACK_STABILIZE_POSITION_THRESHOLD = 0.09;
 /** RVFC가 이 시간 이상 멈추면 Coverage 확보 불가로 판단해 즉시 종료 */
-const STALL_TIMEOUT_MS = 8000;
+const STALL_TIMEOUT_MS = 12000;
 /** sampleVideoFramesPlayback() Processing Queue 최대 길이 — 초과 시 Frame Drop */
-const SAMPLER_MAX_QUEUE_LENGTH = 60;
+const SAMPLER_MAX_QUEUE_LENGTH = 40;
 /** Queue 소비(단일 프레임 detect+track+worker dispatch)가 이 시간 이상 걸리면 경고 로그 */
 const PROCESSING_STALL_TIMEOUT_MS = 4000;
 const COVERAGE_CHECKPOINTS = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0];
