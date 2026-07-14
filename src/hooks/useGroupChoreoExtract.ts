@@ -18,6 +18,7 @@ import {
 } from '../services/referenceVideoStore';
 import {
   CHOREO_DEFAULT_SAMPLE_FPS,
+  resolveMinAiReferenceTracks,
 } from '../config/choreoExtractConfig';
 import { buildSkeletonData } from '../utils/skeletonDataUtils';
 import { prepareAnalysisVideo } from '../utils/choreoVideoUtils';
@@ -97,8 +98,8 @@ export function useGroupChoreoExtract() {
       if (!group) return null;
 
       const expected = group.memberCount;
-      const minTracksRequired = expected;
-      setExpectedMemberCount(expected);
+      const minTracksRequired = resolveMinAiReferenceTracks(expected);
+      setExpectedMemberCount(minTracksRequired);
       setInsufficientWarning(null);
 
       const attempt = async (lenient, label, existingDetector) => {
@@ -134,7 +135,7 @@ export function useGroupChoreoExtract() {
 
       if (analysisResult && analysisResult.peakTrackCount < minTracksRequired && !abortRef.current) {
         setStep(
-          `${expected}명 중 ${analysisResult.peakTrackCount}명만 감지됐습니다. 더 정밀하게 재분석합니다...`,
+          `AI 참조 ${minTracksRequired}명 중 ${analysisResult.peakTrackCount}명만 감지됐습니다. 더 정밀하게 재분석합니다...`,
         );
         analysisResult = await attempt(true, '재분석', null);
       } else if (!analysisResult && firstAttemptError && !abortRef.current) {
@@ -255,6 +256,14 @@ export function useGroupChoreoExtract() {
           throw new Error('영상에서 동작을 감지하지 못했습니다. 안무 연습 영상인지 확인하거나 파일을 직접 업로드해 주세요.');
         }
 
+        if (analysisOutcome.analysisResult.memberCountPadded) {
+          setInsufficientWarning({
+            found: analysisOutcome.analysisResult.peakTrackCount ?? analysisOutcome.analysisResult.detectedMemberCount,
+            expected: group.memberCount,
+            padded: true,
+          });
+        }
+
         setProgress(100);
         setStep('분석 완료 — 멤버 매칭을 확인해주세요');
         setIsExtracting(false);
@@ -348,7 +357,8 @@ export function useGroupChoreoExtract() {
         if (outcome?.reason === 'insufficient') {
           setInsufficientWarning({ found: outcome.found, expected: outcome.expected });
           throw new Error(
-            `${outcome.expected}명 중 ${outcome.found}명만 감지됐습니다. 전체 멤버가 보이는 영상을 사용해 주세요.`,
+            `AI 참조 ${outcome.expected}명 중 ${outcome.found}명만 감지됐습니다. `
+            + '선택 멤버를 제외한 다른 멤버가 보이는 영상을 사용해 주세요.',
           );
         }
 

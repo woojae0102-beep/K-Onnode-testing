@@ -81,6 +81,15 @@ export function resolveNumPoses(groupMemberCount: number): number {
   return Math.min(Math.max(target, 10), CHOREO_MAX_POSES_CAP);
 }
 
+/**
+ * 그룹 연습 최소 AI 참조 인원.
+ * 사용자가 선택한 1명은 연습 시 카메라로 대체하므로, 영상에서는 (정원 - 1)명만 있어도 됨.
+ */
+export function resolveMinAiReferenceTracks(groupMemberCount: number): number {
+  const count = Math.max(1, Number(groupMemberCount) || 1);
+  return Math.max(1, count - 1);
+}
+
 export function estimateExtractSeconds(durationSec: number, sampleFps = CHOREO_DEFAULT_SAMPLE_FPS) {
   const d = Number(durationSec);
   if (!Number.isFinite(d) || d <= 0) return 60;

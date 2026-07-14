@@ -31,6 +31,7 @@ import { resolvePracticeDurationSec } from '../../utils/buildPracticeSessionData
 import {
   CHOREO_DEFAULT_SAMPLE_FPS,
   normalizeChoreoSampleFps,
+  resolveMinAiReferenceTracks,
 } from '../../config/choreoExtractConfig';
 
 const DB_NAME = 'onnode_dance_data_v2';
@@ -223,12 +224,13 @@ export async function buildDanceDatabase({
   const mappedAiCount = new Set(
     [...normalizedMap.values()].filter((id) => id && id !== userMemberId),
   ).size;
-  const expectedTotalMemberCount = GROUP_DATA[groupId]?.members.length || analysisResult.detectedMemberCount || 0;
-  if (expectedTotalMemberCount > 0 && analysisResult.detectedMemberCount < expectedTotalMemberCount) {
+  const groupMemberCount = GROUP_DATA[groupId]?.members.length || analysisResult.detectedMemberCount || 0;
+  const minVideoTracks = resolveMinAiReferenceTracks(groupMemberCount);
+  if (groupMemberCount > 0 && analysisResult.detectedMemberCount < minVideoTracks) {
     throw new Error(
-      `Motion Database 생성 차단: 추출 멤버 수 부족 `
-      + `(${analysisResult.detectedMemberCount}/${expectedTotalMemberCount}). `
-      + '전체 멤버가 보이는 영상으로 다시 추출해 주세요.',
+      `Motion Database 생성 차단: AI 참조 인원 부족 `
+      + `(영상 ${analysisResult.detectedMemberCount}명 / 필요 ${minVideoTracks}명, 그룹 ${groupMemberCount}명). `
+      + '선택 멤버를 제외한 다른 멤버가 보이는 안무 영상으로 다시 추출해 주세요.',
     );
   }
   if (mappedAiCount < aiMemberCount) {

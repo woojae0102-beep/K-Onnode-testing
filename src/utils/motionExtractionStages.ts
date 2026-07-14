@@ -128,10 +128,6 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       pipelineDiagnostics.markTimeline(sample.time, 'mediapipe-end');
       pipelineDiagnostics.clearStageProcessing('mediapipe');
       ctx.perfStats.poseDetectionMs = (ctx.perfStats.poseDetectionMs || 0) + mediaPipeDelayMs;
-      if (ctx.memberCountSamples.length < 20) {
-        const valid = ctx.tracker.countValidPoses(results.landmarks || []);
-        if (valid > 0) ctx.memberCountSamples.push(valid);
-      }
       return { ...sample, results, mediaPipeDelayMs };
     },
   });
@@ -183,6 +179,11 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
 
       const visibleCount = framePeople.filter((p: any) => !p.isEstimated).length;
       const estimatedCount = framePeople.filter((p: any) => p.isEstimated).length;
+      if (ctx.memberCountSamples.length < 80) {
+        const rawValid = ctx.tracker.countValidPoses(item.results.landmarks || []);
+        const sample = Math.max(rawValid, visibleCount, framePeople.length);
+        if (sample > 0) ctx.memberCountSamples.push(sample);
+      }
       const avgConfidence = framePeople.length
         ? framePeople.reduce((s: number, p: any) => s + (p.confidence || 0), 0) / framePeople.length
         : 0;

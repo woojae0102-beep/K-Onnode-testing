@@ -178,6 +178,7 @@ export function useSkeletonExtract() {
         const analysisResult = await analyzeFileHolistic({
           file,
           groupId,
+          userMemberId: options.userMemberId,
           video: videoRef.current,
           sampleFps: options.sampleFps,
           modelVariant: options.modelVariant,

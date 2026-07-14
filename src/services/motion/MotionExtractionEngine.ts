@@ -25,6 +25,7 @@ import {
   CHOREO_MEMBER_PROBE_SAMPLES,
   normalizeChoreoPoseModel,
   normalizeChoreoSampleFps,
+  resolveMinAiReferenceTracks,
 } from '../../config/choreoExtractConfig';
 import {
   resolveAnalysisSampleFps,
@@ -309,12 +310,106 @@ function fillMissingMembersFromLastDetected(people, lastDetectedById, expectedMe
   return { people: merged, missingTrackIds };
 }
 
+/** 포메이션 기본 위치에 중립 T-포즈 — 미검출 멤버 슬롯 보간용 */
+function createNeutralPoseAt(cx: number, cy: number) {
+  return {
+    nose: { x: cx, y: cy - 0.12, z: 0, visibility: 0.4, confidence: 0.3 },
+    left_shoulder: { x: cx - 0.06, y: cy - 0.04, z: 0, visibility: 0.4, confidence: 0.3 },
+    right_shoulder: { x: cx + 0.06, y: cy - 0.04, z: 0, visibility: 0.4, confidence: 0.3 },
+    left_elbow: { x: cx - 0.1, y: cy + 0.02, z: 0, visibility: 0.35, confidence: 0.25 },
+    right_elbow: { x: cx + 0.1, y: cy + 0.02, z: 0, visibility: 0.35, confidence: 0.25 },
+    left_wrist: { x: cx - 0.12, y: cy + 0.08, z: 0, visibility: 0.3, confidence: 0.2 },
+    right_wrist: { x: cx + 0.12, y: cy + 0.08, z: 0, visibility: 0.3, confidence: 0.2 },
+    left_hip: { x: cx - 0.04, y: cy + 0.1, z: 0, visibility: 0.4, confidence: 0.3 },
+    right_hip: { x: cx + 0.04, y: cy + 0.1, z: 0, visibility: 0.4, confidence: 0.3 },
+    left_knee: { x: cx - 0.04, y: cy + 0.2, z: 0, visibility: 0.35, confidence: 0.25 },
+    right_knee: { x: cx + 0.04, y: cy + 0.2, z: 0, visibility: 0.35, confidence: 0.25 },
+    left_ankle: { x: cx - 0.05, y: cy + 0.28, z: 0, visibility: 0.3, confidence: 0.2 },
+    right_ankle: { x: cx + 0.05, y: cy + 0.28, z: 0, visibility: 0.3, confidence: 0.2 },
+  };
+}
+
+/** 기존 트랙 위치와 가장 멀리 떨어진 포메이션 멤버 — 미검출 1명 추정 슬롯 */
+function findLeastMatchedFormationMember(group, trackIdToInitialPosition) {
+  const positions = [...trackIdToInitialPosition.values()];
+  if (!group?.members?.length) return null;
+  if (!positions.length) return group.members[0];
+
+  let worst = group.members[0];
+  let worstDist = -1;
+  group.members.forEach((member) => {
+    const minDist = Math.min(...positions.map((p) => {
+      const dx = (p.x || 0) - (member.defaultX || 0.5);
+      const dy = (p.y || 0) - (member.defaultY || 0.5);
+      return dx * dx + dy * dy;
+    }));
+    if (minDist > worstDist) {
+      worstDist = minDist;
+      worst = member;
+    }
+  });
+  return worst;
+}
+
+/**
+ * 영상 전체에서 한 번도 검출되지 않은 멤버 슬롯을 포메이션 기본 위치로 보간.
+ * coverage는 충족했으나 peakTrack이 1명 부족한 경우 추출 완료를 허용한다.
+ */
+function padNeverDetectedMemberSlots(frames, trackIdToInitialPosition, targetTrackCount, group) {
+  const shortfall = targetTrackCount - trackIdToInitialPosition.size;
+  if (shortfall <= 0 || !frames.length || !group) return { padded: 0, trackIdToInitialPosition };
+
+  let padded = 0;
+  const usedTrackIds = new Set([...trackIdToInitialPosition.keys()]);
+
+  for (let slot = 0; slot < shortfall; slot += 1) {
+    let newTrackId = 1;
+    while (usedTrackIds.has(newTrackId)) newTrackId += 1;
+
+    const member = findLeastMatchedFormationMember(group, trackIdToInitialPosition);
+    if (!member) break;
+
+    const cx = member.defaultX ?? 0.5;
+    const cy = member.defaultY ?? 0.5;
+    const placeholderJoints = createNeutralPoseAt(cx, cy);
+
+    trackIdToInitialPosition.set(newTrackId, { x: cx, y: cy });
+    usedTrackIds.add(newTrackId);
+    padded += 1;
+
+    frames.forEach((frame) => {
+      const people = frame.detectedPeople || [];
+      if (people.length >= targetTrackCount) return;
+      if (people.some((p) => p.trackId === newTrackId)) return;
+      people.push({
+        trackId: newTrackId,
+        joints: placeholderJoints,
+        worldJoints: {},
+        confidence: 0.25,
+        isEstimated: true,
+        lastSeenTimestamp: frame.sourceVideoTime ?? frame.timestamp ?? 0,
+      });
+      frame.detectedPeople = people;
+    });
+  }
+
+  return { padded, trackIdToInitialPosition };
+}
+
+/** 허용 가능한 멤버 수 부족 — coverage 충족 시 포메이션 보간으로 추출 계속 */
+function maxTolerableMemberShortfall(expectedMemberCount: number) {
+  if (expectedMemberCount <= 3) return 0;
+  return Math.max(1, Math.floor(expectedMemberCount * 0.2));
+}
+
 export interface RunHolisticAnalysisOptions {
   video: HTMLVideoElement;
   sourceFile?: Blob | File | null;
   groupId: string;
   detector: { detect: (src: unknown) => unknown; close?: () => void };
   expectedMemberCount: number;
+  /** 연습에서 카메라로 대체할 멤버 — 있으면 최소 추적 인원 = 정원 - 1 */
+  userMemberId?: string;
   sampleFps?: number;
   modelVariant?: 'lite' | 'full' | 'heavy';
   minBufferedFrames?: number;
@@ -334,6 +429,7 @@ export async function runHolisticVideoAnalysis({
   groupId,
   detector,
   expectedMemberCount,
+  userMemberId,
   sampleFps: sampleFpsOverride,
   modelVariant = 'lite',
   minBufferedFrames = DEFAULT_FRAME_BUFFER_READY_FRAMES,
@@ -353,6 +449,8 @@ export async function runHolisticVideoAnalysis({
   const { videoWidth, videoHeight, sourceVideoDurationSec, sourceVideoNativeFps } =
     await ensureVideoDimensions(video);
   const sampleFps = normalizeChoreoSampleFps(sampleFpsOverride ?? CHOREO_DEFAULT_SAMPLE_FPS);
+  const minRequiredTracks = resolveMinAiReferenceTracks(expectedMemberCount);
+  const aiReferenceCount = minRequiredTracks;
 
   const tracker = new MultiPersonTracker();
   tracker.setSampleFps(sampleFps);
@@ -444,7 +542,14 @@ export async function runHolisticVideoAnalysis({
   });
 
   onProgress?.(5, 'RVFC 연속 재생 추출 시작...');
-  onDebug?.({ pipelineStage: 'rvfc_playback', sampleFps, nativeFps: sourceVideoNativeFps, expectedMemberCount });
+  onDebug?.({
+    pipelineStage: 'rvfc_playback',
+    sampleFps,
+    nativeFps: sourceVideoNativeFps,
+    expectedMemberCount,
+    aiReferenceCount,
+    userMemberId: userMemberId ?? null,
+  });
 
   const duration = sourceVideoDurationSec;
   if (!duration || duration <= 0) return null;
@@ -574,7 +679,7 @@ export async function runHolisticVideoAnalysis({
     },
     onDecode: (ms) => addMs(perfStats, 'videoDecodeMs', ms),
     onProgress: (pct) => {
-      onProgress?.(Math.max(5, pct), `${expectedMemberCount}명 Holistic 추적 ${pct}%`);
+      onProgress?.(Math.max(5, pct), `AI 참조 ${aiReferenceCount}명 추적 ${pct}%`);
       onDebug?.({ progress: pct, pipelineStage: 'extracting' });
     },
     maxQueueLength: SAMPLER_MAX_QUEUE_LENGTH,
@@ -638,22 +743,7 @@ export async function runHolisticVideoAnalysis({
     unregisterWorkerHealth();
   }
 
-  const detectedMemberCount = (() => {
-    if (!memberCountSamples.length) return 0;
-    const frequency: Record<number, number> = {};
-    memberCountSamples.forEach((c) => {
-      frequency[c] = (frequency[c] || 0) + 1;
-    });
-    const sorted = Object.entries(frequency).sort(([, a], [, b]) => b - a);
-    const mostCommon = parseInt(sorted[0][0], 10);
-    const peak = Math.max(...memberCountSamples);
-    if (expectedMemberCount > 0) {
-      if (peak >= expectedMemberCount) return expectedMemberCount;
-    }
-    return mostCommon;
-  })();
-
-  if (detectedMemberCount === 0 && !frames.length) return null;
+  if (!frames.length) return null;
 
   const coverageReport = calculateTimelineCoverage(frames, analysisDuration);
   logCoverageTable('Motion Extraction Coverage', {
@@ -681,25 +771,86 @@ export async function runHolisticVideoAnalysis({
     );
   }
 
-  const trackIdToInitialPosition = tracker.buildInitialPositions(frames);
-  const peakTrackCount = Math.max(tracker.getPeakTrackCount(), trackIdToInitialPosition.size);
-  const observedTrackCount = Math.max(detectedMemberCount, peakTrackCount, trackIdToInitialPosition.size);
+  let trackIdToInitialPosition = tracker.buildInitialPositions(frames);
+
+  const detectedMemberCount = (() => {
+    const peakFromSamples = memberCountSamples.length ? Math.max(...memberCountSamples) : 0;
+    const peakFromTracker = tracker.getPeakTrackCount();
+    const mappedCount = trackIdToInitialPosition.size;
+    const peak = Math.max(peakFromSamples, peakFromTracker, mappedCount);
+    if (expectedMemberCount > 0 && peak >= expectedMemberCount) return expectedMemberCount;
+    return peak;
+  })();
+
+  if (detectedMemberCount === 0) return null;
+  let peakTrackCount = Math.max(tracker.getPeakTrackCount(), trackIdToInitialPosition.size);
+  let observedTrackCount = Math.max(detectedMemberCount, peakTrackCount, trackIdToInitialPosition.size);
+  let memberCountShortfall = Math.max(0, minRequiredTracks - observedTrackCount);
+  let memberCountPadded = false;
 
   console.table({
     'Motion Member Count': {
-      expectedMemberCount,
+      groupMemberCount: expectedMemberCount,
+      minRequiredAiTracks: minRequiredTracks,
+      userReplacedSlot: userMemberId ?? '(연습 시 카메라)',
+      detectedInVideo: observedTrackCount,
       detectedMemberCount,
       peakTrackCount,
       mappedTrackPositions: trackIdToInitialPosition.size,
-      observedTrackCount,
+      memberCountShortfall,
     },
   });
 
-  if (expectedMemberCount > 0 && observedTrackCount < expectedMemberCount) {
-    throw new Error(
-      `Motion Extraction 멤버 수 부족: expected=${expectedMemberCount}, `
-      + `observed=${observedTrackCount}, detected=${detectedMemberCount}, `
-      + `peakTrack=${peakTrackCount}, mappedTracks=${trackIdToInitialPosition.size}`,
+  const tolerableShortfall = maxTolerableMemberShortfall(minRequiredTracks);
+
+  if (observedTrackCount < minRequiredTracks) {
+    if (
+      coverageReport.coverage >= SKELETON_MIN_TIMELINE_COVERAGE
+      && memberCountShortfall <= tolerableShortfall
+    ) {
+      const padResult = padNeverDetectedMemberSlots(
+        frames,
+        trackIdToInitialPosition,
+        minRequiredTracks,
+        group,
+      );
+      if (padResult.padded > 0) {
+        memberCountPadded = true;
+        trackIdToInitialPosition = padResult.trackIdToInitialPosition;
+        peakTrackCount = Math.max(peakTrackCount, trackIdToInitialPosition.size);
+        observedTrackCount = Math.max(observedTrackCount, trackIdToInitialPosition.size);
+        memberCountShortfall = Math.max(0, minRequiredTracks - observedTrackCount);
+        console.warn(
+          '[MotionExtract] AI 참조 1명 미검출 — coverage 충족, 포메이션 보간 슬롯으로 추출 계속',
+          {
+            groupMemberCount: expectedMemberCount,
+            minRequiredAiTracks: minRequiredTracks,
+            observedBeforePad: detectedMemberCount,
+            peakTrackCount,
+            paddedSlots: padResult.padded,
+            observedAfterPad: observedTrackCount,
+          },
+        );
+      }
+    }
+
+    if (observedTrackCount < minRequiredTracks) {
+      throw new Error(
+        `Motion Extraction AI 참조 인원 부족: 그룹 ${expectedMemberCount}명 중 연습 담당 1명을 제외하고 `
+        + `영상에서 최소 ${minRequiredTracks}명이 필요합니다 `
+        + `(영상에서 감지=${observedTrackCount}, peakTrack=${peakTrackCount}). `
+        + '다른 멤버가 선명히 보이는 안무 영상을 사용해 주세요.',
+      );
+    }
+  } else if (observedTrackCount < expectedMemberCount) {
+    console.info(
+      '[MotionExtract] 선택 멤버 자리는 영상에 없거나 미검출 — 연습 시 카메라로 대체됩니다.',
+      {
+        groupMemberCount: expectedMemberCount,
+        detectedInVideo: observedTrackCount,
+        aiReferenceNeeded: minRequiredTracks,
+        userMemberId: userMemberId ?? null,
+      },
     );
   }
 
@@ -773,6 +924,10 @@ export async function runHolisticVideoAnalysis({
   return {
     detectedMemberCount: observedTrackCount,
     peakTrackCount,
+    minRequiredAiTracks: minRequiredTracks,
+    groupMemberCount: expectedMemberCount,
+    memberCountShortfall: memberCountPadded ? 0 : memberCountShortfall,
+    memberCountPadded,
     frames,
     trackIdToInitialPosition,
     videoWidth,
@@ -827,6 +982,7 @@ export async function loadReferenceVideoMeta(songId: string, videoId: string): P
 export interface AnalyzeFileHolisticOptions {
   file: File;
   groupId: string;
+  userMemberId?: string;
   video?: HTMLVideoElement | null;
   sampleFps?: number;
   modelVariant?: 'lite' | 'full' | 'heavy';
@@ -842,6 +998,7 @@ export interface AnalyzeFileHolisticOptions {
 export async function analyzeFileHolistic({
   file,
   groupId,
+  userMemberId,
   video: videoEl,
   sampleFps,
   modelVariant = 'lite',
@@ -866,7 +1023,12 @@ export async function analyzeFileHolistic({
     await waitForAnalysisVideoReady(video);
 
     onStatus?.('Holistic AI 초기화 (Pose+Hand+Face)...');
-    onDebug?.({ pipelineStage: 'init_models', progress: 5, expectedMemberCount: group.memberCount });
+    onDebug?.({
+      pipelineStage: 'init_models',
+      progress: 5,
+      expectedMemberCount: group.memberCount,
+      aiReferenceCount: resolveMinAiReferenceTracks(group.memberCount),
+    });
 
     const detector = await createHolisticMotionDetector(group.memberCount, onStatus, {
       modelVariant,
@@ -880,6 +1042,7 @@ export async function analyzeFileHolistic({
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
+      userMemberId,
       sampleFps,
       modelVariant,
       minBufferedFrames,
@@ -1138,6 +1301,7 @@ export async function extractMotionDatabase({
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
+      userMemberId,
       sampleFps,
       modelVariant,
       minBufferedFrames,
