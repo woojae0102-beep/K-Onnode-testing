@@ -103,4 +103,11 @@ export interface PracticeSessionData {
   videoHeight?: number;
   /** 60fps 렌더 타임라인 — Practice는 frames[frameIndex] 직접 접근 */
   renderTimeline?: SkeletonRenderTimeline;
+  /** Pre-built Group Mode content (extraction 없음) */
+  groupMotionContent?: import('./groupMotionContent').GroupMotionContent;
+  groupPracticeRuntime?: import('./groupMotionContent').GroupPracticeRuntimeState;
+  contentSource?: import('./groupMotionContent').GroupMotionContentSource;
+  preBuiltContent?: boolean;
+  productionDanceAsset?: import('./productionDanceAsset').ProductionDanceAsset;
+  groupRuntimeActors?: import('./productionDanceAsset').GroupRuntimeActors;
 }

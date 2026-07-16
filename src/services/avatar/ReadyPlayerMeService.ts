@@ -9,10 +9,29 @@ const RPM_SUBDOMAIN = import.meta.env.VITE_RPM_SUBDOMAIN || '';
 const AVATAR_CACHE_DB = 'onnode_avatar_assets_v1';
 const AVATAR_STORE = 'avatars';
 
-const DEFAULT_DEMO_GLBS: Record<string, string> = {
-  default:
-    'https://models.readyplayer.me/64bfa15f0e72fc558b8f1144.glb?meshLod=0&textureAtlas=1024',
-};
+/** 멤버별 시각 구분용 RPM 데모 GLB 풀 (생성 API 미연결 시 사용) */
+const DEMO_GLB_POOL = [
+  'https://models.readyplayer.me/64bfa15f0e72fc558b8f1144.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa1670e72fc558b8f1145.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa1880e72fc558b8f1146.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa1a90e72fc558b8f1147.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa1ca0e72fc558b8f1148.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa1eb0e72fc558b8f1149.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa20c0e72fc558b8f1150.glb?meshLod=0&textureAtlas=1024',
+  'https://models.readyplayer.me/64bfa22d0e72fc558b8f1151.glb?meshLod=0&textureAtlas=1024',
+];
+
+function hashMemberSeed(memberId: string) {
+  let h = 0;
+  for (let i = 0; i < memberId.length; i += 1) {
+    h = (h * 31 + memberId.charCodeAt(i)) >>> 0;
+  }
+  return h;
+}
+
+function pickDemoGlb(memberId: string) {
+  return DEMO_GLB_POOL[hashMemberSeed(memberId) % DEMO_GLB_POOL.length];
+}
 
 function openAvatarDb() {
   if (typeof indexedDB === 'undefined') return Promise.resolve(null);
@@ -37,7 +56,7 @@ export function getReadyPlayerMeAvatarUrl(memberId: string, personaSeed?: string
   if (RPM_SUBDOMAIN && personaSeed) {
     return `https://models.readyplayer.me/${personaSeed}.glb?meshLod=0&textureAtlas=1024`;
   }
-  return DEFAULT_DEMO_GLBS.default;
+  return pickDemoGlb(memberId);
 }
 
 export async function getOrCreateMemberAvatar({

@@ -11,6 +11,10 @@ const HANDLERS = {
   'proxy-video': () => require(path.join(__dirname, '../lib/api-handlers/group/proxy-video')),
   'analyze-formation': () => require(path.join(__dirname, '../lib/api-handlers/group/analyze-formation')),
   'shorts-upload': () => require(path.join(__dirname, '../lib/api-handlers/group/shorts-upload')),
+  'create-motion-content': () => require(path.join(__dirname, '../lib/api-handlers/group/create-motion-content')),
+  deepmotion: () => require(path.join(__dirname, '../lib/api-handlers/group/deepmotion')),
+  'production-dance': () => require(path.join(__dirname, '../lib/api-handlers/group/production-dance')),
+  'avatar-assets': () => require(path.join(__dirname, '../lib/api-handlers/group/avatar-assets')),
 };
 
 function getRouteParts(req) {

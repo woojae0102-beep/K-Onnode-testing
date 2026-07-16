@@ -20,6 +20,8 @@ export interface SkeletonDebugOverlayOptions {
   trackColor: boolean;
   lostTrack: boolean;
   recoveredTrack: boolean;
+  /** false면 isEstimated(보간) 스켈레톤 숨김 — 겹침 완화 */
+  showEstimated: boolean;
 }
 
 export const DEFAULT_OVERLAY_OPTIONS: SkeletonDebugOverlayOptions = {
@@ -31,11 +33,12 @@ export const DEFAULT_OVERLAY_OPTIONS: SkeletonDebugOverlayOptions = {
   bone: true,
   centerPoint: false,
   velocity: false,
-  prediction: true,
-  kalmanPrediction: true,
+  prediction: false,
+  kalmanPrediction: false,
   trackColor: true,
   lostTrack: true,
   recoveredTrack: true,
+  showEstimated: false,
 };
 
 /** 프레임별 통계 — 추출 중 수집 */

@@ -4,7 +4,7 @@ import { getGroupData, GROUP_DATA } from '../data/groupPracticeData';
 import { isDevEnvironment } from '../utils/isDevEnvironment';
 import { downloadSkeletonDebugJson } from '../studio/skeletonDebug/skeletonDebugExport';
 import { getFailureCategoryLabel } from '../studio/skeletonDebug/skeletonDebugFailureAnalyzer';
-import { SkeletonDebugCanvas } from '../studio/skeletonDebug/SkeletonDebugCanvas';
+import { SkeletonDebugCanvas } from '../studio/skeletonDebug/render/SkeletonDebugCanvas';
 import { SkeletonDebugDiagnosticsPanel } from '../studio/skeletonDebug/SkeletonDebugDiagnosticsPanel';
 import { SkeletonDebugOverlayToggles } from '../studio/skeletonDebug/SkeletonDebugOverlayToggles';
 import { SkeletonDebugPlayerControls } from '../studio/skeletonDebug/SkeletonDebugPlayerControls';
@@ -15,29 +15,32 @@ import { LiveAnalysisBadge, LiveAnalysisStatusBar } from '../studio/skeletonDebu
 
 const GROUP_OPTIONS = Object.keys(GROUP_DATA);
 
+const EMPTY_TRACK_HISTORY: import('../studio/skeletonDebug/types').TrackHistoryEntry[] = [];
+
 export default function SkeletonDebugStudioView({ onNavigate }) {
   const videoInputRef = useRef<HTMLInputElement>(null);
   const jsonInputRef = useRef<HTMLInputElement>(null);
   const [groupId, setGroupId] = useState('blackpink');
   const [userMemberId, setUserMemberId] = useState('jennie');
-  const [analysisTab, setAnalysisTab] = useState('pipeline');
+  const [analysisTab, setAnalysisTab] = useState('mediapipe_raw');
 
   const {
     videoRef,
+    extractionVideoRef,
     session,
+    extractionPreviewUrl,
     isExtracting,
     progress,
     step,
     error,
     currentFrameIndex,
-    currentFrame,
-    prevFrame,
     currentFrameStat,
     totalFrames,
     isPlaying,
     playbackSpeed,
     overlay,
     liveDiagnostics,
+    renderMetrics,
     failureAnalysis,
     analysisPackage,
     currentFrameAnalysis,
@@ -45,6 +48,14 @@ export default function SkeletonDebugStudioView({ onNavigate }) {
     trackIds,
     isLive,
     liveState,
+    timelineStore,
+    playbackMode,
+    hasPlaybackTimeline,
+    playbackTimeSec,
+    durationSec: sessionDurationSec,
+    overlayRef,
+    virtualVideoTimeRef,
+    handleRenderFrameIndex,
     setOverlay,
     runExtraction,
     loadReplayJson,
@@ -57,8 +68,6 @@ export default function SkeletonDebugStudioView({ onNavigate }) {
   } = useSkeletonDebugSession();
 
   const group = getGroupData(groupId);
-  const videoW = session?.analysisResult?.videoWidth ?? 1280;
-  const videoH = session?.analysisResult?.videoHeight ?? 720;
   const hasSession = Boolean(session?.analysisResult?.frames?.length);
   const isReplay = session?.mode === 'replay';
 
@@ -101,6 +110,21 @@ export default function SkeletonDebugStudioView({ onNavigate }) {
         gap: 10,
       }}
     >
+      {/* RVFC 추출 전용 — DOM에만 존재, 화면 미표시 */}
+      <video
+        ref={extractionVideoRef}
+        muted
+        playsInline
+        aria-hidden
+        style={{
+          position: 'fixed',
+          width: 2,
+          height: 2,
+          opacity: 0,
+          pointerEvents: 'none',
+          zIndex: -1,
+        }}
+      />
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
         <div>
@@ -195,33 +219,45 @@ export default function SkeletonDebugStudioView({ onNavigate }) {
         <div style={panelStyle}>
           <div style={panelLabel}>원본 영상</div>
           <div style={{ position: 'relative', flex: 1, background: '#000', borderRadius: 8, overflow: 'hidden' }}>
-            {session?.videoUrl ? (
-              <video
-                ref={videoRef}
-                src={session.videoUrl}
-                muted
-                playsInline
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            ) : (
+            <video
+              ref={videoRef}
+              src={session?.videoUrl ?? extractionPreviewUrl ?? undefined}
+              muted
+              playsInline
+              preload="auto"
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'contain',
+                display: isExtracting || session?.videoUrl || extractionPreviewUrl ? 'block' : 'none',
+              }}
+            />
+            {!isExtracting && !session?.videoUrl && !extractionPreviewUrl ? (
               <div style={placeholderStyle}>
                 {isReplay ? 'Replay 모드 — 원본 영상 없음' : '영상 업로드 대기'}
               </div>
-            )}
+            ) : null}
           </div>
         </div>
 
         {/* Skeleton overlay */}
         <div style={panelStyle}>
-          <div style={panelLabel}>Skeleton Overlay</div>
+          <div style={panelLabel}>
+            Skeleton Overlay
+            {playbackMode === 'PLAYBACK' ? ' · PLAYBACK' : playbackMode === 'ANALYSIS_COMPLETE' ? ' · READY' : ''}
+          </div>
           <SkeletonDebugCanvas
-            frame={currentFrame}
-            prevFrame={prevFrame}
-            videoWidth={videoW}
-            videoHeight={videoH}
-            overlay={overlay}
-            trackHistory={session?.trackHistory ?? []}
-            frameIndex={currentFrameIndex}
+            videoRef={videoRef}
+            timelineStore={timelineStore}
+            overlayRef={overlayRef}
+            trackHistory={session?.trackHistory ?? EMPTY_TRACK_HISTORY}
+            playbackMode={playbackMode}
+            isPlaying={isPlaying}
+            showVideoBackground={Boolean(session?.videoUrl)}
+            durationSec={sessionDurationSec}
+            fallbackVideoTimeRef={virtualVideoTimeRef}
+            videoFps={session?.analysisResult?.sourceVideoNativeFps ?? liveDiagnostics?.videoFps ?? 0}
+            onRenderFrameIndex={handleRenderFrameIndex}
           />
         </div>
 
@@ -255,6 +291,8 @@ export default function SkeletonDebugStudioView({ onNavigate }) {
         live={liveDiagnostics}
         frameStat={currentFrameStat}
         isExtracting={isExtracting}
+        playbackMode={playbackMode}
+        renderMetrics={renderMetrics}
       />
 
       {/* Overlay toggles */}
@@ -267,12 +305,15 @@ export default function SkeletonDebugStudioView({ onNavigate }) {
         frameStat={currentFrameStat}
         isPlaying={isPlaying}
         playbackSpeed={playbackSpeed}
+        playbackMode={playbackMode}
+        playbackTimeSec={playbackTimeSec}
+        durationSec={sessionDurationSec}
         onFrameChange={seekToFrame}
         onPlayPause={togglePlay}
         onSpeedChange={setPlaybackSpeed}
         onPrev={goPrev}
         onNext={goNext}
-        disabled={!hasSession}
+        disabled={!hasPlaybackTimeline}
       />
 
       {/* Track history */}

@@ -10,6 +10,8 @@
     "preview": "vite preview",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
+    "test:render": "npx --yes tsx scripts/verify-skeleton-render.ts",
+    "generate:choreography-stubs": "npx --yes tsx scripts/generate-choreography-stubs.ts",
     "scheduler:social": "node scripts/social-token-scheduler.cjs",
     "scheduler:knowledge": "node scripts/trainer-knowledge-scheduler.cjs",
     "collect:knowledge": "node -e \"require('./scripts/trainer-knowledge-scheduler.cjs').collectTrainerKnowledge().catch((e)=>{console.error(e);process.exit(1)})\"",

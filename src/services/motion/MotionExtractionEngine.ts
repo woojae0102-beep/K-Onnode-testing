@@ -64,6 +64,7 @@ import {
 import { associateHolisticLandmarksToPeople } from '../../utils/holisticLandmarkUtils';
 import { timeSecToBeat, timeSecToBeatIndex } from '../../utils/frameMetadataUtils';
 import { computeMemberHipCenter } from '../rendering/SkeletonFormationRender';
+import { guardGroupModeNoExtraction } from '../group/groupModeRuntimeGuard';
 import {
   buildSkeletonData,
   calculateTimelineCoverage,
@@ -100,7 +101,10 @@ function withTimeout(promise, ms, message) {
   ]);
 }
 
-function detectHolistic(detector, source, timestampMs = 0) {
+function detectHolistic(detector, source, timestampMs = 0, imagePerFrame = false) {
+  if (imagePerFrame && typeof detector.detect === 'function') {
+    return detector.detect(source);
+  }
   if (typeof detector.detectForVideo === 'function') {
     return detector.detectForVideo(source, timestampMs);
   }
@@ -290,6 +294,10 @@ function stabilizeTrackIds(people, prevPeopleById, positionThreshold = TRACK_STA
   return { people: stabilized, changes };
 }
 
+/** fillMissingMembers — 유령 스켈레톤 겹침 방지 */
+const FILL_OVERLAP_MIN_DIST = 0.07;
+const FILL_MAX_STALE_SEC = 3;
+
 /**
  * Group Skeleton 개수 유지 — expectedMemberCount보다 적게 검출된 경우
  * lastDetectedPeople(trackId별 최신 관측)에서 누락 멤버를 보간해 채운다.
@@ -298,17 +306,38 @@ function fillMissingMembersFromLastDetected(people, lastDetectedById, expectedMe
   const present = new Set((people || []).map((p) => p.trackId));
   const merged = [...(people || [])];
   const missingTrackIds = [];
+  const visibleCount = merged.filter((p) => !p.isEstimated).length;
+  const maxFill = expectedMemberCount > 0
+    ? Math.max(0, expectedMemberCount - visibleCount)
+    : Infinity;
+  let filled = 0;
 
   if (lastDetectedById?.size) {
     lastDetectedById.forEach((lastPerson, trackId) => {
       if (present.has(trackId)) return;
       if (expectedMemberCount > 0 && merged.length >= expectedMemberCount) return;
+      if (filled >= maxFill) return;
+
+      const lastSeen = lastPerson.lastSeenTimestamp ?? timestamp;
+      if (timestamp - lastSeen > FILL_MAX_STALE_SEC) return;
+
+      const hip = computeMemberHipCenter(lastPerson.joints);
+      if (hip) {
+        const overlapsVisible = merged.some((p) => {
+          if (p.isEstimated) return false;
+          const other = computeMemberHipCenter(p.joints);
+          return other && Math.hypot(hip.x - other.x, hip.y - other.y) < FILL_OVERLAP_MIN_DIST;
+        });
+        if (overlapsVisible) return;
+      }
+
       merged.push({
         ...lastPerson,
         isEstimated: true,
         lastSeenTimestamp: timestamp,
       });
       missingTrackIds.push(trackId);
+      filled += 1;
     });
   }
 
@@ -410,6 +439,17 @@ function maxTolerableMemberShortfall(expectedMemberCount: number) {
 export interface RunHolisticAnalysisOptions {
   video: HTMLVideoElement;
   sourceFile?: Blob | File | null;
+  /** true면 WebCodecs를 건너뛰고 RVFC(HTMLVideo)만 사용 — Skeleton Studio 등 */
+  forceRvfc?: boolean;
+  /** RVFC stall 허용 시간(ms) — 긴 영상·느린 MediaPipe 시 기본값보다 크게 */
+  stallTimeoutMs?: number;
+  /** 프레임마다 IMAGE detect() — VIDEO temporal tracking 혼선 완화 (Studio) */
+  imageDetectPerFrame?: boolean;
+  /** 탭 비활성 시 pause-resume (Studio) */
+  hiddenTabPolicy?: 'fail-fast' | 'pause-resume';
+  onTabVisibilityPause?: (paused: boolean, hiddenMs: number) => void;
+  /** lenient MediaPipe confidence */
+  lenient?: boolean;
   groupId: string;
   detector: { detect: (src: unknown) => unknown; close?: () => void };
   expectedMemberCount: number;
@@ -431,6 +471,12 @@ export interface RunHolisticAnalysisOptions {
 export async function runHolisticVideoAnalysis({
   video,
   sourceFile = null,
+  forceRvfc = false,
+  stallTimeoutMs: stallTimeoutOverride,
+  imageDetectPerFrame = false,
+  hiddenTabPolicy,
+  onTabVisibilityPause,
+  lenient = false,
   groupId,
   detector,
   expectedMemberCount,
@@ -546,7 +592,7 @@ export async function runHolisticVideoAnalysis({
     sampleFps,
   });
 
-  onProgress?.(5, 'RVFC 연속 재생 추출 시작...');
+  onProgress?.(5, forceRvfc ? 'RVFC 연속 재생 추출 시작...' : '프레임 추출 시작...');
   onDebug?.({
     pipelineStage: 'rvfc_playback',
     sampleFps,
@@ -663,7 +709,8 @@ export async function runHolisticVideoAnalysis({
     rcaSession,
     stabilizeTrackIds,
     fillMissingMembersFromLastDetected,
-    detectHolistic,
+    detectHolistic: (d, src, ts) => detectHolistic(d, src, ts, imageDetectPerFrame),
+    imageDetectPerFrame,
   };
 
   const motionPipeline = createMotionExtractionPipeline(pipelineCtx);
@@ -675,10 +722,13 @@ export async function runHolisticVideoAnalysis({
     await sampleVideoFrames({
     video,
     sourceFile,
+    forceRvfc,
     sampleFps,
     maxDuration: analysisDuration,
     abortRef,
-    stallTimeoutMs: STALL_TIMEOUT_MS,
+    stallTimeoutMs: stallTimeoutOverride ?? STALL_TIMEOUT_MS,
+    hiddenTabPolicy: hiddenTabPolicy ?? (forceRvfc ? 'pause-resume' : 'fail-fast'),
+    onTabVisibilityPause,
     onStall: (info) => {
       // rvfc_idle — 디코더 정지, Coverage 확보 불가로 확정되어 즉시 종료됨 (치명적).
       // processing_delay — Queue 소비(detect+track+worker)가 느릴 뿐, RVFC는 계속 진행 중 (경고).
@@ -757,9 +807,9 @@ export async function runHolisticVideoAnalysis({
         memoryMb: bytesToMb(heapTracker.getStats().latestBytes),
       };
     },
-    onSample: (sample) => {
+    onSample: async (sample) => {
       if (abortRef?.current) return;
-      motionPipeline.ingress({
+      await motionPipeline.ingressAndWait({
         time: sample.time,
         mediaTime: sample.mediaTime,
         source: sample.source,
@@ -1042,6 +1092,18 @@ export interface AnalyzeFileHolisticOptions {
   sampleFps?: number;
   modelVariant?: 'lite' | 'full' | 'heavy';
   minBufferedFrames?: number;
+  /** true면 WebCodecs를 건너뛰고 RVFC만 사용 (Skeleton Debug Studio 권장) */
+  forceRvfc?: boolean;
+  /** 실패 후에도 video blob URL 유지 (Studio 미리보기) */
+  retainVideoObjectUrl?: boolean;
+  /** RVFC stall 허용 시간(ms) */
+  stallTimeoutMs?: number;
+  /** lenient MediaPipe confidence (다인원·등 돌린 포즈) */
+  lenient?: boolean;
+  /** 프레임마다 IMAGE detect — Studio 다인원 검출 개선 */
+  imageDetectPerFrame?: boolean;
+  hiddenTabPolicy?: 'fail-fast' | 'pause-resume';
+  onTabVisibilityPause?: (paused: boolean, hiddenMs: number) => void;
   onFrameBufferReady?: (payload: { bufferedCount: number; minBufferedFrames: number }) => void;
   onStatus?: (msg: string) => void;
   onProgress?: (pct: number) => void;
@@ -1066,7 +1128,15 @@ export async function analyzeFileHolistic({
   onDebug,
   onFrameDetected,
   abortRef,
+  forceRvfc = false,
+  retainVideoObjectUrl = false,
+  stallTimeoutMs,
+  lenient = false,
+  imageDetectPerFrame = false,
+  hiddenTabPolicy,
+  onTabVisibilityPause,
 }: AnalyzeFileHolisticOptions): Promise<AnalysisResult> {
+  guardGroupModeNoExtraction('MotionExtractionEngine.analyzeFileHolistic');
   const group = getGroupData(groupId);
   if (!group || !file) throw new Error('그룹 또는 영상 파일이 없습니다.');
 
@@ -1074,8 +1144,10 @@ export async function analyzeFileHolistic({
   const ownsVideo = !videoEl;
   video.muted = true;
   video.playsInline = true;
-  const objectUrl = URL.createObjectURL(file);
-  video.src = objectUrl;
+  const existingBlobUrl = video.src?.startsWith('blob:') ? video.src : '';
+  const objectUrl = existingBlobUrl || URL.createObjectURL(file);
+  const ownsObjectUrl = !existingBlobUrl;
+  if (!existingBlobUrl) video.src = objectUrl;
 
   try {
     await waitForAnalysisVideoReady(video);
@@ -1089,14 +1161,21 @@ export async function analyzeFileHolistic({
     });
 
     const detector = await createHolisticMotionDetector(group.memberCount, onStatus, {
+      lenient: lenient || forceRvfc,
       modelVariant,
-      runningMode: 'VIDEO',
+      runningMode: imageDetectPerFrame || forceRvfc ? 'IMAGE' : 'VIDEO',
     });
     if (abortRef?.current) throw new Error('추출이 취소되었습니다.');
 
     const analysisResult = await runHolisticVideoAnalysis({
       video,
       sourceFile: file,
+      forceRvfc,
+      stallTimeoutMs,
+      lenient: lenient || forceRvfc,
+      imageDetectPerFrame: imageDetectPerFrame || forceRvfc,
+      hiddenTabPolicy,
+      onTabVisibilityPause,
       groupId,
       detector,
       expectedMemberCount: group.memberCount,
@@ -1124,8 +1203,10 @@ export async function analyzeFileHolistic({
     onStatus?.('분석 완료 — 멤버 매칭을 확인해 주세요');
     return analysisResult;
   } finally {
-    URL.revokeObjectURL(objectUrl);
-    if (ownsVideo) video.src = '';
+    if (!retainVideoObjectUrl && ownsObjectUrl) {
+      URL.revokeObjectURL(objectUrl);
+      if (ownsVideo) video.src = '';
+    }
   }
 }
 

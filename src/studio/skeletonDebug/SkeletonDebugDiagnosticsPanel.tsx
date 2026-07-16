@@ -2,6 +2,8 @@
 import React from 'react';
 import type { SkeletonDebugLiveDiagnostics } from './types';
 import type { SkeletonDebugFrameStat } from './types';
+import type { PlaybackMetrics } from './render/skeletonTimelineStore';
+import type { SkeletonPlaybackMode } from './render/skeletonPlaybackEngine';
 
 const ROW: React.CSSProperties = {
   display: 'flex',
@@ -16,7 +18,7 @@ function Row({ label, value, highlight }: { label: string; value: React.ReactNod
   return (
     <div style={ROW}>
       <span style={{ color: 'rgba(255,255,255,0.45)' }}>{label}</span>
-      <span style={{ color: highlight ? '#FFD700' : 'rgba(255,255,255,0.92)', textAlign: 'right' }}>
+      <span style={{ color: highlight ? '#FFD700' : 'rgba(255,255,255,0.92)', textAlign: 'right', flexShrink: 0, minWidth: 72 }}>
         {value}
       </span>
     </div>
@@ -27,13 +29,18 @@ export function SkeletonDebugDiagnosticsPanel({
   live,
   frameStat,
   isExtracting,
+  playbackMode,
+  renderMetrics,
 }: {
   live: SkeletonDebugLiveDiagnostics;
   frameStat: SkeletonDebugFrameStat | null;
   isExtracting: boolean;
+  playbackMode: SkeletonPlaybackMode;
+  renderMetrics?: PlaybackMetrics | null;
 }) {
   const d = live || {};
   const f = frameStat;
+  const r = renderMetrics;
 
   return (
     <div
@@ -54,6 +61,23 @@ export function SkeletonDebugDiagnosticsPanel({
         DEBUG PANEL
       </div>
 
+      <Section title="Playback">
+        <Row label="Playback Mode" value={playbackMode} highlight />
+        <Row label="Playback Time" value={r ? `${r.playbackTime.toFixed(3)}s` : '—'} highlight />
+        <Row label="Video Time" value={r ? `${r.videoTime.toFixed(3)}s` : '—'} />
+        <Row label="Previous Frame" value={r ? `${r.previousFrameTime.toFixed(3)}s` : '—'} />
+        <Row label="Next Frame" value={r ? `${r.nextFrameTime.toFixed(3)}s` : '—'} />
+        <Row label="Interpolation α" value={r ? r.interpolationAlpha.toFixed(3) : '—'} highlight={Boolean(r && r.interpolationAlpha > 0 && r.interpolationAlpha < 1)} />
+        <Row label="Frame Gap" value={r ? `${r.frameGapSec.toFixed(3)}s` : '—'} highlight={Boolean(r && r.frameGapSec > 1)} />
+        <Row label="Render Status" value={r?.renderStatus ?? (isExtracting ? 'ANALYZING_DISABLED' : 'NO_DATA')} highlight />
+        <Row label="Skeleton Data FPS" value={r ? r.skeletonDataFps.toFixed(2) : '—'} />
+        <Row label="Video FPS" value={r ? r.videoFps.toFixed(2) : (d.videoFps ?? d.nativeFps ?? 0).toFixed(2)} />
+        <Row label="Render FPS" value={r ? r.renderFps.toFixed(1) : '—'} highlight={Boolean(r && r.renderFps >= 30)} />
+        <Row label="Playback Source" value={r?.playbackSource ?? 'NONE'} highlight={r?.playbackSource === 'STORED_SKELETON_TIMELINE'} />
+        <Row label="Timeline Frames" value={r?.timelineFrameCount ?? 0} />
+        <Row label="Max Gap" value={r ? `${r.maxGapSec.toFixed(3)}s` : '—'} highlight={Boolean(r && r.maxGapSec > 1)} />
+      </Section>
+
       <Section title="Frame">
         <Row label="Frame" value={f ? `#${f.frameIndex}` : '—'} />
         <Row label="Timestamp" value={f ? `${f.timestamp.toFixed(3)}s` : '—'} />
@@ -61,44 +85,21 @@ export function SkeletonDebugDiagnosticsPanel({
         <Row label="Detected" value={f?.detected ?? d.rawPoseCount ?? '—'} />
         <Row label="Tracked" value={f?.tracked ?? d.trackedCount ?? '—'} />
         <Row label="Visible" value={f?.visible ?? d.visibleCount ?? '—'} />
-        <Row label="Peak Track" value={d.expectedMemberCount ? `exp ${d.expectedMemberCount}` : '—'} />
         <Row label="Track IDs" value={f?.trackingIds?.join(', ') || d.trackingIds?.join(', ') || '—'} />
-        <Row label="Confidence" value={f ? f.confidence.toFixed(3) : (d.avgConfidence?.toFixed(3) ?? '—')} />
-        <Row label="Pose Quality" value={f?.poseQuality != null ? f.poseQuality.toFixed(3) : (d.poseQuality?.toFixed(3) ?? '—')} />
       </Section>
 
       <Section title="Pipeline">
         <Row label="Stage" value={f?.pipelineStage ?? d.pipelineStage ?? (isExtracting ? 'extracting' : 'idle')} highlight />
         <Row label="Queue Size" value={f?.queueLength ?? d.queueLength ?? 0} highlight={(f?.queueLength ?? d.queueLength ?? 0) > 20} />
-        <Row label="Dropped Frame" value={f?.droppedFrames ?? d.droppedFrames ?? 0} highlight={(f?.droppedFrames ?? 0) > 0} />
         <Row label="Worker Queue" value={f?.workerQueue ?? d.workerQueue ?? 0} highlight={(f?.workerQueue ?? 0) > 20} />
         <Row label="Processing Delay" value={`${(d.processingDelay ?? f?.processingMs ?? 0).toFixed(1)}ms`} />
-        <Row label="Avg Processing" value={`${(d.averageProcessingTimeMs ?? 0).toFixed(1)}ms`} />
         <Row label="MediaPipe Delay" value={`${(f?.mediaPipeDelayMs ?? d.mediaPipeDelay ?? 0).toFixed(1)}ms`} />
+        <Row label="MediaPipe FPS" value={(d.mediaPipeFps ?? 0).toFixed(1)} />
       </Section>
 
       <Section title="RVFC">
-        <Row label="Schedule Count" value={d.rvfcScheduleCount ?? 0} />
-        <Row label="Callback Count" value={d.rvfcCallbackCount ?? 0} />
         <Row label="RVFC FPS" value={(d.rvfcFps ?? 0).toFixed(1)} />
-        <Row label="Status" value={d.pipelineStage?.includes('stall') ? 'STALL' : 'active'} highlight={d.pipelineStage?.includes('stall')} />
-      </Section>
-
-      <Section title="Worker">
-        <Row label="Busy" value={d.workerBusy ? 'YES' : 'NO'} highlight={d.workerBusy} />
-        <Row label="Idle" value={d.workerIdle ? 'YES' : 'NO'} />
-        <Row label="Restart" value={d.workerRestartCount ?? 0} highlight={(d.workerRestartCount ?? 0) > 0} />
-        <Row label="Worker Delay" value={`${(d.workerDelay ?? 0).toFixed(1)}ms`} />
-        <Row label="Worker Mem" value={d.workerMemoryMb != null ? `${d.workerMemoryMb.toFixed(1)}MB` : 'n/a'} />
-      </Section>
-
-      <Section title="FPS / Memory">
-        <Row label="Current FPS" value={(d.measuredFps ?? 0).toFixed(1)} />
-        <Row label="Video FPS" value={(d.videoFps ?? d.nativeFps ?? 0).toFixed(1)} />
-        <Row label="MediaPipe FPS" value={(d.mediaPipeFps ?? 0).toFixed(1)} />
-        <Row label="Tracking FPS" value={(d.trackingFps ?? d.measuredFps ?? 0).toFixed(1)} />
-        <Row label="Peak Heap" value={d.peakHeapMb != null ? `${d.peakHeapMb.toFixed(1)}MB` : 'n/a'} />
-        <Row label="Frame Buffer" value={d.frameBufferMemoryMb != null ? `${d.frameBufferMemoryMb.toFixed(1)}MB` : 'n/a'} />
+        <Row label="Decode Path" value={d.decodePath ?? 'unknown'} />
       </Section>
     </div>
   );

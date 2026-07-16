@@ -2,6 +2,13 @@
 import React, { useMemo } from 'react';
 import type { FrameAnalysisSnapshot, SkeletonAnalysisPackage } from '../analysis/analysisTypes';
 import { LivePerformanceChart, LiveRcaLog } from '../live/LiveAnalysisUI';
+import {
+  MediaPipeRawInspectorPanel,
+  PipelineFlowChartPanel,
+  PipelineRemovalPanel,
+  MediaPipeTimingPanel,
+  PipelineLossReportPanel,
+} from '../mediapipe/MediaPipeRawInspectorPanels';
 
 const ROW: React.CSSProperties = {
   display: 'flex',
@@ -156,6 +163,9 @@ export function MotionQualityPanel({ frame }: { frame: FrameAnalysisSnapshot | n
 
 export function PerformanceInspectorPanel({ frame }: { frame: FrameAnalysisSnapshot | null }) {
   if (!frame) return <Empty msg="프레임을 선택하세요" />;
+  if (frame.mediaPipeRaw?.timing) {
+    return <MediaPipeTimingPanel frame={frame} />;
+  }
   const p = frame.performance;
   const max = Math.max(p.mediaPipeMs, p.trackingMs, p.hungarianMs, p.kalmanMs, p.workerMs, 1);
   const bars = [
@@ -329,6 +339,10 @@ export function TrackLifecyclePanel({ pkg }: { pkg: SkeletonAnalysisPackage | nu
 }
 
 const TABS = [
+  { id: 'mediapipe_raw', label: 'MP Raw' },
+  { id: 'mp_flow', label: 'MP Flow' },
+  { id: 'mp_loss', label: 'Loss' },
+  { id: 'mp_removals', label: 'Removals' },
   { id: 'pipeline', label: 'Pipeline' },
   { id: 'rca', label: 'Frame RCA' },
   { id: 'persons', label: 'Persons' },
@@ -385,8 +399,12 @@ export function AnalysisStudioSidebar({
         ))}
       </div>
       <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
+        {activeTab === 'mediapipe_raw' && <MediaPipeRawInspectorPanel frame={frameAnalysis} />}
+        {activeTab === 'mp_flow' && <PipelineFlowChartPanel frame={frameAnalysis} />}
+        {activeTab === 'mp_loss' && <PipelineLossReportPanel frame={frameAnalysis} />}
         {activeTab === 'pipeline' && <PipelineInspectorPanel frame={frameAnalysis} />}
         {activeTab === 'rca' && <FrameRcaPanel frame={frameAnalysis} />}
+        {activeTab === 'mp_removals' && <PipelineRemovalPanel frame={frameAnalysis} />}
         {activeTab === 'persons' && <MultiPersonInspectorPanel frame={frameAnalysis} />}
         {activeTab === 'hungarian' && <HungarianInspectorPanel frame={frameAnalysis} />}
         {activeTab === 'kalman' && <KalmanInspectorPanel frame={frameAnalysis} />}

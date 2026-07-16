@@ -14,6 +14,7 @@ const TOGGLE_ITEMS: Array<{ key: keyof SkeletonDebugOverlayOptions; label: strin
   { key: 'prediction', label: 'Prediction' },
   { key: 'kalmanPrediction', label: 'Kalman Prediction' },
   { key: 'trackColor', label: 'Track Color' },
+  { key: 'showEstimated', label: 'Estimated' },
   { key: 'lostTrack', label: 'Lost Track' },
   { key: 'recoveredTrack', label: 'Recovered Track' },
 ];

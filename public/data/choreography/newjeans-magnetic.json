@@ -1,0 +1,5508 @@
+{
+  "meta": {
+    "groupId": "newjeans",
+    "songId": "magnetic",
+    "title": "Magnetic",
+    "bpm": 110,
+    "durationSec": 30,
+    "formation": "scattered",
+    "fps": 10,
+    "version": "2",
+    "preserveVideoFormation": true,
+    "stub": true
+  },
+  "members": [
+    {
+      "memberId": "minji",
+      "displayName": "Minji",
+      "displayNameKr": "민지",
+      "persona": {
+        "styleId": "minji",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#FF6348",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.2,
+        "y": 0.4,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "hanni",
+      "displayName": "Hanni",
+      "displayNameKr": "하니",
+      "persona": {
+        "styleId": "hanni",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#FF1F8E",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.4,
+        "y": 0.35,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "danielle",
+      "displayName": "Danielle",
+      "displayNameKr": "다니엘",
+      "persona": {
+        "styleId": "danielle",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#FFD700",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.6,
+        "y": 0.35,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "haerin",
+      "displayName": "Haerin",
+      "displayNameKr": "해린",
+      "persona": {
+        "styleId": "haerin",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#A78BFA",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.8,
+        "y": 0.4,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "hyein",
+      "displayName": "Hyein",
+      "displayNameKr": "혜인",
+      "persona": {
+        "styleId": "hyein",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#6EE7B7",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.5,
+        "y": 0.65,
+        "z": 0
+      }
+    }
+  ],
+  "frames": [
+    {
+      "timestamp": 0,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.32397338661590125,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.38397338661590125,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.37602661338409876,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.277788366846173,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.33778836684617297,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.32221163315382695,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2812928494679007,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.34129284946790067,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.31870715053209925,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3343471218179905,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3943471218179905,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.36565287818200953,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5795885107720842,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6395885107720841,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6204114892279159,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 1.0344827586206897,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3279619045713906,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.38796190457139057,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.37203809542860944,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2814481593164073,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3414481593164073,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3185518406835926,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2844780120762348,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3444780120762348,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3155219879237651,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33693067218259193,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3969306721825919,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3630693278174081,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5830281722918205,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6430281722918204,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6169718277081796,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 2.0689655172413794,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.33160244909165315,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.39160244909165315,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.36839755090834686,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2846076122901514,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3446076122901514,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3153923877098485,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2870304160836276,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3470304160836276,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3129695839163723,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33877427093043533,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3987742709304353,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3612257290695647,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5858984401662977,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6458984401662976,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6141015598337024,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 3.103448275862069,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.33473591091188276,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.39473591091188276,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.36526408908811725,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.28712864251171516,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.34712864251171516,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.31287135748828476,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2888385091871627,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3488385091871627,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3111614908128372,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33979734394967154,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.39979734394967154,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3602026560503285,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5880738699163275,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6480738699163274,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6119261300836726,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 4.137931034482759,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3372253427145173,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3972253427145173,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3627746572854827,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.28890106886317113,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3489010688631711,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3110989311368288,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.28982326904202227,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.34982326904202227,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.31017673095797765,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33995517804011094,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.39995517804011094,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.36004482195988907,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5894593848229637,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6494593848229636,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6105406151770364,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 5.172413793103448,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3389619443841625,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3989619443841625,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3610380556158375,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2898474278079154,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3498474278079154,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.31015257219208453,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.28994165691714696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.34994165691714696,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.31005834308285296,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33924087509462936,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.39924087509462935,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.36075912490537065,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.589994431236348,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6499944312363479,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6100055687636521,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 6.206896551724138,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3398698180947155,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.39986981809471556,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.36013018190528445,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.28992635891892854,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.34992635891892854,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3100736410810714,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2891884986943057,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3491884986943057,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.31081150130569424,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33768565357955016,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.39768565357955016,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.36231434642044985,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.589655625060778,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6496556250607779,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6103443749392221,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 7.241379310344828,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3399092854085638,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3999092854085638,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3600907145914362,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2891344125279059,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3491344125279059,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.31086558747209403,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2875967110018908,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3475967110018908,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3124032889981091,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3353574841378631,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3953574841378631,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3646425158621369,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5884577737518986,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6484577737518985,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6115422262481015,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 8.275862068965518,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.33907862141470696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.39907862141470696,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.36092137858529305,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.28750620049231546,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.34750620049231545,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.31249379950768447,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.28523586260030565,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.34523586260030564,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3147641373996943,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.33235811894596634,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.39235811894596634,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.36764188105403367,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.586453229159836,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6464532291598359,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6135467708401641,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 9.310344827586206,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.33741413011564464,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.39741413011564464,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.36258586988435537,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2851128834911408,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3451128834911408,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.31488711650885914,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.28220913389330693,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3422091338933069,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.317790866106693,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.32881864465529687,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.38881864465529686,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.37118135534470315,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5837295995021355,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6437295995021355,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6162704004978645,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 10.344827586206897,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3349885577682613,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.39498855776826125,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.36501144223173876,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2820590609617424,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3420590609617424,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.31794093903825754,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.27864880744924625,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.33864880744924625,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3213511925507537,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3248937532766389,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3848937532766389,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3751062467233611,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5804059204642639,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6404059204642638,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6195940795357362,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 11.379310344827585,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.331907913523325,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.391907913523325,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.368092086476675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2784781996025212,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3384781996025212,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.32152180039747874,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.27471048661807085,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.33471048661807085,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3252895133819291,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.32075498139695824,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.38075498139695824,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3792450186030418,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5766274527689575,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6366274527689575,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6233725472310425,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 12.413793103448276,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.32830683631691066,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.38830683631691065,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.37169316368308936,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.27452680023775444,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.33452680023775444,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3254731997622455,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2705662949182632,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.33056629491826317,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.32943370508173675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.31658321320742777,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.37658321320742777,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.38341678679257224,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.572559333585601,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6325593335856009,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6274406664143991,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 13.448275862068966,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3243427105028242,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3843427105028242,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3756572894971758,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.27037755798060026,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.33037755798060026,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.32962244201939966,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.26639735341314286,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.32639735341314285,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.33360264658685707,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.31256077499629487,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3725607749962948,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3874392250037052,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5683793592435086,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6283793592435085,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6316206407564915,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 14.482758620689657,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3201887874011274,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3801887874011274,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3798112125988726,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2662118146279696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3262118146279696,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3337881853720303,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.26238586485128457,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.32238586485128456,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.33761413514871536,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.30886346661518593,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.36886346661518593,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3911365333848141,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5642702146791719,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6242702146791719,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6357297853208281,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 15.517241379310345,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.31602661338409876,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.37602661338409876,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.38397338661590125,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.26221163315382695,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.32221163315382695,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.33778836684617297,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25870715053209925,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.31870715053209925,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.34129284946790067,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.30565287818200954,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.36565287818200953,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3943471218179905,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.560411489227916,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.620411489227916,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.639588510772084,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 16.551724137931036,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.31203809542860944,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.37203809542860944,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.38796190457139057,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2585518406835926,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3185518406835926,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3414481593164073,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2555219879237651,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3155219879237651,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3444780120762348,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3030693278174081,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3630693278174081,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3969306721825919,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5569718277081797,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6169718277081796,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6430281722918204,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 17.586206896551722,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.30839755090834686,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36839755090834686,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39160244909165315,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2553923877098485,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3153923877098485,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3446076122901514,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25296958391637236,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3129695839163723,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3470304160836276,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3012257290695647,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3612257290695647,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3987742709304353,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5541015598337025,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6141015598337024,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6458984401662976,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 18.620689655172413,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.30526408908811725,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36526408908811725,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39473591091188276,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.25287135748828476,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.31287135748828476,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.34712864251171516,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25116149081283723,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3111614908128372,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3488385091871627,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3002026560503285,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3602026560503285,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.39979734394967154,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5519261300836726,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6119261300836726,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6480738699163274,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 19.655172413793103,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3027746572854827,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36277465728548275,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39722534271451726,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2510989311368288,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3110989311368288,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3489010688631711,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25017673095797766,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.31017673095797765,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.34982326904202227,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3000448219598891,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.36004482195988907,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.39995517804011094,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5505406151770365,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6105406151770364,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6494593848229636,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 20.689655172413794,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3010380556158375,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3610380556158375,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3989619443841625,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.25015257219208453,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3101525721920846,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.34984742780791533,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25005834308285296,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.31005834308285296,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.34994165691714696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.30075912490537066,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.36075912490537065,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.39924087509462935,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5500055687636521,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6100055687636521,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6499944312363479,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 21.724137931034484,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3001301819052845,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36013018190528445,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39986981809471556,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2500736410810714,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3100736410810714,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.34992635891892854,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25081150130569424,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.31081150130569424,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3491884986943057,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.30231434642044985,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.36231434642044985,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.39768565357955016,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5503443749392222,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6103443749392221,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6496556250607779,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 22.75862068965517,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3000907145914362,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3600907145914362,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3999092854085638,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.25086558747209403,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.31086558747209403,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3491344125279059,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2524032889981091,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3124032889981091,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3475967110018908,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3046425158621369,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3646425158621369,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3953574841378631,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5515422262481016,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6115422262481015,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6484577737518985,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 23.793103448275865,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.30092137858529305,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36092137858529305,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39907862141470696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.25249379950768447,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.31249379950768447,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.34750620049231545,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.25476413739969433,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.31476413739969433,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3452358626003056,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3076418810540337,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.36764188105403367,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.39235811894596634,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5535467708401642,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6135467708401642,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6464532291598358,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 24.82758620689655,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3025858698843554,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36258586988435537,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39741413011564464,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.25488711650885915,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.31488711650885914,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3451128834911408,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.257790866106693,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.317790866106693,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3422091338933069,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.31118135534470315,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.37118135534470315,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.38881864465529686,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5562704004978646,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6162704004978645,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6437295995021355,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 25.86206896551724,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.30501144223173876,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.36501144223173876,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.39498855776826125,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2579409390382576,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3179409390382576,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3420590609617423,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2613511925507537,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3213511925507537,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.33864880744924625,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3151062467233611,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3751062467233611,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.3848937532766389,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5595940795357363,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6195940795357362,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6404059204642638,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 26.896551724137932,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.308092086476675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.368092086476675,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.391907913523325,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.26152180039747874,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.32152180039747874,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3384781996025212,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.2652895133819291,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3252895133819291,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.33471048661807085,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3192450186030418,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3792450186030418,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.38075498139695824,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5633725472310426,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6233725472310425,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6366274527689575,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 27.93103448275862,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.31169316368308936,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.37169316368308936,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.38830683631691065,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2654731997622455,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3254731997622455,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.33452680023775444,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.26943370508173675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.32943370508173675,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.33056629491826317,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.32341678679257224,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.38341678679257224,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.37658321320742777,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5674406664143992,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6274406664143991,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6325593335856009,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 28.965517241379313,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.3156572894971758,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3756572894971758,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3843427105028242,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.26962244201939967,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.32962244201939966,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.33037755798060026,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.273602646586857,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.333602646586857,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3263973534131429,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.32743922500370515,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.38743922500370515,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.37256077499629486,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5716206407564915,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6316206407564915,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6283793592435085,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 30,
+      "members": [
+        {
+          "memberId": "minji",
+          "joints": {
+            "nose": {
+              "x": 0.2,
+              "y": 0.31981121259887263,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.16,
+              "y": 0.3798112125988726,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.24000000000000002,
+              "y": 0.3801887874011274,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.17,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.23,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hanni",
+          "joints": {
+            "nose": {
+              "x": 0.4,
+              "y": 0.2737881853720303,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.36000000000000004,
+              "y": 0.3337881853720303,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.44,
+              "y": 0.3262118146279696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.37,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.43000000000000005,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "danielle",
+          "joints": {
+            "nose": {
+              "x": 0.6,
+              "y": 0.27761413514871536,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.5599999999999999,
+              "y": 0.3376141351487153,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.64,
+              "y": 0.3223858648512846,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.57,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.63,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "haerin",
+          "joints": {
+            "nose": {
+              "x": 0.8,
+              "y": 0.3311365333848141,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.76,
+              "y": 0.3911365333848141,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.8400000000000001,
+              "y": 0.36886346661518593,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.77,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.8300000000000001,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "hyein",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.5757297853208282,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.6357297853208281,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.6242702146791719,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.73,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

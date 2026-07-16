@@ -85,6 +85,10 @@ export interface PerformanceBreakdown {
   rotationMs: number;
   workerMs: number;
   totalMs: number;
+  imageDecodeMs?: number;
+  poseDetectionMs?: number;
+  landmarkMs?: number;
+  postProcessMs?: number;
 }
 
 export interface FrameAnalysisSnapshot {
@@ -97,6 +101,7 @@ export interface FrameAnalysisSnapshot {
   rcaIssues: FrameRcaIssue[];
   motionQuality: MotionQualityBreakdown;
   performance: PerformanceBreakdown;
+  mediaPipeRaw: import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot | null;
 }
 
 export interface EnhancedTrackLifecycle {
@@ -181,6 +186,7 @@ export interface SkeletonAnalysisPackage {
   version: 2;
   builtAt: string;
   frameAnalyses: Map<number, FrameAnalysisSnapshot>;
+  mediaPipeRawByFrame: Map<number, import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot>;
   trackLifecycles: EnhancedTrackLifecycle[];
   coverageTimeline: CoverageTimelinePoint[];
   coverageDropEvents: CoverageDropEvent[];

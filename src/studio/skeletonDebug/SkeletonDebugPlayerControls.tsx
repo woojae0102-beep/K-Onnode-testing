@@ -10,6 +10,9 @@ export function SkeletonDebugPlayerControls({
   frameStat,
   isPlaying,
   playbackSpeed,
+  playbackMode,
+  playbackTimeSec,
+  durationSec,
   onFrameChange,
   onPlayPause,
   onSpeedChange,
@@ -22,6 +25,9 @@ export function SkeletonDebugPlayerControls({
   frameStat: SkeletonDebugFrameStat | null;
   isPlaying: boolean;
   playbackSpeed: number;
+  playbackMode?: string;
+  playbackTimeSec?: number;
+  durationSec?: number;
   onFrameChange: (frameIndex: number) => void;
   onPlayPause: () => void;
   onSpeedChange: (speed: number) => void;
@@ -30,6 +36,10 @@ export function SkeletonDebugPlayerControls({
   disabled?: boolean;
 }) {
   const maxIdx = Math.max(0, totalFrames - 1);
+  const dur = durationSec ?? 0;
+  const playbackLabel = dur > 0
+    ? `${(playbackTimeSec ?? 0).toFixed(2)}s / ${dur.toFixed(1)}s`
+    : `${(playbackTimeSec ?? 0).toFixed(2)}s`;
 
   return (
     <div
@@ -40,10 +50,37 @@ export function SkeletonDebugPlayerControls({
         padding: '12px 14px',
         background: 'rgba(3,3,8,0.92)',
         borderRadius: 10,
-        border: '1px solid rgba(255,255,255,0.08)',
+        border: disabled
+          ? '1px solid rgba(255,255,255,0.08)'
+          : isPlaying
+            ? '1px solid rgba(68,255,136,0.45)'
+            : '1px solid rgba(255,215,0,0.35)',
       }}
     >
+      {!disabled ? (
+        <div
+          style={{
+            fontSize: 11,
+            fontFamily: 'ui-monospace, monospace',
+            color: isPlaying ? '#44FF88' : '#FFD700',
+            fontWeight: 600,
+          }}
+        >
+          {isPlaying
+            ? `▶ 재생 중 — ${playbackLabel}`
+            : playbackMode === 'ANALYSIS_COMPLETE'
+              ? `⏸ 재생 준비 — ▶ Play를 눌러 영상+스켈레톤 동기 재생 (${playbackLabel})`
+              : `Playback: ${playbackMode ?? '—'} · ${playbackLabel}`}
+        </div>
+      ) : (
+        <div style={{ fontSize: 10, color: 'rgba(255,255,255,0.35)', fontFamily: 'ui-monospace, monospace' }}>
+          추출 완료 후 재생 컨트롤이 활성화됩니다
+        </div>
+      )}
+
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, fontSize: 10, fontFamily: 'ui-monospace, monospace', color: 'rgba(255,255,255,0.7)' }}>
+        <Metric label="Playback" value={playbackLabel} />
+        <Metric label="Mode" value={playbackMode ?? '—'} />
         <Metric label="Frame" value={`${currentFrameIndex} / ${Math.max(0, totalFrames - 1)}`} />
         <Metric label="Total" value={totalFrames} />
         <Metric label="Time" value={frameStat ? `${frameStat.timestamp.toFixed(3)}s` : '—'} />
@@ -59,14 +96,14 @@ export function SkeletonDebugPlayerControls({
         min={0}
         max={maxIdx}
         value={Math.min(currentFrameIndex, maxIdx)}
-        disabled={disabled || totalFrames <= 1}
+        disabled={disabled || totalFrames < 2}
         onChange={(e) => onFrameChange(Number(e.target.value))}
         style={{ width: '100%', accentColor: '#FF1F8E' }}
       />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
         <Btn onClick={onPrev} disabled={disabled || currentFrameIndex <= 0}>◀ Prev</Btn>
-        <Btn onClick={onPlayPause} disabled={disabled || totalFrames <= 1} highlight>
+        <Btn onClick={onPlayPause} disabled={disabled || totalFrames < 1} highlight>
           {isPlaying ? '⏸ Pause' : '▶ Play'}
         </Btn>
         <Btn onClick={onNext} disabled={disabled || currentFrameIndex >= maxIdx}>Next ▶</Btn>

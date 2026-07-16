@@ -8,6 +8,9 @@ import { isWebCodecsSupported, sampleVideoFramesWebCodecs } from './webCodecsFra
 import { setRvfcDecodePath } from './rvfcStallDiagnostics';
 import { pipelineDiagnostics } from './pipelineDiagnostics';
 
+/** WebCodecs가 이 시간 안에 첫 프레임을 내지 못하면 RVFC로 폴백 */
+const WEBCODECS_STARTUP_TIMEOUT_MS = 20_000;
+
 export type UnifiedSampleOptions = SampleVideoFramesOptions & {
   /** WebCodecs 경로용 — File/Blob이 있으면 RVFC 대신 WebCodecs를 먼저 시도 */
   sourceFile?: Blob | File | null;
@@ -26,14 +29,22 @@ export async function sampleVideoFrames(options: UnifiedSampleOptions): Promise<
     try {
       setRvfcDecodePath('webcodecs');
       console.info('[sampleVideoFrames] WebCodecs 경로 시도');
-      await sampleVideoFramesWebCodecs({
-        file: sourceFile,
-        sampleFps: rvfcOptions.sampleFps,
-        maxDuration: rvfcOptions.maxDuration,
-        onSample: rvfcOptions.onSample,
-        abortRef: rvfcOptions.abortRef,
-        onProgress: rvfcOptions.onProgress,
-      });
+      await Promise.race([
+        sampleVideoFramesWebCodecs({
+          file: sourceFile,
+          sampleFps: rvfcOptions.sampleFps,
+          maxDuration: rvfcOptions.maxDuration,
+          onSample: rvfcOptions.onSample,
+          abortRef: rvfcOptions.abortRef,
+          onProgress: rvfcOptions.onProgress,
+        }),
+        new Promise<void>((_, reject) => {
+          setTimeout(
+            () => reject(new Error(`WebCodecs startup timeout (${WEBCODECS_STARTUP_TIMEOUT_MS}ms)`)),
+            WEBCODECS_STARTUP_TIMEOUT_MS,
+          );
+        }),
+      ]);
       return;
     } catch (err) {
       console.warn('[sampleVideoFrames] WebCodecs 실패 — RVFC 폴백', err);

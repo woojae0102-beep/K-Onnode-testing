@@ -13,6 +13,7 @@ import {
   type CameraFitMode,
   type CameraHealthStatus,
 } from '../utils/cameraOverlayUtils';
+import { guardGroupModeNoMediaPipe } from '../services/group/groupModeRuntimeGuard';
 
 const JOINT_MAP = {
   nose: 0,
@@ -245,6 +246,7 @@ export function useMediaPipeTV(agencyColor = '#FF1F8E', options: UseMediaPipeTVO
   }, [bindCanvasResizeObserver, stopDetectionLoop]);
 
   const startTracking = useCallback(async () => {
+    guardGroupModeNoMediaPipe('useMediaPipeTV.startTracking');
     setCameraHealth(null);
     try {
       if (!navigator.mediaDevices?.getUserMedia) {

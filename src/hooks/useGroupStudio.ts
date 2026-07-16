@@ -1,8 +1,17 @@
 // @ts-nocheck
 import { useCallback, useState } from 'react';
+import { getSongById } from '../data/groupStudioSongs';
 import { getSongVideo } from '../services/groupStudioStorage';
-import { buildPracticeSessionData } from '../utils/buildPracticeSessionData';
-import { loadReferenceVideoForPractice } from '../hooks/useGroupChoreoExtract';
+import { loadProductionDanceAsset } from '../services/group/ProductionDanceAssetLoader';
+import { buildGroupMotionContentFromProductionAsset } from '../services/group/buildGroupMotionContentFromProduction';
+import { getGroupRuntimeActors } from '../services/group/getGroupRuntimeActors';
+import { buildGroupPracticeRuntime } from '../services/group/buildGroupPracticeRuntime';
+import {
+  setGroupModeActive,
+  logGroupModeRuntimeVerification,
+} from '../services/group/groupModeRuntimeGuard';
+import { buildPracticeSessionFromContent } from '../utils/buildPracticeSessionFromContent';
+import { loadReferenceVideoForPractice } from './useGroupChoreoExtract';
 
 export function useGroupStudio() {
   const [phase, setPhase] = useState('home');
@@ -12,6 +21,8 @@ export function useGroupStudio() {
   const [sessionResult, setSessionResult] = useState(null);
   const [sessionComparison, setSessionComparison] = useState(null);
   const [practiceVideo, setPracticeVideo] = useState(null);
+  const [contentLoading, setContentLoading] = useState(false);
+  const [contentError, setContentError] = useState(null);
 
   const selectSong = useCallback((songId) => {
     setSelectedSongId(songId);
@@ -22,62 +33,86 @@ export function useGroupStudio() {
     setPhase('position_select');
   }, []);
 
-  const selectPosition = useCallback((memberId) => {
-    setSelectedMemberId(memberId);
-    setPhase('choreo_extract');
+  const loadAndStartPractice = useCallback(async (memberId, songId) => {
+    const song = getSongById(songId);
+    if (!song) {
+      setContentError('곡 정보를 찾을 수 없습니다.');
+      setPhase('content_loading');
+      return;
+    }
+
+    setContentLoading(true);
+    setContentError(null);
+    setPhase('content_loading');
+    setGroupModeActive(true);
+
+    try {
+      const saved = getSongVideo(songId);
+      const videoId = saved?.videoId ?? null;
+
+      const { asset: productionAsset } = await loadProductionDanceAsset({ groupId: song.groupId, songId });
+      const runtimeActors = getGroupRuntimeActors(productionAsset, memberId);
+
+      const content = await buildGroupMotionContentFromProductionAsset(productionAsset);
+      content.source = 'production';
+
+      const runtime = buildGroupPracticeRuntime(content, memberId);
+      const refPlayback = await loadReferenceVideoForPractice(songId, videoId);
+      const youtubeUrl = videoId
+        ? `https://www.youtube.com/watch?v=${videoId}`
+        : saved?.youtubeUrl || null;
+
+      const sessionData = await buildPracticeSessionFromContent({
+        content,
+        runtime,
+        referenceVideo: {
+          videoId,
+          youtubeUrl,
+          fromCache: true,
+          blobCacheKey: refPlayback?.blobCacheKey ?? null,
+          localPlaybackUrl: refPlayback?.localPlaybackUrl ?? null,
+          durationSec: content.durationSec,
+        },
+      });
+
+      if (!sessionData) {
+        throw new Error('Pre-built 콘텐츠로 연습 세션을 구성하지 못했습니다.');
+      }
+
+      setPracticeSessionData({
+        ...sessionData,
+        productionDanceAsset: productionAsset,
+        groupRuntimeActors: runtimeActors,
+      });
+      setPracticeVideo({
+        videoId: sessionData.referenceVideo?.videoId,
+        youtubeUrl: sessionData.referenceVideo?.localPlaybackUrl
+          || sessionData.referenceVideo?.youtubeUrl,
+        fromCache: true,
+        blobCacheKey: sessionData.referenceVideo?.blobCacheKey,
+      });
+      setPhase('practice');
+      logGroupModeRuntimeVerification();
+    } catch (err) {
+      console.error('[useGroupStudio] pre-built content load failed', err);
+      setContentError((err as Error)?.message || '콘텐츠 로드 실패');
+      setPhase('content_loading');
+    } finally {
+      setContentLoading(false);
+    }
   }, []);
 
-  const completeChoreoExtract = useCallback(async (frames, meta = {}) => {
-    const groupId = meta.groupId || meta.danceDatabase?.groupId;
-    const songId = selectedSongId || meta.danceDatabase?.songId;
-    const userMemberId = selectedMemberId || meta.danceDatabase?.positionMap?.userMemberId || '';
-
-    if (!groupId || !songId || !userMemberId) {
-      console.error('[useGroupStudio] missing ids for practice session', { groupId, songId, userMemberId });
-      window.alert('연습 세션 데이터를 구성할 수 없습니다. 다시 시도해 주세요.');
-      return;
+  const selectPosition = useCallback((memberId) => {
+    setSelectedMemberId(memberId);
+    if (selectedSongId) {
+      loadAndStartPractice(memberId, selectedSongId);
     }
+  }, [selectedSongId, loadAndStartPractice]);
 
-    const saved = getSongVideo(selectedSongId);
-    const userVideo = saved?.videoType === 'user_youtube' ? saved : null;
-    const videoId = meta.videoId || userVideo?.videoId || null;
-    const youtubeUrl = videoId
-      ? `https://www.youtube.com/watch?v=${videoId}`
-      : userVideo?.youtubeUrl || null;
-
-    const refPlayback = await loadReferenceVideoForPractice(songId, videoId || meta.danceDatabase?.videoId);
-
-    const sessionData = await buildPracticeSessionData({
-      frames,
-      danceDatabase: meta.danceDatabase || null,
-      groupId,
-      songId,
-      userMemberId,
-      sourceVideoDurationSec: meta.sourceVideoDurationSec ?? meta.danceDatabase?.sourceVideoDurationSec ?? null,
-      referenceVideo: {
-        videoId,
-        youtubeUrl,
-        fromCache: !!meta.fromCache,
-        blobCacheKey: refPlayback?.blobCacheKey ?? null,
-        localPlaybackUrl: refPlayback?.localPlaybackUrl ?? null,
-        durationSec: meta.sourceVideoDurationSec ?? meta.danceDatabase?.sourceVideoDurationSec ?? null,
-      },
-    });
-
-    if (!sessionData) {
-      window.alert('스켈레톤·타임라인·포메이션 데이터가 불완전합니다. 안무를 다시 추출해 주세요.');
-      return;
-    }
-
-    setPracticeSessionData(sessionData);
-    setPracticeVideo({
-      videoId: sessionData.referenceVideo.videoId,
-      youtubeUrl: sessionData.referenceVideo.localPlaybackUrl || sessionData.referenceVideo.youtubeUrl,
-      fromCache: sessionData.referenceVideo.fromCache,
-      blobCacheKey: sessionData.referenceVideo.blobCacheKey,
-    });
-    setPhase('practice');
-  }, [selectedSongId, selectedMemberId]);
+  /** @deprecated choreo_extract 제거 — pre-built loader 사용 */
+  const completeChoreoExtract = useCallback(async () => {
+    console.warn('[useGroupStudio] completeChoreoExtract is deprecated. Use pre-built content loader.');
+  }, []);
 
   const endSession = useCallback((result, comparison = null) => {
     setSessionResult(result);
@@ -92,6 +127,7 @@ export function useGroupStudio() {
   }, []);
 
   const goHome = useCallback(() => {
+    setGroupModeActive(false);
     setPhase('home');
     setSelectedSongId(null);
     setSelectedMemberId(null);
@@ -99,6 +135,7 @@ export function useGroupStudio() {
     setSessionResult(null);
     setSessionComparison(null);
     setPracticeVideo(null);
+    setContentError(null);
   }, []);
 
   const goBack = useCallback(() => {
@@ -108,11 +145,12 @@ export function useGroupStudio() {
     } else if (phase === 'position_select') {
       setPhase('song_detail');
       setSelectedMemberId(null);
-    } else if (phase === 'choreo_extract') {
+    } else if (phase === 'content_loading') {
       setPhase('position_select');
       setSelectedMemberId(null);
+      setContentError(null);
     } else if (phase === 'practice') {
-      setPhase('choreo_extract');
+      setPhase('position_select');
       setPracticeSessionData(null);
     }
   }, [phase]);
@@ -122,15 +160,14 @@ export function useGroupStudio() {
     selectedSongId,
     selectedMemberId,
     practiceSessionData,
-    /** @deprecated practiceSessionData.frames 사용 */
     skeletonData: practiceSessionData?.frames ?? null,
-    /** @deprecated practiceSessionData.duration 사용 */
     practiceDuration: practiceSessionData?.duration ?? null,
-    /** @deprecated practiceSessionData 내 formation/memberTracks 사용 */
     danceDatabase: null,
     sessionResult,
     sessionComparison,
     practiceVideo,
+    contentLoading,
+    contentError,
     selectSong,
     startPositionSelect,
     selectPosition,
@@ -141,7 +178,6 @@ export function useGroupStudio() {
     goBack,
     setPhase,
     setPracticeSessionData,
-    /** @deprecated setPracticeSessionData 사용 */
     setSkeletonData: setPracticeSessionData,
   };
 }

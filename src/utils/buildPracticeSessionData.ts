@@ -54,6 +54,8 @@ export interface BuildPracticeSessionInput {
   userMemberId: string;
   sourceVideoDurationSec?: number | null;
   referenceVideo?: ReferenceVideoMeta;
+  /** Pre-built 콘텐츠 — tracking/Kalman 후처리 파이프라인 생략 */
+  preBuiltContent?: boolean;
 }
 
 /** completeChoreoExtract → GroupStudioSession 전달용 전체 패키지 생성 */
@@ -65,6 +67,7 @@ export async function buildPracticeSessionData({
   userMemberId,
   sourceVideoDurationSec = null,
   referenceVideo = {},
+  preBuiltContent = false,
 }: BuildPracticeSessionInput): PracticeSessionData | null {
   const group = GROUP_DATA[groupId];
   if (!group || !userMemberId) return null;
@@ -106,8 +109,9 @@ export async function buildPracticeSessionData({
   }
 
   const alreadyProcessed =
-    danceDatabase?.pipelineVersion === MOTION_PIPELINE_VERSION
-    && danceDatabase?.skeletonFrames?.length;
+    preBuiltContent
+    || (danceDatabase?.pipelineVersion === MOTION_PIPELINE_VERSION
+      && danceDatabase?.skeletonFrames?.length);
 
   let pipeline;
   try {

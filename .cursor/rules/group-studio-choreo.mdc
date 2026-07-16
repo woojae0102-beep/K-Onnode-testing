@@ -10,14 +10,16 @@ alwaysApply: false
 
 ## Phase 흐름
 
-`useGroupStudio.ts`: home → song_detail → position_select → **choreo_extract** → practice → result
+`useGroupStudio.ts`: home → song_detail → position_select → **content_loading** → practice → result
 
 ## 데이터 흐름 (수정 시 연결 유지)
 
 ```
-ChoreoExtractScreen → useGroupChoreoExtract → choreoVideoUtils
-  → MultiPersonTracker → MemberAutoDetect → DanceDatabaseService
-  → GroupStudioSession → useGroupDanceEngine → GroupDanceStage3D
+[Admin — Dev] GroupContentAdminView → MoCap 1회 → persist → IndexedDB/JSON
+[User Runtime] loadGroupMotionContent → buildGroupPracticeRuntime → practice
+
+레거시 (Group Mode 미사용):
+ChoreoExtractScreen → useGroupChoreoExtract → DanceDatabaseService
 ```
 
 ## 영상 준비 (`prepareYoutubeVideo`)

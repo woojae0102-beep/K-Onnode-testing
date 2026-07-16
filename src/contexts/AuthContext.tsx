@@ -43,6 +43,8 @@ export interface SubscriptionInfo {
   features: string[];
 }
 
+export type UserRole = 'user' | 'admin';
+
 export interface UserProfile {
   uid: string;
   email: string;
@@ -56,6 +58,7 @@ export interface UserProfile {
   subscription: SubscriptionInfo;
   onboardingCompleted: boolean;
   provider: 'google' | 'kakao' | 'email' | string;
+  role?: UserRole;
   createdAt: Date;
 }
 
@@ -316,6 +319,7 @@ function normalizeProfile(uid: string, data: any): UserProfile {
     subscription: normalizeSubscription(data?.subscription),
     onboardingCompleted: !!data?.onboardingCompleted,
     provider: data?.provider || 'email',
+    role: data?.role === 'admin' ? 'admin' : 'user',
     createdAt,
   };
 }
@@ -394,6 +398,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         },
         onboardingCompleted: extra?.onboardingCompleted ?? false,
         provider: extra?.provider || 'email',
+        role: extra?.role || 'user',
         createdAt: new Date(),
       };
 

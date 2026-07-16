@@ -1,0 +1,5508 @@
+{
+  "meta": {
+    "groupId": "cortis",
+    "songId": "redred",
+    "title": "REDRED",
+    "bpm": 122,
+    "durationSec": 30,
+    "formation": "line",
+    "fps": 10,
+    "version": "2",
+    "preserveVideoFormation": true,
+    "stub": true
+  },
+  "members": [
+    {
+      "memberId": "martin",
+      "displayName": "Martin",
+      "displayNameKr": "마틴",
+      "persona": {
+        "styleId": "martin",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#F87171",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.1,
+        "y": 0.4,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "james",
+      "displayName": "James",
+      "displayNameKr": "제임스",
+      "persona": {
+        "styleId": "james",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#34D399",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.3,
+        "y": 0.35,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "juhoon",
+      "displayName": "Juhoon",
+      "displayNameKr": "주훈",
+      "persona": {
+        "styleId": "juhoon",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#60A5FA",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.5,
+        "y": 0.3,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "seonghyeon",
+      "displayName": "Seonghyeon",
+      "displayNameKr": "성현",
+      "persona": {
+        "styleId": "seonghyeon",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#A78BFA",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.7,
+        "y": 0.35,
+        "z": 0
+      }
+    },
+    {
+      "memberId": "keonho",
+      "displayName": "Keonho",
+      "displayNameKr": "건호",
+      "persona": {
+        "styleId": "keonho",
+        "energy": 0.85,
+        "sharpness": 0.85,
+        "groove": 0.8,
+        "accentColor": "#FCD34D",
+        "lineScale": 1
+      },
+      "formationAnchor": {
+        "x": 0.9,
+        "y": 0.4,
+        "z": 0
+      }
+    }
+  ],
+  "frames": [
+    {
+      "timestamp": 0,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.32199666833293655,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.38199666833293655,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.37800333166706346,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.27591040413322676,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.33591040413322676,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.32408959586677316,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.22958851077208403,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.28958851077208403,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2704114892279159,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2828843537447538,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3428843537447538,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.31711564625524613,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.33566653819254966,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.39566653819254965,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.36433346180745035,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 1.0344827586206897,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.32609049630679643,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3860904963067964,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3739095036932036,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.279753760117363,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.339753760117363,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3202462398826369,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.2330281722918204,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.29302817229182043,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2669718277081795,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.28578319234977795,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.34578319234977795,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.314216807650222,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.33790898633549354,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.39790898633549354,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.36209101366450647,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 2.0689655172413794,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3299181403666055,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3899181403666055,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3700818596333945,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.28317082998063675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.34317082998063675,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.31682917001936317,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23589844016629752,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2958984401662975,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2641015598337024,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2879922297129571,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3479922297129572,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.31200777028704274,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.33936872583872535,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.39936872583872535,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.36063127416127466,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 3.103448275862069,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3333123140998761,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3933123140998761,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3666876859001239,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.28601227137310237,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.34601227137310236,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.31398772862689756,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23807386991632737,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2980738699163274,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.26192613008367255,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2894149203013831,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3494149203013831,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3105850796986168,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.33998195908134665,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.39998195908134665,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.36001804091865336,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 4.137931034482759,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.33612467582741173,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.39612467582741173,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3638753241725883,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2881538996711606,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3481538996711606,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3118461003288393,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23945938482296353,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2994593848229635,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2605406151770364,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2899890857095147,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3499890857095147,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3100109142904852,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3397218848280352,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3997218848280352,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3602781151719648,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 5.172413793103448,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3382323118465103,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3982323118465103,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3617676881534897,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.28950211544151355,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.34950211544151355,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.31049788455848637,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23999443123634784,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.29999443123634784,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2600055687636521,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.28968963215386534,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.34968963215386534,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3103103678461346,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3385998695716355,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3985998695716355,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3614001304283645,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 6.206896551724138,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3395431083495774,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3995431083495774,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3604568916504226,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2899979951855398,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3499979951855398,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3100020048144601,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23965562506077787,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.29965562506077786,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2603443749392221,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2885296471917544,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3485296471917544,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.31147035280824553,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.33666495076287883,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.39666495076287883,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3633350492371212,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 7.241379310344828,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3399997772395296,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3999997772395296,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3600002227604704,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.28961986657893035,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.34961986657893035,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.31038013342106957,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23845777375189844,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2984577737518984,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.26154222624810153,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.28655982773225164,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.34655982773225164,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3134401722677483,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3340016936384783,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3940016936384783,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3659983063615217,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 8.275862068965518,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.33958235989453556,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.39958235989453555,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.36041764010546445,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.28838425565625636,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.34838425565625636,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.31161574434374356,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23645322915983585,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.29645322915983585,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2635467708401641,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.28386626433797973,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.34386626433797973,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3161337356620202,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3307264953144959,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3907264953144959,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.36927350468550413,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 9.310344827586206,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.33830909945556203,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.39830909945556203,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.361690900544438,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2863451645439578,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3463451645439578,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3136548354560421,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23372959950213543,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.29372959950213545,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2662704004978645,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.28056667865441953,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.34056667865441953,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3194333213455804,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.32698249767383475,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.38698249767383475,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.37301750232616526,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 10.344827586206897,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3362356435135737,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.39623564351357377,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.36376435648642624,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2835917113082868,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3435917113082868,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3164082886917131,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.23040592046426378,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2904059204642638,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.26959407953573616,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2768052784091115,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3368052784091115,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3231947215908884,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.32293333137908586,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.38293333137908586,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.37706666862091415,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 11.379310344827585,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.33345261204278104,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.39345261204278104,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.366547387957219,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.28024423506817675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.34024423506817675,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.31975576493182317,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.22662745276895743,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.28662745276895746,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2733725472310425,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2727464548419764,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3327464548419764,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3272535451580235,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3187559644273853,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3787559644273853,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3812440355726147,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 12.413793103448276,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.33008163687292413,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.39008163687292413,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3699183631270759,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.27644903659829356,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.33644903659829356,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.32355096340170636,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.22255933358560087,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.28255933358560087,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2774406664143991,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2685675980192944,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3285675980192944,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3314324019807055,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3146329677997529,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3746329677997529,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3853670322002471,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 13.448275862068966,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.32627004579465946,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.38627004579465946,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.37372995420534055,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.27237198428315396,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.33237198428315395,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.32762801571684597,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.21837935924350846,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.27837935924350843,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2816206407564915,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2644513440365966,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3244513440365966,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.33554865596340333,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.31074453623314924,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.37074453623314924,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3892554637668508,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 14.482758620689657,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3221844236281503,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3821844236281503,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3778155763718497,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.26819126487279715,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.32819126487279715,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.33180873512720277,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.21427021467917187,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.27427021467917184,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2857297853208281,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.26057759294490485,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.32057759294490484,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3394224070550951,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3072606128457996,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3672606128457996,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3927393871542004,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 15.517241379310345,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.31800333166706346,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.37800333166706346,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.38199666833293655,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.26408959586677316,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.32408959586677316,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.33591040413322676,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.21041148922791592,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2704114892279159,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.28958851077208403,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.25711564625524613,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.31711564625524613,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3428843537447538,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.30433346180745036,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.36433346180745035,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.39566653819254965,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 16.551724137931036,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3139095036932036,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3739095036932036,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3860904963067964,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2602462398826369,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3202462398826369,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.339753760117363,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20697182770817954,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2669718277081795,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.29302817229182043,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.254216807650222,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.314216807650222,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.34578319234977795,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.30209101366450647,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.36209101366450647,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.39790898633549354,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 17.586206896551722,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3100818596333945,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3700818596333945,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3899181403666055,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2568291700193632,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.31682917001936317,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.34317082998063675,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20410155983370243,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2641015598337024,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2958984401662975,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2520077702870428,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.31200777028704274,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3479922297129572,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.30063127416127466,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.36063127416127466,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.39936872583872535,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 18.620689655172413,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3066876859001239,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3666876859001239,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3933123140998761,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.25398772862689756,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.31398772862689756,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.34601227137310236,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20192613008367258,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.26192613008367255,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2980738699163274,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2505850796986168,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3105850796986168,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3494149203013831,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.30001804091865336,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.36001804091865336,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.39998195908134665,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 19.655172413793103,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3038753241725883,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3638753241725883,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.39612467582741173,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2518461003288393,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3118461003288393,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3481538996711606,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20054061517703642,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2605406151770364,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2994593848229635,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2500109142904852,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3100109142904852,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3499890857095147,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3002781151719648,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3602781151719648,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3997218848280352,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 20.689655172413794,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3017676881534897,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3617676881534897,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3982323118465103,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2504978845584864,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.31049788455848637,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.34950211544151355,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.2000055687636521,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2600055687636521,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.29999443123634784,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2503103678461346,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3103103678461346,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.34968963215386534,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3014001304283645,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3614001304283645,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3985998695716355,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 21.724137931034484,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3004568916504226,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3604568916504226,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3995431083495774,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2500020048144601,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3100020048144601,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3499979951855398,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20034437493922208,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2603443749392221,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.29965562506077786,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.25147035280824553,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.31147035280824553,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3485296471917544,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3033350492371212,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.36333504923712123,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3966649507628788,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 22.75862068965517,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3000002227604704,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3600002227604704,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3999997772395296,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2503801334210696,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.31038013342106957,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.34961986657893035,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.2015422262481015,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.26154222624810153,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2984577737518984,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2534401722677483,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3134401722677483,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.34655982773225164,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3059983063615217,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3659983063615217,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3940016936384783,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 23.793103448275865,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.30041764010546446,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.36041764010546445,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.39958235989453555,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.25161574434374356,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.31161574434374356,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.34838425565625636,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.2035467708401641,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2635467708401641,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.29645322915983585,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2561337356620202,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3161337356620202,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.34386626433797973,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3092735046855042,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3692735046855042,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3907264953144958,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 24.82758620689655,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.301690900544438,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.361690900544438,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.39830909945556203,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2536548354560421,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3136548354560421,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3463451645439578,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20627040049786452,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2662704004978645,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.29372959950213545,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2594333213455804,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3194333213455804,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.34056667865441953,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.31301750232616526,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.37301750232616526,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.38698249767383475,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 25.86206896551724,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3037643564864263,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.36376435648642624,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.39623564351357377,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.2564082886917131,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3164082886917131,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3435917113082868,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.20959407953573617,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.26959407953573616,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2904059204642638,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2631947215908884,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3231947215908884,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3368052784091115,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.31706666862091415,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.37706666862091415,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.38293333137908586,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 26.896551724137932,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.30654738795721903,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.366547387957219,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.39345261204278104,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.25975576493182323,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.3197557649318232,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.3402442350681767,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.21337254723104251,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.27337254723104254,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2866274527689574,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2672535451580235,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3272535451580235,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3327464548419764,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3212440355726148,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.38124403557261477,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.37875596442738524,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 27.93103448275862,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3099183631270758,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3699183631270758,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3900816368729242,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.26355096340170636,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.32355096340170636,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.33644903659829356,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.21744066641439908,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2774406664143991,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.28255933358560087,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2714324019807055,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3314324019807055,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3285675980192944,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3253670322002471,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3853670322002471,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3746329677997529,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 28.965517241379313,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.31372995420534056,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.37372995420534055,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.38627004579465946,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.26762801571684597,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.32762801571684597,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.33237198428315395,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.2216206407564915,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.2816206407564915,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.27837935924350843,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.27554865596340333,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.33554865596340333,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.3244513440365966,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.3292554637668508,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3892554637668508,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.37074453623314924,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    },
+    {
+      "timestamp": 30,
+      "members": [
+        {
+          "memberId": "martin",
+          "joints": {
+            "nose": {
+              "x": 0.1,
+              "y": 0.3178155763718497,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.060000000000000005,
+              "y": 0.3778155763718497,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.14,
+              "y": 0.3821844236281503,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.07,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.13,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "james",
+          "joints": {
+            "nose": {
+              "x": 0.3,
+              "y": 0.27180873512720277,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.26,
+              "y": 0.33180873512720277,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.33999999999999997,
+              "y": 0.32819126487279715,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.27,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.32999999999999996,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "juhoon",
+          "joints": {
+            "nose": {
+              "x": 0.5,
+              "y": 0.22572978532082807,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.46,
+              "y": 0.28572978532082804,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.54,
+              "y": 0.2742702146791719,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.47,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.53,
+              "y": 0.38,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "seonghyeon",
+          "joints": {
+            "nose": {
+              "x": 0.7,
+              "y": 0.2794224070550951,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.6599999999999999,
+              "y": 0.3394224070550951,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.74,
+              "y": 0.32057759294490484,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.6699999999999999,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.73,
+              "y": 0.43,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        },
+        {
+          "memberId": "keonho",
+          "joints": {
+            "nose": {
+              "x": 0.9,
+              "y": 0.33273938715420043,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_shoulder": {
+              "x": 0.86,
+              "y": 0.3927393871542004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_shoulder": {
+              "x": 0.9400000000000001,
+              "y": 0.3672606128457996,
+              "z": 0,
+              "visibility": 1
+            },
+            "left_hip": {
+              "x": 0.87,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            },
+            "right_hip": {
+              "x": 0.93,
+              "y": 0.48000000000000004,
+              "z": 0,
+              "visibility": 1
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

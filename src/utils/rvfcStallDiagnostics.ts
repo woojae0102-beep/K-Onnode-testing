@@ -103,6 +103,10 @@ export function setRvfcDecodePath(path: RvfcDiagnosticsSnapshot['decodePath']): 
   globalDecodePath = path;
 }
 
+export function getRvfcDecodePath(): RvfcDiagnosticsSnapshot['decodePath'] {
+  return globalDecodePath;
+}
+
 export function setRvfcExternalDiagnosticsProvider(fn: (() => Record<string, unknown>) | null): void {
   externalDiagnosticsProvider = fn;
 }

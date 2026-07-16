@@ -12,6 +12,8 @@ export class SkeletonDebugRecorder {
   private frameDetectedByFrame = new Map<number, Record<string, unknown>>();
   private processingTimes: number[] = [];
   private lastDebug: Partial<MotionExtractionDebugState> = {};
+  /** 추출 중 실시간 스켈레톤 미리보기용 (완료 전 session 없음) */
+  private liveFrames: DetectionFrame[] = [];
 
   recordDebug(patch: Partial<MotionExtractionDebugState>): void {
     this.lastDebug = { ...this.lastDebug, ...patch };
@@ -28,7 +30,40 @@ export class SkeletonDebugRecorder {
   recordFrameDetected(payload: Record<string, unknown>): void {
     const idx = payload.frameIndex ?? this.lastDebug.frameIndex;
     if (idx == null || !Number.isFinite(idx)) return;
-    this.frameDetectedByFrame.set(Math.floor(idx as number), payload);
+    const frameIndex = Math.floor(idx as number);
+    this.frameDetectedByFrame.set(frameIndex, payload);
+
+    const people = payload.detectedPeople;
+    if (!Array.isArray(people)) return;
+    const frame: DetectionFrame = {
+      timestamp: Number(payload.timestamp) || frameIndex / 30,
+      timestampMs: Math.round((Number(payload.timestamp) || frameIndex / 30) * 1000),
+      sourceVideoTime: Number(payload.sourceVideoTime) || Number(payload.timestamp) || 0,
+      videoWidth: Number(payload.videoWidth) || 0,
+      videoHeight: Number(payload.videoHeight) || 0,
+      detectedPeople: people,
+    };
+    if (this.liveFrames.length === frameIndex) {
+      this.liveFrames.push(frame);
+    } else if (frameIndex < this.liveFrames.length) {
+      this.liveFrames[frameIndex] = frame;
+    } else {
+      while (this.liveFrames.length < frameIndex) {
+        this.liveFrames.push({
+          timestamp: 0,
+          detectedPeople: [],
+        });
+      }
+      this.liveFrames.push(frame);
+    }
+  }
+
+  getLiveFrames(): DetectionFrame[] {
+    return this.liveFrames;
+  }
+
+  getLiveFrameCount(): number {
+    return this.liveFrames.length;
   }
 
   getAverageProcessingTimeMs(): number {
@@ -81,6 +116,7 @@ export class SkeletonDebugRecorder {
     this.frameDetectedByFrame.clear();
     this.processingTimes = [];
     this.lastDebug = {};
+    this.liveFrames = [];
   }
 }
 

@@ -16,7 +16,12 @@ import { pipelineEventBus } from './pipelineEventBus';
 import { recordQueueOverflow, recordCoverageFailure } from './pipelineTelemetry';
 import { pipelineDiagnostics } from './pipelineDiagnostics';
 import { calculateTimelineCoverage, SKELETON_MIN_TIMELINE_COVERAGE } from './skeletonDataUtils';
-import { debugBus, isDebugEventBusEnabled } from '../studio/skeletonDebug/live/debugEventBus';
+import { debugBus, isDebugEventBusEnabled, getMediaPipeRawSnapshot } from '../studio/skeletonDebug/live/debugEventBus';
+import {
+  captureMediaPipeRawFrame,
+  attachPipelineLossToRaw,
+  countSkeletonOutput,
+} from '../studio/skeletonDebug/mediapipe/mediaPipeRawCapture';
 import type { MotionExtractionDebugState } from '../types/motionExtraction';
 import type { MotionExtractionRcaSession } from './motionExtractionRca';
 
@@ -106,6 +111,19 @@ export type MotionPipelineContext = {
   detectHolistic: (detector: any, source: unknown, ts: number) => Promise<any> | any;
 };
 
+async function waitForWorkerQueueDrain(
+  ctx: MotionPipelineContext,
+  maxQueue: number,
+  timeoutMs: number,
+): Promise<void> {
+  const start = performance.now();
+  while (performance.now() - start < timeoutMs) {
+    const q = Math.max(0, ctx.workerSentCount - ctx.workerAckCount);
+    if (q < maxQueue) return;
+    await new Promise<void>((resolve) => setTimeout(resolve, 24));
+  }
+}
+
 async function runDetect(ctx: MotionPipelineContext, source: unknown, timestampMs: number) {
   const r = ctx.detectHolistic(ctx.detector, source, timestampMs);
   return r instanceof Promise ? await r : r;
@@ -127,7 +145,31 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       const detectStartedAt = performance.now();
       const timestampMsForDetector = Math.max(0, Math.round(sample.time * 1000));
       const results = await runDetect(ctx, sample.source, timestampMsForDetector);
-      const mediaPipeDelayMs = performance.now() - detectStartedAt;
+      const poseDetectionMs = performance.now() - detectStartedAt;
+      let landmarkMs = 0;
+      let postProcessMs = 0;
+      if (isDebugEventBusEnabled()) {
+        const lmStart = performance.now();
+        const rawSnap = captureMediaPipeRawFrame({
+          frameIndex: ctx.frames.length,
+          timestamp: sample.time,
+          sourceVideoTime: sample.mediaTime,
+          results,
+          queueDelayMs: meta.queueDelayMs ?? 0,
+          poseDetectionMs,
+          landmarkProcessMs: 0,
+          postProcessMs: 0,
+        });
+        landmarkMs = performance.now() - lmStart;
+        const ppStart = performance.now();
+        rawSnap.detectedPersons = ctx.tracker.countValidPoses(results.landmarks || []);
+        postProcessMs = performance.now() - ppStart;
+        rawSnap.timing.landmarkMs = landmarkMs;
+        rawSnap.timing.postProcessMs = postProcessMs;
+        rawSnap.timing.totalMs = (meta.queueDelayMs ?? 0) + poseDetectionMs + landmarkMs + postProcessMs;
+        debugBus.mediapipeRaw(rawSnap);
+      }
+      const mediaPipeDelayMs = poseDetectionMs + landmarkMs + postProcessMs;
       pipelineDiagnostics.markTimeline(sample.time, 'mediapipe-end');
       pipelineDiagnostics.clearStageProcessing('mediapipe');
       ctx.perfStats.poseDetectionMs = (ctx.perfStats.poseDetectionMs || 0) + mediaPipeDelayMs;
@@ -202,6 +244,26 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
 
       const visibleCount = framePeople.filter((p: any) => !p.isEstimated).length;
       const estimatedCount = framePeople.filter((p: any) => p.isEstimated).length;
+
+      if (isDebugEventBusEnabled()) {
+        const prevRaw = getMediaPipeRawSnapshot(frameIndex - 1);
+        const baseRaw = getMediaPipeRawSnapshot(frameIndex);
+        if (baseRaw) {
+          const enriched = attachPipelineLossToRaw(
+            baseRaw,
+            {
+              afterTrackingVisible: visibleCount,
+              afterTrackingTotal: trackedPeople.length,
+              afterMappingTotal: framePeople.length,
+              skeletonOutputCount: countSkeletonOutput(framePeople),
+              estimatedCount,
+            },
+            prevRaw,
+          );
+          debugBus.mediapipeRaw(enriched);
+        }
+      }
+
       if (ctx.memberCountSamples.length < 80) {
         const rawValid = ctx.tracker.countValidPoses(item.results.landmarks || []);
         const sample = Math.max(rawValid, visibleCount, framePeople.length);
@@ -312,11 +374,14 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       }
 
       const workerQueueLength = Math.max(0, ctx.workerSentCount - ctx.workerAckCount);
-      const workerOverflowThisFrame = ctx.worker && workerQueueLength >= ctx.MAX_WORKER_QUEUE;
       const workerStartedAt = performance.now();
 
       if (ctx.worker) {
-        if (workerOverflowThisFrame) {
+        if (workerQueueLength >= 16) {
+          await waitForWorkerQueueDrain(ctx, 12, 2000);
+        }
+        const queueAfterWait = Math.max(0, ctx.workerSentCount - ctx.workerAckCount);
+        if (queueAfterWait >= ctx.MAX_WORKER_QUEUE) {
           ctx.workerDroppedCount += 1;
           recordQueueOverflow('motion-post-process-worker', {
             queueLength: workerQueueLength,
@@ -371,6 +436,9 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
           ctx.maxWorkerQueueObserved = Math.max(ctx.maxWorkerQueueObserved, workerQueueLength + 1);
         }
       }
+
+      const workerOverflowThisFrame = ctx.worker
+        && Math.max(0, ctx.workerSentCount - ctx.workerAckCount) >= ctx.MAX_WORKER_QUEUE;
 
       ctx.lastProcessingDelayMs = performance.now() - frameStartedAt;
       ctx.perfStats.totalMs = (ctx.perfStats.totalMs || 0) + ctx.lastProcessingDelayMs;
@@ -495,12 +563,19 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
       });
 
       ctx.onFrameDetected?.({
+        frameIndex,
+        timestamp: gridTimestamp,
+        sourceVideoTime: t,
+        videoWidth: ctx.videoWidth,
+        videoHeight: ctx.videoHeight,
         rawCount: item.rawCount,
         trackedCount: framePeople.length,
         visibleCount: item.visibleCount,
         expectedMemberCount: ctx.expectedMemberCount,
+        detectedPeople: framePeople,
       });
 
+      settleIngressWaiters();
       return null;
     },
   });
@@ -508,8 +583,40 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
   mediapipeStage.pipeTo(trackingStage);
   trackingStage.pipeTo(finalizeStage);
 
+  let ingressCompletedCount = 0;
+  const ingressWaiters: Array<{ target: number; resolve: () => void; reject: (err: Error) => void }> = [];
+
+  const settleIngressWaiters = () => {
+    ingressCompletedCount += 1;
+    for (let i = ingressWaiters.length - 1; i >= 0; i -= 1) {
+      const waiter = ingressWaiters[i];
+      if (ingressCompletedCount >= waiter.target) {
+        waiter.resolve();
+        ingressWaiters.splice(i, 1);
+      }
+    }
+  };
+
+  const rejectIngressWaiters = (err: Error) => {
+    ingressWaiters.splice(0).forEach((waiter) => waiter.reject(err));
+  };
+
   const ingress = (sample: FrameIngressSample) => {
     mediapipeStage.push(sample);
+  };
+
+  const ingressAndWait = async (sample: FrameIngressSample) => {
+    const target = ingressCompletedCount + 1;
+    const pushed = mediapipeStage.push(sample);
+    if (!pushed) {
+      throw new Error(
+        `Motion pipeline queue full (mediapipe backlog=${mediapipeStage.getStats().queueLength})`,
+      );
+    }
+    if (ingressCompletedCount >= target) return;
+    await new Promise<void>((resolve, reject) => {
+      ingressWaiters.push({ target, resolve, reject });
+    });
   };
 
   const drain = async () => {
@@ -519,6 +626,7 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
   };
 
   const close = () => {
+    rejectIngressWaiters(new Error('Motion pipeline closed'));
     mediapipeStage.close();
     trackingStage.close();
     finalizeStage.close();
@@ -530,5 +638,13 @@ export function createMotionExtractionPipeline(ctx: MotionPipelineContext) {
     finalizeStage.getStats(),
   ];
 
-  return { ingress, drain, close, getAllStats, stages: [mediapipeStage, trackingStage, finalizeStage] };
+  return {
+    ingress,
+    ingressAndWait,
+    getCompletedFrameCount: () => ingressCompletedCount,
+    drain,
+    close,
+    getAllStats,
+    stages: [mediapipeStage, trackingStage, finalizeStage],
+  };
 }

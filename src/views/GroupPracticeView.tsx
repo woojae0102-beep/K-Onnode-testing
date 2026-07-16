@@ -12,7 +12,7 @@ import GroupStudioHome from '../components/group/GroupStudioHome';
 import SongDetailScreen from '../components/group/SongDetailScreen';
 import PositionPicker from '../components/group/PositionPicker';
 import GroupStudioSession from '../components/group/GroupStudioSession';
-import ChoreoExtractScreen from '../components/group/ChoreoExtractScreen';
+import GroupContentLoadingScreen from '../components/group/GroupContentLoadingScreen';
 import PerformanceReport from '../components/group/PerformanceReport';
 import PracticeValidationError from '../components/group/PracticeValidationError';
 import StudioConnectModal from '../components/studio/StudioConnectModal';
@@ -43,7 +43,8 @@ export default function GroupPracticeView({
     selectSong,
     startPositionSelect,
     selectPosition,
-    completeChoreoExtract,
+    contentLoading,
+    contentError,
     practiceVideo,
     endSession,
     retry,
@@ -245,11 +246,10 @@ export default function GroupPracticeView({
       {phase === 'position_select' && selectedSongId && (
         <PositionPicker songId={selectedSongId} onSelect={selectPosition} onBack={goBack} />
       )}
-      {phase === 'choreo_extract' && selectedSongId && selectedMemberId && (
-        <ChoreoExtractScreen
-          songId={selectedSongId}
-          memberId={selectedMemberId}
-          onComplete={completeChoreoExtract}
+      {phase === 'content_loading' && (
+        <GroupContentLoadingScreen
+          message={contentLoading ? 'Pre-built 모션 콘텐츠 로드 중...' : '준비 중...'}
+          error={contentError}
           onBack={goBack}
         />
       )}

@@ -22,6 +22,7 @@ import {
 } from '../config/choreoExtractConfig';
 import { buildSkeletonData } from '../utils/skeletonDataUtils';
 import { prepareAnalysisVideo } from '../utils/choreoVideoUtils';
+import { guardGroupModeNoExtraction } from '../services/group/groupModeRuntimeGuard';
 import {
   createHolisticMotionDetector,
   runHolisticVideoAnalysis,
@@ -162,6 +163,7 @@ export function useGroupChoreoExtract() {
 
   const extractAnalysis = useCallback(
     async ({ songId, groupId, videoId, file, videoRef, youtubePlayerRef }) => {
+      guardGroupModeNoExtraction('useGroupChoreoExtract.extractAnalysis');
       const group = getGroupData(groupId);
       if (!group) return null;
 

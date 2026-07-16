@@ -3,7 +3,7 @@ import React, { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useStat
 import { useTranslation } from 'react-i18next';
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { getSongById } from '../../data/groupStudioSongs';
-import { useMediaPipeTV } from '../../hooks/useMediaPipeTV';
+import { useGroupWebcamPreview } from '../../hooks/useGroupWebcamPreview';
 import { CHOREO_DEFAULT_SAMPLE_FPS } from '../../config/choreoExtractConfig';
 import { isPracticePlaybackFinished } from '../../services/practice/PracticePlayer';
 import { usePracticeClock } from '../../hooks/usePracticeClock';
@@ -23,7 +23,7 @@ import { useGroupSync } from '../../hooks/useGroupSync';
 import { useGroupDanceEngine } from '../../hooks/useGroupDanceEngine';
 import { useStudioSession } from '../../hooks/useStudioSession';
 import { useTVRecorder } from '../../hooks/useTVRecorder';
-import { useGroupAvatarAssets } from '../../hooks/useGroupAvatarAssets';
+import { useProductionAvatarAssets } from '../../hooks/useProductionAvatarAssets';
 import { useTVScreenLayout } from '../../hooks/useTVScreenLayout';
 import { isDevEnvironment } from '../../utils/isDevEnvironment';
 import {
@@ -52,6 +52,7 @@ import SnapshotDebugOverlay from './SnapshotDebugOverlay';
 import GroupMotionDebugOverlay from './GroupMotionDebugOverlay';
 import PracticeDebugHUD from './PracticeDebugHUD';
 import { buildGroupMotionDebugFromSession } from '../../utils/groupMotionDebugUtils';
+import { logGroupModeRuntimeVerification, setGroupModeActive } from '../../services/group/groupModeRuntimeGuard';
 import { logSnapshotStatus } from '../../utils/snapshotDebugLog';
 
 const GroupDanceStage3D = lazy(() => import('./three/GroupDanceStage3D'));
@@ -85,6 +86,19 @@ export function GroupStudioSession({
   const myMember = group?.members.find((m) => m.id === myMemberId);
   const otherMembers = group?.members.filter((m) => m.id !== myMemberId) || [];
   const agencyColor = AGENCY_COLORS[agency as Agency] || '#FF1F8E';
+
+  useEffect(() => {
+    setGroupModeActive(true);
+    if (practiceSessionData.preBuiltContent) {
+      console.info('[GroupStudioSession] Pre-built content mode', {
+        contentSource: practiceSessionData.contentSource,
+        selectedMember: practiceSessionData.groupPracticeRuntime?.selectedMemberId,
+        aiAvatars: practiceSessionData.groupPracticeRuntime?.aiAvatarMembers?.map((m) => m.memberId),
+      });
+      logGroupModeRuntimeVerification();
+    }
+    return () => setGroupModeActive(false);
+  }, [practiceSessionData]);
 
   const stage2DRef = useRef(null);
   const ytPlayerRef = useRef(null);
@@ -153,7 +167,7 @@ export function GroupStudioSession({
 
   const { layoutClass, isMobile } = useTVScreenLayout();
 
-  const dance = useMediaPipeTV(myMember?.color || agencyColor);
+  const dance = useGroupWebcamPreview();
   stopDanceTrackingRef.current = dance.stopTracking;
   const recorder = useTVRecorder();
   const isPracticing = sessionPhase === 'practicing';
@@ -211,7 +225,9 @@ export function GroupStudioSession({
     color: myMember?.color || '#FF1F8E',
   };
   const aiMemberIds = practiceSessionData.positionMap?.aiMemberIds || otherMembers.map((m) => m.id);
-  const { assets: avatarAssets } = useGroupAvatarAssets(groupId, aiMemberIds);
+  const productionAsset = practiceSessionData.productionDanceAsset;
+  const productionAvatarAssets = useProductionAvatarAssets(productionAsset, aiMemberIds);
+  const stageBackgroundId = productionAsset?.stage?.backgroundId || 'stage-default';
   const use3DStage = stageViewMode === '3d' && !danceEngine.error;
   const show3DRenderer = use3DStage && !danceEngine.loading;
 
@@ -308,9 +324,7 @@ export function GroupStudioSession({
     const aiInFrame = frame?.members?.filter(
       (m) => m.estimatedMemberId && m.estimatedMemberId !== myMemberId,
     ).length ?? 0;
-    const userSkeletonJoints = dance.poseData?.joints
-      ? Object.keys(dance.poseData.joints).length
-      : 0;
+    const userSkeletonJoints = 0;
 
     return {
       frameIndex,
@@ -326,7 +340,6 @@ export function GroupStudioSession({
     referenceFps,
     getReferenceFrame,
     myMemberId,
-    dance.poseData,
     stageSkeletonCount,
   ]);
 
@@ -360,7 +373,7 @@ export function GroupStudioSession({
       energy: 0,
       stability: isPracticing ? roundedScore : 0,
     },
-    poseData: dance.poseData,
+    poseData: null,
     practiceStep: 3,
     practiceStepLabel: t('groupStudio.session.practiceStep'),
     isPaused: false,
@@ -454,13 +467,7 @@ export function GroupStudioSession({
     setDanceSnapshot(snapshot);
   }, [show3DRenderer, sessionPhase, syncDanceStage, danceEngine.loading]);
 
-  const checkSlotEntry = useCallback(() => {
-    if (!dance.poseData?.joints?.nose || slotEnteredRef.current) return false;
-    const nose = dance.poseData.joints.nose;
-    const dx = Math.abs(nose.x - myDefault.x);
-    const dy = Math.abs(nose.y - myDefault.y);
-    return dx < SLOT_THRESHOLD && dy < SLOT_THRESHOLD;
-  }, [dance.poseData, myDefault]);
+  const checkSlotEntry = useCallback(() => false, []);
 
   const getPracticeFrame = useCallback(
     () => getReferenceFrame(practiceClock.currentTime),
@@ -568,16 +575,7 @@ export function GroupStudioSession({
       if (now - lastScoreAt > 120) {
         lastScoreAt = now;
         const frame = getReferenceFrame(t);
-        if (dance.poseData && frame) {
-          const accuracy = updateSyncScore(dance.poseData, frame, t);
-          if (accuracy != null && prevSmoothScoreRef.current > 50 && accuracy < 20) {
-            setShowMissedAlert(true);
-          }
-          if (accuracy != null) {
-            prevSmoothScoreRef.current = prevSmoothScoreRef.current * 0.7 + accuracy * 0.3;
-          }
-        }
-
+        // Group Mode: live pose sync disabled (MediaPipe forbidden)
         groupStageRef.current = {
           groupId,
           groupName: group?.nameKr,
@@ -621,8 +619,6 @@ export function GroupStudioSession({
     isFinished,
     referenceYoutubeUrl,
     getReferenceFrame,
-    dance.poseData,
-    updateSyncScore,
     groupId,
     group,
     song,
@@ -865,9 +861,9 @@ export function GroupStudioSession({
               skeletonFrames={sessionFrames}
               currentTimeSec={snapshotCurrentTime(danceSnapshot) || effectiveTime}
               className="group-studio-stage-3d"
-              avatarAssets={avatarAssets}
+              productionAvatarAssets={productionAvatarAssets}
               formationHole={formationHole}
-              useCharacterAvatars={stageViewMode === '3d'}
+              stageBackgroundId={stageBackgroundId}
             />
           </Suspense>
         ) : (

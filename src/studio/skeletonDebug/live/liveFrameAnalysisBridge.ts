@@ -91,6 +91,7 @@ export function frameAnalysisFromDebugSnapshot(
       ? computeMotionQuality(frames, snap.frameIndex, frameStat)
       : computeMotionQuality([], snap.frameIndex, frameStat),
     performance,
+    mediaPipeRaw: snap.mediapipeRaw ?? null,
   };
 }
 
@@ -113,6 +114,7 @@ export function resolveFrameAnalysis(options: {
         motionQuality: postHoc.motionQuality,
         hungarian: base.hungarian.length ? base.hungarian : postHoc.hungarian,
         kalman: base.kalman.length ? base.kalman : postHoc.kalman,
+        mediaPipeRaw: base.mediaPipeRaw ?? postHoc.mediaPipeRaw,
       };
     }
     if (frames.length) {

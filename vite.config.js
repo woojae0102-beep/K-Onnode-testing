@@ -57,8 +57,20 @@ function devApiPlugin() {
             const chunks = [];
             req.on('data', (c) => chunks.push(c));
             req.on('end', () => {
-              const raw = Buffer.concat(chunks).toString('utf8');
-              try { req.body = raw ? JSON.parse(raw) : undefined; } catch { req.body = raw; }
+              const raw = Buffer.concat(chunks);
+              req.rawBody = raw;
+              const contentType = String(req.headers['content-type'] || '');
+              if (contentType.includes('application/json')) {
+                try {
+                  req.body = raw.length ? JSON.parse(raw.toString('utf8')) : undefined;
+                } catch {
+                  req.body = raw.toString('utf8');
+                }
+              } else if (contentType.includes('multipart/form-data')) {
+                req.body = raw;
+              } else {
+                req.body = raw.length ? raw.toString('utf8') : undefined;
+              }
               resolve();
             });
           });

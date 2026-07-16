@@ -1,23 +1,26 @@
 // @ts-nocheck
+/**
+ * Group Mode Production Stage — AI Avatar only (selected member = User Slot marker).
+ * MediaPipe / SkeletonAvatar / RPM demo GLB 사용 금지.
+ */
 import React, { Suspense, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { Grid, OrbitControls, PerspectiveCamera, ContactShadows } from '@react-three/drei';
+import { OrbitControls, PerspectiveCamera } from '@react-three/drei';
+import { GroupPracticeEnvironment } from './GroupPracticeEnvironment';
 import type { PracticeMotionSnapshot } from '../../../types/motionSnapshot';
-import type { ChoreographyJoint } from '../../../types/groupChoreography';
 import {
   snapshotAiAvatars,
   snapshotCurrentTime,
   snapshotFrame,
-  snapshotUserAnchor,
-  snapshotUserJoints,
 } from '../../../utils/motionSnapshotUtils';
 import type { FormationHole } from '../../../types/danceDatabase';
 import type { SkeletonFrameData } from '../../../types/groupPractice';
-import { SkeletonAvatar3D } from './SkeletonAvatar3D';
-import { AvatarCharacterWithFallback } from './AvatarCharacterWithFallback';
+import { AvatarCharacter3D } from './AvatarCharacter3D';
+import { AvatarAssetMissingMarker } from './AvatarAssetMissingMarker';
 import { EmptyJointsMarker } from './EmptyJointsMarker';
 import { LoadingStage } from './LoadingStage';
 import { normalizedToStage } from '../../../services/group/FormationPositioning';
+import type { ProductionAvatarAssetEntry } from '../../../hooks/useProductionAvatarAssets';
 import SnapshotDebugOverlay from '../SnapshotDebugOverlay';
 import StageAiDebugOverlay from '../StageAiDebugOverlay';
 import { logSnapshotStatus } from '../../../utils/snapshotDebugLog';
@@ -38,6 +41,7 @@ function FormationHoleMarker({ hole }: { hole: FormationHole | null }) {
         <boxGeometry args={[0.5, 0.02, 0.5]} />
         <meshBasicMaterial color={hole.color} transparent opacity={0.2} />
       </mesh>
+      <EmptyJointsMarker memberId={hole.memberId} label={`USER · ${hole.label || 'YOU'}`} worldOffset={{ x: 0, y: 0, z: 0 }} />
     </group>
   );
 }
@@ -46,31 +50,26 @@ function countJoints(joints: Record<string, unknown> | null | undefined) {
   return Object.keys(joints || {}).length;
 }
 
-/**
- * Three.js 그룹 스테이지
- * - Motion Extraction Layer: SkeletonAvatar3D (fallback/debug)
- * - Render Layer: AvatarCharacter3D (RPM GLB + retarget)
- */
 export function GroupDanceStage3D({
   snapshot,
   className = '',
   showGrid = true,
-  avatarAssets = {},
+  productionAvatarAssets = {},
   formationHole = null,
-  useCharacterAvatars = true,
   snapshotLoading = false,
   skeletonFrames = [],
   currentTimeSec,
+  stageBackgroundId = 'stage-default',
 }: {
   snapshot: PracticeMotionSnapshot | null;
   className?: string;
   showGrid?: boolean;
-  avatarAssets?: Record<string, { glbUrl?: string }>;
+  productionAvatarAssets?: Record<string, ProductionAvatarAssetEntry>;
   formationHole?: FormationHole | null;
-  useCharacterAvatars?: boolean;
   snapshotLoading?: boolean;
   skeletonFrames?: SkeletonFrameData[];
   currentTimeSec?: number;
+  stageBackgroundId?: string;
 }) {
   const aiList = snapshotAiAvatars(snapshot);
   const aiDebugInfo = useMemo(
@@ -89,57 +88,31 @@ export function GroupDanceStage3D({
   return (
     <div
       className={className}
-      style={{ position: 'relative', width: '100%', height: '100%', minHeight: 320, background: '#0a0a14' }}
+      style={{ position: 'relative', width: '100%', height: '100%', minHeight: 320, background: '#12101a' }}
     >
       <SnapshotDebugOverlay snapshot={snapshot} loading={snapshotLoading} />
       <StageAiDebugOverlay info={aiDebugInfo} />
       <Canvas gl={{ antialias: true, alpha: false }} shadows>
         <Suspense fallback={<LoadingStage />}>
-          <PerspectiveCamera makeDefault position={[0, 1.4, 5.8]} fov={46} />
-          <color attach="background" args={['#0a0a14']} />
-          <fog attach="fog" args={['#0a0a14', 8, 18]} />
-          <ambientLight intensity={0.45} />
-          <directionalLight castShadow position={[3, 7, 4]} intensity={0.9} shadow-mapSize={[1024, 1024]} />
-          <pointLight position={[-2, 2.5, 2]} intensity={0.35} color="#FF1F8E" />
-          <pointLight position={[2, 1, -2]} intensity={0.25} color="#6C5CE7" />
-
-          {showGrid ? (
-            <Grid
-              args={[8, 8]}
-              cellSize={0.5}
-              cellThickness={0.4}
-              sectionSize={2}
-              sectionThickness={0.8}
-              fadeDistance={12}
-              fadeStrength={1}
-              position={[0, -1.2, 0]}
-              cellColor="#1a1a2e"
-              sectionColor="#FF1F8E33"
-            />
-          ) : null}
-
-          <ContactShadows position={[0, -1.19, 0]} opacity={0.45} scale={8} blur={2} far={4} />
+          <PerspectiveCamera makeDefault position={[0, 1.6, 6.2]} fov={44} />
+          <GroupPracticeEnvironment showGrid={showGrid} backgroundId={stageBackgroundId} />
 
           <FormationHoleMarker hole={formationHole} />
 
-          {(() => {
-            const userJoints = snapshotUserJoints(snapshot);
-            const userAnchor = snapshotUserAnchor(snapshot);
-            if (!userJoints) return null;
-            return countJoints(userJoints) > 0 ? (
-              <SkeletonAvatar3D
-                joints={translateUserJointsToAnchor(userJoints, userAnchor)}
-                persona={{ styleId: 'user', energy: 1, sharpness: 1, groove: 1, accentColor: '#FFFFFF', lineScale: 1.2 }}
-                lineWidth={useCharacterAvatars ? 2.5 : 3}
-              />
-            ) : (
-              <EmptyJointsMarker memberId="user" label="USER" worldOffset={userAnchor} />
-            );
-          })()}
-
           {aiList.map((avatar) => {
+            const asset = productionAvatarAssets[avatar.memberId];
             const jointCount = countJoints(avatar.joints);
-            const glbUrl = avatarAssets[avatar.memberId]?.glbUrl;
+
+            if (asset?.missing || !asset?.avatarAssetUrl) {
+              return (
+                <AvatarAssetMissingMarker
+                  key={avatar.memberId}
+                  memberId={avatar.memberId}
+                  label={avatar.displayName}
+                  worldOffset={avatar.worldOffset}
+                />
+              );
+            }
 
             if (jointCount === 0) {
               return (
@@ -152,25 +125,12 @@ export function GroupDanceStage3D({
               );
             }
 
-            if (useCharacterAvatars && glbUrl) {
-              return (
-                <AvatarCharacterWithFallback
-                  key={avatar.memberId}
-                  memberId={avatar.memberId}
-                  glbUrl={glbUrl}
-                  joints={avatar.joints}
-                  boneRotations={avatar.boneRotations}
-                  persona={avatar.persona}
-                  label={avatar.displayName}
-                  worldOffset={avatar.worldOffset}
-                />
-              );
-            }
-
             return (
-              <SkeletonAvatar3D
+              <AvatarCharacter3D
                 key={avatar.memberId}
+                glbUrl={asset.avatarAssetUrl}
                 joints={avatar.joints}
+                boneRotations={avatar.boneRotations}
                 persona={avatar.persona}
                 label={avatar.displayName}
               />
@@ -181,24 +141,6 @@ export function GroupDanceStage3D({
         </Suspense>
       </Canvas>
     </div>
-  );
-}
-
-function translateUserJointsToAnchor(
-  joints: Record<string, ChoreographyJoint>,
-  anchor: { x: number; y: number; z: number },
-) {
-  if (!joints) return {};
-  const nose = joints.nose;
-  const refX = nose?.x ?? 0.5;
-  const refY = nose?.y ?? 0.5;
-  const offsetX = anchor.x - refX;
-  const offsetY = anchor.y - refY;
-  return Object.fromEntries(
-    Object.entries(joints).map(([name, j]) => [
-      name,
-      { ...j, x: j.x + offsetX, y: j.y + offsetY, z: (j.z ?? 0) + (anchor.z ?? 0) },
-    ]),
   );
 }
 

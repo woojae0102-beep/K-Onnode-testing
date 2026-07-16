@@ -90,6 +90,14 @@ export type SampleVideoFramesOptions = {
   onReport?: (report: SamplerReport) => void;
   /** Motion Extraction 파이프라인/Worker 큐 등 외부 진단값 — Stall 덤프에 포함 */
   getExternalDiagnostics?: () => Record<string, unknown>;
+  /**
+   * 탭 비활성(visibility=hidden) 처리.
+   * - fail-fast: 2.5s 후 추출 중단 (기본)
+   * - pause-resume: 일시정지 후 탭 복귀 시 재개 (Skeleton Studio)
+   */
+  hiddenTabPolicy?: 'fail-fast' | 'pause-resume';
+  /** pause-resume 중 탭 상태 변경 콜백 */
+  onTabVisibilityPause?: (paused: boolean, hiddenMs: number) => void;
 };
 
 const DEFAULT_MAX_QUEUE_LENGTH = 60;
@@ -178,6 +186,8 @@ export async function sampleVideoFramesPlayback({
   onQueueOverflow,
   onReport,
   getExternalDiagnostics,
+  hiddenTabPolicy = 'fail-fast',
+  onTabVisibilityPause,
 }: SampleVideoFramesOptions): Promise<void> {
   if (!video) throw new Error('비디오 요소가 없습니다.');
 
@@ -252,6 +262,7 @@ export async function sampleVideoFramesPlayback({
   let futileHealStreak = 0;
   let callbackCountAtLastHeal = 0;
   let hiddenSinceAt: number | null = null;
+  let tabPauseActive = false;
   let backpressurePaused = false;
   let backpressurePausedAt = 0;
 
@@ -680,13 +691,26 @@ export async function sampleVideoFramesPlayback({
       if (settled) return;
       if (document.visibilityState === 'hidden') {
         if (hiddenSinceAt == null) hiddenSinceAt = performance.now();
+        if (hiddenTabPolicy === 'pause-resume') {
+          tabPauseActive = true;
+          video.pause();
+          onTabVisibilityPause?.(true, 0);
+          console.warn(
+            '[VideoFrameSampler] 탭 비활성 — 추출 일시정지. 이 탭으로 돌아오면 자동 재개됩니다.',
+          );
+          return;
+        }
         console.error(
           '[VideoFrameSampler] 추출 중 탭이 비활성화됨 — Chrome이 RVFC/디코드를 중단합니다. '
           + '추출이 끝날 때까지 이 탭을 활성 상태로 유지해 주세요.',
         );
         return;
       }
+      const hiddenMs = hiddenSinceAt != null ? performance.now() - hiddenSinceAt : 0;
       hiddenSinceAt = null;
+      tabPauseActive = false;
+      lastRvfcAt = performance.now();
+      onTabVisibilityPause?.(false, hiddenMs);
       ensureVideoPlaying();
       if (!settled && !producerDone && !aborted) scheduleNextRvfc();
     };
@@ -723,6 +747,10 @@ export async function sampleVideoFramesPlayback({
       if (tabHidden) {
         if (hiddenSinceAt == null) hiddenSinceAt = performance.now();
         const hiddenMs = performance.now() - hiddenSinceAt;
+        if (hiddenTabPolicy === 'pause-resume') {
+          onTabVisibilityPause?.(true, hiddenMs);
+          return;
+        }
         if (hiddenMs > HIDDEN_TAB_FAIL_FAST_MS) {
           const reason =
             `탭 비활성(visibility=hidden) ${(hiddenMs / 1000).toFixed(1)}s — `
@@ -735,7 +763,10 @@ export async function sampleVideoFramesPlayback({
         }
       } else {
         hiddenSinceAt = null;
+        tabPauseActive = false;
       }
+
+      if (tabPauseActive) return;
 
       if (video.paused && !video.ended && !tabHidden && !backpressurePaused) {
         ensureVideoPlaying();
@@ -745,7 +776,8 @@ export async function sampleVideoFramesPlayback({
 
       const totalBacklog = getTotalPipelineBacklog();
       const pipelineBusy = totalBacklog > 6 || consumerRunning || processingStartedAt > 0;
-      const effectiveStallTimeoutMs = pipelineBusy ? stallTimeoutMs * 2.5 : stallTimeoutMs;
+      const effectiveStallTimeoutMs = pipelineBusy ? stallTimeoutMs * 5 : stallTimeoutMs;
+      const pipelineBacklogGraceMs = 180_000;
 
       if (rvfcIdleMs > effectiveStallTimeoutMs) {
         const timelineCov = getTimelineCoverage();
@@ -759,6 +791,10 @@ export async function sampleVideoFramesPlayback({
           producerDone = true;
           detachVisibilityGuard?.();
           finalize();
+          return;
+        }
+        // MediaPipe가 메인 스레드를 점유하면 RVFC 콜백이 일시 정지될 수 있다 — backlog가 있으면 조기 종료하지 않음.
+        if (totalBacklog > 0 && rvfcIdleMs < pipelineBacklogGraceMs) {
           return;
         }
         const envHint = tabHidden

@@ -20,6 +20,9 @@ import { computeMotionQuality, computePerformanceBreakdown } from './motionQuali
 import { buildEnhancedTrackLifecycles } from './trackLifecycleAnalyzer';
 import { getGroupData } from '../../../data/groupPracticeData';
 import { resolveMinAiReferenceTracks } from '../../../config/choreoExtractConfig';
+import { buildMediaPipeRawAnalysisForFrame } from '../mediapipe/mediaPipeRawAnalyzer';
+import type { MediaPipeRawFrameSnapshot } from '../mediapipe/mediaPipeRawTypes';
+import { getMediaPipeRawSnapshot } from '../live/debugEventBus';
 
 export function buildFrameAnalysis(
   frames: DetectionFrame[],
@@ -27,12 +30,45 @@ export function buildFrameAnalysis(
   frameIndex: number,
   groupId: string,
   sampleFps: number,
+  mediaPipeRawByFrame?: Map<number, MediaPipeRawFrameSnapshot>,
 ): FrameAnalysisSnapshot {
   const frame = frames[frameIndex] ?? null;
   const prev = frameIndex > 0 ? frames[frameIndex - 1] : null;
   const stat = frameStats[frameIndex] ?? null;
   const group = getGroupData(groupId);
   const trackToMember = new Map<number, string>();
+
+  const storedRaw = mediaPipeRawByFrame?.get(frameIndex)
+    ?? getMediaPipeRawSnapshot(frameIndex);
+  const prevStoredRaw = mediaPipeRawByFrame?.get(frameIndex - 1)
+    ?? getMediaPipeRawSnapshot(frameIndex - 1);
+
+  const mediaPipeRaw = buildMediaPipeRawAnalysisForFrame({
+    frameIndex,
+    timestamp: frame?.timestamp ?? frameIndex / sampleFps,
+    frame,
+    frameStat: stat,
+    debugSnapshot: null,
+    storedRaw,
+    prevStoredRaw,
+  });
+
+  const performance = mediaPipeRaw?.timing
+    ? {
+        mediaPipeMs: mediaPipeRaw.timing.totalMs,
+        trackingMs: Math.max(0, (stat?.processingMs ?? 0) - mediaPipeRaw.timing.totalMs),
+        hungarianMs: 0,
+        kalmanMs: 0,
+        orientationMs: 0,
+        rotationMs: 0,
+        workerMs: 0,
+        totalMs: stat?.processingMs ?? mediaPipeRaw.timing.totalMs,
+        imageDecodeMs: mediaPipeRaw.timing.imageDecodeMs,
+        poseDetectionMs: mediaPipeRaw.timing.poseDetectionMs,
+        landmarkMs: mediaPipeRaw.timing.landmarkMs,
+        postProcessMs: mediaPipeRaw.timing.postProcessMs,
+      }
+    : computePerformanceBreakdown(stat);
 
   return {
     frameIndex,
@@ -43,7 +79,8 @@ export function buildFrameAnalysis(
     persons: buildMultiPersonInspector(frame, prev, group?.members ?? [], trackToMember),
     rcaIssues: analyzeFrameRca(frames, frameIndex, stat, sampleFps),
     motionQuality: computeMotionQuality(frames, frameIndex, stat),
-    performance: computePerformanceBreakdown(stat),
+    performance,
+    mediaPipeRaw,
   };
 }
 
@@ -140,15 +177,16 @@ export function buildFullAnalysisPackage(options: {
   frameStats: SkeletonDebugFrameStat[];
   groupId: string;
   sampleFps: number;
+  mediaPipeRawByFrame?: Map<number, MediaPipeRawFrameSnapshot>;
 }): SkeletonAnalysisPackage {
-  const { analysisResult, frameStats, groupId, sampleFps } = options;
+  const { analysisResult, frameStats, groupId, sampleFps, mediaPipeRawByFrame } = options;
   const frames = analysisResult.frames ?? [];
+  const rawMap = mediaPipeRawByFrame ?? new Map();
 
   const frameAnalyses = new Map<number, FrameAnalysisSnapshot>();
-  // Pre-build only every Nth frame + on-demand cache — store sparse for memory
   const step = frames.length > 800 ? 5 : 1;
   for (let i = 0; i < frames.length; i += step) {
-    frameAnalyses.set(i, buildFrameAnalysis(frames, frameStats, i, groupId, sampleFps));
+    frameAnalyses.set(i, buildFrameAnalysis(frames, frameStats, i, groupId, sampleFps, rawMap));
   }
 
   const performanceTimeline: PerformanceTimelinePoint[] = frameStats.map((f) => ({
@@ -161,6 +199,7 @@ export function buildFullAnalysisPackage(options: {
     version: 2,
     builtAt: new Date().toISOString(),
     frameAnalyses,
+    mediaPipeRawByFrame: rawMap,
     trackLifecycles: buildEnhancedTrackLifecycles(frames, sampleFps),
     coverageTimeline: buildCoverageTimeline(frameStats),
     coverageDropEvents: detectCoverageDrops(frameStats),
@@ -181,7 +220,7 @@ export function getFrameAnalysis(
   if (pkg.frameAnalyses.has(frameIndex)) {
     return pkg.frameAnalyses.get(frameIndex)!;
   }
-  const snap = buildFrameAnalysis(frames, frameStats, frameIndex, groupId, sampleFps);
+  const snap = buildFrameAnalysis(frames, frameStats, frameIndex, groupId, sampleFps, pkg.mediaPipeRawByFrame);
   pkg.frameAnalyses.set(frameIndex, snap);
   return snap;
 }

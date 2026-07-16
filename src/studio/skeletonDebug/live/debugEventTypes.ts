@@ -18,6 +18,15 @@ export interface DebugMediaPipeEvent {
   emittedAtMs: number;
 }
 
+/** MediaPipe Raw Debug Layer — studio 전용 compact snapshot */
+export interface DebugMediaPipeRawEvent {
+  type: 'mediapipe_raw';
+  frameIndex: number;
+  timestamp: number;
+  snapshot: import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot;
+  emittedAtMs: number;
+}
+
 export interface DebugTrackingEvent {
   type: 'tracking';
   frameIndex: number;
@@ -121,6 +130,7 @@ export interface DebugRcaEvent {
 export type DebugBusEvent =
   | DebugFrameEvent
   | DebugMediaPipeEvent
+  | DebugMediaPipeRawEvent
   | DebugTrackingEvent
   | DebugHungarianEvent
   | DebugKalmanEvent
@@ -138,6 +148,7 @@ export interface FrameDebugSnapshot {
   sourceVideoTime: number;
   frame?: DebugFrameEvent;
   mediapipe?: DebugMediaPipeEvent;
+  mediapipeRaw?: import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot;
   tracking?: DebugTrackingEvent;
   hungarian: DebugHungarianEvent[];
   kalman: DebugKalmanEvent[];

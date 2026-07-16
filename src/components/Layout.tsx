@@ -27,8 +27,12 @@ import CoachingView from '../views/CoachingView';
 import AgencyAuditionView from '../views/AgencyAuditionView';
 import TVModeView from '../views/TVModeView';
 import SkeletonDebugStudioView from '../views/SkeletonDebugStudioView';
+import GroupContentAdminView from '../views/GroupContentAdminView';
+import ProductionDanceStudioView from '../views/ProductionDanceStudioView';
 import AppLanguageSync from './AppLanguageSync';
 import { isDevEnvironment } from '../utils/isDevEnvironment';
+import { useAuth } from '../contexts/AuthContext';
+import { isAdminProfile } from '../utils/adminAuth';
 
 const TAB_TO_DEFAULT_VIEW = {
   home: 'home',
@@ -62,6 +66,8 @@ export default function Layout(props) {
   const [activeTab, setActiveTab] = useState('home');
   const [mainView, setMainView] = useState('home');
   const [lastTrainingView, setLastTrainingView] = useState('tv-mode');
+  const { userProfile } = useAuth();
+  const isAdmin = isAdminProfile(userProfile);
   usePracticeReminderNotifications();
 
   useEffect(() => {
@@ -77,7 +83,19 @@ export default function Layout(props) {
     ) {
       setMainView('skeleton-debug-studio');
     }
-  }, []);
+    if (
+      (isDevEnvironment() || isAdmin)
+      && (path.includes('/admin/production-dance') || viewParam === 'production-dance-studio')
+    ) {
+      setMainView('production-dance-studio');
+    }
+    if (
+      isDevEnvironment()
+      && (path.includes('/dev/group-content-admin') || viewParam === 'group-content-admin')
+    ) {
+      setMainView('group-content-admin');
+    }
+  }, [isAdmin]);
 
   const handleChangeTab = useCallback((tab) => {
     setActiveTab(tab);
@@ -149,6 +167,12 @@ export default function Layout(props) {
         return isDevEnvironment()
           ? <SkeletonDebugStudioView onNavigate={handleSelectView} />
           : <HomeView onNavigate={handleSelectView} />;
+      case 'group-content-admin':
+        return isDevEnvironment()
+          ? <GroupContentAdminView onNavigate={handleSelectView} />
+          : <HomeView onNavigate={handleSelectView} />;
+      case 'production-dance-studio':
+        return <ProductionDanceStudioView onNavigate={handleSelectView} />;
       default:
         return <HomeView onNavigate={handleSelectView} />;
     }
@@ -160,6 +184,14 @@ export default function Layout(props) {
 
   if (mainView === 'skeleton-debug-studio' && isDevEnvironment()) {
     return <SkeletonDebugStudioView onNavigate={handleSelectView} />;
+  }
+
+  if (mainView === 'group-content-admin' && isDevEnvironment()) {
+    return <GroupContentAdminView onNavigate={handleSelectView} />;
+  }
+
+  if (mainView === 'production-dance-studio') {
+    return <ProductionDanceStudioView onNavigate={handleSelectView} />;
   }
 
   return (

@@ -64,6 +64,7 @@ let isLive = false;
 let state: LiveDebugState = createLiveState();
 const listeners = new Set<Listener>();
 const frameSnapshots = new Map<number, FrameDebugSnapshot>();
+const mediapipeRawByFrame = new Map<number, import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot>();
 let peakTrackObserved = 0;
 
 export function isDebugEventBusEnabled(): boolean {
@@ -90,11 +91,20 @@ export function resetDebugEventBus(): void {
   state.enabled = enabled;
   state.isLive = isLive;
   frameSnapshots.clear();
+  mediapipeRawByFrame.clear();
   peakTrackObserved = 0;
 }
 
 export function getLiveDebugState(): LiveDebugState {
   return state;
+}
+
+export function getMediaPipeRawSnapshot(frameIndex: number) {
+  return mediapipeRawByFrame.get(frameIndex) ?? null;
+}
+
+export function getAllMediaPipeRawSnapshots(): Map<number, import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot> {
+  return new Map(mediapipeRawByFrame);
 }
 
 export function getFrameDebugSnapshot(frameIndex: number): FrameDebugSnapshot | null {
@@ -155,6 +165,11 @@ function emit(event: DebugBusEvent): void {
       snap.mediapipe = event;
       state.detectedCount = event.detectedPersons;
       state.mediaPipeFps = event.processingMs > 0 ? 1000 / event.processingMs : state.mediaPipeFps;
+      break;
+    case 'mediapipe_raw':
+      snap.mediapipeRaw = event.snapshot;
+      mediapipeRawByFrame.set(event.frameIndex, event.snapshot);
+      state.detectedCount = event.snapshot.detectedPersons;
       break;
     case 'tracking':
       snap.tracking = event;
@@ -265,6 +280,14 @@ export const debugBus = {
     emit({ ...p, type: 'frame', emittedAtMs: performance.now() }),
   mediapipe: (p: Omit<DebugMediaPipeEvent, 'type' | 'emittedAtMs'>) =>
     emit({ ...p, type: 'mediapipe', emittedAtMs: performance.now() }),
+  mediapipeRaw: (snapshot: import('../mediapipe/mediaPipeRawTypes').MediaPipeRawFrameSnapshot) =>
+    emit({
+      type: 'mediapipe_raw',
+      frameIndex: snapshot.frameIndex,
+      timestamp: snapshot.timestamp,
+      snapshot,
+      emittedAtMs: performance.now(),
+    }),
   tracking: (p: Omit<DebugTrackingEvent, 'type' | 'emittedAtMs'>) =>
     emit({ ...p, type: 'tracking', emittedAtMs: performance.now() }),
   hungarian: (p: Omit<DebugHungarianEvent, 'type' | 'emittedAtMs'>) =>

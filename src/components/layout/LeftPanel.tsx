@@ -5,6 +5,7 @@ import { Settings } from 'lucide-react';
 import TabBar from './TabBar';
 import MenuRow, { SectionTitle } from './MenuRow';
 import { useAuth } from '../../contexts/AuthContext';
+import { isAdminProfile } from '../../utils/adminAuth';
 import { isDevEnvironment } from '../../utils/isDevEnvironment';
 
 const HOME_MENUS_MY = [
@@ -90,6 +91,8 @@ export default function LeftPanel({
 
 function HomeTabContent({ mainView, onSelectView }) {
   const { t } = useTranslation();
+  const { userProfile } = useAuth();
+  const isAdmin = isAdminProfile(userProfile);
   return (
     <>
       <SectionTitle>{t('leftPanel.myPage')}</SectionTitle>
@@ -130,6 +133,17 @@ function HomeTabContent({ mainView, onSelectView }) {
           trailing={item.accent ? <NewBadge /> : null}
         />
       ))}
+      {isAdmin ? (
+        <>
+          <SectionTitle>Admin</SectionTitle>
+          <MenuRow
+            icon="🎬"
+            label="Production Dance Studio"
+            active={mainView === 'production-dance-studio'}
+            onClick={() => onSelectView?.('production-dance-studio')}
+          />
+        </>
+      ) : null}
       {isDevEnvironment() ? (
         <>
           <SectionTitle>Dev Tools</SectionTitle>
@@ -138,6 +152,12 @@ function HomeTabContent({ mainView, onSelectView }) {
             label="Skeleton Analysis Studio"
             active={mainView === 'skeleton-debug-studio'}
             onClick={() => onSelectView?.('skeleton-debug-studio')}
+          />
+          <MenuRow
+            icon="📦"
+            label="Group Content Admin (Legacy)"
+            active={mainView === 'group-content-admin'}
+            onClick={() => onSelectView?.('group-content-admin')}
           />
         </>
       ) : null}
