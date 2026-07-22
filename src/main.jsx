@@ -11,6 +11,7 @@ import { parseTVCodeFromUrl } from './utils/tvConnect';
 import { cleanupInvalidChoreoCache } from './services/groupChoreoCache';
 import { probeMotionDetectionWorkerSupport } from './services/motion/WorkerMotionDetector';
 import { initProductionReadiness } from './config/productionReadiness';
+import { installGroupMotionDebugGlobals } from './modes/group/runtime/groupMotionDebugBootstrap';
 import './index.css';
 import './i18n.ts';
 import './store/languageStore.ts';
@@ -20,6 +21,7 @@ cleanupInvalidChoreoCache().catch((err) => {
 });
 
 initProductionReadiness();
+installGroupMotionDebugGlobals();
 
 probeMotionDetectionWorkerSupport().catch((err) => {
   console.warn('[MotionDetector] Worker Capability Probe 실패', err);
@@ -189,12 +191,15 @@ class AppErrorBoundary extends React.Component {
 
 function AppGate() {
   const { isLoading, isAuthenticated, userProfile, authBootstrapError, clearAuthBootstrapError } = useAuth();
+  const e2eBypass = typeof window !== 'undefined'
+    && import.meta.env.DEV
+    && window.__K_ONNODE_E2E_BYPASS_AUTH__;
 
-  if (isLoading) {
+  if (isLoading && !e2eBypass) {
     return <FullScreenLoader message="앱을 준비하는 중..." />;
   }
 
-  if (authBootstrapError) {
+  if (authBootstrapError && !e2eBypass) {
     return (
       <BootstrapErrorScreen
         message={authBootstrapError}
@@ -206,8 +211,8 @@ function AppGate() {
     );
   }
 
-  if (!isAuthenticated) return <AuthScreen />;
-  if (userProfile && !userProfile.onboardingCompleted) {
+  if (!isAuthenticated && !e2eBypass) return <AuthScreen />;
+  if (userProfile && !userProfile.onboardingCompleted && !e2eBypass) {
     return <OnboardingScreen />;
   }
   return <App />;

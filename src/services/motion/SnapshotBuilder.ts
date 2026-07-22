@@ -5,7 +5,7 @@
  */
 import { GROUP_DATA } from '../../data/groupPracticeData';
 import { AvatarGroupManager } from '../group/AvatarGroupManager';
-import { GroupDanceSyncEngine } from '../group/GroupDanceSyncEngine';
+import { SkeletonGroupDanceSyncEngine } from '../group/SkeletonGroupDanceSyncEngine';
 import { skeletonFramesToChoreographyDataset } from '../group/ChoreographyDatasetLoader';
 import type { PracticeMotionSnapshot } from '../../types/motionSnapshot';
 import type { PracticeSessionData } from '../../types/practiceSession';
@@ -84,7 +84,7 @@ export function buildMotionSnapshot({
     userMemberId: session.userMemberId,
   });
 
-  const engine = new GroupDanceSyncEngine(dataset, manager, {
+  const engine = new SkeletonGroupDanceSyncEngine(dataset, manager, {
     sourceFrames: session.frames,
     timeline: session.motionMetadata?.timeline ?? {
       duration: session.duration,

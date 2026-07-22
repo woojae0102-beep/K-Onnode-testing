@@ -14,6 +14,8 @@ const HANDLERS = {
   'create-motion-content': () => require(path.join(__dirname, '../lib/api-handlers/group/create-motion-content')),
   deepmotion: () => require(path.join(__dirname, '../lib/api-handlers/group/deepmotion')),
   'production-dance': () => require(path.join(__dirname, '../lib/api-handlers/group/production-dance')),
+  'production-authority-verify': () => require(path.join(__dirname, '../lib/api-handlers/group/production-authority-verify')),
+  'gx10-production-motion': () => require(path.join(__dirname, '../lib/api-handlers/group/gx10-production-motion')),
   'avatar-assets': () => require(path.join(__dirname, '../lib/api-handlers/group/avatar-assets')),
 };
 

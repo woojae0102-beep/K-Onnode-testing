@@ -11,6 +11,9 @@ export default defineConfig({
     baseURL: process.env.PLAYWRIGHT_BASE_URL || 'https://localhost:5173',
     ignoreHTTPSErrors: true,
     trace: 'on-first-retry',
+    launchOptions: {
+      args: ['--enable-webgl', '--ignore-gpu-blocklist', '--use-gl=angle'],
+    },
   },
   projects: [
     {

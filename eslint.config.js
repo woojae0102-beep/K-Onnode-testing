@@ -51,4 +51,12 @@ export default tseslint.config(
       'preserve-caught-error': 'off',
     },
   },
+  {
+    files: ['src/**/*.test.{js,ts}'],
+    languageOptions: {
+      globals: {
+        ...globals.node,
+      },
+    },
+  },
 );

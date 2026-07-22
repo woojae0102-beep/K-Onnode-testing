@@ -1,23 +1,23 @@
 // @ts-nocheck
+/**
+ * Group Mode dance engine — GroupMotionAsset + AvatarMotionController only.
+ */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GROUP_DATA } from '../data/groupPracticeData';
 import { AvatarGroupManager } from '../services/group/AvatarGroupManager';
 import { GroupDanceSyncEngine } from '../services/group/GroupDanceSyncEngine';
-import {
-  loadChoreographyDataset,
-  skeletonFramesToChoreographyDataset,
-} from '../services/group/ChoreographyDatasetLoader';
 import { computePracticeTimeline } from '../utils/practiceTimelineUtils';
-import type { ChoreographyDataset } from '../types/groupChoreography';
+import type { ChoreographyDataset, ChoreographyMemberMeta } from '../types/groupChoreography';
 import type { ReferenceVideoMeta } from '../types/practiceSession';
 import type { PracticeMotionSnapshot } from '../types/motionSnapshot';
 import { assemblePracticeMotionSnapshot } from '../utils/motionSnapshotUtils';
+import type { GroupMotionAsset } from '../modes/group/types/GroupMotionAsset';
 
 export interface UseGroupDanceEngineOptions {
   groupId: string;
   songId: string;
   userMemberId: string;
-  skeletonFrames?: any[] | null;
+  groupMotionAsset?: GroupMotionAsset | null;
   practiceDuration?: number;
   sampleFps?: number;
   totalFrames?: number;
@@ -25,27 +25,59 @@ export interface UseGroupDanceEngineOptions {
   sourceVideoDurationSec?: number | null;
 }
 
-/**
- * GroupStudioSession 등 기존 avatarSync 루프와 함께 쓰는 SyncEngine 훅.
- * tick(elapsedSec, userJoints)를 호출하는 쪽에서 타임라인을 제어합니다.
- */
+function motionAssetToDataset(
+  asset: GroupMotionAsset,
+  groupMembers: Array<{ id: string; name: string; nameKr?: string; color: string; defaultX: number; defaultY: number }>,
+): ChoreographyDataset {
+  const memberMeta: ChoreographyMemberMeta[] = asset.members.map((m) => {
+    const gm = groupMembers.find((g) => g.id === m.memberId);
+    const anchor = m.formationTimeline?.[0]?.position
+      || { x: gm?.defaultX ?? 0.5, y: gm?.defaultY ?? 0.5, z: 0 };
+    return {
+      memberId: m.memberId,
+      displayName: m.memberName || gm?.name || m.memberId,
+      displayNameKr: gm?.nameKr,
+      persona: {
+        styleId: 'member',
+        energy: 0.8,
+        sharpness: 0.75,
+        groove: 0.7,
+        accentColor: gm?.color || '#FF1F8E',
+      },
+      formationAnchor: anchor,
+    };
+  });
+
+  return {
+    meta: {
+      groupId: asset.groupId,
+      songId: asset.songId,
+      durationSec: asset.durationSec,
+      formation: GROUP_DATA[asset.groupId]?.defaultFormation || 'diamond',
+      fps: asset.fps,
+    },
+    members: memberMeta,
+    frames: [],
+  };
+}
+
 export function useGroupDanceEngine({
   groupId,
   songId,
   userMemberId,
-  skeletonFrames = null,
+  groupMotionAsset = null,
   practiceDuration = 0,
   sampleFps = 30,
   totalFrames = 0,
   referenceVideo = null,
   sourceVideoDurationSec = null,
 }: UseGroupDanceEngineOptions) {
-  const [dataset, setDataset] = useState<ChoreographyDataset | null>(null);
-  const [loading, setLoading] = useState(() => !skeletonFrames?.length);
+  const [loading, setLoading] = useState(() => !groupMotionAsset);
   const [error, setError] = useState<string | null>(null);
 
   const syncEngineRef = useRef<GroupDanceSyncEngine | null>(null);
   const managerRef = useRef<AvatarGroupManager | null>(null);
+  const datasetRef = useRef<ChoreographyDataset | null>(null);
 
   const group = GROUP_DATA[groupId];
   const myMember = group?.members.find((m) => m.id === userMemberId);
@@ -55,99 +87,58 @@ export function useGroupDanceEngine({
   );
 
   useEffect(() => {
-    if (!group) {
+    if (!group || !groupMotionAsset) {
+      setLoading(false);
+      if (!groupMotionAsset) {
+        setError('Production Motion Asset이 준비되지 않았습니다.');
+      }
+      return undefined;
+    }
+
+    if (groupMotionAsset.status !== 'motion_asset_ready') {
+      setError('Production Motion Asset이 준비되지 않았습니다.');
       setLoading(false);
       return undefined;
     }
 
-    if (skeletonFrames?.length) {
-      if (!practiceDuration || practiceDuration <= 0) {
-        setError('연습 길이(practiceDuration)가 설정되지 않았습니다.');
-        setLoading(false);
-        return undefined;
-      }
-      try {
-        const timeline =
-          computePracticeTimeline(practiceDuration, sampleFps)
-          ?? { duration: practiceDuration, fps: sampleFps, totalFrames: totalFrames || skeletonFrames.length };
-
-        const loaded = skeletonFramesToChoreographyDataset({
-          groupId,
-          songId,
-          formation: group.defaultFormation || 'diamond',
-          memberMeta: group.members.map((m) => ({
-            memberId: m.id,
-            displayName: m.name,
-            displayNameKr: m.nameKr,
-            persona: {
-              styleId: 'member',
-              energy: 0.8,
-              sharpness: 0.75,
-              groove: 0.7,
-              accentColor: m.color,
-            },
-            formationAnchor: { x: m.defaultX, y: m.defaultY, z: 0 },
-          })),
-          frames: skeletonFrames,
-          durationSec: timeline.duration,
-          sampleFps: timeline.fps,
-        });
-        setDataset(loaded);
-        managerRef.current = new AvatarGroupManager({
-          dataset: loaded,
-          groupMembers: group.members,
-          userMemberId,
-        });
-        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current, {
-          sourceFrames: skeletonFrames,
-          timeline: {
-            ...timeline,
-            totalFrames: totalFrames > 0 ? totalFrames : timeline.totalFrames,
-          },
-        });
-        setError(null);
-        setLoading(false);
-      } catch (err: any) {
-        setError(err?.message || String(err));
-        setLoading(false);
-      }
+    const duration = practiceDuration || groupMotionAsset.durationSec;
+    if (!duration || duration <= 0) {
+      setError('연습 길이(practiceDuration)가 설정되지 않았습니다.');
+      setLoading(false);
       return undefined;
     }
 
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    (async () => {
-      try {
-        const loaded = await loadChoreographyDataset(groupId, songId);
-        if (cancelled) return;
-        setDataset(loaded);
-        managerRef.current = new AvatarGroupManager({
-          dataset: loaded,
-          groupMembers: group.members,
-          userMemberId,
-        });
-        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current, {
-          sourceFrames: skeletonFrames,
-          timeline: computePracticeTimeline(practiceDuration, sampleFps),
-        });
-      } catch (err: any) {
-        if (!cancelled) setError(err?.message || String(err));
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
+    try {
+      const timeline = computePracticeTimeline(duration, sampleFps)
+        ?? { duration, fps: sampleFps, totalFrames: totalFrames || Math.round(duration * sampleFps) };
 
-    return () => {
-      cancelled = true;
-    };
-  }, [groupId, songId, userMemberId, skeletonFrames, practiceDuration, sampleFps, totalFrames, group]);
+      const loaded = motionAssetToDataset(groupMotionAsset, group.members);
+      datasetRef.current = loaded;
+      managerRef.current = new AvatarGroupManager({
+        dataset: loaded,
+        groupMembers: group.members,
+        userMemberId,
+      });
+      syncEngineRef.current = new GroupDanceSyncEngine(groupMotionAsset, managerRef.current, {
+        timeline: {
+          ...timeline,
+          totalFrames: totalFrames > 0 ? totalFrames : timeline.totalFrames,
+        },
+      });
+      setError(null);
+      setLoading(false);
+    } catch (err: any) {
+      setError(err?.message || String(err));
+      setLoading(false);
+    }
+
+    return undefined;
+  }, [groupId, songId, userMemberId, groupMotionAsset, practiceDuration, sampleFps, totalFrames, group]);
 
   const tick = useCallback(
     (
       elapsedSec: number,
       userJoints: Record<string, { x: number; y: number; z?: number }> | null = null,
-      sourceFrameOverride: import('../types/groupPractice').SkeletonFrameData | null = null,
     ): PracticeMotionSnapshot | null => {
       const engine = syncEngineRef.current;
       if (!engine) return null;
@@ -155,31 +146,31 @@ export function useGroupDanceEngine({
         elapsedSec,
         userJoints,
         userFallbackAnchor,
-        sourceFrameOverride,
       });
       return assemblePracticeMotionSnapshot(
         {
           groupId,
           songId,
           userMemberId,
-          videoDuration: sourceVideoDurationSec ?? practiceDuration,
-          frameCount: skeletonFrames?.length || totalFrames || tickResult.timeline.totalFrames,
+          videoDuration: sourceVideoDurationSec ?? practiceDuration ?? groupMotionAsset?.durationSec ?? 0,
+          frameCount: totalFrames || tickResult.timeline.totalFrames,
           fps: sampleFps || tickResult.timeline.fps,
           referenceVideo: referenceVideo ?? null,
         },
         tickResult,
       );
     },
-    [userFallbackAnchor, groupId, songId, userMemberId, sourceVideoDurationSec, practiceDuration, totalFrames, skeletonFrames, sampleFps, referenceVideo],
+    [userFallbackAnchor, groupId, songId, userMemberId, sourceVideoDurationSec, practiceDuration, totalFrames, sampleFps, referenceVideo, groupMotionAsset],
   );
 
   return {
     loading,
     error,
-    dataset,
+    dataset: datasetRef.current,
     tick,
     manager: managerRef.current,
     userFallbackAnchor,
+    motionAdapter: syncEngineRef.current?.getMotionAdapter() ?? null,
   };
 }
 

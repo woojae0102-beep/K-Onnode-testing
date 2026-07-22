@@ -6,6 +6,7 @@ import type {
   ChoreographyMemberMeta,
   PersonaStyle,
 } from '../../types/groupChoreography';
+import { getVisibleGroupMembers } from '../../modes/group/runtime/getVisibleGroupMembers';
 
 export interface AvatarGroupManagerInput {
   dataset: ChoreographyDataset;
@@ -50,8 +51,17 @@ export class AvatarGroupManager {
     const memberMap = new Map(groupMembers.map((m) => [m.id, m]));
     const metaById = new Map(dataset.members.map((m) => [m.memberId, m]));
 
-    const userMeta = metaById.get(userMemberId) || inferMemberMeta(userMemberId, memberMap.get(userMemberId));
-    const aiMembers = dataset.members.filter((m) => m.memberId !== userMemberId);
+    const { userMember, visibleAiMembers } = getVisibleGroupMembers({
+      members: dataset.members.map((m) => ({ memberId: m.memberId, _meta: m })),
+      selectedMemberId: userMemberId,
+      mode: 'avatar-manager',
+    });
+
+    const userMeta = userMember?._meta
+      || metaById.get(userMemberId)
+      || inferMemberMeta(userMemberId, memberMap.get(userMemberId));
+
+    const aiMembers = visibleAiMembers.map((v) => v._meta);
 
     const aiAvatars = aiMembers.map((meta) => {
       const groupMember = memberMap.get(meta.memberId) || null;

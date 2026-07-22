@@ -4,6 +4,19 @@ import type { GroupData, GroupMember } from '../types/groupPractice';
 export type { GroupMember };
 
 export const GROUP_DATA: Record<string, GroupData> = {
+  'real-multi-member-motion-test': {
+    name: 'Motion Test Group',
+    nameKr: '모션 테스트',
+    memberCount: 4,
+    defaultFormation: 'diamond',
+    members: [
+      { id: 'member_a', name: 'Member A', nameKr: 'A', color: '#FF6B9D', defaultX: 0.5, defaultY: 0.25, avatar: '🅰', position: { default: { x: 0.5, y: 0.25 } } },
+      { id: 'member_b', name: 'Member B', nameKr: 'B', color: '#FFD700', defaultX: 0.75, defaultY: 0.5, avatar: '🅱', position: { default: { x: 0.75, y: 0.5 } } },
+      { id: 'member_c', name: 'Member C', nameKr: 'C', color: '#A78BFA', defaultX: 0.25, defaultY: 0.5, avatar: '🅲', position: { default: { x: 0.25, y: 0.5 } } },
+      { id: 'member_d', name: 'Member D', nameKr: 'D', color: '#6EE7B7', defaultX: 0.5, defaultY: 0.75, avatar: '🅳', position: { default: { x: 0.5, y: 0.75 } } },
+    ],
+  },
+
   blackpink: {
     name: 'BLACKPINK',
     nameKr: '블랙핑크',

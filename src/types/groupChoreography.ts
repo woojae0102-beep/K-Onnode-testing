@@ -69,12 +69,19 @@ export interface AIAvatarInstance {
   memberId: string;
   displayName: string;
   persona: PersonaStyle;
-  /** 현재 프레임 관절 (formation 보정 후) */
-  joints: Record<string, ChoreographyJoint>;
-  /** 본별 Quaternion — GLB 리타겟 */
+  /** @deprecated Group Mode — motionUrl + AnimationClip 사용 */
+  joints?: Record<string, ChoreographyJoint>;
+  /** Group Mode motion playback */
+  motionUrl?: string;
+  motionFormat?: 'gltf_animation';
+  motionAssetId?: string;
+  /** 본별 Quaternion — Teaching/legacy GLB retarget */
   boneRotations?: Record<string, { x: number; y: number; z: number; w: number }>;
   /** Body facing */
   orientation?: { yaw: number; pitch: number; label: string; confidence: number };
+  animationClipName?: string;
+  sourceSkeletonProfile?: import('../../modes/group/types/ProductionSkeletonContract').SkeletonProfile;
+  avatarSkeletonProfile?: import('../../modes/group/types/ProductionSkeletonContract').SkeletonProfile;
   /** 3D 월드 오프셋 (dynamic positioning) */
   worldOffset: { x: number; y: number; z: number };
   isEstimated?: boolean;

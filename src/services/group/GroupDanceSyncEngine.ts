@@ -1,219 +1,124 @@
 // @ts-nocheck
-import { findFrameAtTime, findFrameIndexAtTime } from '../../utils/skeletonTimelineUtils';
-import { cloneSkeletonFrameForSnapshot } from '../../utils/snapshotFrameUtils';
+/**
+ * Group Mode sync engine — @deprecated alias, use GroupMotionClockRuntime.
+ * Skeleton frame lookup / joint interpolation / pose reconstruction 금지.
+ */
 import type { PracticeTimeline } from '../../utils/practiceTimelineUtils';
 import { timeSecToFrameIndex } from '../../utils/practiceTimelineUtils';
-import type { SkeletonFrameData } from '../../types/groupPractice';
-import type {
-  AIAvatarInstance,
-  ChoreographyDataset,
-  ChoreographyJoint,
-} from '../../types/groupChoreography';
 import type { SyncEngineTickResult } from '../../types/motionSnapshot';
+import { GroupAvatarMotionAdapter } from '../../modes/group/runtime/GroupAvatarMotionAdapter';
+import { resolveFormationAtTime } from '../../modes/group/runtime/resolveFormationAtTime';
+import type { GroupMotionAsset } from '../../modes/group/types/GroupMotionAsset';
 import { AvatarGroupManager } from './AvatarGroupManager';
-import {
-  applyFormationPositioning,
-  computeLiveUserAnchor,
-  computeRoot,
-  FORMATION_SPREAD_SCALE,
-} from './FormationPositioning';
-import { buildAvatarJointsFromMember } from '../../utils/skeleton3DUtils';
-
-export interface GroupDanceSyncInput {
-  dataset: ChoreographyDataset;
-  avatarManager: AvatarGroupManager;
-  elapsedSec: number;
-  userJoints: Record<string, ChoreographyJoint> | null;
-  userFallbackAnchor: { x: number; y: number; z: number };
-}
 
 export interface GroupDanceSyncEngineOptions {
-  /** metadata 포함 원본 스켈레톤 프레임 */
-  sourceFrames?: SkeletonFrameData[];
   timeline?: PracticeTimeline | null;
 }
 
-/**
- * MediaPipe 사용자 포즈 + AI 안무 프레임을 하나의 렌더 스냅샷으로 동기화합니다.
- * Snapshot만으로 스테이지 100% 복원 가능하도록 frame/formation/memberTracks/confidence 포함.
- */
+const DEFAULT_PERSONA = {
+  styleId: 'balanced',
+  energy: 0.7,
+  sharpness: 0.7,
+  groove: 0.6,
+  accentColor: '#FF1F8E',
+};
+
 export class GroupDanceSyncEngine {
-  private dataset: ChoreographyDataset;
   private manager: AvatarGroupManager;
-  private sourceFrames: SkeletonFrameData[];
+  private motionAsset: GroupMotionAsset;
+  private motionAdapter: GroupAvatarMotionAdapter;
   private timeline: PracticeTimeline | null;
   private lastSnapshot: SyncEngineTickResult | null = null;
 
   constructor(
-    dataset: ChoreographyDataset,
+    motionAsset: GroupMotionAsset,
     manager: AvatarGroupManager,
     options: GroupDanceSyncEngineOptions = {},
   ) {
-    this.dataset = dataset;
+    this.motionAsset = motionAsset;
     this.manager = manager;
-    this.sourceFrames = options.sourceFrames ?? [];
+    this.motionAdapter = new GroupAvatarMotionAdapter();
     this.timeline = options.timeline ?? null;
+    void this.motionAdapter.loadMotion(motionAsset);
   }
 
-  updateDataset(dataset: ChoreographyDataset, options: GroupDanceSyncEngineOptions = {}) {
-    this.dataset = dataset;
-    if (options.sourceFrames) this.sourceFrames = options.sourceFrames;
+  updateMotionAsset(motionAsset: GroupMotionAsset, options: GroupDanceSyncEngineOptions = {}) {
+    this.motionAsset = motionAsset;
     if (options.timeline !== undefined) this.timeline = options.timeline;
+    void this.motionAdapter.loadMotion(motionAsset);
   }
 
   tick({
     elapsedSec,
-    userJoints,
+    userJoints = null,
     userFallbackAnchor,
-    sourceFrameOverride = null,
-  }: Omit<GroupDanceSyncInput, 'dataset' | 'avatarManager'> & {
-    sourceFrameOverride?: SkeletonFrameData | null;
+  }: {
+    elapsedSec: number;
+    userJoints?: Record<string, { x: number; y: number; z?: number }> | null;
+    userFallbackAnchor: { x: number; y: number; z: number };
   }): SyncEngineTickResult {
+    this.motionAdapter.update(elapsedSec);
     const state = this.manager.getState();
-    const sourceFrameRaw = sourceFrameOverride
-      ?? (this.sourceFrames.length ? findFrameAtTime(this.sourceFrames, elapsedSec) : null);
-    const frame = sourceFrameOverride
-      ? sourceFrameOverride
-      : findFrameAtTime(this.dataset.frames as any[], elapsedSec);
-    const sourceFrame = cloneSkeletonFrameForSnapshot(sourceFrameRaw);
-
-    let frameIndexOverride;
-    if (sourceFrameOverride && this.sourceFrames.length) {
-      const idx = this.sourceFrames.indexOf(sourceFrameRaw);
-      if (idx >= 0) frameIndexOverride = idx;
-    }
-
-    const timelineMeta = this.resolveTimeline(elapsedSec, sourceFrameRaw, frameIndexOverride);
-    const userAnchor = computeLiveUserAnchor(userJoints, userFallbackAnchor);
-    const personaById = new Map(state.aiAvatars.map((a) => [a.memberId, a]));
     const aiMemberIds = this.manager.getAiMemberIds();
-    const sourceByMember = new Map(
-      (sourceFrameRaw?.members || []).map((m) => [m.estimatedMemberId, m]),
-    );
+    const personaById = new Map(state.aiAvatars.map((a) => [a.memberId, a]));
+    const memberById = new Map(this.motionAsset.members.map((m) => [m.memberId, m]));
 
-    const toAvatarJoints = (memberId: string, fallbackJoints: Record<string, ChoreographyJoint>) => {
-      const sourceMember = sourceByMember.get(memberId);
-      const built = buildAvatarJointsFromMember(
-        sourceMember
-          ? { joints: sourceMember.joints, worldCoordinates: sourceMember.worldCoordinates }
-          : { joints: fallbackJoints },
-      );
-      return Object.keys(built).length ? built : fallbackJoints;
-    };
+    const aiAvatars = aiMemberIds.map((memberId) => {
+      const memberMotion = memberById.get(memberId);
+      const meta = personaById.get(memberId);
+      const formation = resolveFormationAtTime(memberMotion?.formationTimeline, elapsedSec);
+      const worldOffset = formation
+        || meta?.formationAnchor
+        || userFallbackAnchor;
 
-    let aiAvatars: AIAvatarInstance[];
+      return {
+        memberId,
+        displayName: meta?.displayName || memberMotion?.memberName || memberId,
+        persona: meta?.persona || DEFAULT_PERSONA,
+        motionUrl: memberMotion?.motionUrl || '',
+        motionFormat: memberMotion?.motionFormat,
+        motionAssetId: memberMotion?.motionAssetId,
+        animationClipName: memberMotion?.animationClipName,
+        sourceSkeletonProfile: memberMotion?.sourceSkeletonProfile,
+        avatarSkeletonProfile: memberMotion?.avatarSkeletonProfile,
+        worldOffset,
+        isEstimated: !memberMotion?.motionUrl,
+      };
+    });
 
-    if (this.dataset.meta.preserveVideoFormation && frame?.members?.length) {
-      const byId = new Map(frame.members.map((m) => [m.memberId, m]));
-      aiAvatars = aiMemberIds.map((memberId) => {
-        const memberFrame = byId.get(memberId);
-        const sourceMember = sourceByMember.get(memberId);
-        const meta = personaById.get(memberId);
-        const root = memberFrame ? computeRoot(memberFrame.joints) : userAnchor;
-        return {
-          memberId,
-          displayName: meta?.displayName || memberId,
-          persona:
-            meta?.persona || {
-              styleId: 'balanced',
-              energy: 0.7,
-              sharpness: 0.7,
-              groove: 0.6,
-              accentColor: '#FF1F8E',
-            },
-          joints: toAvatarJoints(memberId, memberFrame?.joints || {}),
-          boneRotations: sourceMember?.boneRotations,
-          orientation: sourceMember?.orientation,
-          worldOffset: root,
-          isEstimated: memberFrame?.isEstimated ?? !memberFrame,
-        };
-      });
-    } else {
-      const positioned = applyFormationPositioning({
-        frame,
-        userMemberId: state.userMemberId,
-        userAnchor,
-        referenceUserSlot: userFallbackAnchor,
-        aiMemberIds,
-        scale: FORMATION_SPREAD_SCALE,
-      });
-
-      aiAvatars = positioned.map((p) => {
-        const meta = personaById.get(p.memberId);
-        return {
-          memberId: p.memberId,
-          displayName: meta?.displayName || p.memberId,
-          persona:
-            meta?.persona || {
-              styleId: 'balanced',
-              energy: 0.7,
-              sharpness: 0.7,
-              groove: 0.6,
-              accentColor: '#FF1F8E',
-            },
-          joints: toAvatarJoints(p.memberId, p.joints),
-          boneRotations: sourceByMember.get(p.memberId)?.boneRotations,
-          orientation: sourceByMember.get(p.memberId)?.orientation,
-          worldOffset: p.worldOffset,
-          isEstimated: p.isEstimated ?? false,
-        };
-      });
-    }
+    const timelineMeta = this.resolveTimeline(elapsedSec);
 
     this.lastSnapshot = {
       timestamp: elapsedSec,
       currentTime: elapsedSec,
-      sourceVideoTime: sourceFrame?.sourceVideoTime ?? elapsedSec,
-      bpm: sourceFrame?.bpm ?? this.dataset.meta.bpm,
-      beat: sourceFrame?.beat,
-      beatIndex: sourceFrame?.beatIndex,
-      poseQuality: sourceFrame?.poseQuality,
+      sourceVideoTime: elapsedSec,
+      bpm: undefined,
       timeline: timelineMeta,
-      frame: sourceFrame,
-      formation: sourceFrame?.formation ?? null,
-      memberTracks: sourceFrame?.memberTracks ? [...sourceFrame.memberTracks] : [],
-      confidence: sourceFrame?.confidence ?? 0,
+      frame: null,
+      formation: null,
+      memberTracks: [],
+      confidence: this.motionAsset.status === 'motion_asset_ready' ? 1 : 0,
       userMemberId: state.userMemberId,
       userJoints,
-      userAnchor,
+      userAnchor: userFallbackAnchor,
       aiAvatars,
     };
 
     return this.lastSnapshot;
   }
 
-  private resolveTimeline(
-    elapsedSec: number,
-    sourceFrame: SkeletonFrameData | null,
-    frameIndexOverride?: number,
-  ) {
-    if (!this.timeline) {
-      console.warn('[GroupDanceSyncEngine] timeline 미설정 — video.duration 기반 타임라인 필요');
-    }
-
-    const duration = this.timeline?.duration ?? this.dataset.meta.durationSec ?? 0;
-    const fps = this.timeline?.fps ?? this.dataset.meta.fps ?? 30;
-    const totalFrames =
-      this.timeline?.totalFrames
-      ?? Math.max(1, Math.round(duration * fps));
-
-    const frameIndex =
-      frameIndexOverride != null && frameIndexOverride >= 0
-        ? frameIndexOverride
-        : (sourceFrame?.frameIndex
-          ?? (this.sourceFrames.length
-            ? findFrameIndexAtTime(this.sourceFrames, elapsedSec)
-            : timeSecToFrameIndex(elapsedSec, fps, totalFrames)));
-
+  private resolveTimeline(elapsedSec: number) {
+    const duration = this.timeline?.duration ?? this.motionAsset.durationSec ?? 0;
+    const fps = this.timeline?.fps ?? this.motionAsset.fps ?? 30;
+    const totalFrames = this.timeline?.totalFrames ?? Math.max(1, Math.round(duration * fps));
+    const frameIndex = timeSecToFrameIndex(elapsedSec, fps, totalFrames);
     const progress = duration > 0 ? Math.min(1, Math.max(0, elapsedSec / duration)) : 0;
 
-    return {
-      duration,
-      fps,
-      totalFrames,
-      frameIndex,
-      progress,
-    };
+    return { duration, fps, totalFrames, frameIndex, progress };
+  }
+
+  getMotionAdapter() {
+    return this.motionAdapter;
   }
 
   getLastSnapshot() {

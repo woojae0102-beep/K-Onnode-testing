@@ -6,6 +6,7 @@ import type {
   SnapshotBuildContext,
   SyncEngineTickResult,
 } from '../types/motionSnapshot';
+import { getVisibleGroupMembers } from '../modes/group/runtime/getVisibleGroupMembers';
 
 export function snapshotContextFromSession(session: PracticeSessionData): SnapshotBuildContext {
   return {
@@ -92,14 +93,25 @@ export function isPracticeMotionSnapshotComplete(
   if (!Array.isArray(snapshot.metadata?.memberTracks)) return false;
   if (!Number.isFinite(snapshot.motion.confidence)) return false;
   const aiWithJoints = (snapshot.motion.aiAvatars || []).filter(
-    (a) => Object.keys(a.joints || {}).length > 0,
+    (a) => Boolean(a.motionUrl) || Object.keys(a.joints || {}).length > 0,
   ).length;
   return aiWithJoints > 0;
 }
 
-/** 렌더러 호환 접근자 — src 필드 없음 */
+/** 렌더러 호환 접근자 — userMember 제외 visible AI only */
 export function snapshotAiAvatars(snapshot: PracticeMotionSnapshot | null | undefined) {
-  return snapshot?.motion?.aiAvatars ?? [];
+  const all = snapshot?.motion?.aiAvatars ?? [];
+  const selectedMemberId = snapshot?.metadata?.userMemberId
+    || snapshot?.motion?.userMemberId
+    || '';
+  if (!selectedMemberId) return all;
+
+  const { visibleAiMembers } = getVisibleGroupMembers({
+    members: all.map((avatar) => ({ memberId: avatar.memberId, _avatar: avatar })),
+    selectedMemberId,
+    mode: 'snapshot-ai',
+  });
+  return visibleAiMembers.map((entry) => entry._avatar);
 }
 
 export function snapshotFrame(snapshot: PracticeMotionSnapshot | null | undefined) {

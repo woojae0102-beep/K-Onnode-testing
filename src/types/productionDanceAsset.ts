@@ -2,11 +2,20 @@
 /**
  * Production Dance Asset — types (server Source of Truth).
  */
-export type ProductionAssetStatus = 'draft' | 'processing' | 'ready' | 'failed';
+export type ProductionAssetStatus = 'draft' | 'processing' | 'ready' | 'failed' | 'motion_asset_missing';
 export type ProductionMemberStatus = 'ready' | 'failed';
 export type ProductionMotionFormat = 'fbx' | 'bvh' | 'glb' | 'json';
 export type MotionCaptureProviderId = 'deepmotion';
 export type UserRole = 'user' | 'admin';
+
+/** @deprecated Group Runtime에서 읽지 않음 — legacy namespace로 격리 */
+export type ProductionLegacyData = {
+  skeletonData?: unknown;
+  skeletonFrames?: unknown;
+  trackId?: unknown;
+  joints?: unknown;
+  detectionMetadata?: unknown;
+};
 
 export type FormationTrack = {
   timestamp: number;
@@ -54,13 +63,20 @@ export type ProductionDanceAsset = {
   version: number;
   durationSec: number;
   fps: number;
+  /** Group Runtime motion source — glb/fbx animation only */
   members: ProductionMemberMotion[];
+  /** Optional explicit motion asset list (same contract as members) */
+  motionAssets?: ProductionMemberMotion[];
+  avatarAssets?: AvatarAssetRecord[];
+  formationAssets?: FormationTrack[][];
   stage: StageConfig;
   status: ProductionAssetStatus;
   provider: MotionCaptureProviderId;
   providerJobId?: string;
   createdAt: string;
   updatedAt: string;
+  /** Legacy skeleton JSON — Group Runtime에서 읽으면 안 됨 */
+  legacy?: ProductionLegacyData;
 };
 
 export type GroupRuntimeActors = {

@@ -110,4 +110,9 @@ export interface PracticeSessionData {
   preBuiltContent?: boolean;
   productionDanceAsset?: import('./productionDanceAsset').ProductionDanceAsset;
   groupRuntimeActors?: import('./productionDanceAsset').GroupRuntimeActors;
+  /** Group Mode motion asset (skeleton 없음) */
+  groupMotionAsset?: import('../modes/group/types/groupMotionAsset').GroupMotionAsset;
+  productionMotionAssetV2?: import('../modes/group/types/ProductionMotionAssetV2').ProductionMotionAssetV2;
+  motionAssetStatus?: import('../modes/group/types/groupMotionAsset').GroupMotionAssetStatus;
+  devMotionFixture?: boolean;
 }

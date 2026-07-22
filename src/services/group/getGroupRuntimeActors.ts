@@ -1,22 +1,34 @@
 // @ts-nocheck
 import type { ProductionDanceAsset, GroupRuntimeActors } from '../../types/productionDanceAsset';
 import { PRODUCTION_ERRORS } from '../../types/productionDanceAsset';
+import { getVisibleGroupMembers } from '../../modes/group/runtime/getVisibleGroupMembers';
 
 /**
- * memberId 기준 — index 필터링 금지.
- * 선택 멤버 = userSlot (Avatar 렌더 대상 아님), 나머지 = aiActors.
+ * Production asset member visibility — getVisibleGroupMembers 위임.
  */
 export function getGroupRuntimeActors(
   asset: ProductionDanceAsset,
   selectedMemberId: string,
 ): GroupRuntimeActors {
-  const userSlot = asset.members.find((m) => m.memberId === selectedMemberId);
-  if (!userSlot) {
+  const { userMember, visibleAiMembers } = getVisibleGroupMembers({
+    members: asset.members.map((m) => ({
+      memberId: m.memberId,
+      memberName: m.memberName,
+      _src: m,
+    })),
+    selectedMemberId,
+    mode: 'production-runtime',
+  });
+
+  if (!userMember) {
     throw new Error(
       `${PRODUCTION_ERRORS.PRODUCTION_NOT_READY}: member ${selectedMemberId} not in asset ${asset.id}`,
     );
   }
-  const aiActors = asset.members.filter((m) => m.memberId !== selectedMemberId);
+
+  const userSlot = userMember._src;
+  const aiActors = visibleAiMembers.map((m) => m._src);
+
   return { userSlot, aiActors, selectedMemberId };
 }
 

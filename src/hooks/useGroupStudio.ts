@@ -2,16 +2,19 @@
 import { useCallback, useState } from 'react';
 import { getSongById } from '../data/groupStudioSongs';
 import { getSongVideo } from '../services/groupStudioStorage';
-import { loadProductionDanceAsset } from '../services/group/ProductionDanceAssetLoader';
-import { buildGroupMotionContentFromProductionAsset } from '../services/group/buildGroupMotionContentFromProduction';
 import { getGroupRuntimeActors } from '../services/group/getGroupRuntimeActors';
-import { buildGroupPracticeRuntime } from '../services/group/buildGroupPracticeRuntime';
 import {
   setGroupModeActive,
   logGroupModeRuntimeVerification,
 } from '../services/group/groupModeRuntimeGuard';
-import { buildPracticeSessionFromContent } from '../utils/buildPracticeSessionFromContent';
-import { loadReferenceVideoForPractice } from './useGroupChoreoExtract';
+import { buildGroupPracticeSessionFromMotionAsset } from '../modes/group/services/buildGroupPracticeSession';
+import { loadReferenceVideoForPractice } from '../modes/group/services/referenceVideoLoader';
+import { loadProductionMotionAsset } from '../modes/group/services/ProductionMotionAssetLoader';
+import {
+  productionMotionAssetV2ToGroupMotionAsset,
+  productionMotionAssetV2ToLegacyDanceAsset,
+} from '../modes/group/runtime/productionMotionAssetV2Mapper';
+import { ProductionMotionAssetError } from '../modes/group/types/ProductionMotionAssetV2';
 
 export function useGroupStudio() {
   const [phase, setPhase] = useState('home');
@@ -49,29 +52,45 @@ export function useGroupStudio() {
     try {
       const saved = getSongVideo(songId);
       const videoId = saved?.videoId ?? null;
-
-      const { asset: productionAsset } = await loadProductionDanceAsset({ groupId: song.groupId, songId });
-      const runtimeActors = getGroupRuntimeActors(productionAsset, memberId);
-
-      const content = await buildGroupMotionContentFromProductionAsset(productionAsset);
-      content.source = 'production';
-
-      const runtime = buildGroupPracticeRuntime(content, memberId);
       const refPlayback = await loadReferenceVideoForPractice(songId, videoId);
       const youtubeUrl = videoId
         ? `https://www.youtube.com/watch?v=${videoId}`
         : saved?.youtubeUrl || null;
+      const referenceVideo = {
+        videoId,
+        youtubeUrl,
+        fromCache: true,
+        blobCacheKey: refPlayback?.blobCacheKey ?? null,
+        localPlaybackUrl: refPlayback?.localPlaybackUrl ?? null,
+      };
 
-      const sessionData = await buildPracticeSessionFromContent({
-        content,
-        runtime,
+      const loadResult = await loadProductionMotionAsset({
+        groupId: song.groupId,
+        songId,
+      });
+
+      if (loadResult.loadStatus === 'authority_blocked') {
+        const blocked = loadResult.authorityBlocked!;
+        throw new ProductionMotionAssetError(blocked.failureCode, blocked.message);
+      }
+
+      const productionMotionV2 = loadResult.asset;
+
+      const motionAsset = productionMotionAssetV2ToGroupMotionAsset(productionMotionV2);
+      const productionAsset = productionMotionAssetV2ToLegacyDanceAsset(productionMotionV2);
+
+      if (motionAsset.status !== 'motion_asset_ready') {
+        throw new Error('Production Motion Asset이 준비되지 않았습니다.');
+      }
+
+      const runtimeActors = getGroupRuntimeActors(productionAsset, memberId);
+
+      const { session: sessionData, runtime } = await buildGroupPracticeSessionFromMotionAsset({
+        motionAsset,
+        selectedMemberId: memberId,
         referenceVideo: {
-          videoId,
-          youtubeUrl,
-          fromCache: true,
-          blobCacheKey: refPlayback?.blobCacheKey ?? null,
-          localPlaybackUrl: refPlayback?.localPlaybackUrl ?? null,
-          durationSec: content.durationSec,
+          ...referenceVideo,
+          durationSec: motionAsset.durationSec,
         },
       });
 
@@ -82,7 +101,13 @@ export function useGroupStudio() {
       setPracticeSessionData({
         ...sessionData,
         productionDanceAsset: productionAsset,
+        productionMotionAssetV2: productionMotionV2,
+        productionAuthorityVerification: loadResult.authorityVerification,
         groupRuntimeActors: runtimeActors,
+        groupPracticeRuntime: runtime,
+        groupMotionAsset: motionAsset,
+        motionAssetStatus: motionAsset.status,
+        devMotionFixture: false,
       });
       setPracticeVideo({
         videoId: sessionData.referenceVideo?.videoId,
@@ -94,8 +119,11 @@ export function useGroupStudio() {
       setPhase('practice');
       logGroupModeRuntimeVerification();
     } catch (err) {
-      console.error('[useGroupStudio] pre-built content load failed', err);
-      setContentError((err as Error)?.message || '콘텐츠 로드 실패');
+      console.error('[useGroupStudio] production motion load failed', err);
+      const message = err instanceof ProductionMotionAssetError
+        ? `${err.code}: ${err.message}`
+        : ((err as Error)?.message || 'Production Motion Asset이 준비되지 않았습니다.');
+      setContentError(message);
       setPhase('content_loading');
     } finally {
       setContentLoading(false);
@@ -109,9 +137,8 @@ export function useGroupStudio() {
     }
   }, [selectedSongId, loadAndStartPractice]);
 
-  /** @deprecated choreo_extract 제거 — pre-built loader 사용 */
   const completeChoreoExtract = useCallback(async () => {
-    console.warn('[useGroupStudio] completeChoreoExtract is deprecated. Use pre-built content loader.');
+    console.warn('[useGroupStudio] completeChoreoExtract is deprecated.');
   }, []);
 
   const endSession = useCallback((result, comparison = null) => {
@@ -168,6 +195,7 @@ export function useGroupStudio() {
     practiceVideo,
     contentLoading,
     contentError,
+    devMotionFixture: false,
     selectSong,
     startPositionSelect,
     selectPosition,

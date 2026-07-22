@@ -6,6 +6,7 @@ import type {
   GroupUserSlot,
 } from '../../types/groupMotionContent';
 import { rebuildFormationHoleForMember } from './GroupMotionContentAdapter';
+import { getVisibleGroupMembers } from '../../modes/group/runtime/getVisibleGroupMembers';
 
 /**
  * 멤버 선택 런타임 — selectedMember motion 보존, AI만 필터링.
@@ -19,12 +20,19 @@ export function buildGroupPracticeRuntime(
     throw new Error(`Unknown group: ${content.groupId}`);
   }
 
-  const memberMotion = content.members.find((m) => m.memberId === selectedMemberId);
-  if (!memberMotion) {
+  const { userMember, visibleAiMembers } = getVisibleGroupMembers({
+    members: content.members.map((m) => ({ memberId: m.memberId, memberName: m.memberName, _motion: m })),
+    selectedMemberId,
+    mode: 'group-practice-runtime',
+  });
+
+  if (!userMember) {
     throw new Error(
       `Member ${selectedMemberId} not found in pre-built content (${content.id})`,
     );
   }
+
+  const memberMotion = userMember._motion;
 
   const userSlot: GroupUserSlot = {
     memberId: selectedMemberId,
@@ -34,7 +42,7 @@ export function buildGroupPracticeRuntime(
       || memberMotion.formationTimeline?.[0]?.position,
   };
 
-  const aiAvatarMembers = content.members.filter((m) => m.memberId !== selectedMemberId);
+  const aiAvatarMembers = visibleAiMembers.map((v) => v._motion);
 
   return {
     selectedMemberId,

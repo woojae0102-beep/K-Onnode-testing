@@ -1,7 +1,7 @@
 // @ts-nocheck
 /**
- * Group Mode Production Stage — AI Avatar only (selected member = User Slot marker).
- * MediaPipe / SkeletonAvatar / RPM demo GLB 사용 금지.
+ * Group Mode Production Stage — AI Avatar animation playback (Motion Asset).
+ * SkeletonFrameData / joint retarget / MediaPipe 금지.
  */
 import React, { Suspense, useEffect, useMemo } from 'react';
 import { Canvas } from '@react-three/fiber';
@@ -11,44 +11,17 @@ import type { PracticeMotionSnapshot } from '../../../types/motionSnapshot';
 import {
   snapshotAiAvatars,
   snapshotCurrentTime,
-  snapshotFrame,
 } from '../../../utils/motionSnapshotUtils';
 import type { FormationHole } from '../../../types/danceDatabase';
-import type { SkeletonFrameData } from '../../../types/groupPractice';
-import { AvatarCharacter3D } from './AvatarCharacter3D';
+import { AvatarCharacterAnimated3D } from './AvatarCharacterAnimated3D';
 import { AvatarAssetMissingMarker } from './AvatarAssetMissingMarker';
-import { EmptyJointsMarker } from './EmptyJointsMarker';
 import { LoadingStage } from './LoadingStage';
-import { normalizedToStage } from '../../../services/group/FormationPositioning';
 import type { ProductionAvatarAssetEntry } from '../../../hooks/useProductionAvatarAssets';
+import type { ProductionAuthorityVerificationFailure } from '../../../gx10/ingest/productionAuthorityVerificationResult';
+import type { ProductionAuthorityVerificationResult } from '../../../gx10/ingest/productionAuthorityVerificationResult';
+import type { AssetProvenance } from '../../../modes/group/types/AssetProvenance';
 import SnapshotDebugOverlay from '../SnapshotDebugOverlay';
-import StageAiDebugOverlay from '../StageAiDebugOverlay';
 import { logSnapshotStatus } from '../../../utils/snapshotDebugLog';
-import { buildStageAiDebugInfo, logAiStageDebug } from '../../../utils/stageAiDebugUtils';
-
-const STAGE = { width: 4, height: 3, depth: 2 };
-
-function FormationHoleMarker({ hole }: { hole: FormationHole | null }) {
-  if (!hole) return null;
-  const pos = normalizedToStage(hole.anchor, STAGE.width, STAGE.height, STAGE.depth);
-  return (
-    <group position={pos}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.15, 0]}>
-        <ringGeometry args={[0.35, 0.42, 32]} />
-        <meshBasicMaterial color={hole.color} transparent opacity={0.55} />
-      </mesh>
-      <mesh position={[0, 0.05, 0]}>
-        <boxGeometry args={[0.5, 0.02, 0.5]} />
-        <meshBasicMaterial color={hole.color} transparent opacity={0.2} />
-      </mesh>
-      <EmptyJointsMarker memberId={hole.memberId} label={`USER · ${hole.label || 'YOU'}`} worldOffset={{ x: 0, y: 0, z: 0 }} />
-    </group>
-  );
-}
-
-function countJoints(joints: Record<string, unknown> | null | undefined) {
-  return Object.keys(joints || {}).length;
-}
 
 export function GroupDanceStage3D({
   snapshot,
@@ -57,9 +30,14 @@ export function GroupDanceStage3D({
   productionAvatarAssets = {},
   formationHole = null,
   snapshotLoading = false,
-  skeletonFrames = [],
   currentTimeSec,
+  isPlaying = false,
   stageBackgroundId = 'stage-default',
+  motionAssetMissing = false,
+  devMotionFixture = false,
+  assetProvenance,
+  authorityVerification,
+  authorityBlocked = null,
 }: {
   snapshot: PracticeMotionSnapshot | null;
   className?: string;
@@ -67,43 +45,107 @@ export function GroupDanceStage3D({
   productionAvatarAssets?: Record<string, ProductionAvatarAssetEntry>;
   formationHole?: FormationHole | null;
   snapshotLoading?: boolean;
-  skeletonFrames?: SkeletonFrameData[];
   currentTimeSec?: number;
+  isPlaying?: boolean;
   stageBackgroundId?: string;
+  motionAssetMissing?: boolean;
+  devMotionFixture?: boolean;
+  assetProvenance?: AssetProvenance;
+  authorityVerification?: ProductionAuthorityVerificationResult;
+  authorityBlocked?: ProductionAuthorityVerificationFailure | null;
 }) {
   const aiList = snapshotAiAvatars(snapshot);
-  const aiDebugInfo = useMemo(
-    () => buildStageAiDebugInfo(snapshot, snapshotFrame(snapshot) ? [snapshotFrame(snapshot)] : skeletonFrames, currentTimeSec ?? snapshotCurrentTime(snapshot)),
-    [snapshot, skeletonFrames, currentTimeSec],
-  );
+  const playbackTime = currentTimeSec ?? snapshotCurrentTime(snapshot);
 
   useEffect(() => {
     logSnapshotStatus(snapshot, 'GroupDanceStage3D', { loading: snapshotLoading });
   }, [snapshot, snapshotLoading]);
 
-  useEffect(() => {
-    logAiStageDebug(snapshot, skeletonFrames, 'GroupDanceStage3D', currentTimeSec ?? snapshotCurrentTime(snapshot));
-  }, [snapshot, skeletonFrames, currentTimeSec]);
+  const productionAuthorityBlocked = Boolean(authorityBlocked);
+
+  const missingBanner = motionAssetMissing ? (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(10,10,20,0.72)',
+        color: '#ffb4b4',
+        fontSize: 13,
+        zIndex: 20,
+        padding: 24,
+        textAlign: 'center',
+      }}
+    >
+      Production Motion Asset이 준비되지 않았습니다.
+    </div>
+  ) : productionAuthorityBlocked ? (
+    <div
+      style={{
+        position: 'absolute',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: 'rgba(10,10,20,0.82)',
+        color: '#ffb4b4',
+        fontSize: 13,
+        zIndex: 20,
+        padding: 24,
+        textAlign: 'center',
+      }}
+    >
+      Production Authority 검증 실패 — 재생이 차단되었습니다.
+      <br />
+      <span style={{ fontSize: 11, opacity: 0.85 }}>{authorityBlocked?.failureCode}</span>
+    </div>
+  ) : devMotionFixture ? (
+    <div
+      style={{
+        position: 'absolute',
+        top: 8,
+        left: 8,
+        zIndex: 25,
+        padding: '4px 8px',
+        borderRadius: 6,
+        background: 'rgba(255,215,0,0.2)',
+        border: '1px solid rgba(255,215,0,0.5)',
+        color: '#FFD700',
+        fontSize: 11,
+        fontWeight: 700,
+      }}
+    >
+      DEV MOTION FIXTURE
+    </div>
+  ) : null;
 
   return (
     <div
       className={className}
       style={{ position: 'relative', width: '100%', height: '100%', minHeight: 320, background: '#12101a' }}
     >
+      {missingBanner}
       <SnapshotDebugOverlay snapshot={snapshot} loading={snapshotLoading} />
-      <StageAiDebugOverlay info={aiDebugInfo} />
       <Canvas gl={{ antialias: true, alpha: false }} shadows>
         <Suspense fallback={<LoadingStage />}>
           <PerspectiveCamera makeDefault position={[0, 1.6, 6.2]} fov={44} />
           <GroupPracticeEnvironment showGrid={showGrid} backgroundId={stageBackgroundId} />
 
-          <FormationHoleMarker hole={formationHole} />
+          {formationHole ? (
+            <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -1.15, 0]}>
+              <ringGeometry args={[0.35, 0.42, 32]} />
+              <meshBasicMaterial color={formationHole.color || '#FF1F8E'} transparent opacity={0.35} />
+            </mesh>
+          ) : null}
 
           {aiList.map((avatar) => {
             const asset = productionAvatarAssets[avatar.memberId];
-            const jointCount = countJoints(avatar.joints);
+            const hasMotion = Boolean(avatar.motionUrl);
+            const glbUrl = asset?.avatarAssetUrl;
 
-            if (asset?.missing || !asset?.avatarAssetUrl) {
+            if (productionAuthorityBlocked || asset?.missing || !glbUrl || !hasMotion) {
               return (
                 <AvatarAssetMissingMarker
                   key={avatar.memberId}
@@ -114,25 +156,24 @@ export function GroupDanceStage3D({
               );
             }
 
-            if (jointCount === 0) {
-              return (
-                <EmptyJointsMarker
-                  key={avatar.memberId}
-                  memberId={avatar.memberId}
-                  label={avatar.displayName}
-                  worldOffset={avatar.worldOffset}
-                />
-              );
-            }
-
             return (
-              <AvatarCharacter3D
+              <AvatarCharacterAnimated3D
                 key={avatar.memberId}
-                glbUrl={asset.avatarAssetUrl}
-                joints={avatar.joints}
-                boneRotations={avatar.boneRotations}
+                memberId={avatar.memberId}
+                glbUrl={glbUrl}
+                motionUrl={avatar.motionUrl}
+                motionAssetId={avatar.motionAssetId}
+                animationClipName={avatar.animationClipName}
+                sourceSkeletonProfile={avatar.sourceSkeletonProfile}
+                avatarSkeletonProfile={avatar.avatarSkeletonProfile}
+                currentTimeSec={playbackTime}
+                isPlaying={isPlaying}
                 persona={avatar.persona}
                 label={avatar.displayName}
+                worldOffset={avatar.worldOffset}
+                assetProvenance={assetProvenance}
+                authorityVerification={authorityVerification}
+                authorityBlocked={authorityBlocked || undefined}
               />
             );
           })}

@@ -21,6 +21,7 @@ import {
   resolveTimelinePosition,
   type StageAnchor,
 } from './SkeletonFormationRender';
+import { getVisibleGroupMembers } from '../../modes/group/runtime/getVisibleGroupMembers';
 
 export interface GroupStudioRendererOptions {
   groupId?: string;
@@ -54,41 +55,48 @@ function drawStageBackground(ctx: CanvasRenderingContext2D, width: number, heigh
   }
 }
 
-/** Stage AI members — focusMemberId(사용자) 제외 */
+function resolveStageMemberId(member: SkeletonMemberData): string {
+  const id = member.memberId ?? member.estimatedMemberId ?? member.id;
+  return id != null && id !== '' ? String(id).trim() : '';
+}
+
+/** Stage AI members — focusMemberId(사용자) 제외 (memberId 기준, trackId 금지) */
 export function filterVisibleStageMembers(
   members: SkeletonMemberData[] | null | undefined,
   focusMemberId?: string,
   userMemberId?: string,
 ): SkeletonMemberData[] {
   if (!members?.length) return [];
-  const focusId = focusMemberId != null && focusMemberId !== ''
-    ? String(focusMemberId)
-    : '';
-  const userId = userMemberId != null && userMemberId !== ''
+  const selectedMemberId = userMemberId != null && userMemberId !== ''
     ? String(userMemberId)
-    : focusId;
+    : focusMemberId != null && focusMemberId !== ''
+      ? String(focusMemberId)
+      : '';
 
-  return members.filter((member) => {
-    if (!member.joints || !Object.keys(member.joints).length) return false;
-    const memberIds = [
-      member.id,
-      member.memberId,
-      member.estimatedMemberId,
-      member.trackId,
-      member.personIndex,
-    ]
-      .filter((id) => id != null && id !== '')
-      .map((id) => String(id));
-    const label = member.label != null ? String(member.label).trim().toUpperCase() : '';
-    const name = member.name != null ? String(member.name).trim().toUpperCase() : '';
+  const eligible = members.filter(
+    (member) => {
+      if (!member.joints || !Object.keys(member.joints).length) return false;
+      if (member.isUser || member.isSelf || member.isYou) return false;
+      return true;
+    },
+  );
 
-    if (focusId && memberIds.includes(focusId)) return false;
-    if (userId && memberIds.includes(userId)) return false;
-    if (member.isUser || member.isSelf || member.isYou) return false;
-    if (member.isEstimated === false && (focusId || userId) && !memberIds.length) return false;
-    if (label === 'YOU' || name === 'YOU') return false;
-    return true;
+  if (!selectedMemberId) return eligible;
+
+  const identityMembers = eligible
+    .map((member) => {
+      const memberId = resolveStageMemberId(member);
+      return memberId ? { memberId, _raw: member } : null;
+    })
+    .filter(Boolean);
+
+  const { visibleAiMembers } = getVisibleGroupMembers({
+    members: identityMembers,
+    selectedMemberId,
+    mode: 'stage-filter',
   });
+
+  return visibleAiMembers.map((entry) => entry._raw);
 }
 
 export function cloneMemberJointsForRender(

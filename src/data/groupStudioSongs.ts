@@ -83,6 +83,7 @@ export const STUDIO_SONGS: StudioSong[] = [
   song('go-cortis', 'GO!', 'cortis', 125, 4, 186, '#F87171', '#34D399', '', 96, ['go', '고']),
   song('redred', 'REDRED', 'cortis', 122, 3, 178, '#F87171', '#FFD700', '', 93, ['red red', '레드레드', 'redred']),
   song('fashion-cortis', 'FaSHioN', 'cortis', 120, 3, 181, '#A78BFA', '#FCD34D', '', 88, ['fashion', '패션']),
+  song('production-motion-test', 'Production Motion Test', 'real-multi-member-motion-test', 120, 3, 30, '#7C3AED', '#FF1F8E', '', 50, ['production motion test', '모션 테스트']),
 ];
 
 export const SONG_MAP = Object.fromEntries(STUDIO_SONGS.map((s) => [s.id, s]));

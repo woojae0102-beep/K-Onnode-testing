@@ -3,7 +3,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { GROUP_DATA } from '../data/groupPracticeData';
 import { useAvatarSync } from './useAvatarSync';
 import { AvatarGroupManager } from '../services/group/AvatarGroupManager';
-import { GroupDanceSyncEngine } from '../services/group/GroupDanceSyncEngine';
+import { SkeletonGroupDanceSyncEngine } from '../services/group/SkeletonGroupDanceSyncEngine';
 import {
   loadChoreographyDataset,
   skeletonFramesToChoreographyDataset,
@@ -43,7 +43,7 @@ export function useGroupDanceStage({
   const [snapshot, setSnapshot] = useState<PracticeMotionSnapshot | null>(null);
 
   const avatarSync = useAvatarSync(skeletonFrames);
-  const syncEngineRef = useRef<GroupDanceSyncEngine | null>(null);
+  const syncEngineRef = useRef<SkeletonGroupDanceSyncEngine | null>(null);
   const managerRef = useRef<AvatarGroupManager | null>(null);
   const rafRef = useRef(0);
 
@@ -92,7 +92,7 @@ export function useGroupDanceStage({
           groupMembers: group?.members || [],
           userMemberId,
         });
-        syncEngineRef.current = new GroupDanceSyncEngine(loaded, managerRef.current, {
+        syncEngineRef.current = new SkeletonGroupDanceSyncEngine(loaded, managerRef.current, {
           sourceFrames: skeletonFrames || [],
           timeline: skeletonFrames?.length
             ? computePracticeTimeline(practiceDuration, loaded.meta.fps)

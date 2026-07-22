@@ -1,5 +1,5 @@
 // @ts-nocheck
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getSongById } from '../../data/groupStudioSongs';
 import { GROUP_DATA } from '../../data/groupPracticeData';
@@ -26,20 +26,12 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
   const [videoTitle, setVideoTitle] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [urlError, setUrlError] = useState('');
-  const [uploadedVideoUrl, setUploadedVideoUrl] = useState('');
-  const fileInputRef = useRef(null);
-  const uploadedVideoUrlRef = useRef('');
 
   useEffect(() => {
     if (!songId) return;
     setFavTick((n) => n + 1);
     setPracticeCount(getSongPracticeCount(songId));
     addRecentSong(songId);
-    if (uploadedVideoUrlRef.current) {
-      URL.revokeObjectURL(uploadedVideoUrlRef.current);
-      uploadedVideoUrlRef.current = '';
-    }
-    setUploadedVideoUrl('');
     setVideoId('');
     setVideoTitle('');
     setUrlInput('');
@@ -52,10 +44,6 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
     }
   }, [songId]);
 
-  useEffect(() => () => {
-    if (uploadedVideoUrlRef.current) URL.revokeObjectURL(uploadedVideoUrlRef.current);
-  }, []);
-
   const handleApplyUrl = useCallback(() => {
     const id = extractYoutubeVideoId(urlInput.trim());
     if (!id) {
@@ -63,11 +51,6 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
       return;
     }
     setUrlError('');
-    if (uploadedVideoUrlRef.current) {
-      URL.revokeObjectURL(uploadedVideoUrlRef.current);
-      uploadedVideoUrlRef.current = '';
-    }
-    setUploadedVideoUrl('');
     setVideoId(id);
     setVideoTitle('');
     saveSongVideo(songId, {
@@ -77,23 +60,6 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
       videoType: 'user_youtube',
     });
   }, [urlInput, songId, t]);
-
-  const handleUploadVideo = useCallback((e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type?.startsWith('video/')) {
-      setUrlError('영상 파일만 업로드할 수 있습니다.');
-      return;
-    }
-    if (uploadedVideoUrlRef.current) URL.revokeObjectURL(uploadedVideoUrlRef.current);
-    const objectUrl = URL.createObjectURL(file);
-    uploadedVideoUrlRef.current = objectUrl;
-    setUploadedVideoUrl(objectUrl);
-    setVideoId('');
-    setVideoTitle(file.name);
-    setUrlInput('');
-    setUrlError('');
-  }, []);
 
   const handleStart = useCallback(() => {
     if (videoId) {
@@ -182,14 +148,7 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
               marginBottom: 12,
             }}
           >
-            {uploadedVideoUrl ? (
-              <video
-                src={uploadedVideoUrl}
-                controls
-                playsInline
-                style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000' }}
-              />
-            ) : youtubeUrl ? (
+            {youtubeUrl ? (
               <YouTubeTVPlayer embedUrl={youtubeUrl} autoplay={false} />
             ) : (
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'rgba(255,255,255,0.4)', fontSize: 13, padding: '0 16px', textAlign: 'center' }}>
@@ -231,24 +190,6 @@ export function SongDetailScreen({ songId, onStart, onBack }) {
             >
               {t('groupStudio.songDetail.applyYoutubeUrl')}
             </button>
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              style={{
-                padding: '10px 16px',
-                borderRadius: 10,
-                border: '1px solid rgba(255,255,255,0.12)',
-                background: 'rgba(255,255,255,0.06)',
-                color: '#fff',
-                fontSize: 13,
-                fontWeight: 600,
-                cursor: 'pointer',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              영상 업로드
-            </button>
-            <input ref={fileInputRef} type="file" accept="video/*" style={{ display: 'none' }} onChange={handleUploadVideo} />
           </div>
           {urlError ? (
             <p style={{ fontSize: 12, color: '#FF6B6B', margin: '0 0 12px' }}>{urlError}</p>
